@@ -198,6 +198,12 @@ Leaves 307 violations across 31 rules. The largest remaining are
 `UseLocaleWithCaseConversions` 19, `ReturnEmptyCollectionRatherThanNull` 15,
 `CloseResource` 13.
 
+2026-11-14: two threshold rules joined the named set, `CognitiveComplexity`
+at `reportLevel` 20 and `AvoidDeeplyNestedIfStmts` at `problemDepth` 4, after
+a refactoring pass brought every method under them (45 named rules now;
+`QualityGatePomTest.complexityThresholdsArePinned` pins the thresholds). The
+numbers and the method: `docs/dev/quality-gates.md`, "Complexity".
+
 ### `config/spotbugs/exclude.xml`
 
 | Family | n | Reason |

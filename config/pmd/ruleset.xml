@@ -6,9 +6,10 @@
 
     <description>
         Pressroom's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules, plus 43 named rules chosen from the other categories (the
-        21 defect-finding rules of 2026-10, the 14 hygiene rules of 2026-11 and
-        the defect rules added after them; see the groups below). Zero tolerance: see
+        minus six rules, plus 45 named rules chosen from the other categories (the
+        21 defect-finding rules of 2026-10, the 14 hygiene rules of 2026-11, the
+        defect rules added after them and two complexity rules; see the groups
+        below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
 
         A rule is excluded only when violating it is SYSTEMATICALLY not a defect
@@ -182,4 +183,25 @@
     <rule ref="category/java/bestpractices.xml/ArrayIsStoredDirectly"/>
     <rule ref="category/java/bestpractices.xml/MethodReturnsInternalArray"/>
     <rule ref="category/java/bestpractices.xml/ImplicitFunctionalInterface"/>
+    <!-- Added 2026-11, maintenance pass: complexity held where a refactoring
+         wave left it. Every method at cognitive complexity 20 or more (77 at
+         15 or more, the largest 56, before) was refactored: guard clauses,
+         one job per extracted method, small collaborators. The gate is the
+         lowest level the tree honestly holds, so a new method that needs
+         more is split before it lands, not after; and an if nested four deep
+         is one level past what the rest of the tree reads at. Cyclomatic,
+         NPath and GodClass are measured but not gated: they count what a
+         reader does not struggle with (a flat switch, a linear sequence of
+         setters). The numbers and the method: docs/dev/quality-gates.md,
+         "Complexity". -->
+    <rule ref="category/java/design.xml/CognitiveComplexity">
+        <properties>
+            <property name="reportLevel" value="20"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/design.xml/AvoidDeeplyNestedIfStmts">
+        <properties>
+            <property name="problemDepth" value="4"/>
+        </properties>
+    </rule>
 </ruleset>

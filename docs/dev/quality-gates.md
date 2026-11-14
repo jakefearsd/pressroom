@@ -405,6 +405,67 @@ a 200+-token method copied into a second class for CPD) each turned
 Cost: PMD+CPD+SpotBugs add ~10 seconds to a warm `verify` (inside the
 30-second budget); a cold full `verify` runs in under 20 seconds.
 
+## Complexity
+
+Gated 2026-11-14 (maintenance pass, agent q3): PMD `CognitiveComplexity` at
+`reportLevel` 20 (a method at 20 or more fails) and `AvoidDeeplyNestedIfStmts`
+at `problemDepth` 4. `QualityGatePomTest.complexityThresholdsArePinned` pins
+both numbers: lowering one is welcome, raising one is a decision for this
+section.
+
+| PMD measure (default thresholds unless stated) | before | after |
+|---|---|---|
+| CognitiveComplexity, methods at 15 or more | 77 | 39 |
+| CognitiveComplexity, at 20 or more (the gate) | 47 | 0 |
+| largest method | 56 (`WeblogRequestMapper.handleRequest`) | 19 |
+| AvoidDeeplyNestedIfStmts, depth 3 / depth 4 (the gate) | 52 / not measured | 17 / 0 |
+| CyclomaticComplexity | 168 | 140 |
+| NPathComplexity | 39 | 24 |
+| NcssCount | 9 | 1 |
+| GodClass | 50 | 50 |
+| ExcessiveParameterList | 13 | 13 |
+
+How the gain was made, and how to keep a new method under the gate:
+
+- **Pin first.** Before a method was touched, its uncovered branches in
+  JaCoCo were pinned with characterisation tests (javadoc says so; each was
+  run against the old code). Several had none where it mattered: serving a
+  theme resource, webp negotiation without cwebp, the preview servlet's
+  order of themes.
+- **Guard clauses, then one job per method.** An early return for the
+  refusal, the not-found and the nothing-to-do case; the rest extracted as a
+  method named for what it decides (`siteHostClaim`, `servableMediaFile`,
+  `slashMisplaced`), never numbered fragments. The order of checks in the
+  routing and security paths (`WeblogRequestMapper`, the resource servlets,
+  `WeblogPermission.implies`) was kept exactly.
+- **Repeated shapes become small helpers.** `JpqlParameters` (business/jpa)
+  hands back each bound value's `?n` placeholder, replacing hand-kept
+  counters; `ServableResource` is the resource servlets' shared lookup and
+  reply; `CacheKeys.appendPageSegments` is the page key both page caches
+  build.
+- **Flag arguments split.** `myValidate(bean, user, isAdd, ...)` became
+  `validateNew` and `validateEdit`.
+
+Not gated, on purpose: Cyclomatic and NPath count every branch a flat switch
+or a linear run of "if the field is present, set it" adds, which no reader
+struggles with (`EntryDtos.applyWrite`, `AdminDtos.applyPatch`); GodClass
+flags the managers and controllers whose size is their scope. Their counts
+are above, for the record.
+
+When a method trips the gate, refactor it as above; a suppression is for a
+method that is genuinely clearer as one piece (a parser or a state machine),
+with that reason. The pass needed none.
+
+Left at depth 3 (17 ifs, not gated): `DatabaseProvider` (2),
+`ExternalImages.ImgAttributes.accept`, `Period.of`, the cache-hit blocks of
+`JPAUserManagerImpl.getUserByUserName` and `JPAWeblogManagerImpl.getWeblogByHandle`,
+`SharedThemeFromDir.loadStylesheet`, `CategoryRemoveController`,
+`MediaFileAddController.resolveDirectory`, `PressroomSession` (2),
+`PageModel.getCanonicalUrl`, `WeblogEntriesListPager.getLastUpdated`,
+`WeblogEntriesPreviewPager`, `PageServlet.selectTemplate` (2) and
+`CategoriesApi`. Most are a two-line guard-clause fix; doing them would let
+the gate move to the default depth of 3.
+
 ## Log-only catches
 
 Moved from CLAUDE.md (2026-11-08); the rule stays there in short.

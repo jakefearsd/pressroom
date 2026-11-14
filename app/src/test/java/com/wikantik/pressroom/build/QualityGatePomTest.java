@@ -363,7 +363,9 @@ class QualityGatePomTest {
                 "category/java/design.xml/ExceptionAsFlowControl",
                 "category/java/bestpractices.xml/ArrayIsStoredDirectly",
                 "category/java/bestpractices.xml/MethodReturnsInternalArray",
-                "category/java/bestpractices.xml/ImplicitFunctionalInterface"), refs,
+                "category/java/bestpractices.xml/ImplicitFunctionalInterface",
+                "category/java/design.xml/CognitiveComplexity",
+                "category/java/design.xml/AvoidDeeplyNestedIfStmts"), refs,
                 "config/pmd/ruleset.xml's <rule ref> set IS the gate's scope, not merely its exclusions. "
                 + "Deleting the security category, or swapping quickstart.xml for a narrower ruleset, "
                 + "silently shrinks the gate with no other test failing. Changing this set is a spec "
@@ -374,6 +376,27 @@ class QualityGatePomTest {
                 + "justification-comment scrutiny everyPmdExclusionIsPermittedAndCarriesAReason enforces "
                 + "-- that regex only matches <exclude name=...>, not <exclude-pattern>. Adding one is a "
                 + "spec change: update the design doc and this test.");
+    }
+
+    /**
+     * The complexity gate is its thresholds: the rules are useless at a level
+     * no method reaches, so loosening one must fail here rather than pass as
+     * a one-line edit to the ruleset. They were set by the 2026-11
+     * maintenance pass at the lowest levels the tree holds (largest method
+     * cognitive complexity 19; one if nested four deep, refactored away).
+     * Lowering them is welcome; raising them is a decision for
+     * docs/dev/quality-gates.md, "Complexity".
+     */
+    @Test
+    void complexityThresholdsArePinned() throws IOException {
+        String ruleset = read("config/pmd/ruleset.xml");
+
+        assertTrue(Pattern.compile("CognitiveComplexity\">\\s*<properties>\\s*"
+                        + "<property name=\"reportLevel\" value=\"20\"/>").matcher(ruleset).find(),
+                "CognitiveComplexity is gated at reportLevel 20 (a method at 20 or above fails)");
+        assertTrue(Pattern.compile("AvoidDeeplyNestedIfStmts\">\\s*<properties>\\s*"
+                        + "<property name=\"problemDepth\" value=\"4\"/>").matcher(ruleset).find(),
+                "AvoidDeeplyNestedIfStmts is gated at problemDepth 4");
     }
 
     /**
