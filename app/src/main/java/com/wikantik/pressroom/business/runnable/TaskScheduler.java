@@ -174,6 +174,32 @@ public class TaskScheduler implements Runnable {
     }
 
     /**
+     * If we missed the last scheduled run time, see when the most appropriate
+     * next run time is and wait 'til then: a daily (startOfDay) or hourly
+     * (startOfHour) task runs only in the first couple of minutes of its day
+     * or hour. Any other task runs at once.
+     */
+    private boolean waitsForStartWindow(PressroomTask task, Date currentTime, Date nextRunTime) {
+        if (currentTime.getTime() <= nextRunTime.getTime() + PressroomConstants.MIN_IN_MS) {
+            return false;
+        }
+        log.debug("MISSED last run, checking if waiting is necessary");
+        Date windowStart;
+        if ("startOfDay".equals(task.getStartTimeDesc())) {
+            windowStart = DateUtil.getStartOfDay(currentTime, calendar());
+        } else if ("startOfHour".equals(task.getStartTimeDesc())) {
+            windowStart = DateUtil.getStartOfHour(currentTime);
+        } else {
+            return false;
+        }
+        boolean wait = currentTime.getTime() > windowStart.getTime() + (2 * PressroomConstants.MIN_IN_MS);
+        if (wait) {
+            log.debug("WAITING for next reasonable run time");
+        }
+        return wait;
+    }
+
+    /**
      * Run the necessary tasks given a specific currentTime to work from.
      * Package-private so TaskSchedulerTest can drive the launch decision with
      * a chosen clock; run() would otherwise make it wait for the next minute.
@@ -200,32 +226,8 @@ public class TaskScheduler implements Runnable {
                 Date nextRunTime = nextAllowedRun(tasklock, task.getInterval());
                 log.debug("{}: next allowed run time = {}", task.getName(), nextRunTime);
                 
-                // if we missed the last scheduled run time then see when the
-                // most appropriate next run time should be and wait 'til then
-                boolean needToWait = false;
-                if(currentTime.getTime() > (nextRunTime.getTime() + PressroomConstants.MIN_IN_MS)) {
-                    
-                    log.debug("MISSED last run, checking if waiting is necessary");
-                    // add delays if task is non-immediate
-                    if ("startOfDay".equals(task.getStartTimeDesc())) {
-                        // for daily tasks we only run during the first 
-                        // couple minutes of the day
-                        Date startOfDay = DateUtil.getStartOfDay(currentTime, calendar());
-                        if(currentTime.getTime() > startOfDay.getTime() + (2 * PressroomConstants.MIN_IN_MS)) {
-                            needToWait = true;
-                            log.debug("WAITING for next reasonable run time");
-                        }
-                    } else if("startOfHour".equals(task.getStartTimeDesc())) {
-                        // for hourly tasks we only run during the first
-                        // couple minutes of the hour
-                        Date startOfHour = DateUtil.getStartOfHour(currentTime);
-                        if(currentTime.getTime() > startOfHour.getTime() + (2 * PressroomConstants.MIN_IN_MS)) {
-                            needToWait = true;
-                            log.debug("WAITING for next reasonable run time");
-                        }
-                    }
-                }
-                
+                boolean needToWait = waitsForStartWindow(task, currentTime, nextRunTime);
+
                 // if we are within 1 minute of run time then execute,
                 // otherwise we do nothing
                 long differential = currentTime.getTime() - nextRunTime.getTime();

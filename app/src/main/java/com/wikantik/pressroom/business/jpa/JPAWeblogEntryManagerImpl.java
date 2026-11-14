@@ -697,6 +697,36 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
 
     /**
+     * The entry carries any of the tags. EXISTS, not a join on e.tags: a join
+     * yields one row per matching tag, so an entry carrying two of the tags
+     * was listed twice and the duplicates counted against maxResults (short
+     * pages).
+     */
+    private static void appendTagCondition(StringBuilder queryString, JpqlParameters params, List<String> tags) {
+        queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t WHERE t.weblogEntry = e AND (");
+        String or = "";
+        for (String tag : tags) {
+            queryString.append(or).append(" t.name = ").append(params.bind(tag));
+            or = " OR ";
+        }
+        queryString.append(")) AND ");
+    }
+
+    /** By update time, trash time or (the default) publication time; newest first unless asked otherwise. */
+    private static String orderClause(WeblogEntrySearchCriteria wesc) {
+        String column;
+        if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.UPDATE_TIME) {
+            column = "e.updateTime";
+        } else if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.TRASH_TIME) {
+            column = "e.trashedAt";
+        } else {
+            column = "e.pubTime";
+        }
+        String direction = wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING ? "ASC " : "DESC ";
+        return " ORDER BY " + column + " " + direction;
+    }
+
+    /**
      * The status condition of an entry search. An explicit status wins
      * outright: a caller asking for TRASHED gets trash, and a caller asking
      * for anything else cannot get it -- that asymmetry is the property the
@@ -747,16 +777,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         queryString.append("SELECT e FROM WeblogEntry e WHERE ");
         if (wesc.getTags() != null && !wesc.getTags().isEmpty()) {
-            // EXISTS, not a join on e.tags: a join yields one row per matching
-            // tag, so an entry carrying two of the tags was listed twice and
-            // the duplicates counted against maxResults (short pages).
-            queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t WHERE t.weblogEntry = e AND (");
-            String or = "";
-            for (String tag : wesc.getTags()) {
-                queryString.append(or).append(" t.name = ").append(params.bind(tag));
-                or = " OR ";
-            }
-            queryString.append(")) AND ");
+            appendTagCondition(queryString, params, wesc.getTags());
         }
 
         if (wesc.getWeblog() != null) {
@@ -783,15 +804,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     .append(") ");
         }
 
-        if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.UPDATE_TIME) {
-            queryString.append(" ORDER BY e.updateTime ");
-        } else if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.TRASH_TIME) {
-            queryString.append(" ORDER BY e.trashedAt ");
-        } else {
-            queryString.append(" ORDER BY e.pubTime ");
-        }
-        queryString.append(wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING
-                ? "ASC " : "DESC ");
+        queryString.append(orderClause(wesc));
 
         TypedQuery<WeblogEntry> query = strategy.getDynamicQuery(queryString.toString(), WeblogEntry.class);
         params.setOn(query);

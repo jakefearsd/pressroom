@@ -127,7 +127,6 @@ public class WebappResourceLoader extends ResourceLoader {
     // method) -- Velocity's own resource-manager machinery reads and closes
     // it once the template load completes. Closing it here would hand back
     // an already-closed reader.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
 	public Reader getResourceReader(String name, String encoding) {
 
@@ -160,44 +159,45 @@ public class WebappResourceLoader extends ResourceLoader {
 		if (savedPath != null) {
 			result = servletContext.getResourceAsStream(savedPath + split[0]);
 		}
-
-		Exception exception = null;
 		if (result == null) {
-            for (String pathSegment : paths) {
-				String path = pathSegment + split[0];
-				try {
-					result = servletContext.getResourceAsStream(path);
+			result = searchPaths(name, split[0]);
+		}
 
-					// save the path and exit the loop if we found the template
-					if (result != null) {
-						templatePaths.put(name, pathSegment);
-						break;
-					}
-				} catch (Exception e) {
-					// only save the first one for later throwing
-					if (exception == null) {
-						log.debug("WebappResourceLoader: Could not load {}", path, e);
-						exception = e;
-					}
+		return new InputStreamReader(result, StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * The template under the first of the loader's paths that has it,
+	 * remembering that path for the next load of {@code name}; throws
+	 * ResourceNotFoundException, with the first failure as its cause, when
+	 * none has it.
+	 */
+	private InputStream searchPaths(String name, String template) {
+		Exception exception = null;
+		for (String pathSegment : paths) {
+			String path = pathSegment + template;
+			try {
+				InputStream result = servletContext.getResourceAsStream(path);
+				// save the path if we found the template
+				if (result != null) {
+					templatePaths.put(name, pathSegment);
+					return result;
+				}
+			} catch (Exception e) {
+				// only save the first one for later throwing
+				if (exception == null) {
+					log.debug("WebappResourceLoader: Could not load {}", path, e);
+					exception = e;
 				}
 			}
 		}
 
-		// If we never found the template
-		if (result == null) {
-			String msg = "WebappResourceLoader: Resource '" + name
-					+ "' not found.";
-
-			// convert to a general Velocity ResourceNotFoundException
-			if (exception == null) {
-				throw new ResourceNotFoundException(msg);
-			} else {
-				msg += "  Due to: " + exception;
-				throw new ResourceNotFoundException(msg, exception);
-			}
+		// convert to a general Velocity ResourceNotFoundException
+		String msg = "WebappResourceLoader: Resource '" + name + "' not found.";
+		if (exception == null) {
+			throw new ResourceNotFoundException(msg);
 		}
-
-		return new InputStreamReader(result, StandardCharsets.UTF_8);
+		throw new ResourceNotFoundException(msg + "  Due to: " + exception, exception);
 	}
 
 	/**

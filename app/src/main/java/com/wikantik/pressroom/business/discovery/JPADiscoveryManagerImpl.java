@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -469,12 +470,21 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         }
         for (DiscoveryCandidate c : order) {
             List<WeblogEntry> section = shownIn.get(c.entryId());
-            if (section != null) {
-                for (int i = 0; i < section.size(); i++) {
-                    if (section.get(i).getId().equals(c.entryId())) {
-                        return section.remove(i);
-                    }
-                }
+            WeblogEntry moved = section == null ? null : takeOut(section, c.entryId());
+            if (moved != null) {
+                return moved;
+            }
+        }
+        return null;
+    }
+
+    /** Removes the entry with this id from the section and returns it; null when it is not there. */
+    private static WeblogEntry takeOut(List<WeblogEntry> section, String entryId) {
+        for (Iterator<WeblogEntry> it = section.iterator(); it.hasNext();) {
+            WeblogEntry entry = it.next();
+            if (entry.getId().equals(entryId)) {
+                it.remove();
+                return entry;
             }
         }
         return null;

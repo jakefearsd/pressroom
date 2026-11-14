@@ -264,19 +264,7 @@ public class WeblogPageRequest extends WeblogRequest {
 
             // only check for other params if we didn't find an anchor above or tags
             if (this.weblogAnchor == null && this.tags == null) {
-                String date = request.getParameter("date");
-                if (date != null) {
-                    if (!this.isValidDateString(date)) {
-                        throw new InvalidRequestException("invalid date, "
-                                + request.getRequestURL());
-                    }
-                    this.weblogDate = date;
-                }
-
-                String cat = request.getParameter("cat");
-                if (cat != null) {
-                    this.weblogCategoryName = decodeOrReject(cat, request);
-                }
+                parseDateAndCategory(request);
             }
         }
 
@@ -290,6 +278,23 @@ public class WeblogPageRequest extends WeblogRequest {
                 // error -- crawlers and hand-edited URLs send these
                 // constantly; parsing simply keeps the default page.
             }
+        }
+    }
+
+    /** The "date" and "cat" query parameters; a malformed date is not a request this weblog answers. */
+    private void parseDateAndCategory(HttpServletRequest request) throws InvalidRequestException {
+        String date = request.getParameter("date");
+        if (date != null) {
+            if (!this.isValidDateString(date)) {
+                throw new InvalidRequestException("invalid date, "
+                        + request.getRequestURL());
+            }
+            this.weblogDate = date;
+        }
+
+        String cat = request.getParameter("cat");
+        if (cat != null) {
+            this.weblogCategoryName = decodeOrReject(cat, request);
         }
     }
 
