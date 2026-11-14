@@ -349,4 +349,51 @@ class SeoBodyTest {
         assertTrue(found.message().startsWith("2 images are loaded from another site (elsewhere.example)"),
                 found.message());
     }
+
+    // ---- several of a kind: one finding, counted in the plural, naming each
+
+    @Test
+    void twoH1sAreOneWarningCountingAndNamingBoth() {
+        Finding found = only(findings("# Welcome\n\nText.\n\n# Again\n"), "body_h1");
+
+        assertTrue(found.message().startsWith("The body has 2 h1 headings"), found.message());
+        assertTrue(found.message().contains("Welcome") && found.message().contains("Again"), found.message());
+    }
+
+    @Test
+    void twoSkipsAreOneInfoCountingAndNamingBoth() {
+        Finding found = only(findings("#### Deep\n\n## Up\n\n#### Deep again\n"), "heading_skip");
+
+        assertTrue(found.message().startsWith("2 headings skip a level"), found.message());
+        assertTrue(found.message().contains("Deep again"), found.message());
+    }
+
+    @Test
+    void twoBrokenFragmentLinksAreOneWarningInThePlural() {
+        Finding found = only(findings("## Route\n\nSee [fares](#fares) and [times](#times).\n"),
+                "fragment_link_broken");
+
+        assertTrue(found.message().startsWith("2 links point"), found.message());
+        assertTrue(found.message().contains("#fares") && found.message().contains("#times"), found.message());
+    }
+
+    /** The same hand-written img twice is one placement; two distinct ones are counted as two. */
+    @Test
+    void imagesNotResponsiveAreCountedByDistinctPlacement() {
+        String twice = "<p><img src=\"" + PHOTO + "\" alt=\"The harbour\"></p>"
+                + "<p><img src=\"" + PHOTO + "\" alt=\"The harbour\"></p>";
+        Finding one = only(SeoBody.of(twice).findings(photoSite()), "image_not_responsive");
+        assertTrue(one.message().startsWith("1 image of this weblog is"), one.message());
+
+        String other = "https://blog.example.com/coast/mediaresource/p2";
+        SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(), Map.of(
+                PHOTO, new SeoBody.Media("p1", "harbour.jpg", true),
+                other, new SeoBody.Media("p2", "pier.jpg", true)), OWN_HOSTS);
+        String both = "<p><img src=\"" + PHOTO + "\" alt=\"The harbour\"></p>"
+                + "<p><img src=\"" + other + "\" alt=\"The pier\"></p>";
+        Finding two = only(SeoBody.of(both).findings(site), "image_not_responsive");
+        assertTrue(two.message().startsWith("2 images of this weblog are"), two.message());
+        assertTrue(two.message().contains("[image id=p1]") && two.message().contains("[image id=p2]"),
+                two.message());
+    }
 }
