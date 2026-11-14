@@ -681,45 +681,10 @@ public class EntryEditController extends BaseController {
                 bean.getOgImageId(), entry.getOgImageId(), request);
         if (!hasErrors(model)) {
             try {
-                WeblogEntryManager weblogEntryManager = weblogger.getWeblogEntryManager();
-                IndexManager indexMgr = weblogger.getIndexManager();
-
-                entry.setUpdateTime(new Timestamp(new Date().getTime()));
-                entry.setPubTime(pubTime);
-
-                bean.copyTo(entry, lookupSubmittedCategory(bean));
-                // None picked: the first picture in the text, as Blogger does
-                // and as the API does (spec 2026-11-07, pictures by default).
-                if (StringUtils.isBlank(entry.getFeaturedImageId())) {
-                    entry.setFeaturedImageId(WeblogOwnership.firstPublicImage(
-                            weblogger, entry.getWebsite(), entry.getText(), Set.of()));
-                }
-
-                if (entry.isPublished() && entry.getPubTime() == null) {
-                    entry.setPubTime(entry.getUpdateTime());
-                }
-
-                GlobalPermission adminPerm = new GlobalPermission(
-                        Collections.singletonList(GlobalPermission.ADMIN));
-                if (weblogger.getUserManager()
-                        .checkPermission(adminPerm, getAuthenticatedUser(request))) {
-                    entry.setPinnedToMain(bean.getPinnedToMain());
-                }
-
-                weblogEntryManager.saveWeblogEntry(entry, getAuthenticatedUser(request));
+                applyForm(request, bean, entry, pubTime);
+                weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
-
-                if (entry.isPublished()) {
-                    indexMgr.addEntryReIndexOperation(entry);
-                } else if ("entryEdit".equals(actionName)) {
-                    indexMgr.removeEntryIndexOperation(entry);
-                }
-
-                CacheManager.invalidate(entry);
-
-                if (entry.isPending() && MailUtil.isMailConfigured()) {
-                    MailUtil.sendPendingEntryNotice(weblogger, entry);
-                }
+                afterSave(entry, actionName);
 
                 if ("entryEdit".equals(actionName)) {
                     addStatusMessage(entry.getStatus(), model, entry, request);
@@ -739,6 +704,53 @@ public class EntryEditController extends BaseController {
             bean.setStatus(null);
         }
         return ".EntryEdit";
+    }
+
+    /** Copies the form onto the entry, with the defaults a save fills in. */
+    private void applyForm(HttpServletRequest request, EntryBean bean, WeblogEntry entry, Timestamp pubTime)
+            throws WebloggerException {
+        entry.setUpdateTime(new Timestamp(new Date().getTime()));
+        entry.setPubTime(pubTime);
+
+        bean.copyTo(entry, lookupSubmittedCategory(bean));
+        // None picked: the first picture in the text, as Blogger does
+        // and as the API does (spec 2026-11-07, pictures by default).
+        if (StringUtils.isBlank(entry.getFeaturedImageId())) {
+            entry.setFeaturedImageId(WeblogOwnership.firstPublicImage(
+                    weblogger, entry.getWebsite(), entry.getText(), Set.of()));
+        }
+
+        if (entry.isPublished() && entry.getPubTime() == null) {
+            entry.setPubTime(entry.getUpdateTime());
+        }
+
+        // only a site admin pins an entry to the front page
+        GlobalPermission adminPerm = new GlobalPermission(
+                Collections.singletonList(GlobalPermission.ADMIN));
+        if (weblogger.getUserManager()
+                .checkPermission(adminPerm, getAuthenticatedUser(request))) {
+            entry.setPinnedToMain(bean.getPinnedToMain());
+        }
+    }
+
+    /**
+     * What follows a committed save: the search index (an edit that leaves
+     * an entry unpublished takes it out), the rendered pages, and the
+     * reviewers' notice for an entry submitted for review.
+     */
+    private void afterSave(WeblogEntry entry, String actionName) throws WebloggerException {
+        IndexManager indexMgr = weblogger.getIndexManager();
+        if (entry.isPublished()) {
+            indexMgr.addEntryReIndexOperation(entry);
+        } else if ("entryEdit".equals(actionName)) {
+            indexMgr.removeEntryIndexOperation(entry);
+        }
+
+        CacheManager.invalidate(entry);
+
+        if (entry.isPending() && MailUtil.isMailConfigured()) {
+            MailUtil.sendPendingEntryNotice(weblogger, entry);
+        }
     }
 
     // Package-private rather than private for EntryEditControllerTest --

@@ -332,6 +332,22 @@ public final class EntryDtos {
      */
     public static void applyWrite(WeblogEntry entry, EntryWrite write, Weblog weblog, Set<String> cleared) {
         FieldErrors errors = new FieldErrors();
+        applyText(entry, write, weblog, errors);
+        applyPresentation(entry, write, errors);
+        applyLocation(entry, write, errors);
+        boolean[] timeOk = applyEvent(entry, write, weblog, errors);
+        for (String name : cleared) {
+            clearField(entry, name);
+        }
+        if (timeOk[0] && timeOk[1] && EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
+            errors.add("eventEnd", "eventEnd must not be before eventStart.");
+        }
+        errors.throwIfAny();
+    }
+
+
+    /** The title, summary, text, status and publication time a write carries. */
+    private static void applyText(WeblogEntry entry, EntryWrite write, Weblog weblog, FieldErrors errors) {
         if (write.title() != null) {
             errors.check("title", () -> {
                 // The one place raw author input becomes escaped markup, shared
@@ -360,6 +376,10 @@ public final class EntryDtos {
         if (write.pubTime() != null) {
             errors.check("pubTime", () -> entry.setPubTime(pubTime(write.pubTime(), weblog)));
         }
+    }
+
+    /** How the entry presents: its search fields, comments, indexing and images. */
+    private static void applyPresentation(WeblogEntry entry, EntryWrite write, FieldErrors errors) {
         if (write.metaTitle() != null) {
             errors.check("metaTitle", () -> entry.setMetaTitle(SeoFields.metaTitle(write.metaTitle())));
         }
@@ -386,9 +406,14 @@ public final class EntryDtos {
         if (write.ogImageId() != null) {
             errors.check("ogImageId", () -> entry.setOgImageId(SeoFields.ogImageId(write.ogImageId())));
         }
-        // The location: the type decides which structured-data block the
-        // permalink emits (TOURIST_ATTRACTION carries the coordinates as its
-        // geo), and the coordinates also centre the entry's [map].
+    }
+
+    /**
+     * The location: the type decides which structured-data block the
+     * permalink emits (TOURIST_ATTRACTION carries the coordinates as its
+     * geo), and the coordinates also centre the entry's [map].
+     */
+    private static void applyLocation(WeblogEntry entry, EntryWrite write, FieldErrors errors) {
         if (write.jsonLdType() != null) {
             errors.check("jsonLdType", () -> entry.setJsonLdType(parseJsonLdType(write.jsonLdType())));
         }
@@ -400,8 +425,14 @@ public final class EntryDtos {
             errors.check("geoLongitude", () -> entry.setGeoLongitude(
                     requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE)));
         }
-        // [start, end]: false while a sent time has not parsed. The order check
-        // below is skipped then, or it would judge the other time against a stale one.
+    }
+
+    /**
+     * The event times and place a write carries. Returns {start, end}, each
+     * false while a sent time has not parsed: the order check is skipped
+     * then, or it would judge the other time against a stale one.
+     */
+    private static boolean[] applyEvent(WeblogEntry entry, EntryWrite write, Weblog weblog, FieldErrors errors) {
         boolean[] timeOk = {write.eventStart() == null, write.eventEnd() == null};
         if (write.eventStart() != null) {
             errors.check("eventStart", () -> {
@@ -421,13 +452,7 @@ public final class EntryDtos {
                 entry.setEventLocation(write.eventLocation());
             });
         }
-        for (String name : cleared) {
-            clearField(entry, name);
-        }
-        if (timeOk[0] && timeOk[1] && EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
-            errors.add("eventEnd", "eventEnd must not be before eventStart.");
-        }
-        errors.throwIfAny();
+        return timeOk;
     }
 
     /**
