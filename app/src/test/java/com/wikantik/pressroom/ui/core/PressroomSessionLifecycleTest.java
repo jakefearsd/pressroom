@@ -137,6 +137,24 @@ class PressroomSessionLifecycleTest {
         assertNull(httpSession.getAttribute(PressroomSession.PRESSROOM_SESSION));
     }
 
+    /**
+     * The container may announce the end of a session it has already
+     * invalidated, where removeAttribute throws IllegalStateException; the
+     * purge has nothing left to do and the listener must not throw. Review M4
+     * kept the catch at IllegalStateException: Pressroom registers no
+     * attribute or binding listener, so nothing else can throw here, and
+     * Tomcat guards and logs each session listener at ERROR itself.
+     * Characterisation test, passing against the code as it stands.
+     */
+    @Test
+    void theEndOfAnAlreadyInvalidatedSessionIsAbsorbed() {
+        org.springframework.mock.web.MockHttpSession gone = new org.springframework.mock.web.MockHttpSession();
+        gone.invalidate();
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> new PressroomSession().sessionDestroyed(new HttpSessionEvent(gone)));
+    }
+
     @Test
     void aSessionCannotBeResolvedToAUserWithoutAManagerOrWhenTheLookupFails() throws Exception {
         user(true);

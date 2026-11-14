@@ -28,6 +28,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -122,5 +123,55 @@ class DatabaseInstallerTest {
         assertSame(refusal, ex.getCause());
         assertEquals(List.of("ERROR connecting to database to apply migrations"), ex.getStartupLog());
         assertEquals(ex.getStartupLog(), installer.getMessages());
+    }
+
+    /** A database with no tables at all, so the first migration (V001) is the one applied. */
+    private static DatabaseProvider emptyDatabase(Connection con) throws SQLException {
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(con.getMetaData()).thenReturn(metaData);
+        when(metaData.getUserName()).thenReturn("pressroom");
+        when(metaData.getTables(null, null, "%", null)).thenAnswer(i -> mock(java.sql.ResultSet.class));
+        DatabaseProvider provider = mock(DatabaseProvider.class);
+        when(provider.getConnection()).thenReturn(con);
+        return provider;
+    }
+
+    /**
+     * Review M4: readMigration catches only IOException, so a runtime fault
+     * from the script provider leaves it unwrapped. That is the right shape:
+     * its one caller, applyMigration, is the boundary, and wraps any
+     * RuntimeException in a StartupException naming the migration, with the
+     * installer's log, after rolling the transaction back. Characterisation
+     * test: passes against the code as it stands, and pins that boundary.
+     */
+    @Test
+    void aRuntimeFaultReadingAMigrationFailsStartupNamingTheMigration() throws Exception {
+        Connection con = mock(Connection.class);
+        IllegalStateException fault = new IllegalStateException("classpath broken");
+        DatabaseInstaller installer = new DatabaseInstaller(emptyDatabase(con), path -> {
+            throw fault;
+        });
+
+        StartupException ex = assertThrows(StartupException.class, installer::createDatabase);
+
+        assertEquals("Error applying migration V001", ex.getMessage().replaceAll("__.*", ""));
+        assertSame(fault, ex.getCause());
+        assertTrue(ex.getStartupLog().stream().anyMatch(line -> line.startsWith("ERROR applying migration V001")),
+                "the installer's log names the migration: " + ex.getStartupLog());
+        org.mockito.Mockito.verify(con).rollback();
+    }
+
+    /**
+     * A migration missing from the classpath is a startup failure naming it,
+     * not a silent skip. Characterisation test, passing as written.
+     */
+    @Test
+    void aMigrationMissingFromTheClasspathFailsStartupNamingIt() throws Exception {
+        DatabaseInstaller installer = new DatabaseInstaller(emptyDatabase(mock(Connection.class)), path -> null);
+
+        StartupException ex = assertThrows(StartupException.class, installer::createDatabase);
+
+        assertTrue(ex.getCause().getMessage().startsWith("Migration V001"), ex.getCause().getMessage());
+        assertTrue(ex.getCause().getMessage().endsWith("not found on the classpath"));
     }
 }
