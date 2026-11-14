@@ -139,7 +139,7 @@ class ScheduledEntryIT extends PressroomIT {
         // Not the permalink control: the editor renders that only for a
         // published entry, which is itself part of the contract here. The saved
         // id is what says the entry exists at all.
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
         $("input[name='bean.status']").shouldHave(value("SCHEDULED"));
         $("#messages").should(exist).shouldHave(text("scheduled"));
     }

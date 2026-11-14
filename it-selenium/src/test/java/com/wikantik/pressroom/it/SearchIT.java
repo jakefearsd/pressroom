@@ -322,7 +322,7 @@ class SearchIT extends PressroomIT {
         openPath(ENTRY_ADD);
         writeEntry(title, body);
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
     }
 
     private void writeEntry(String title, String body) {

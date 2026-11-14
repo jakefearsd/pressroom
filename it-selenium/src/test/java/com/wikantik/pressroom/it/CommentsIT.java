@@ -983,7 +983,7 @@ class CommentsIT extends PressroomIT {
         clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
         String permalink = $(PERMALINK).should(exist).getAttribute("href");
         assertNotNull(permalink, "publishing must expose the entry's permalink");
-        String id = $("#entry input[name='bean.id']").should(exist).getValue();
+        String id = $("#entry input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue("")).getValue();
         return new Entry(id, handle, permalink.substring(permalink.lastIndexOf('/') + 1));
     }
 

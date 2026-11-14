@@ -94,7 +94,7 @@ class EntryRevisionIT extends PressroomIT {
         Editor.setText(body);
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
 
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
         String id = $("input[name='bean.id']").getValue();
         assertNotNull(id, "the editor must expose the saved entry's id");
         return id;

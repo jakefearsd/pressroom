@@ -218,7 +218,7 @@ class AuthoringJourneyIT extends PressroomIT {
         $(Editor.CONTENT).sendKeys(Keys.chord(Keys.CONTROL, "s"));
 
         // One save landed: the add form became the edit form, carrying an id.
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
         String entryId = $("input[name='bean.id']").getValue();
         assertTrue(entryId != null && !entryId.isBlank(),
                 "Ctrl+S must save the draft and return its id");

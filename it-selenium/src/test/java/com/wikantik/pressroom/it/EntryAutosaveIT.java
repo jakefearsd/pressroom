@@ -128,7 +128,7 @@ class EntryAutosaveIT extends PressroomIT {
         // A real save: the submit handler flushes the pending snapshot and
         // the page lands on entryEdit!firstSave with a real bean.id.
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
 
         // This is the stale-detection rule: the entryAdd:new snapshot is
         // still sitting in storage (nothing has cleared it yet), but its
@@ -271,7 +271,7 @@ class EntryAutosaveIT extends PressroomIT {
         $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").should(exist);
+        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
         return $("input[name='bean.id']").getValue();
     }
 

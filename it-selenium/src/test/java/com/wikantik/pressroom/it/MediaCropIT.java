@@ -212,11 +212,18 @@ class MediaCropIT extends PressroomIT {
 
         // --- the public page must serve the cropped dimensions ---------------
         String page = getAnonymously(permalink);
-        assertTrue(page.contains("width=\"" + after[0] + "\" height=\"" + after[1] + "\""),
-                "the published page must declare the cropped intrinsic dimensions "
-                        + after[0] + "x" + after[1] + ". Page:\n" + page);
-        assertFalse(page.contains("width=\"" + before[0] + "\" height=\"" + before[1] + "\""),
-                "the pre-crop dimensions must be gone from the published page");
+        // Judge only this file's own <img>: the page also carries "Keep
+        // reading" cards for other posts in the weblog, and a parallel test's
+        // uncropped upload of the same 500x373 picture is legitimately there.
+        Matcher own = Pattern.compile("<img\\b[^>]*(?:" + Pattern.quote(imageName) + "|"
+                + Pattern.quote(mediaFileId) + ")[^>]*>").matcher(page);
+        assertTrue(own.find(), "the published page must embed the cropped image. Page:\n" + page);
+        String tag = own.group();
+        assertTrue(tag.contains("width=\"" + after[0] + "\" height=\"" + after[1] + "\""),
+                "the published image must declare the cropped intrinsic dimensions "
+                        + after[0] + "x" + after[1] + ". Tag: " + tag);
+        assertFalse(tag.contains("width=\"" + before[0] + "\" height=\"" + before[1] + "\""),
+                "the pre-crop dimensions must be gone from the published image. Tag: " + tag);
     }
 
     /**
