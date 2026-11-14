@@ -358,4 +358,62 @@ class EntriesWriteApiImportsTest {
         assertEquals(List.of("featuredImageUrl"), fields(problem));
         verify(fetcher, never()).fetch(any(), anyLong(), any());
     }
+
+    // ---- featuredImageUrl refusals, each before any fetch
+
+    @Test
+    void aBlankFeaturedImageUrlIsA400WithNoFetch() throws Exception {
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"featuredImageUrl\":\"  \"}"));
+
+        assertEquals(List.of("featuredImageUrl"), fields(problem));
+        assertTrue(problem.get("errors").get(0).get("message").asString().contains("blank"), problem.toString());
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+    }
+
+    /** Setting the featured image by URL and clearing it in the same write contradict each other. */
+    @Test
+    void featuredImageUrlWithAClearOfFeaturedImageIdIsA400WithNoFetch() throws Exception {
+        stored("Intro.");
+        serves("https://img.example.com/a.jpg");
+
+        JsonNode problem = fx.refused(patch("/v1/weblogs/myblog/entries/e1").content(
+                "{\"featuredImageUrl\":\"https://img.example.com/a.jpg\",\"clear\":[\"featuredImageId\"]}"));
+
+        assertEquals(List.of("featuredImageUrl"), fields(problem));
+        assertTrue(problem.get("errors").get(0).get("message").asString().contains("clear"), problem.toString());
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+    }
+
+    @Test
+    void withUploadsOffAFeaturedImageUrlIsRefusedOnItsField() throws Exception {
+        runtime.when(() -> WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")).thenReturn(false);
+        serves("https://img.example.com/a.jpg");
+
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\","
+                + "\"text\":\"x\",\"featuredImageUrl\":\"https://img.example.com/a.jpg\"}"));
+
+        assertEquals(List.of("featuredImageUrl"), fields(problem));
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+        verify(media, never()).createMediaFile(any(), any(), any());
+    }
+
+    /**
+     * Body images not asked for (no importExternalImages) and a private
+     * default directory: readers could not see the copies, so the text is
+     * saved as sent, without a fetch and without a refusal.
+     */
+    @Test
+    void aPrivateDefaultDirectoryKeepsDefaultedBodyImagesAsSent() throws Exception {
+        directory.setPrivate(true);
+        serves("https://img.example.com/a.jpg");
+
+        JsonNode view = json(fx.send(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"![a](https://img.example.com/a.jpg)\"}"))
+                .andExpect(status().isCreated()));
+
+        assertEquals("![a](https://img.example.com/a.jpg)", view.get("text").asString());
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+        verify(media, never()).createMediaFile(any(), any(), any());
+    }
 }
