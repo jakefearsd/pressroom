@@ -18,8 +18,10 @@
 name: Release
 
 # Fires when a tag matching v*.*.* is pushed. Runs the unit suite and
-# coverage gates, publishes the app and caddy production images to GHCR as
-# :<version>, :latest and :sha-<short>, and creates a GitHub Release with a
+# coverage gates (while a second job pre-builds both images into the layer
+# cache, pushing nothing), then publishes the app and caddy production
+# images to GHCR as :<version>, :latest and :sha-<short>, and creates a
+# GitHub Release with a
 # self-contained deploy bundle attached (the WAR extracted from the app
 # image, docker-compose.prod.yml, docker-compose.backoffice.yml, .env.example,
 # deploy.sh).
@@ -91,9 +93,63 @@ jobs:
       - name: Build and run the unit suite
         run: mvn -V -ntp install
 
+  # Builds both images WHILE the unit suite runs, pushing nothing, so that
+  # the publishing job below finds every layer in the cache and only has to
+  # push. Before this job the two image builds ran after the suite, one after
+  # the other, and were most of the release job's 6-10 minutes: the app
+  # image's Maven build (~65 s), Caddy's xcaddy compile (~80 s), and two
+  # cache exports (~90 s each).
+  #
+  # Each image has its own cache scope. Both used to write the default scope
+  # ("buildkit"), so each build's export replaced the other's: the release
+  # log shows the app and caddy builds importing the same cache manifest, and
+  # xcaddy rebuilt from scratch on every release although its inputs had not
+  # changed. mode=max keeps the builder stages' layers, which is what lets
+  # the release job skip the Maven build and the xcaddy compile entirely.
+  #
+  # This changes WHAT IS VERIFIED not at all: the release job still builds
+  # each image from this commit (a cache hit is the same layer, byte for
+  # byte; a miss just builds it again), still only after `test` passes, and
+  # still extracts the attached WAR from the image it pushed.
+  images:
+    name: Build the images (warms the layer cache, pushes nothing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Nothing here writes to the repository or the registry; the build cache
+    # is written with the runtime cache token, not GITHUB_TOKEN.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+          show-progress: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the app image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          cache-from: type=gha,scope=pressroom-app
+          cache-to: type=gha,scope=pressroom-app,mode=max
+
+      - name: Build the caddy image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: deploy/caddy/Dockerfile
+          push: false
+          cache-from: type=gha,scope=pressroom-caddy
+          cache-to: type=gha,scope=pressroom-caddy,mode=max
+
   release:
     name: Build, publish images, create release
-    needs: test
+    needs: [test, images]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Declared rather than inherited. These are the same two grants the
@@ -156,8 +212,8 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=Apache-2.0
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Filled by the images job a few minutes ago; nothing to write back.
+          cache-from: type=gha,scope=pressroom-app
 
       - name: Build and push the caddy image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -174,10 +230,10 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=Apache-2.0
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=pressroom-caddy
 
-      # The image build is the ONLY build of the WAR. Extracting the artifact
+      # The image build is the ONLY build of the WAR (the images job's build,
+      # whose layer the push above reuses). Extracting the artifact
       # from the image it shipped in means the WAR attached to this Release and
       # the WAR running in production are the same bytes; running `mvn package`
       # separately produced a second, merely-equivalent binary.

@@ -155,8 +155,9 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
 
 `.github/workflows/main.yml`, split by cost:
 
-- **Every push and PR**: `build-test` — unit suite + diff-coverage gate, ~3
-  minutes. It **installs `cwebp`** (`webp` package) first, load-bearing
+- **Every push and PR**: `build-test` — unit suite + diff-coverage gate,
+  ~6-8 minutes (2026-11, ~8,500 tests; surefire is ~80% of the Maven step,
+  SpotBugs ~40 s, PMD ~15 s). It **installs `cwebp`** (`webp` package) first, load-bearing
   because `CwebpEncoder` is feature-detected: without the binary
   `CwebpEncoderTest`, `MediaFileTest` and `MediaResourceServletRenderingTest`
   silently skip their WebP arms (until 2026-09-09 the shipped WebP path had
@@ -164,7 +165,7 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   `assumeTrue` on a binary must make CI provide it in the same commit — an
   assumption that never holds is worse than a missing test.
 - **Nightly (04:00 UTC), on a PR, or on demand**: `integration-test`, the
-  browser ITs, ~16 minutes — off the push path so a re-runnable flake (the
+  browser ITs, ~17-21 minutes — off the push path so a re-runnable flake (the
   GalleryIT upload race) isn't per-commit red mail. Run `mvn verify -Pit`
   before a release.
 - **CodeQL** (`codeql-analysis.yml`): weekly + `workflow_dispatch`.
@@ -175,6 +176,17 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   GitHub Release with the deploy bundle (`docker-compose.prod.yml`,
   `env.example`, `deploy.sh`). The asset is `deploy/.env.example` renamed: a
   release asset whose name starts with a dot would not download as itself.
+- **Release timing** (`release.yml`, three jobs). `test` (the full
+  `mvn install`, ~6-7.5 minutes) and `images` run side by side; `images`
+  builds both Dockerfiles with `push: false` into the GitHub Actions layer
+  cache, one scope per image (`pressroom-app`, `pressroom-caddy`, mode=max so
+  the builder stages are kept). `release` needs both, rebuilds from that
+  cache (every layer a hit, so no Maven build and no xcaddy compile) and
+  pushes. Until 2026-11-13 both builds ran after the suite, serially, and
+  shared the default cache scope, so each export replaced the other's:
+  xcaddy recompiled every release and the release job took 6.5-10.5
+  minutes (13-18 end to end). `ReleaseWorkflowCacheTest` pins the scopes and
+  that publishing still needs `test`.
 - `docker-compose.prod.yml` requires `IMAGE_VERSION` in `.env` (no floating
   default) so a deploy always names a tagged release.
 - Local testing of an untagged tree is a `docker build` of
