@@ -35,6 +35,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.pojos.CustomTemplateRendition;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
+import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
@@ -173,16 +174,7 @@ public class TemplatesController extends BaseController {
                 WeblogManager mgr = weblogger.getWeblogManager();
 
                 if (WeblogTemplate.DEFAULT_PAGE.equals(template.getName())) {
-                    WeblogTheme theme = weblogger.getThemeManager().getTheme(getActionWeblog(request));
-                    ThemeTemplate stylesheet = theme.getStylesheet();
-                    if (stylesheet != null && theme.getStylesheet() != null
-                            && stylesheet.getLink().equals(
-                            theme.getStylesheet().getLink())) {
-                        WeblogTemplate css = mgr.getTemplateByLink(getActionWeblog(request), stylesheet.getLink());
-                        if (css != null) {
-                            mgr.removeTemplate(css);
-                        }
-                    }
+                    removeStylesheetTemplate(mgr, getActionWeblog(request));
                 }
 
                 CacheManager.invalidate(template);
@@ -199,6 +191,20 @@ public class TemplatesController extends BaseController {
 
         loadTemplatesList(request, model);
         return ".Templates";
+    }
+
+    /** Removing the default page takes the weblog's copy of the theme stylesheet with it. */
+    private void removeStylesheetTemplate(WeblogManager mgr, Weblog weblog) throws WebloggerException {
+        WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
+        ThemeTemplate stylesheet = theme.getStylesheet();
+        if (stylesheet == null || theme.getStylesheet() == null
+                || !stylesheet.getLink().equals(theme.getStylesheet().getLink())) {
+            return;
+        }
+        WeblogTemplate css = mgr.getTemplateByLink(weblog, stylesheet.getLink());
+        if (css != null) {
+            mgr.removeTemplate(css);
+        }
     }
 
     private void loadTemplatesList(HttpServletRequest request, Model model) {
