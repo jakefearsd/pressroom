@@ -79,6 +79,7 @@ public final class McpToolExecutor {
             Map<String, Object> arguments) {
         Map<String, Object> args = new LinkedHashMap<>();
         if (arguments != null) {
+            // an argument sent as null is an argument not sent
             arguments.forEach((k, v) -> {
                 if (v != null) {
                     args.put(k, v);
@@ -99,17 +100,17 @@ public final class McpToolExecutor {
             }
         }
         String label = tool.singleAction() ? "`" + tool.name() + "`" : "`" + tool.name() + "` `" + action.name() + "`";
-        for (String given : args.keySet()) {
-            if (!action.argumentNames().contains(given)) {
-                return refusal(instance, action.name(), weblog, "`" + given + "` does not apply to " + label + ".");
-            }
+        String inapplicable = args.keySet().stream()
+                .filter(given -> !action.argumentNames().contains(given)).findFirst().orElse(null);
+        if (inapplicable != null) {
+            return refusal(instance, action.name(), weblog,
+                    "`" + inapplicable + "` does not apply to " + label + ".");
         }
         ResolvedAction.Variant variant = action.select(args);
-        for (ArgumentSpec spec : variant.arguments()) {
-            if (spec.required() && !args.containsKey(spec.name())) {
-                return refusal(instance, action.name(), weblog,
-                        label + " needs " + missingHint(action, spec) + ".");
-            }
+        ArgumentSpec missing = variant.arguments().stream()
+                .filter(spec -> spec.required() && !args.containsKey(spec.name())).findFirst().orElse(null);
+        if (missing != null) {
+            return refusal(instance, action.name(), weblog, label + " needs " + missingHint(action, missing) + ".");
         }
         ApiCall call;
         try {

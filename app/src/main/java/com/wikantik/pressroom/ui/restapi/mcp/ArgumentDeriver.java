@@ -38,6 +38,15 @@ public final class ArgumentDeriver {
 
     private static final Pattern TEMPLATE_VARIABLE = Pattern.compile("\\{([^}/]+)}");
 
+    /** The JSON type of each Java scalar a handler parameter or body component may be. */
+    private static final Map<Class<?>, String> SCALAR_TYPES = Map.ofEntries(
+            Map.entry(String.class, "string"),
+            Map.entry(Boolean.class, "boolean"), Map.entry(boolean.class, "boolean"),
+            Map.entry(Integer.class, "integer"), Map.entry(int.class, "integer"),
+            Map.entry(Long.class, "integer"), Map.entry(long.class, "integer"),
+            Map.entry(Double.class, "number"), Map.entry(double.class, "number"),
+            Map.entry(Float.class, "number"), Map.entry(float.class, "number"));
+
     private ArgumentDeriver() {
     }
 
@@ -51,14 +60,7 @@ public final class ArgumentDeriver {
                 String source = named(route, path.value().isEmpty() ? path.name() : path.value());
                 specs.add(pathArgument(source));
             } else if (query != null) {
-                String source = named(route, query.value().isEmpty() ? query.name() : query.value());
-                Map<String, Object> schema = new LinkedHashMap<>(jsonType(route, param.getGenericParameterType()));
-                Parameter doc = param.getParameterAnnotation(Parameter.class);
-                if (doc != null && !doc.description().isBlank()) {
-                    schema.put("description", doc.description());
-                }
-                boolean required = query.required() && ValueConstants.DEFAULT_NONE.equals(query.defaultValue());
-                specs.add(new ArgumentSpec(source, ArgumentSpec.Location.QUERY, source, schema, required));
+                specs.add(queryArgument(route, param, query));
             } else if (body != null) {
                 specs.addAll(bodyArguments(route, param));
             } else if (!isServletInfrastructure(param)) {
@@ -66,9 +68,33 @@ public final class ArgumentDeriver {
                         + param.getParameterIndex() + " (" + param.getParameterType().getName() + ")");
             }
         }
-        // {handle} and friends that the handler never binds (the interceptor
-        // resolves the action weblog from the URL) are still arguments: the
-        // dispatcher needs them to build the URL.
+        addUnboundPathVariables(route, specs);
+        Set<String> seen = new HashSet<>();
+        for (ArgumentSpec spec : specs) {
+            if (!seen.add(spec.name())) {
+                throw new IllegalStateException(route.key() + ": argument '" + spec.name() + "' appears twice");
+            }
+        }
+        return specs;
+    }
+
+    private static ArgumentSpec queryArgument(ApiRoute route, MethodParameter param, RequestParam query) {
+        String source = named(route, query.value().isEmpty() ? query.name() : query.value());
+        Map<String, Object> schema = new LinkedHashMap<>(jsonType(route, param.getGenericParameterType()));
+        Parameter doc = param.getParameterAnnotation(Parameter.class);
+        if (doc != null && !doc.description().isBlank()) {
+            schema.put("description", doc.description());
+        }
+        boolean required = query.required() && ValueConstants.DEFAULT_NONE.equals(query.defaultValue());
+        return new ArgumentSpec(source, ArgumentSpec.Location.QUERY, source, schema, required);
+    }
+
+    /**
+     * {handle} and friends that the handler never binds (the interceptor
+     * resolves the action weblog from the URL) are still arguments: the
+     * dispatcher needs them to build the URL.
+     */
+    private static void addUnboundPathVariables(ApiRoute route, List<ArgumentSpec> specs) {
         Matcher template = TEMPLATE_VARIABLE.matcher(route.pathTemplate());
         while (template.find()) {
             String variable = template.group(1);
@@ -77,13 +103,6 @@ public final class ArgumentDeriver {
                 specs.add(pathArgument(variable));
             }
         }
-        Set<String> seen = new HashSet<>();
-        for (ArgumentSpec spec : specs) {
-            if (!seen.add(spec.name())) {
-                throw new IllegalStateException(route.key() + ": argument '" + spec.name() + "' appears twice");
-            }
-        }
-        return specs;
     }
 
     private static ArgumentSpec pathArgument(String source) {
@@ -139,17 +158,9 @@ public final class ArgumentDeriver {
             return Map.of("type", "array", "items", jsonType(route, parameterized.getActualTypeArguments()[0]));
         }
         if (type instanceof Class<?> cls) {
-            if (cls == String.class) {
-                return Map.of("type", "string");
-            }
-            if (cls == Boolean.class || cls == boolean.class) {
-                return Map.of("type", "boolean");
-            }
-            if (cls == Integer.class || cls == int.class || cls == Long.class || cls == long.class) {
-                return Map.of("type", "integer");
-            }
-            if (cls == Double.class || cls == double.class || cls == Float.class || cls == float.class) {
-                return Map.of("type", "number");
+            String scalar = SCALAR_TYPES.get(cls);
+            if (scalar != null) {
+                return Map.of("type", scalar);
             }
             if (cls.isArray() && cls.getComponentType() == String.class) {
                 return Map.of("type", "array", "items", Map.of("type", "string"));
