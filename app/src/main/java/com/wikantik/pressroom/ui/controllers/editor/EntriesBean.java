@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import java.text.ParseException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -105,7 +106,7 @@ public class EntriesBean {
             }
             LocalDate localDate = parsed.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             return toDate(localDate, true);
-        } catch (Exception ignored) {
+        } catch (ParseException ignored) {
             // A malformed hand-typed/bookmarked search-date is routine, not
             // an error -- the search simply proceeds without this date
             // bound.

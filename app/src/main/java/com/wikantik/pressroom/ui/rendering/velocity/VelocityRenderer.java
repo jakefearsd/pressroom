@@ -213,7 +213,7 @@ public class VelocityRenderer implements Renderer {
             // render output to Writer
             velocityTemplate.merge(ctx, out);
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             // wrap and rethrow so caller can deal with it
             throw new RenderingException("Error during rendering", e);
         }

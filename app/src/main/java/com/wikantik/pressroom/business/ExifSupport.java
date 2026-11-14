@@ -17,6 +17,9 @@
  */
 package com.wikantik.pressroom.business;
 
+import com.drew.metadata.MetadataException;
+import com.drew.imaging.ImageProcessingException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
 import java.util.Date;
@@ -169,7 +172,9 @@ public final class ExifSupport {
             return new ExifData(clamp(camera, MAX_CAMERA_LENGTH), clamp(lens, MAX_LENS_LENGTH),
                     clamp(exposure, MAX_SETTING_LENGTH), clamp(aperture, MAX_SETTING_LENGTH), iso,
                     clamp(focalLength, MAX_SETTING_LENGTH), taken, gpsLatitude, gpsLongitude);
-        } catch (Exception e) {
+        } catch (ImageProcessingException | IOException | RuntimeException e) {
+            // RuntimeException too: metadata-extractor parses untrusted bytes,
+            // and a malformed file fails inside it as whatever its parser hit.
             // Not every upload is a format metadata-extractor understands (or has EXIF
             // at all) -- that is the normal case, not a failure worth surfacing.
             log.debug("No EXIF metadata extracted", e);
@@ -232,7 +237,8 @@ public final class ExifSupport {
                 }
                 log.debug("Ignoring out-of-range EXIF orientation {}", orientation);
             }
-        } catch (Exception e) {
+        } catch (ImageProcessingException | IOException | MetadataException | RuntimeException e) {
+            // RuntimeException as in extract(): a malformed file fails inside the parser.
             // Same normal case as extract(): plenty of uploads have no EXIF at all.
             log.debug("No EXIF orientation read", e);
         }

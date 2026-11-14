@@ -167,7 +167,7 @@ public class PageServlet extends HttpServlet {
             // is this the site-wide weblog?
             isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(pageRequest
                     .getWeblogHandle());
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             // some kind of error parsing the request or looking up weblog
             log.debug("error creating page request", e);
             RenderingServletUtils.sendNotFound(response);

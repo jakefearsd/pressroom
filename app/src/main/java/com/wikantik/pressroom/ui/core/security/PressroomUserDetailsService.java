@@ -44,7 +44,7 @@ public class PressroomUserDetailsService implements UserDetailsService {
         Weblogger pressroom;
         try {
             pressroom = provider.getWeblogger();
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
             // Should only happen in case of 1st time startup, setup required
             log.debug("Ignorable error getting Pressroom instance", e);
             // Thowing a "soft" exception here allows setup to proceed

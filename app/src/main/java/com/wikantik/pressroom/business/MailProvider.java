@@ -86,7 +86,7 @@ public class MailProvider {
             if (portString != null) {
                 mailPort = Integer.parseInt(portString);
             }
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             log.warn("mail server port not a valid integer, ignoring");
         }
         
@@ -127,7 +127,7 @@ public class MailProvider {
         
         try (Transport _ = getTransport()) {
             log.debug("Successfully connected to mail server");
-        } catch (Exception e) {
+        } catch (MessagingException | RuntimeException e) {
             throw new StartupException("ERROR connecting to mail server", e);
         }
         

@@ -76,8 +76,8 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
                 if (currEntry != null && currEntry.getStatus() == PubStatus.PUBLISHED) {
                     entries = Map.of(new Date(currEntry.getPubTime().getTime()), List.of(WeblogEntryWrapper.wrap(currEntry, urlStrategy, weblogger)));
                 }
-            } catch (Exception e) {
-                log.error("ERROR: fetching entry");
+            } catch (WebloggerException | RuntimeException e) {
+                log.error("ERROR: fetching entry {}", entryAnchor, e);
             }
         }
         

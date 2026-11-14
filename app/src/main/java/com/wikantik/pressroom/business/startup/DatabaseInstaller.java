@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business.startup;
 
+import java.io.IOException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -201,7 +202,7 @@ public class DatabaseInstaller {
             con.commit();
             successMessage(version + " applied");
 
-        } catch (Exception ex) {
+        } catch (SQLException | IOException | StartupException | RuntimeException ex) {
             try {
                 con.rollback();
             } catch (SQLException rollbackFailure) {
@@ -231,7 +232,7 @@ public class DatabaseInstaller {
                     .replace(APP_USER_VAR, appUser);
         } catch (StartupException se) {
             throw se;
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new StartupException("Could not read migration " + version, e);
         }
     }

@@ -234,10 +234,10 @@ public class FileContentManagerImpl implements FileContentManager {
             long weblogDirSize = this.getDirSize(storageDirectory, true);
 
             return weblogDirSize > maxDirBytes;
-        } catch (Exception ex) {
+        } catch (FileNotFoundException | FilePathException ex) {
             // shouldn't ever happen, this means user's uploads dir is bad
-            // rethrow as a runtime exception
-            throw new RuntimeException(ex);
+            throw new IllegalStateException("The uploads directory of weblog "
+                    + weblog.getHandle() + " is unusable", ex);
         }
     }
 
@@ -310,11 +310,11 @@ public class FileContentManagerImpl implements FileContentManager {
                 messages.addError("error.upload.dirmax", maxDirMB.toString());
                 return false;
             }
-        } catch (Exception ex) {
+        } catch (FileNotFoundException | FilePathException ex) {
             // shouldn't ever happen, means the weblogs uploads dir is bad
             // somehow
-            // rethrow as a runtime exception
-            throw new RuntimeException(ex);
+            throw new IllegalStateException("The uploads directory of weblog "
+                    + weblog.getHandle() + " is unusable", ex);
         }
 
         // fourth check, is upload type allowed?

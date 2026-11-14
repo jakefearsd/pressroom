@@ -21,12 +21,13 @@ package com.wikantik.pressroom.business.themes;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.jdom2.JDOMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
@@ -232,7 +233,10 @@ public class SharedThemeFromDir extends SharedTheme {
         // lookup theme descriptor and parse it
         ThemeMetadataParser parser = new ThemeMetadataParser();
         themeMetadata = parser.unmarshall(is);
-    } catch (Exception ex) {
+    } catch (IOException | JDOMException | ThemeParsingException | RuntimeException ex) {
+        // RuntimeException too: an unknown template action or rendition name
+        // fails inside the parser's valueOf as an IllegalArgumentException,
+        // and is the same unusable theme.
         throw new ThemeInitializationException(
                 "Unable to parse theme.xml for theme " + this.themeDir, ex);
     }
@@ -443,21 +447,15 @@ public class SharedThemeFromDir extends SharedTheme {
             return null;
         }
 
-        char[] chars;
-        int length;
-        try (InputStream stream = Files.newInputStream(templateFile.toPath());
-             InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-            chars = new char[(int) templateFile.length()];
-            length = reader.read(chars);
-        } catch (Exception noprob) {
+        try {
+            return Files.readString(templateFile.toPath(), StandardCharsets.UTF_8);
+        } catch (IOException noprob) {
             log.error("Exception reading theme [{}] template file [{}]",
                     this.getName(), templateFile);
             log.debug("Exception reading theme [{}] template file [{}]",
                     this.getName(), templateFile, noprob);
             return null;
         }
-
-        return new String(chars, 0, length);
     }
 
     /**

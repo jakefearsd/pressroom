@@ -18,6 +18,9 @@
 
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import com.wikantik.pressroom.business.FilePathException;
+import com.wikantik.pressroom.business.FileNotFoundException;
+import java.io.UncheckedIOException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -104,7 +107,7 @@ public class MediaResourceServlet extends HttpServlet {
                 throw new WebloggerException("the site space is not served by its handle");
             }
 
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             // invalid resource request or weblog doesn't exist
             log.debug("error creating weblog resource request", e);
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -202,7 +205,7 @@ public class MediaResourceServlet extends HttpServlet {
                     FileContent webp = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width + ".webp");
                     resourceStream = webp.getInputStream();
                     servedContentType = "image/webp";
-                } catch (Exception e) {
+                } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
                     // no webp sibling (cwebp unavailable at generation time, or
                     // this width was never generated) -- fall through
                     log.debug("No webp rendition for {} at width {}", mediaFile.getId(), width);
@@ -214,7 +217,7 @@ public class MediaResourceServlet extends HttpServlet {
                     FileContent rendition = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width);
                     resourceStream = rendition.getInputStream();
                     servedContentType = mediaFile.getContentType();
-                } catch (Exception e) {
+                } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
                     // rendition was never generated (narrower than the original,
                     // or generation failed) -- 404-safe fallback to the original
                     log.debug("No {}w rendition for {}; serving original", width, mediaFile.getId());
@@ -250,7 +253,7 @@ public class MediaResourceServlet extends HttpServlet {
                 readerWentAway(mediaFile, gone);
             }
 
-        } catch (Exception ex) {
+        } catch (IOException | RuntimeException ex) {
             log.error("ERROR serving media file {}", mediaFile.getId(), ex);
             if (!response.isCommitted()) {
                 response.reset();

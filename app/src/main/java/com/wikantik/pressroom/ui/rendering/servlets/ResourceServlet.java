@@ -110,7 +110,7 @@ public class ResourceServlet extends HttpServlet {
                 throw new WebloggerException("the site space is not served by its handle");
             }
 
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             // invalid resource request or weblog doesn't exist
             if (!response.isCommitted()) {
                 response.reset();
@@ -136,7 +136,7 @@ public class ResourceServlet extends HttpServlet {
                     resourceStream = resource.getInputStream();
                 }
             }
-        } catch (Exception ex) {
+        } catch (WebloggerException | RuntimeException ex) {
             // hmmm, some kind of error getting theme. that's an error.
             // resourceStream is unconditionally null here: the only
             // assignment to it in this try block is the last statement, so

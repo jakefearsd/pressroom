@@ -252,6 +252,23 @@ class SharedThemeFromDirTest {
         assertEquals(2, theme.getTemplates().size());
     }
 
+    /**
+     * An empty template file is a template with nothing in it, not a broken
+     * theme. Characterisation test: written before loadTemplateFile moved to
+     * Files.readString, and passed against the old char-buffer reader too.
+     */
+    @Test
+    void anEmptyTemplateFileLoadsAsAnEmptyTemplate(@TempDir Path dir) throws Exception {
+        String path = themeDir(dir,
+                themeXml(template("weblog", "Weblog", "weblog.vm")
+                        + template("custom", "sidebar", "sidebar.vm")),
+                "weblog.vm", "list", "sidebar.vm", "", "preview.png", "x");
+
+        SharedThemeFromDir theme = new SharedThemeFromDir(path);
+
+        assertNotNull(theme.getTemplateByName("sidebar"));
+    }
+
     @Test
     void theWeblogTemplateIsTheDefault(@TempDir Path dir) throws Exception {
         SharedThemeFromDir theme = new SharedThemeFromDir(minimalTheme(dir));

@@ -47,13 +47,13 @@ public class ExpiringLRUCacheFactoryImpl implements CacheFactory {
         
         try {
             size = Integer.parseInt((String) properties.get("size"));
-        } catch(Exception e) {
+        } catch (NumberFormatException e) {
             log.warn("invalid size property", e);
         }
         
         try {
             timeout = Long.parseLong((String) properties.get("timeout"));
-        } catch(Exception e) {
+        } catch (NumberFormatException e) {
             log.warn("invalid timeout property", e);
         }
         

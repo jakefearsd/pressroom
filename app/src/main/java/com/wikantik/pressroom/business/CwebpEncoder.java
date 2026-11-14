@@ -18,6 +18,8 @@
 package com.wikantik.pressroom.business;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -91,19 +93,8 @@ public final class CwebpEncoder {
         if (forced != null) {
             return Boolean.parseBoolean(forced);
         }
-        try {
-            Process process = new ProcessBuilder("cwebp", "-version")
-                    .redirectErrorStream(true).start();
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return false;
-            }
-            return process.exitValue() == 0;
-        } catch (Exception e) {
-            // no cwebp on PATH, or not executable -- never a hard failure
-            return false;
-        }
+        // no cwebp on PATH, or not executable -- never a hard failure
+        return run(List.of("cwebp", "-version"), 5);
     }
 
     /**
@@ -111,25 +102,41 @@ public final class CwebpEncoder {
      * Returns true on success. Never throws -- callers treat encode failure
      * as "skip this rendition", not as an upload failure.
      */
+    public static boolean encode(File input, File output, int quality) {
+        return run(List.of("cwebp", "-quiet", "-q", String.valueOf(quality),
+                        input.getAbsolutePath(), "-o", output.getAbsolutePath()), 30)
+                && output.isFile() && output.length() > 0;
+    }
+
+    /**
+     * Runs {@code command} and answers whether it exited 0 within
+     * {@code seconds}. Never throws. An interrupt while waiting stops the
+     * process and is passed on: the thread stays interrupted.
+     */
     @SuppressFBWarnings(
             value = "COMMAND_INJECTION",
-            justification = "ProcessBuilder runs the fixed executable cwebp with an argument vector, never "
-                    + "a shell; the two paths are temp files RenditionSupport made with "
+            justification = "An argument vector, never a shell. Its callers here run the fixed executable "
+                    + "cwebp; encode's two paths are temp files RenditionSupport made with "
                     + "File.createTempFile, and quality is an int.")
-    public static boolean encode(File input, File output, int quality) {
+    static boolean run(List<String> command, long seconds) {
+        Process process;
         try {
-            Process process = new ProcessBuilder("cwebp", "-quiet",
-                    "-q", String.valueOf(quality),
-                    input.getAbsolutePath(), "-o", output.getAbsolutePath())
-                    .redirectErrorStream(true).start();
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-            if (!finished) {
+            process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        } catch (IOException | SecurityException e) {
+            // not on PATH, or not executable
+            log.debug("{} could not be started", command.get(0), e);
+            return false;
+        }
+        try {
+            if (!process.waitFor(seconds, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return false;
             }
-            return process.exitValue() == 0 && output.isFile() && output.length() > 0;
-        } catch (Exception e) {
-            log.warn("cwebp encode failed for {}", input, e);
+            return process.exitValue() == 0;
+        } catch (InterruptedException e) {
+            // asked to stop: stop the tool too, and keep the request for our caller
+            process.destroyForcibly();
+            Thread.currentThread().interrupt();
             return false;
         }
     }

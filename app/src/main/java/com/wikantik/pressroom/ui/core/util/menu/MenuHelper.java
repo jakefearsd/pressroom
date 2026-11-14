@@ -73,7 +73,7 @@ public final class MenuHelper {
             menus.put("admin", unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/admin-menu.xml")));
 
-        } catch (Exception ex) {
+        } catch (IOException | JDOMException | RuntimeException ex) {
             log.error("Error parsing menu configs", ex);
         }
     }

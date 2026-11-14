@@ -102,7 +102,7 @@ public class PreviewResourceServlet extends HttpServlet {
                         + resourceRequest.getWeblogHandle());
             }
 
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             // invalid resource request or weblog doesn't exist
             log.debug("error creating weblog resource request", e);
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -137,7 +137,7 @@ public class PreviewResourceServlet extends HttpServlet {
                         resourceStream = resource.getInputStream();
                     }
                 }
-            } catch (Exception ex) {
+            } catch (WebloggerException | RuntimeException ex) {
                 // hmmm, some kind of error getting theme. that's an error.
                 // resourceStream is unconditionally null here: the only
                 // assignment to it in this try block is the last statement,

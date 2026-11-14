@@ -119,7 +119,7 @@ public class FeedServlet extends HttpServlet {
             isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(feedRequest
                     .getWeblogHandle());
 
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             // invalid feed request format or weblog doesn't exist
             log.debug("error creating weblog feed request", e);
             RenderingServletUtils.sendNotFound(response);

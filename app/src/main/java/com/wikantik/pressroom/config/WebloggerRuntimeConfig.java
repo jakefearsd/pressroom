@@ -18,9 +18,9 @@
 
 package com.wikantik.pressroom.config;
 
+import org.jdom2.JDOMException;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -201,7 +201,7 @@ public final class WebloggerRuntimeConfig {
         int intval = -1;
         try {
             intval = Integer.parseInt(value);
-        } catch(Exception e) {
+        } catch (NumberFormatException e) {
             log.warn("Trouble converting to int: {}", name, e);
         }
         
@@ -226,7 +226,7 @@ public final class WebloggerRuntimeConfig {
                         RuntimeConfigDefsParser parser = new RuntimeConfigDefsParser();
                         configDefs = parser.unmarshall(is);
 
-                    } catch (Exception e) {
+                    } catch (IOException | JDOMException | RuntimeException e) {
                         // error while parsing :(
                         log.error("Error parsing runtime config defs", e);
                     }
@@ -250,14 +250,13 @@ public final class WebloggerRuntimeConfig {
         
         log.debug("Trying to load runtime config defs file");
         
-        try {
-            StringWriter configString = new StringWriter();
-            try (InputStreamReader reader = new InputStreamReader(
-                    WebloggerConfig.class.getResourceAsStream(RUNTIME_CONFIG), StandardCharsets.UTF_8)) {
-                reader.transferTo(configString);
+        try (InputStream in = WebloggerConfig.class.getResourceAsStream(RUNTIME_CONFIG)) {
+            if (in == null) {
+                log.error("Runtime config defs file {} is not on the classpath", RUNTIME_CONFIG);
+                return "";
             }
-            return configString.toString();
-        } catch(Exception e) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
             log.error("Error loading runtime config defs file", e);
         }
         

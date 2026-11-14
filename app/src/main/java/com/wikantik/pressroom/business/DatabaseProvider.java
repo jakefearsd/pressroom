@@ -147,7 +147,7 @@ public class DatabaseProvider  {
         // So far so good. Now, can we get a connection?
         try (Connection _ = getConnection()) {
             successMessage("SUCCESS: obtained a database connection");
-        } catch (Exception e) {
+        } catch (SQLException | RuntimeException e) {
             String errorMsg = 
                 "ERROR: unable to obtain database connection. "
                +"Likely problem: bad connection parameters or database unavailable.";

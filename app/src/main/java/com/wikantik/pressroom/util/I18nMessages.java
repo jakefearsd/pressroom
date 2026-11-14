@@ -210,7 +210,7 @@ public final class I18nMessages {
 			} else {
 				log.debug("class loader {} is not tomcat loader.", cl.getName());
 			}
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException | RuntimeException e) {
 			log.warn("couldn't clear tomcat cache", e);
 		}
 	}

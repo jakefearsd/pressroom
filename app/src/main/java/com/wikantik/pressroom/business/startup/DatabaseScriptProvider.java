@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.business.startup;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -29,6 +30,6 @@ public interface DatabaseScriptProvider {
      * Get an InputStream to a database script at the given path in the
      * classes/dbscripts/ folder.
      */
-    InputStream getDatabaseScript(String path) throws Exception;
+    InputStream getDatabaseScript(String path) throws IOException;
 
 }

@@ -104,17 +104,12 @@ public class PropertyDef {
         this.rows = rows;
     }
 
-    @SuppressFBWarnings(
-            value = "DE_MIGHT_IGNORE",
-            justification = "rows/cols only size the admin textarea for this property; a "
-                    + "malformed value in runtimeConfigDefs.xml simply leaves the default and "
-                    + "has no functional effect worth acting on.")
     public void setRows(String rows) {
         //convert to int
         try {
             int r = Integer.parseInt(rows);
             this.rows = r;
-        } catch(Exception ignored) {
+        } catch (NumberFormatException ignored) {
             // A malformed rows value is not fatal -- the field simply keeps
             // its default (5) and the property definition still loads.
         }
@@ -127,17 +122,12 @@ public class PropertyDef {
         this.cols = cols;
     }
     
-    @SuppressFBWarnings(
-            value = "DE_MIGHT_IGNORE",
-            justification = "rows/cols only size the admin textarea for this property; a "
-                    + "malformed value in runtimeConfigDefs.xml simply leaves the default and "
-                    + "has no functional effect worth acting on.")
     public void setCols(String cols) {
         //convert to int
         try {
             int c = Integer.parseInt(cols);
             this.cols = c;
-        } catch(Exception ignored) {
+        } catch (NumberFormatException ignored) {
             // A malformed cols value is not fatal -- the field simply keeps
             // its default (25) and the property definition still loads.
         }

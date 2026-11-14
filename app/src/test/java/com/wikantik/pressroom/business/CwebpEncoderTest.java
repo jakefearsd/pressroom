@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business;
 
 import java.io.File;
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,27 @@ class CwebpEncoderTest {
         } finally {
             input.delete();
             output.delete();
+        }
+    }
+
+    /**
+     * An interrupt that arrives while the tool runs must survive the catch:
+     * {@code waitFor} clears the thread's interrupt flag when it throws, and a
+     * broad {@code catch (Exception)} used to swallow it, so a rendition job
+     * asked to stop carried on as if nobody had asked. ({@code sleep} stands in
+     * for a slow {@code cwebp}; the thread is interrupted before the wait.)
+     */
+    @Test
+    void anInterruptedWaitReportsFailureAndKeepsTheInterrupt() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(new File("/bin/sleep").canExecute()
+                || new File("/usr/bin/sleep").canExecute(), "needs a sleep binary");
+        Thread.currentThread().interrupt();
+        try {
+            assertFalse(CwebpEncoder.run(List.of("sleep", "30"), 30));
+            assertTrue(Thread.currentThread().isInterrupted(),
+                    "the interrupt must be restored, not swallowed with the exception");
+        } finally {
+            Thread.interrupted();
         }
     }
 }

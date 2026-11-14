@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.controllers.core;
 
+import java.sql.SQLException;
 import java.sql.Connection;
 import java.util.List;
 
@@ -189,7 +190,7 @@ public class InstallController extends BaseController {
         String name = "unknown";
         try (Connection con = WebloggerStartup.getDatabaseProvider().getConnection()) {
             name = con.getMetaData().getDatabaseProductName();
-        } catch (Exception ignored) {
+        } catch (SQLException | RuntimeException ignored) {
             // This is a best-effort probe for a diagnostics page shown before
             // the database is confirmed reachable; if the driver won't even
             // answer getDatabaseProductName(), "unknown" is a fine fallback

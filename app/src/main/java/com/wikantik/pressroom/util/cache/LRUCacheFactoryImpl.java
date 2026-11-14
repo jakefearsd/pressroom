@@ -45,7 +45,7 @@ public class LRUCacheFactoryImpl implements CacheFactory {
         
         try {
             size = Integer.parseInt((String) properties.get("size"));
-        } catch(Exception e) {
+        } catch (NumberFormatException e) {
             log.warn("invalide size property", e);
         }
         

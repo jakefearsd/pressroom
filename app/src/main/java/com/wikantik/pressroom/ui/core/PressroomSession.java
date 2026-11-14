@@ -174,7 +174,7 @@ public class PressroomSession
         HttpSession session = se.getSession();
         try {
             session.removeAttribute(PRESSROOM_SESSION);
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
             // ignore purge exceptions
             log.debug("EXCEPTION PURGING session attributes", e);
         }

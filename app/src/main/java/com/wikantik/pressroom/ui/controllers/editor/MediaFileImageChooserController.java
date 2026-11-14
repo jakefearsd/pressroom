@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import com.wikantik.pressroom.WebloggerException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -141,7 +142,7 @@ public class MediaFileImageChooserController extends MediaFileBase {
             }
             model.addAttribute("currentDirectoryHierarchy", directoryHierarchy);
 
-        } catch (Exception ex) {
+        } catch (WebloggerException | RuntimeException ex) {
             log.error("Error viewing media file directory", ex);
             addError(model, "MediaFile.error.view", request);
         }

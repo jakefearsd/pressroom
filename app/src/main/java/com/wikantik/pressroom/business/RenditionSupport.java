@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
+import com.wikantik.pressroom.WebloggerException;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -455,7 +456,8 @@ public final class RenditionSupport {
             } else {
                 log.warn("cwebp declined to encode the {}w webp rendition for media file {}", width, id);
             }
-        } catch (Exception e) {
+        } catch (IOException | WebloggerException | RuntimeException e) {
+            // an ImageIO writer refuses an image it cannot encode with a runtime exception
             log.warn("Failed to generate {}w webp rendition for media file {}", width, id, e);
         } finally {
             deleteQuietly(tempInput);

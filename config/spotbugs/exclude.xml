@@ -43,9 +43,13 @@
          template methods called from constructors are how the servlet and
          manager hierarchies are written. THROWS_METHOD_THROWS_CLAUSE_THROWABLE
          and MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT were listed here too and
-         found nothing by 2026-10-12, so they are gate-checked again. -->
+         found nothing by 2026-10-12, so they are gate-checked again.
+         REC_CATCH_EXCEPTION left this list on 2026-11-13 at zero: its 31
+         sites now name what they catch, with a RuntimeException that is
+         caught on purpose written out. SpotBugs flags only some shapes of
+         catch (Exception); see docs/dev/quality-gates.md, "Generic catches". -->
     <Match>
-        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION,THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,REC_CATCH_EXCEPTION,MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION,THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
     </Match>
 
     <!-- find-sec-bugs' source markers (252 findings). find-sec-bugs marks
