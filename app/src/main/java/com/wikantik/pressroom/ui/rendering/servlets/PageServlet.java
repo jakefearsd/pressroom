@@ -55,6 +55,7 @@ import jakarta.servlet.jsp.PageContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -190,21 +191,15 @@ public class PageServlet extends HttpServlet {
             if (ModDateHeaderUtil.respondIfNotModified(request, response,
                     lastModified)) {
                 return;
-            } else {
-                // set last-modified date
-                ModDateHeaderUtil.setLastModifiedHeader(response, lastModified);
             }
+            ModDateHeaderUtil.setLastModifiedHeader(response, lastModified);
         }
 
         // generate cache key
         String cacheKey = renderCache.generateKey(pageRequest);
 
         // Development only. Reload if theme has been modified
-        if (themeReload
-                && !WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())
-                && (pageRequest.getPathInfo() == null || pageRequest
-                        .getPathInfo() != null
-                        && !pageRequest.getPathInfo().endsWith(".css"))) {
+        if (reloadsTheme(weblog, pageRequest.getPathInfo())) {
             RenderingServletUtils.reloadThemeFromDisk(weblog, renderCache,
                     weblogger.getThemeManager());
         }
@@ -223,10 +218,7 @@ public class PageServlet extends HttpServlet {
             // ordering IS the safety property: a rule is only ever asked
             // about a request nothing serves, so it cannot shadow live
             // content (see RedirectResponder).
-            if (answeredByRedirect(pageRequest, weblog, request, response)) {
-                return;
-            }
-            sendNotFoundInWeblog(request, response, weblog);
+            redirectOrNotFound(pageRequest, weblog, request, response);
             return;
         }
 
@@ -237,10 +229,7 @@ public class PageServlet extends HttpServlet {
                 weblogger.getWeblogEntryManager());
         if (rejection != null) {
             log.debug("page failed validation, bailing out: {}", rejection);
-            if (answeredByRedirect(pageRequest, weblog, request, response)) {
-                return;
-            }
-            sendNotFoundInWeblog(request, response, weblog);
+            redirectOrNotFound(pageRequest, weblog, request, response);
             return;
         }
 
@@ -278,6 +267,24 @@ public class PageServlet extends HttpServlet {
         log.debug("Exiting");
     }
 
+
+    /**
+     * Development only (themes.reload.mode): a shared theme is reloaded from
+     * disk before a render, except for a stylesheet request.
+     */
+    private boolean reloadsTheme(Weblog weblog, String pathInfo) {
+        return themeReload
+                && !WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())
+                && (pathInfo == null || !pathInfo.endsWith(".css"));
+    }
+
+    /** A decided 404, where a redirect rule may answer instead. */
+    private void redirectOrNotFound(WeblogPageRequest pageRequest, Weblog weblog,
+            HttpServletRequest request, HttpServletResponse response) throws IOException {
+        if (!answeredByRedirect(pageRequest, weblog, request, response)) {
+            sendNotFoundInWeblog(request, response, weblog);
+        }
+    }
 
     /**
      * A 404 for a request inside a weblog: leaves the weblog's name and
@@ -593,44 +600,45 @@ public class PageServlet extends HttpServlet {
         }
 
         if (pageRequest.getWeblogAnchor() != null) {
-            // permalink specified. entry must exist and be published before
-            // the current time. (A per-entry locale mismatch was checked
-            // here too, but pageRequest.getLocale() != null already returned
-            // above -- this branch is only ever reached with a null locale.)
-            WeblogEntry entry = pageRequest.getWeblogEntry();
-            if (entry == null) {
-                return "no entry with that anchor";
-            }
-            if (!entry.isPublished()) {
-                return "entry is not published";
-            }
-            if (new Date().before(entry.getPubTime())) {
-                return "entry is scheduled for the future";
-            }
-            return null;
+            // (A per-entry locale mismatch was checked here too, but
+            // pageRequest.getLocale() != null already returned above -- this
+            // branch is only ever reached with a null locale.)
+            return permalinkRejection(pageRequest.getWeblogEntry());
         }
 
         if (pageRequest.getWeblogCategoryName() != null) {
             // category specified. category must exist.
-            if (pageRequest.getWeblogCategory() == null) {
-                return "no category by that name";
-            }
-            return null;
+            return pageRequest.getWeblogCategory() == null ? "no category by that name" : null;
         }
 
         if (pageRequest.getTags() != null && !pageRequest.getTags().isEmpty()) {
-            try {
-                // tags specified. make sure they exist.
-                if (!wmgr.getTagComboExists(pageRequest.getTags(),
-                        isSiteWide ? null : weblog)) {
-                    return "no entries carry that combination of tags";
-                }
-            } catch (WebloggerException ex) {
-                return "tag lookup failed: " + ex.getMessage();
-            }
+            return tagsRejection(pageRequest.getTags(), isSiteWide ? null : weblog, wmgr);
         }
 
         return null;
+    }
+
+    /** A permalink's entry must exist and be published before the current time. */
+    private static String permalinkRejection(WeblogEntry entry) {
+        if (entry == null) {
+            return "no entry with that anchor";
+        }
+        if (!entry.isPublished()) {
+            return "entry is not published";
+        }
+        if (new Date().before(entry.getPubTime())) {
+            return "entry is scheduled for the future";
+        }
+        return null;
+    }
+
+    /** Some entry of the weblog (of the site, when null) must carry every tag asked for. */
+    private static String tagsRejection(List<String> tags, Weblog weblog, WeblogEntryManager wmgr) {
+        try {
+            return wmgr.getTagComboExists(tags, weblog) ? null : "no entries carry that combination of tags";
+        } catch (WebloggerException ex) {
+            return "tag lookup failed: " + ex.getMessage();
+        }
     }
 
     /**
