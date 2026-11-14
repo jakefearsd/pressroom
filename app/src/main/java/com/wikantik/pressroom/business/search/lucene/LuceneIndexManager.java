@@ -203,100 +203,113 @@ public class LuceneIndexManager implements IndexManager {
      * @inheritDoc
      */
     @Override
+    public void initialize() throws InitializationException {
+
+        // only initialize the index if search is enabled
+        if (!this.searchEnabled) {
+            return;
+        }
+
+        checkConsistencyMarker();
+
+        // An index laid out by an earlier build, one whose stamp cannot be
+        // read (fail closed), or one whose last full build never completed
+        // is emptied and rebuilt in the background; the rebuild writes the
+        // stamp when it commits (see the class comment).
+        if (!schemaIsCurrent()) {
+            log.info("Index schema is not a completed version {} build; rebuilding the index.", SCHEMA_VERSION);
+            inconsistentAtStartup = true;
+            deleteIndex();
+            createIndex(getIndexDirectory());
+            // deleteIndex() removes every file, the in-use marker too
+            markInUse();
+        }
+
+        if (indexExists()) {
+            openSearcherOrReplaceIndex();
+        } else {
+            log.debug("Creating index");
+            inconsistentAtStartup = true;
+            deleteIndex();
+            createIndex(getIndexDirectory());
+        }
+
+        if (inconsistentAtStartup) {
+            log.info("Index was inconsistent. Rebuilding index in the background...");
+            try {
+                rebuildWeblogIndex();
+            } catch (WebloggerException ex) {
+                log.error("ERROR: scheduling re-index operation", ex);
+            }
+        } else {
+            // the index holds each blog's name as it is now: learn them,
+            // so the first rename after this start is caught
+            noteEveryWeblog();
+            log.info("Index initialized and ready for use.");
+        }
+    }
+
+    /**
+     * An inconsistency marker left by an unclean shutdown deletes the index;
+     * otherwise the marker is set for this run, and a missing index
+     * directory is created and counts as inconsistent.
+     */
     @SuppressFBWarnings(
             value = "PATH_TRAVERSAL_IN",
             justification = "indexDir is search.index.dir, operator configuration (pressroom.properties or "
                     + "PRESSROOM_SEARCH_INDEX_DIR); no request reaches it.")
-    public void initialize() throws InitializationException {
-
-        // only initialize the index if search is enabled
-        if (this.searchEnabled) {
-
-            // delete index if inconsistency marker exists
-            if (indexConsistencyMarker.exists()) {
-                log.debug("Index inconsistent: marker exists");
-                inconsistentAtStartup = true;
-                deleteIndex();
-            } else {
-                try {
-                    File makeIndexDir = new File(indexDir);
-                    if (!makeIndexDir.exists()) {
-                        if (!makeIndexDir.mkdirs()) {
-                            log.error("Unable to create search index directory: {}", indexDir);
-                        }
-                        inconsistentAtStartup = true;
-                        log.debug("Index inconsistent: new");
-                    }
-                    if (!indexConsistencyMarker.createNewFile()) {
-                        // We only reach this branch when
-                        // indexConsistencyMarker.exists() was already false
-                        // (the enclosing if/else above), so a false return
-                        // here means the marker was created by someone else
-                        // between that check and this call, not a normal
-                        // outcome.
-                        log.warn("Search index consistency marker already existed unexpectedly: {}",
-                                indexConsistencyMarker);
-                    }
-                } catch (IOException e) {
-                    log.error("Error creating search index consistency marker", e);
-                }
-            }
-
-            // An index laid out by an earlier build, one whose stamp cannot be
-            // read (fail closed), or one whose last full build never completed
-            // is emptied and rebuilt in the background; the rebuild writes the
-            // stamp when it commits (see the class comment).
-            if (!schemaIsCurrent()) {
-                log.info("Index schema is not a completed version {} build; rebuilding the index.", SCHEMA_VERSION);
-                inconsistentAtStartup = true;
-                deleteIndex();
-                createIndex(getIndexDirectory());
-                // deleteIndex() removes every file, the in-use marker too
-                markInUse();
-            }
-
-            if (indexExists()) {
-
-                // test if the index is readable, if the version is outdated or it fails we rebuild.
-                try {
-                    synchronized(this) {
-                        // retire any searchers already held rather than
-                        // overwrite the only reference to them (and leak
-                        // their files): a no-op on the one startup call today
-                        closeSearcherManager();
-                        searcherManager = new SearcherManager(getIndexDirectory(), null);
-                    }
-                } catch (IOException | IllegalArgumentException ex) {  // IAE for incompatible codecs
-                    log.warn("Failed to open search index, scheduling rebuild.", ex);
-                    inconsistentAtStartup = true;
-                    deleteIndex();
-                    // an empty index in its place, as on the unclean-shutdown
-                    // path below: until the rebuild commits, searches (which
-                    // never wait for it) find nothing rather than fail
-                    createIndex(getIndexDirectory());
-                }
-            } else {
-                log.debug("Creating index");
-                inconsistentAtStartup = true;
-                deleteIndex();
-                createIndex(getIndexDirectory());
-            }
-
-            if (inconsistentAtStartup) {
-                log.info("Index was inconsistent. Rebuilding index in the background...");
-                try {
-                    rebuildWeblogIndex();
-                } catch (WebloggerException ex) {
-                    log.error("ERROR: scheduling re-index operation", ex);
-                }
-            } else {
-                // the index holds each blog's name as it is now: learn them,
-                // so the first rename after this start is caught
-                noteEveryWeblog();
-                log.info("Index initialized and ready for use.");
-            }
+    private void checkConsistencyMarker() {
+        if (indexConsistencyMarker.exists()) {
+            log.debug("Index inconsistent: marker exists");
+            inconsistentAtStartup = true;
+            deleteIndex();
+            return;
         }
+        try {
+            File makeIndexDir = new File(indexDir);
+            if (!makeIndexDir.exists()) {
+                if (!makeIndexDir.mkdirs()) {
+                    log.error("Unable to create search index directory: {}", indexDir);
+                }
+                inconsistentAtStartup = true;
+                log.debug("Index inconsistent: new");
+            }
+            if (!indexConsistencyMarker.createNewFile()) {
+                // We only reach this line when indexConsistencyMarker.exists()
+                // was already false (the check above), so a false return here
+                // means the marker was created by someone else between that
+                // check and this call, not a normal outcome.
+                log.warn("Search index consistency marker already existed unexpectedly: {}",
+                        indexConsistencyMarker);
+            }
+        } catch (IOException e) {
+            log.error("Error creating search index consistency marker", e);
+        }
+    }
 
+    /**
+     * Opens the searchers on the existing index; one that cannot be read
+     * (an IllegalArgumentException is an incompatible codec) is replaced by
+     * an empty index and scheduled for a rebuild.
+     */
+    private void openSearcherOrReplaceIndex() {
+        try {
+            synchronized(this) {
+                // retire any searchers already held rather than
+                // overwrite the only reference to them (and leak
+                // their files): a no-op on the one startup call today
+                closeSearcherManager();
+                searcherManager = new SearcherManager(getIndexDirectory(), null);
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            log.warn("Failed to open search index, scheduling rebuild.", ex);
+            inconsistentAtStartup = true;
+            deleteIndex();
+            // an empty index in its place, as on the unclean-shutdown
+            // path: until the rebuild commits, searches (which never wait
+            // for it) find nothing rather than fail
+            createIndex(getIndexDirectory());
+        }
     }
 
     @Override
