@@ -218,10 +218,7 @@ public final class MenuHelper {
             Predicate<String> propertyEnabled)
             throws WebloggerException {
 
-        // log.debug("creating menu for action - " + currentAction);
-
         Menu tabMenu = new Menu();
-
 
         // Hack - for blogger convenience, the design tab of the edit
         // menu defaults to the templates tab item (instead of theme edit)
@@ -231,66 +228,53 @@ public final class MenuHelper {
 
         // iterate over tabs from parsed config
         for (ParsedTab configTab : menuConfig.getTabs()) {
-
-            // log.debug("config tab = " + configTab.getName());
-
-            if (isVisible(configTab, user, weblog, umgr, propertyEnabled)) {
-
-                // log.debug("tab allowed - " + configTab.getName());
-
-                // all checks passed, tab should be included
-                MenuTab tab = new MenuTab();
-                tab.setKey(configTab.getName());
-
-                // setup tab items
-                boolean firstItem = true;
-                boolean selectable = true;
-
-                for (ParsedTabItem configTabItem : configTab.getTabItems()) {
-
-                    if (offeredHere(weblog, configTabItem)
-                            && isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
-
-                        // log.debug("tab item allowed - "
-                        // + configTabItem.getName());
-
-                        // all checks passed, item should be included
-                        MenuTabItem tabItem = new MenuTabItem();
-                        tabItem.setKey(configTabItem.getName());
-                        tabItem.setAction(configTabItem.getAction());
-
-                        // is this the selected item? Only one can be selected
-                        // so skip the rest
-                        if (currentAction != null && selectable
-                                && isSelected(currentAction, configTabItem)) {
-                            tabItem.setSelected(true);
-                            tab.setSelected(true);
-                            selectable = false;
-                        }
-
-                        // the url for the tab is the url of the first tab item
-                        if (firstItem) {
-                            if (customThemeOverride && "tabbedmenu.design".equals(tab.getKey())) {
-                                tab.setAction("templates");
-                            } else {
-                                tab.setAction(tabItem.getAction());
-                            }
-                            firstItem = false;
-                        }
-
-                        // add the item
-                        tab.addItem(tabItem);
-                    }
+            if (!isVisible(configTab, user, weblog, umgr, propertyEnabled)) {
+                continue;
+            }
+            MenuTab tab = new MenuTab();
+            tab.setKey(configTab.getName());
+            for (ParsedTabItem configTabItem : configTab.getTabItems()) {
+                if (offeredHere(weblog, configTabItem)
+                        && isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
+                    addItem(tab, configTabItem, currentAction, customThemeOverride);
                 }
-
-                // add the tab, unless the site space left it with nothing to offer
-                if (!tab.getItems().isEmpty() || !isSiteSpace(weblog)) {
-                    tabMenu.addTab(tab);
-                }
+            }
+            // add the tab, unless the site space left it with nothing to offer
+            if (!tab.getItems().isEmpty() || !isSiteSpace(weblog)) {
+                tabMenu.addTab(tab);
             }
         }
 
         return tabMenu;
+    }
+
+    /**
+     * Adds one allowed item to its tab. The first item the current action
+     * matches selects itself and the tab (only one can be selected), and
+     * the tab links to its first item.
+     */
+    private static void addItem(MenuTab tab, ParsedTabItem configTabItem, String currentAction,
+            boolean customThemeOverride) {
+        MenuTabItem tabItem = new MenuTabItem();
+        tabItem.setKey(configTabItem.getName());
+        tabItem.setAction(configTabItem.getAction());
+
+        if (currentAction != null && !tab.isSelected()
+                && isSelected(currentAction, configTabItem)) {
+            tabItem.setSelected(true);
+            tab.setSelected(true);
+        }
+
+        // the url for the tab is the url of the first tab item
+        if (tab.getItems().isEmpty()) {
+            if (customThemeOverride && "tabbedmenu.design".equals(tab.getKey())) {
+                tab.setAction("templates");
+            } else {
+                tab.setAction(tabItem.getAction());
+            }
+        }
+
+        tab.addItem(tabItem);
     }
 
     /**
