@@ -91,96 +91,34 @@ public class MembersController extends BaseController {
     public String save(HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
 
-        int removed = 0;
-        int changed = 0;
-
+        Applied applied = Applied.NONE;
         try {
             UserManager userMgr = weblogger.getUserManager();
             Weblog weblog = getActionWeblog(request);
             User user = getAuthenticatedUser(request);
 
-            List<Submitted> rows = new ArrayList<>();
-            for (WeblogPermission perms : userMgr.getWeblogPermissions(weblog)) {
-                User permUser = userMgr.getUserByUserName(perms.getUserName());
-                if (permUser == null) {
-                    // The page shows no control for an account that no longer
-                    // resolves (deleted or disabled), so nothing was posted for
-                    // it; one such row used to abort every other change.
-                    log.warn("Skipping the membership of {} on weblog {}: the account does not resolve",
-                            perms.getUserName(), weblog.getHandle());
-                    continue;
+            List<Submitted> rows = submittedRows(userMgr, weblog, request);
+            if (!refused(rows, user, model, request)) {
+                Applied made = apply(rows, userMgr, weblog, user);
+                if (made.any()) {
+                    weblogger.flush();
                 }
-                rows.add(new Submitted(perms, permUser, request.getParameter("perm-" + permUser.getId())));
+                applied = made;
             }
-
-            boolean error = false;
-            boolean badLevel = false;
-            int numAdmins = 0;
-            for (Submitted row : rows) {
-                String sval = row.value();
-                if (sval == null) {
-                    continue;
-                }
-                if (!REMOVE.equals(sval) && !Memberships.LEVELS.contains(sval)) {
-                    // One of the three levels or removal, as the person page
-                    // allows (UserWeblogsController), never an action list.
-                    badLevel = true;
-                }
-                if (WeblogPermission.ADMIN.equals(sval)) {
-                    numAdmins++;
-                }
-                if (row.permission().getUserName().equals(user.getUserName())
-                        && !WeblogPermission.ADMIN.equals(sval)) {
-                    error = true;
-                    addError(model, "memberPermissions.noSelfModifications", request);
-                }
-            }
-            if (badLevel) {
-                addError(model, "userWeblogs.error.level", request);
-                error = true;
-            }
-            if (numAdmins == 0) {
-                addError(model, "memberPermissions.oneAdminRequired", request);
-                error = true;
-            }
-
-            for (Submitted row : rows) {
-                String sval = row.value();
-                if (sval == null || error || row.permission().hasAction(sval)) {
-                    continue;
-                }
-                User permUser = row.member();
-                userMgr.revokeWeblogPermission(weblog, permUser, WeblogPermission.ALL_ACTIONS);
-                if (REMOVE.equals(sval)) {
-                    AdminLog.record("membership.removed", user, Memberships.details(permUser, weblog));
-                    removed++;
-                } else {
-                    userMgr.grantWeblogPermission(weblog, permUser, List.of(sval));
-                    AdminLog.record("membership.changed", user,
-                            Memberships.details(permUser, weblog) + " level=" + sval);
-                    changed++;
-                }
-            }
-
-            if (removed > 0 || changed > 0) {
-                weblogger.flush();
-            }
-
         } catch (WebloggerException | RuntimeException ex) {
             log.error("Error saving permissions on weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "memberPermissions.saveError", request);
             // Counted as made, but only written by the flush: a failure saved none.
-            removed = 0;
-            changed = 0;
+            applied = Applied.NONE;
         }
 
-        if (removed > 0) {
-            addMessage(model, "memberPermissions.membersRemoved", Integer.toString(removed), request);
+        if (applied.removed() > 0) {
+            addMessage(model, "memberPermissions.membersRemoved", Integer.toString(applied.removed()), request);
         }
-        if (changed > 0) {
-            addMessage(model, "memberPermissions.membersChanged", Integer.toString(changed), request);
+        if (applied.changed() > 0) {
+            addMessage(model, "memberPermissions.membersChanged", Integer.toString(applied.changed()), request);
         }
-        if (removed == 0 && changed == 0 && !hasErrors(model)) {
+        if (!applied.any() && !hasErrors(model)) {
             // A submission that asked for nothing used to answer with a blank
             // page, which is exactly what a save that silently failed looks
             // like. Only for a save that was not refused -- pairing this with
@@ -190,6 +128,96 @@ public class MembersController extends BaseController {
 
         model.addAttribute("weblogPermissions", getWeblogPermissions(request));
         return ".Members";
+    }
+
+    /** How many memberships a save removed and changed. */
+    private record Applied(int removed, int changed) {
+        static final Applied NONE = new Applied(0, 0);
+
+        boolean any() {
+            return removed > 0 || changed > 0;
+        }
+    }
+
+    /** Each membership whose account resolves, with what the form posted for it. */
+    private List<Submitted> submittedRows(UserManager userMgr, Weblog weblog, HttpServletRequest request)
+            throws WebloggerException {
+        List<Submitted> rows = new ArrayList<>();
+        for (WeblogPermission perms : userMgr.getWeblogPermissions(weblog)) {
+            User permUser = userMgr.getUserByUserName(perms.getUserName());
+            if (permUser == null) {
+                // The page shows no control for an account that no longer
+                // resolves (deleted or disabled), so nothing was posted for
+                // it; one such row used to abort every other change.
+                log.warn("Skipping the membership of {} on weblog {}: the account does not resolve",
+                        perms.getUserName(), weblog.getHandle());
+                continue;
+            }
+            rows.add(new Submitted(perms, permUser, request.getParameter("perm-" + permUser.getId())));
+        }
+        return rows;
+    }
+
+    /**
+     * Whether the form is refused, every reason added as an error: a value
+     * that is not a level or removal, a change to your own membership, or
+     * no administrator left.
+     */
+    private boolean refused(List<Submitted> rows, User user, Model model, HttpServletRequest request) {
+        boolean error = false;
+        boolean badLevel = false;
+        int numAdmins = 0;
+        for (Submitted row : rows) {
+            String sval = row.value();
+            if (sval == null) {
+                continue;
+            }
+            if (!REMOVE.equals(sval) && !Memberships.LEVELS.contains(sval)) {
+                // One of the three levels or removal, as the person page
+                // allows (UserWeblogsController), never an action list.
+                badLevel = true;
+            }
+            if (WeblogPermission.ADMIN.equals(sval)) {
+                numAdmins++;
+            } else if (row.permission().getUserName().equals(user.getUserName())) {
+                error = true;
+                addError(model, "memberPermissions.noSelfModifications", request);
+            }
+        }
+        if (badLevel) {
+            addError(model, "userWeblogs.error.level", request);
+            error = true;
+        }
+        if (numAdmins == 0) {
+            addError(model, "memberPermissions.oneAdminRequired", request);
+            error = true;
+        }
+        return error;
+    }
+
+    /** Writes every posted change: a removal, or a level the member does not hold yet. */
+    private static Applied apply(List<Submitted> rows, UserManager userMgr, Weblog weblog, User user)
+            throws WebloggerException {
+        int removed = 0;
+        int changed = 0;
+        for (Submitted row : rows) {
+            String sval = row.value();
+            if (sval == null || row.permission().hasAction(sval)) {
+                continue;
+            }
+            User permUser = row.member();
+            userMgr.revokeWeblogPermission(weblog, permUser, WeblogPermission.ALL_ACTIONS);
+            if (REMOVE.equals(sval)) {
+                AdminLog.record("membership.removed", user, Memberships.details(permUser, weblog));
+                removed++;
+            } else {
+                userMgr.grantWeblogPermission(weblog, permUser, List.of(sval));
+                AdminLog.record("membership.changed", user,
+                        Memberships.details(permUser, weblog) + " level=" + sval);
+                changed++;
+            }
+        }
+        return new Applied(removed, changed);
     }
 
     /**
