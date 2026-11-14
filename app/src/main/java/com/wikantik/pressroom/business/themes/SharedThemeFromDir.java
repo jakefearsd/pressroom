@@ -448,7 +448,9 @@ public class SharedThemeFromDir extends SharedTheme {
         }
 
         try {
-            return Files.readString(templateFile.toPath(), StandardCharsets.UTF_8);
+            // Decoded leniently: a byte that is not UTF-8 becomes U+FFFD rather
+            // than failing the whole theme (Files.readString would throw).
+            return new String(Files.readAllBytes(templateFile.toPath()), StandardCharsets.UTF_8);
         } catch (IOException noprob) {
             log.error("Exception reading theme [{}] template file [{}]",
                     this.getName(), templateFile);

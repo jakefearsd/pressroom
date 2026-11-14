@@ -269,6 +269,22 @@ class SharedThemeFromDirTest {
         assertNotNull(theme.getTemplateByName("sidebar"));
     }
 
+    /**
+     * A template file with a byte that is not UTF-8 (a stray Latin-1 "é" in
+     * an operator's theme) loads with that byte replaced, as the original
+     * InputStreamReader did; one bad byte must not drop the whole theme and
+     * every weblog on it. Review M1: a strict Files.readString did.
+     */
+    @Test
+    void aTemplateWithAByteThatIsNotUtf8LoadsWithTheByteReplaced(@TempDir Path dir) throws Exception {
+        String path = minimalTheme(dir);
+        Files.write(dir.resolve("weblog.vm"), new byte[] {'c', 'a', 'f', (byte) 0xE9, '!'});
+
+        SharedThemeFromDir theme = new SharedThemeFromDir(path);
+
+        assertEquals("caf\uFFFD!", ((SharedThemeTemplate) theme.getTemplateByName("Weblog")).getContents());
+    }
+
     @Test
     void theWeblogTemplateIsTheDefault(@TempDir Path dir) throws Exception {
         SharedThemeFromDir theme = new SharedThemeFromDir(minimalTheme(dir));
