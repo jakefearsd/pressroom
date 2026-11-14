@@ -24,7 +24,10 @@
 #      resource at generate-resources time) doesn't play well with
 #      `mvn dependency:go-offline` as a separate cached layer, so every build
 #      re-resolves dependencies. Acceptable for now; revisit if build time
-#      becomes a problem.
+#      becomes a problem. (A BuildKit cache mount for ~/.m2 was considered
+#      on 2026-11-13 and rejected: `RUN --mount` needs BuildKit, and a
+#      `docker build` without the buildx component -- the legacy builder --
+#      refuses the whole Dockerfile over it.)
 #   2. runtime -- just a JRE, the WAR, baked-in themes, and the migrations
 #      SQL for reference/exec-based use by deploy tooling (Stage 1C Task 3).
 #
@@ -37,7 +40,14 @@
 # PRESSROOM_MAIL_* keys. See deploy/.env.example for the full set.
 
 # ---- Stage 1: build -------------------------------------------------------
-FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS builder
+FROM maven:3.10-eclipse-temurin-25@sha256:a4734fd7909a9c2beddcacfa1229bd308a349f000bea1ec8db3287c8a16ca2a3 AS builder
+
+# Node 26's Linux binary (frontend-maven-plugin's pinned runtime, below)
+# links libatomic.so.1, which the maven image does not ship; without it
+# `npm ci` dies with exit 127 at generate-resources. Before the COPYs, so
+# the layer stays cached across source changes.
+RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
@@ -59,7 +69,7 @@ COPY bin/db/migrations bin/db/migrations
 RUN mvn -ntp -pl app -DskipTests package
 
 # ---- Stage 2: runtime -------------------------------------------------------
-FROM eclipse-temurin:25-jre@sha256:dbb43d81099eec91e0800226ed2296d03146ee7857165b95112372ad0d67e87f AS runtime
+FROM eclipse-temurin:25-jre@sha256:a640968ae55027b322cedd5f8228b01a84baff0b9e9360e47601c6a111ba1699 AS runtime
 
 # curl is not in the base JRE image; installed for container healthchecks
 # against the management port (docker exec ... curl 8090/actuator/health --

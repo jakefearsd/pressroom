@@ -34,15 +34,15 @@
 #   2. The same runtime base as before, with the custom-built binary swapped
 #      in for the stock one -- everything else about the image (config path,
 #      entrypoint, exposed ports) is inherited unchanged from the upstream
-#      `caddy:2.11.7-alpine` image.
-FROM caddy:2.11.7-builder-alpine@sha256:bb53bc0dd94d5e93eca88bac50e435fd5f9dc6cc828fc6140086f282fb329e92 AS builder
+#      `caddy:2.11.9-alpine` image.
+FROM caddy:2.11.9-builder-alpine@sha256:646fee578e680989ca5c7fd1ce6f1de574d19fd71ef2221810cc0510a9f40c86 AS builder
 
 # The module is pinned like the base images: without @version xcaddy takes
 # whatever its newest tag is on the day of the build, so one release tag could
 # ship different code in the binary that holds the Cloudflare API token.
 RUN xcaddy build --with github.com/caddy-dns/cloudflare@v0.2.4
 
-FROM caddy:2.11.7-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
+FROM caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 COPY deploy/caddy/Caddyfile /etc/caddy/Caddyfile
