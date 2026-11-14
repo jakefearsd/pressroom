@@ -766,9 +766,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      * @param name
      * @throws WebloggerException
      */
-    public void addTag(String name) throws WebloggerException {
+    public void addTag(String rawName) throws WebloggerException {
         Locale localeObject = getWebsite() != null ? getWebsite().getLocaleInstance() : Locale.getDefault();
-        name = Utilities.normalizeTag(name, localeObject);
+        String name = Utilities.normalizeTag(rawName, localeObject);
         if (name.length() == 0) {
             return;
         }

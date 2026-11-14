@@ -209,14 +209,10 @@ public class SiteModel implements Model {
                 null, null, null, null, 0, false);
         }        
         
-        if(letter != null && StringUtils.isEmpty(letter)) {
-            letter = null;
-        }
-        
         return new UsersPager(
             urlStrategy, weblogger,
             pagerUrl,
-            letter,
+            StringUtils.isEmpty(letter) ? null : letter,
             weblogRequest.getLocale(),
             sinceDays,
             pageNum, 
@@ -231,14 +227,10 @@ public class SiteModel implements Model {
                 weblogRequest.getLocale(), pageLink, 
                 null, null, null, null, 0, false);
         
-        if(letter != null && StringUtils.isEmpty(letter)) {
-            letter = null;
-        }
-        
         return new WeblogsPager(
             urlStrategy, weblogger,
             pagerUrl,
-            letter,
+            StringUtils.isEmpty(letter) ? null : letter,
             weblogRequest.getLocale(),
             sinceDays,
             pageNum, 

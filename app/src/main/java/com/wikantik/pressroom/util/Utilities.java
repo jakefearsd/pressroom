@@ -92,16 +92,11 @@ public final class Utilities {
     public static String stripJsessionId(String url) {
         // Strip off jsessionid found in referer URL
         int startPos = url.indexOf(";jsessionid=");
-        if (startPos != -1) {
-            int endPos = url.indexOf('?', startPos);
-            if (endPos == -1) {
-                url = url.substring(0, startPos);
-            } else {
-                url = url.substring(0, startPos)
-                        + url.substring(endPos, url.length());
-            }
+        if (startPos == -1) {
+            return url;
         }
-        return url;
+        int endPos = url.indexOf('?', startPos);
+        return endPos == -1 ? url.substring(0, startPos) : url.substring(0, startPos) + url.substring(endPos);
     }
 
     public static String unescapeHTML(String str) {
@@ -183,11 +178,10 @@ public final class Utilities {
         }
         Matcher m = mLinkPattern.matcher(html);
         StringBuilder buf = new StringBuilder(64);
+        int copied = 0;
         while (m.find()) {
-            int start = m.start();
-            int end = m.end();
-            String link = html.substring(start, end);
-            buf.append(html.substring(0, start));
+            String link = m.group();
+            buf.append(html, copied, m.start());
             if (link.contains("rel=\"nofollow\"")) {
                 // already tagged, leave it alone rather than emitting a second
                 // rel attribute (invalid HTML; browsers honour only the first)
@@ -196,10 +190,9 @@ public final class Utilities {
                 buf.append(link, 0, link.length() - 1)
                         .append(" rel=\"nofollow\">");
             }
-            html = html.substring(end, html.length());
-            m = mLinkPattern.matcher(html);
+            copied = m.end();
         }
-        buf.append(html);
+        buf.append(html, copied, html.length());
         return buf.toString();
     }
 
@@ -454,26 +447,24 @@ public final class Utilities {
         String str2 = removeHTML(str, false);
 
         // quickly adjust the upper if it is set lower than 'lower'
-        if (upper < lower) {
-            upper = lower;
-        }
+        int limit = Math.max(upper, lower);
 
-        // now determine if the string fits within the upper limit
+        // now determine if the string fits within the limit limit
         // if it does, go straight to return, do not pass 'go' and collect $200
-        if (str2.length() > upper) {
+        if (str2.length() > limit) {
             // the magic location int
             int loc;
 
             // first we determine where the next space appears after lower
-            loc = str2.lastIndexOf(' ', upper);
+            loc = str2.lastIndexOf(' ', limit);
 
             // now we'll see if the location is greater than the lower limit
             if (loc >= lower) {
                 // yes it was, so we'll cut it off here
                 str2 = str2.substring(0, loc);
             } else {
-                // no it wasnt, so we'll cut it off at the upper limit
-                str2 = str2.substring(0, upper);
+                // no it wasnt, so we'll cut it off at the limit limit
+                str2 = str2.substring(0, limit);
             }
 
             // the string was truncated, so we append the appendToEnd String
@@ -504,27 +495,25 @@ public final class Utilities {
         boolean diff = str2.length() < str.length();
 
         // quickly adjust the upper if it is set lower than 'lower'
-        if (upper < lower) {
-            upper = lower;
-        }
+        int limit = Math.max(upper, lower);
 
-        // now determine if the string fits within the upper limit
+        // now determine if the string fits within the limit limit
         // if it does, go straight to return, do not pass 'go' and collect $200
-        if (str2.length() > upper) {
+        if (str2.length() > limit) {
             // the magic location int
             int loc;
 
             // first we determine where the next space appears after lower
-            loc = str2.lastIndexOf(' ', upper);
+            loc = str2.lastIndexOf(' ', limit);
 
             // now we'll see if the location is greater than the lower limit
             if (loc >= lower) {
                 // yes it was, so we'll cut it off here
                 str2 = str2.substring(0, loc);
             } else {
-                // no it wasnt, so we'll cut it off at the upper limit
-                str2 = str2.substring(0, upper);
-                loc = upper;
+                // no it wasnt, so we'll cut it off at the limit limit
+                str2 = str2.substring(0, limit);
+                loc = limit;
             }
 
             // HTML was removed from original str
@@ -548,12 +537,10 @@ public final class Utilities {
 
                 // append the appendToEnd String and
                 // add extracted HTML back onto truncated string
-                str = str2 + appendToEnd + str3;
-            } else {
-                // the string was truncated, so we append the appendToEnd String
-                str = str2 + appendToEnd;
+                return str2 + appendToEnd + str3;
             }
-
+            // the string was truncated, so we append the appendToEnd String
+            return str2 + appendToEnd;
         }
 
         return str;
@@ -565,29 +552,27 @@ public final class Utilities {
         String str2 = removeHTML(str, false);
 
         // quickly adjust the upper if it is set lower than 'lower'
-        if (upper < lower) {
-            upper = lower;
-        }
+        int limit = Math.max(upper, lower);
 
-        // now determine if the string fits within the upper limit
+        // now determine if the string fits within the limit limit
         // if it does, go straight to return, do not pass 'go' and collect $200
-        if (str2.length() > upper) {
+        if (str2.length() > limit) {
             // the magic location int
             int loc;
 
             // first we determine where the next space appears after lower
-            loc = str2.lastIndexOf(' ', upper);
+            loc = str2.lastIndexOf(' ', limit);
 
             // now we'll see if the location is greater than the lower limit
             if (loc >= lower) {
                 // yes it was, so we'll cut it off here
                 str2 = str2.substring(0, loc);
             } else {
-                // no it wasnt, so we'll cut it off at the upper limit
-                str2 = str2.substring(0, upper);
+                // no it wasnt, so we'll cut it off at the limit limit
+                str2 = str2.substring(0, limit);
             }
             // the string was truncated, so we append the appendToEnd String
-            str = str2 + appendToEnd;
+            return str2 + appendToEnd;
         }
         return str;
     }
@@ -715,8 +700,8 @@ public final class Utilities {
     }
 
     public static String normalizeTag(String tag, Locale locale) {
-        tag = stripInvalidTagCharacters(tag);
-        return locale == null ? tag.toLowerCase(Locale.ROOT) : tag.toLowerCase(locale);
+        String stripped = stripInvalidTagCharacters(tag);
+        return locale == null ? stripped.toLowerCase(Locale.ROOT) : stripped.toLowerCase(locale);
     }
 
     /**
@@ -736,7 +721,7 @@ public final class Utilities {
      * page. The subset includes &lt;b&gt;, &lt;i&gt;, &lt;p&gt;, &lt;br&gt;,
      * &lt;pre&gt; and &lt;a href&gt; (and their corresponding end tags).
      * 
-     * @param s
+     * @param text
      *            the String to transform
      * @return the transformed String
      */
@@ -746,13 +731,13 @@ public final class Utilities {
                     + "escaped tag back into that tag. The method is template API only ($utils) with no "
                     + "caller in Pressroom's own templates, and templates are written by weblog admins, who "
                     + "can already emit any markup.")
-    public static String transformToHTMLSubset(String s) {
+    public static String transformToHTMLSubset(String text) {
 
-        if (s == null) {
+        if (text == null) {
             return null;
         }
 
-        s = replace(s, OPENING_B_TAG_PATTERN, "<b>");
+        String s = replace(text, OPENING_B_TAG_PATTERN, "<b>");
         s = replace(s, CLOSING_B_TAG_PATTERN, "</b>");
         s = replace(s, OPENING_I_TAG_PATTERN, "<i>");
         s = replace(s, CLOSING_I_TAG_PATTERN, "</i>");

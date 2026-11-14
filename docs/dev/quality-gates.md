@@ -188,8 +188,20 @@ the next person who trips one:
 - `EnumComparison` makes `entry.getStatus() == PubStatus.X` legal where the
   old `getStatus().equals(...)` threw on a null status.
 
+**Defect rules added 2026-11-13 (same pass), each site read by hand**, so the
+ruleset now names 36:
+
+- `AvoidReassigningParameters` (42 sites). A parameter keeps the caller's
+  value; a normalised copy gets its own name. Two sites were defects:
+  `RegexUtil.obfuscateEmail` replaced the first `@` and the first look-alike
+  of the domain anywhere in the text (a regex built from the match) while
+  still matching the original, so `"@jake ... a@b.com"` mangled the handle
+  and left the address; `GenericThrottle` repaired a negative cache size but
+  let zero through, a cache that forgets every client, so nobody was ever
+  throttled.
+
 Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
-`Date`-typed), `AvoidCatchingGenericException` (213),
+`Date`-typed), `AvoidCatchingGenericException` (213; see "Generic catches"),
 `UseConcurrentHashMap` (96), `AvoidLiteralsInIfCondition` and
 `AvoidDuplicateLiterals`. They are opinion or noise here. Also tried in the
 2026-11 pass and declined: `UseVarargs` (15 sites: a Spring `@RequestParam`
@@ -395,3 +407,43 @@ through to (every one today falls to `false`, i.e. deny or degrade;
 `PressroomHandlerInterceptor.preHandle` is fail-closed because a
 swallowed weblog lookup leaves `actionWeblog` null and `enforceSecurity`
 then refuses).
+
+## Generic catches
+
+PMD's `AvoidCatchingGenericException` is not gated, and will not be: of its
+247 sites (2026-11-13) most are boundaries where a broad catch is the
+design, not an oversight. A controller action that answers "check the logs"
+rather than a 500; a servlet that answers 404 for any request it cannot
+parse; a background task loop; a plugin or shortcode callback; a best-effort
+side effect after a commit (an event, a revision, a search-index note); a
+display path that must render. 77 of them already wrote
+`catch (WebloggerException | RuntimeException e)` on purpose. Holding the
+rule would have meant a suppression at well over a third of its sites.
+
+What is gated instead is SpotBugs `REC_CATCH_EXCEPTION`, which left the
+`exclude.xml` family at zero on 2026-11-13. It flags a `catch (Exception)`
+whose try block throws no `Exception` itself, so the catch silently takes
+runtime faults too. The fix is to say what is caught:
+
+- One failure mode: catch it (`Integer.parseInt` takes
+  `NumberFormatException`, a session lookup `IllegalStateException`).
+- Checked exceptions plus runtime faults on purpose: list them and write the
+  `RuntimeException` out, with a comment when the reason is not obvious (a
+  parser of untrusted bytes such as metadata-extractor fails on a malformed
+  file with whatever its parser hit).
+- SpotBugs flags only some shapes of `catch (Exception)`; it is a floor, not
+  a review. Ask the questions below of any broad catch you write.
+
+**An `InterruptedException` inside a broad catch is a defect.** `waitFor`,
+`sleep` and `Future.get` clear the thread's interrupt flag when they throw,
+so a `catch (Exception)` around them that does not call
+`Thread.currentThread().interrupt()` loses the request to stop. Catch it
+on its own, stop whatever the thread was waiting on, and restore the flag
+(`CwebpEncoder.run`, pinned by `CwebpEncoderTest`).
+
+**A broad catch in a decision path fails closed** (see "Log-only catches"
+above). The 2026-11-13 sweep of every generic catch in a `validate`/`check`/
+permission method found each one already did: `PressroomHandlerInterceptor`,
+`ApiTokenAuthFilter`, `UtilitiesModel`'s permission checks, `WeblogEditors`
+and the lease in `JPAThreadManagerImpl` all fall to deny or skip.
+

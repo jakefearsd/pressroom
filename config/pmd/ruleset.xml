@@ -6,9 +6,9 @@
 
     <description>
         Pressroom's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules, plus 35 named rules chosen from the other categories (the
-        21 defect-finding rules of 2026-10 and the 14 hygiene rules of 2026-11;
-        see the groups below). Zero tolerance: see
+        minus six rules, plus 36 named rules chosen from the other categories (the
+        21 defect-finding rules of 2026-10, the 14 hygiene rules of 2026-11 and
+        the defect rules added after them; see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
 
         A rule is excluded only when violating it is SYSTEMATICALLY not a defect
@@ -151,4 +151,14 @@
     <rule ref="category/java/design.xml/ImmutableField"/>
     <rule ref="category/java/codestyle.xml/PrematureDeclaration"/>
     <rule ref="category/java/codestyle.xml/LinguisticNaming"/>
+
+    <!-- Added 2026-11, maintenance pass: rules that find defects, each site
+         read and fixed by hand. -->
+
+    <!-- A parameter keeps the value the caller passed. Two of the 42 sites
+         were defects of the shape this hides: RegexUtil rewrote the text it
+         was searching while still matching the original, and so edited the
+         wrong address; GenericThrottle repaired a negative cache size but
+         let zero through, which turned the throttle off. -->
+    <rule ref="category/java/bestpractices.xml/AvoidReassigningParameters"/>
 </ruleset>

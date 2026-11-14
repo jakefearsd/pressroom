@@ -1410,12 +1410,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             queryString.append(" AND w.name LIKE ?").append(size);
         }
                     
-        if (sortBy != null && "count".equals(sortBy)) {
-            sortBy = "w.total DESC";
-        } else {
-            sortBy = "w.name";
-        }
-        queryString.append(" GROUP BY w.name, w.total ORDER BY ").append(sortBy);
+        String orderBy = "count".equals(sortBy) ? "w.total DESC" : "w.name";
+        queryString.append(" GROUP BY w.name, w.total ORDER BY ").append(orderBy);
 
         query = strategy.getDynamicQuery(queryString.toString());
         bindParams(query, params);

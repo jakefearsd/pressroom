@@ -131,20 +131,21 @@ public class SQLScriptRunner {
      * @param currentTag the tag already open before this line, or {@code null}
      */
     private static String scanDollarQuotes(String line, String currentTag) {
+        String open = currentTag;
         Matcher m = DOLLAR_QUOTE.matcher(line);
         while (m.find()) {
             String tag = m.group().substring(1, m.group().length() - 1);
-            if (currentTag == null) {
+            if (open == null) {
                 // not inside a dollar-quote: this delimiter opens one
-                currentTag = tag;
-            } else if (tag.equals(currentTag)) {
+                open = tag;
+            } else if (tag.equals(open)) {
                 // matches the open delimiter's tag: this closes it
-                currentTag = null;
+                open = null;
             }
             // any other delimiter found while a different one is open is just
             // content (e.g. a "$foo$" literal inside a "$$ ... $$" body)
         }
-        return currentTag;
+        return open;
     }
     
     

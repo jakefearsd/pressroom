@@ -201,15 +201,11 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     /**
      * This method compares the property definitions in the RuntimeConfigDefs
      * file with the properties in the given Map and initializes any properties
-     * that were not found in the Map.
+     * that were not found in the Map, adding them to it.
      *
-     * If the Map of props is empty/null then we will initialize all properties.
+     * If the Map of props is empty then we will initialize all properties.
      **/
-    private Map<String, RuntimeConfigProperty> initializeMissingProps(Map<String, RuntimeConfigProperty> props) {
-
-        if(props == null) {
-            props = new HashMap<>();
-        }
+    private void initializeMissingProps(Map<String, RuntimeConfigProperty> props) {
 
         // start by getting our runtimeConfigDefs
         RuntimeConfigDefs runtimeConfigDefs =
@@ -217,7 +213,7 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
 
         // can't do initialization without our config defs
         if(runtimeConfigDefs == null) {
-            return props;
+            return;
         }
 
         // iterate through all the definitions and add properties
@@ -237,13 +233,11 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
                         props.put(propDef.getName(), newprop);
 
                         log.info("Property {} not yet in pressroom_properties database table, will store with "
-                            + "value of [{}`]", propDef.getName(), initialValue);
+                            + "value of [{}]", propDef.getName(), initialValue);
                     }
                 }
             }
         }
-
-        return props;
     }
 
 

@@ -60,15 +60,14 @@ public class GenericThrottle {
         // The cache is a bounded LRU, so the oldest clients are forgotten once it fills: a throttle is a
         // brake on bursts, not an audit of everyone who ever called. A bad size is repaired to the nearest
         // working value rather than rejected.
-        // max entries must be a positive value
-        if(maxEntries < 0) {
-            maxEntries = 1;
-        }
+        // max entries must be a positive value: a cache of none forgets
+        // every client as it is stored, and throttles nobody
+        int size = Math.max(maxEntries, 1);
         
         // cache props
         Map<String,String> cacheProps = new HashMap<>();
         cacheProps.put("id", "throttle");
-        cacheProps.put("size", String.valueOf(maxEntries));
+        cacheProps.put("size", String.valueOf(size));
         cacheProps.put("timeout", String.valueOf(this.interval));
         
         // get cache instance.  handler is null cuz we don't want to register it

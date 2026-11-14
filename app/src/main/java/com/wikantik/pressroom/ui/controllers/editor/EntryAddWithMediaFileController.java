@@ -68,13 +68,12 @@ public class EntryAddWithMediaFileController extends MediaFileBase {
         populateCommonModel(request, model);
 
         try {
-            if (StringUtils.isNotEmpty(selectedImage) && selectedImages == null) {
-                selectedImages = new String[]{selectedImage};
-            }
+            String[] images = StringUtils.isNotEmpty(selectedImage) && selectedImages == null
+                    ? new String[]{selectedImage} : selectedImages;
 
             StringBuilder sb = new StringBuilder();
-            if (selectedImages != null) {
-                for (String image : selectedImages) {
+            if (images != null) {
+                for (String image : images) {
                     // getMediaFile is a global by-id lookup; the snippet built
                     // below embeds the file's name and permalink in the draft.
                     MediaFile mediaFile = ownedMediaFile(image, request);

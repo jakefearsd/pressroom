@@ -156,9 +156,9 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     public MediaFileDirectory createMediaFileDirectory(Weblog weblog,
             String requestedName) throws WebloggerException {
 
-        requestedName = requestedName.startsWith("/") ? requestedName.substring(1) : requestedName;
+        String name = requestedName.startsWith("/") ? requestedName.substring(1) : requestedName;
 
-        if (requestedName.isEmpty() || "default".equals(requestedName)) {
+        if (name.isEmpty() || "default".equals(name)) {
             // Default cannot be created using this method.
             // Use createDefaultMediaFileDirectory instead
             throw new WebloggerException("Invalid name!");
@@ -166,11 +166,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
         MediaFileDirectory newDirectory;
 
-        if (weblog.hasMediaFileDirectory(requestedName)) {
+        if (weblog.hasMediaFileDirectory(name)) {
             throw new WebloggerException("Directory exists");
         } else {
-            newDirectory = new MediaFileDirectory(weblog, requestedName, null);
-            log.debug("Created new Directory {}", requestedName);
+            newDirectory = new MediaFileDirectory(weblog, name, null);
+            log.debug("Created new Directory {}", name);
         }
 
         // update weblog last modified date. date updated by saveWeblog()
@@ -539,14 +539,14 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     public MediaFileDirectory getMediaFileDirectoryByName(Weblog weblog,
             String name) throws WebloggerException {
 
-        name = name.startsWith("/") ? name.substring(1) : name;
+        String relative = name.startsWith("/") ? name.substring(1) : name;
 
-        log.debug("Looking up weblog|media file directory: {}|{}", weblog.getHandle(), name);
+        log.debug("Looking up weblog|media file directory: {}|{}", weblog.getHandle(), relative);
 
         TypedQuery<MediaFileDirectory> q = this.strategy
                 .getNamedQuery("MediaFileDirectory.getByWeblogAndName", MediaFileDirectory.class);
         q.setParameter(1, weblog);
-        q.setParameter(2, name);
+        q.setParameter(2, relative);
         try {
             return q.getSingleResult();
         } catch (NoResultException e) {
@@ -580,14 +580,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             return null;
         }
 
-        if (!origpath.startsWith("/")) {
-            origpath = "/" + origpath;
-        }
+        String rooted = origpath.startsWith("/") ? origpath : "/" + origpath;
 
         TypedQuery<MediaFile> q = this.strategy
                 .getNamedQuery("MediaFile.getByWeblogAndOrigpath", MediaFile.class);
         q.setParameter(1, weblog);
-        q.setParameter(2, origpath);
+        q.setParameter(2, rooted);
         MediaFile mf;
         try {
             mf = q.getSingleResult();

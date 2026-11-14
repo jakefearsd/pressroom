@@ -44,36 +44,22 @@ public final class RegexUtil {
     public static String encodeEmail(String str) {
         // obfuscate mailto's: turns them into hex encoded,
         // so that browsers can still understand the mailto link
-        Matcher mailtoMatch = MAILTO_PATTERN.matcher(str);
-        while (mailtoMatch.find()) {
-            String email = mailtoMatch.group(1);
-            //System.out.println("email=" + email);
-            String hexed = encode(email);
-            str = str.replaceFirst("mailto:"+email, "mailto:"+hexed);
-        }
-        
-        return obfuscateEmail(str);
+        String hexedMailtos = MAILTO_PATTERN.matcher(str)
+                .replaceAll(m -> Matcher.quoteReplacement("mailto:" + encode(m.group(1))));
+        return obfuscateEmail(hexedMailtos);
     }
     
     
     /**
      * obfuscate plaintext emails: makes them
      * "human-readable" - still too easy for
-     * machines to parse however.
+     * machines to parse however. Each address is rewritten where it was
+     * matched: its "@" becomes "-AT-" and the dot before its top-level
+     * domain "-DOT-".
      */
     public static String obfuscateEmail(String str) {
-        Matcher emailMatch = EMAIL_PATTERN.matcher(str);
-        while (emailMatch.find()) {
-            String at = emailMatch.group(1);
-            //System.out.println("at=" + at);
-            str = str.replaceFirst(at, "-AT-");
-            
-            String dot = emailMatch.group(2) + emailMatch.group(3) + emailMatch.group(4);
-            String newDot = emailMatch.group(2) + "-DOT-" + emailMatch.group(4);
-            //System.out.println("dot=" + dot);
-            str = str.replaceFirst(dot, newDot);
-        }
-        return str;
+        return EMAIL_PATTERN.matcher(str).replaceAll(m -> Matcher.quoteReplacement(
+                str.substring(m.start(), m.start(1)) + "-AT-" + m.group(2) + "-DOT-" + m.group(4)));
     }
     
     

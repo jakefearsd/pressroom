@@ -70,10 +70,7 @@ public abstract class DateUtil {
      * midnight (00m 00h 00s)
      */
     public static Date getStartOfDay(Date day, Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.HOUR_OF_DAY, cal.getMinimum(Calendar.HOUR_OF_DAY));
         cal.set(Calendar.MINUTE,      cal.getMinimum(Calendar.MINUTE));
         cal.set(Calendar.SECOND,      cal.getMinimum(Calendar.SECOND));
@@ -93,10 +90,7 @@ public abstract class DateUtil {
     
     
     public static Date getEndOfDay(Date day,Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.HOUR_OF_DAY, cal.getMaximum(Calendar.HOUR_OF_DAY));
         cal.set(Calendar.MINUTE,      cal.getMaximum(Calendar.MINUTE));
         cal.set(Calendar.SECOND,      cal.getMaximum(Calendar.SECOND));
@@ -119,10 +113,7 @@ public abstract class DateUtil {
      * If a null day is passed in, a new Date is created.
      */
     public static Date getStartOfHour(Date day, Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.MINUTE,      cal.getMinimum(Calendar.MINUTE));
         cal.set(Calendar.SECOND,      cal.getMinimum(Calendar.SECOND));
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
@@ -167,10 +158,7 @@ public abstract class DateUtil {
      * If a null day is passed in, a new Date is created.
      */
     public static Date getStartOfMinute(Date day, Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.SECOND,      cal.getMinimum(Calendar.SECOND));
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
         return cal.getTime();
@@ -209,10 +197,7 @@ public abstract class DateUtil {
     
     
     public static Date getStartOfMonth(Date day, Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         
         // set time to start of day
         cal.set(Calendar.HOUR_OF_DAY, cal.getMinimum(Calendar.HOUR_OF_DAY));
@@ -238,10 +223,7 @@ public abstract class DateUtil {
     
     
     public static Date getEndOfMonth(Date day,Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         
         // set time to end of day
         cal.set(Calendar.HOUR_OF_DAY, cal.getMaximum(Calendar.HOUR_OF_DAY));
@@ -268,10 +250,7 @@ public abstract class DateUtil {
      * noon (00m 12h 00s)
      */
     public static Date getNoonOfDay(Date day, Calendar cal) {
-        if (day == null) {
-            day = new Date();
-        }
-        cal.setTime(day);
+        cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.HOUR_OF_DAY, 12);
         cal.set(Calendar.MINUTE,      cal.getMinimum(Calendar.MINUTE));
         cal.set(Calendar.SECOND,      cal.getMinimum(Calendar.SECOND));

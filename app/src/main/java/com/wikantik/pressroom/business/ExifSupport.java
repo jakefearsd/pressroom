@@ -187,9 +187,9 @@ public final class ExifSupport {
      * to "Canon EOS R5" (avoiding the duplicated make many cameras embed in Model),
      * or "Canon" + "EOS R5" to "Canon EOS R5". Returns null if both are blank.
      */
-    private static String combineMakeAndModel(String make, String model) {
-        make = nullIfBlank(make);
-        model = nullIfBlank(model);
+    private static String combineMakeAndModel(String rawMake, String rawModel) {
+        String make = nullIfBlank(rawMake);
+        String model = nullIfBlank(rawModel);
         if (make == null) {
             return model;
         }

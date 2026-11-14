@@ -108,6 +108,8 @@ public class MediaFileViewController extends MediaFileBase {
                                      @RequestParam(value = "sortBy", required = false) String sortBy) {
         populateCommonModel(request, model);
 
+        // the folder shown afterwards: the new one once it exists
+        String shownId = directoryId;
         if (StringUtils.isEmpty(newDirectoryName)) {
             addError(model, "mediaFile.error.view.dirNameEmpty", request);
         } else if (newDirectoryName.contains("/")) {
@@ -120,7 +122,7 @@ public class MediaFileViewController extends MediaFileBase {
                     weblogger.flush();
                     addMessage(model, "mediaFile.directoryCreate.success",
                             StringEscapeUtils.escapeHtml4(newDirectoryName), request);
-                    directoryId = dir.getId();
+                    shownId = dir.getId();
                 } else {
                     addError(model, "mediaFile.directoryCreate.error.exists", StringEscapeUtils.escapeHtml4(newDirectoryName), request);
                 }
@@ -132,7 +134,7 @@ public class MediaFileViewController extends MediaFileBase {
 
         model.addAttribute("allDirectories", refreshAllDirectories(request));
         loadDropdowns(request, model);
-        loadDirectory(request, model, directoryId, null, sortBy);
+        loadDirectory(request, model, shownId, null, sortBy);
         return ".MediaFileView";
     }
 
@@ -169,6 +171,8 @@ public class MediaFileViewController extends MediaFileBase {
                                @RequestParam(value = "sortBy", required = false) String sortBy) {
         populateCommonModel(request, model);
 
+        // the folder shown afterwards: the default one once this is gone
+        String shownId = directoryId;
         try {
             MediaFileManager manager = weblogger.getMediaFileManager();
             MediaFileDirectory mediaFileDir = ownedDirectory(directoryId, request);
@@ -180,15 +184,14 @@ public class MediaFileViewController extends MediaFileBase {
                 addMessage(model, "mediaFile.deleteFolder.success", request);
                 CacheManager.invalidate(getActionWeblog(request));
 
-                mediaFileDir = manager.getDefaultMediaFileDirectory(getActionWeblog(request));
-                directoryId = mediaFileDir.getId();
+                shownId = manager.getDefaultMediaFileDirectory(getActionWeblog(request)).getId();
             } else if (StringUtils.isNotEmpty(directoryId)) {
                 // A folder delete is recursive; a global by-id lookup here let
                 // an editor on one weblog wipe another weblog's folder.
                 log.warn("Refusing to delete directory {}: not owned by weblog {}",
                         directoryId, getActionWeblog(request).getHandle());
                 addError(model, "mediaFile.deleteFolder.error", request);
-                directoryId = null;
+                shownId = null;
             }
         } catch (WebloggerException ex) {
             log.error("Error deleting folder", ex);
@@ -197,7 +200,7 @@ public class MediaFileViewController extends MediaFileBase {
 
         model.addAttribute("allDirectories", refreshAllDirectories(request));
         loadDropdowns(request, model);
-        loadDirectory(request, model, directoryId, null, sortBy);
+        loadDirectory(request, model, shownId, null, sortBy);
         return ".MediaFileView";
     }
 
@@ -317,6 +320,7 @@ public class MediaFileViewController extends MediaFileBase {
                 directory = manager.getDefaultMediaFileDirectory(getActionWeblog(request));
             }
 
+            String shownSort = sortBy;
             if (directory != null) {
                 List<MediaFile> childFiles = new ArrayList<>(directory.getMediaFiles());
 
@@ -325,7 +329,7 @@ public class MediaFileViewController extends MediaFileBase {
                 } else if ("date_uploaded".equals(sortBy)) {
                     childFiles.sort(new MediaFileComparator(MediaFileComparatorType.DATE_UPLOADED));
                 } else {
-                    sortBy = "name";
+                    shownSort = "name";
                     childFiles.sort(new MediaFileComparator(MediaFileComparatorType.NAME));
                 }
 
@@ -335,7 +339,7 @@ public class MediaFileViewController extends MediaFileBase {
                 model.addAttribute("directoryName", directory.getName());
                 model.addAttribute("viewDirectoryId", directory.getId());
             }
-            model.addAttribute("sortBy", sortBy);
+            model.addAttribute("sortBy", shownSort);
 
         } catch (Exception ex) {
             log.error("Error viewing media file directory", ex);

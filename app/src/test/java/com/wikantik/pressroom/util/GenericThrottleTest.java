@@ -127,6 +127,21 @@ public class GenericThrottleTest {
         assertFalse(throttle.processHit("1.2.3.4"));
     }
 
+    /**
+     * A size of zero is repaired too. Let through, it made a cache that
+     * forgets every client the moment it is stored, so nobody was ever
+     * throttled however often they called.
+     */
+    @Test
+    public void aZeroCacheSizeIsRepairedRatherThanDisablingTheThrottle() {
+        GenericThrottle throttle = new GenericThrottle(1, ONE_MINUTE, 0);
+
+        throttle.processHit("1.2.3.4");
+        throttle.processHit("1.2.3.4");
+
+        assertTrue(throttle.isAbusive("1.2.3.4"));
+    }
+
     @Test
     public void theOldestClientIsForgottenWhenTheCacheIsFull() {
         // maxEntries bounds the memory the throttle can consume; the cost is

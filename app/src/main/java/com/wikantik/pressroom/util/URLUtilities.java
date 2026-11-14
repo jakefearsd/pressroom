@@ -127,14 +127,15 @@ public final class URLUtilities {
      * URL encode a path string using UTF-8. The path separator '/' will not be encoded
      */
     public static String encodePath(String path) {
-        int i = path.indexOf('/');
         StringBuilder sb = new StringBuilder();
+        int from = 0;
+        int i = path.indexOf('/');
         while (i != -1) {
-            sb.append(encode(path.substring(0, i))).append('/');
-            path = path.substring(i + 1);
-            i = path.indexOf('/');
+            sb.append(encode(path.substring(from, i))).append('/');
+            from = i + 1;
+            i = path.indexOf('/', from);
         }
-        sb.append(encode(path));
+        sb.append(encode(path.substring(from)));
         return sb.toString();
     }
 }

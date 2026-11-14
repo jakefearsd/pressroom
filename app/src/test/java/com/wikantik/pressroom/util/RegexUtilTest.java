@@ -80,6 +80,24 @@ public class RegexUtilTest  {
                 RegexUtil.obfuscateEmail("one@a.com and two@b.org"));
     }
 
+    /**
+     * The rewrite lands on the address it matched. It used to replace the
+     * first "@" and the first look-alike of the domain anywhere in the text,
+     * so a handle before the address was mangled and the address left whole.
+     */
+    @Test
+    public void obfuscationRewritesTheMatchedAddressNotAnEarlierAt() {
+        assertEquals("Follow @jake or mail a-AT-b-DOT-com",
+                RegexUtil.obfuscateEmail("Follow @jake or mail a@b.com"));
+    }
+
+    /** The domain is matched as text: its dots are not regex wildcards. */
+    @Test
+    public void obfuscationTreatsTheDomainLiterally() {
+        assertEquals("bxcom then a-AT-b-DOT-com",
+                RegexUtil.obfuscateEmail("bxcom then a@b.com"));
+    }
+
     @Test
     public void obfuscationKeepsTheSubdomainAndOnlyRewritesTheLastDot() {
         // "user@mail.example.com" must stay recognisable to a human reader.

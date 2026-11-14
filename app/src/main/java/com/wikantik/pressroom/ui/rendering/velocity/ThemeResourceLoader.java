@@ -99,19 +99,20 @@ public class ThemeResourceLoader extends ResourceLoader {
                 ? StandardCharsets.UTF_8.name() : encoding;
 
         RenditionType renditionType = RenditionType.STANDARD;
+        String templateName = name;
         if (name.contains("|")) {
             String[] pair = name.split("\\|");
-            name = pair[0];
+            templateName = pair[0];
             renditionType = RenditionType.valueOf(pair[1].toUpperCase(Locale.ROOT));
         }
 
         try {
             // parse the name ... theme template names are
             // <theme>:<template>|<renditionType> (e.g., mytheme:mytemplate|standard)
-            String[] split = name.split(":", 2);
+            String[] split = templateName.split(":", 2);
             if (split.length < 2) {
                 throw new ResourceNotFoundException("Invalid ThemeRL key "
-                        + name);
+                        + templateName);
             }
 
             // lookup the template from the proper theme

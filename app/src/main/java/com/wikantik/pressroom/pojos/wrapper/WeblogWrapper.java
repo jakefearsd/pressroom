@@ -398,11 +398,8 @@ public final class WeblogWrapper {
      * @param length Max entries to return (1-100)
      */
     public List<WeblogEntryWrapper> getRecentWeblogEntries(String cat, int length) {
-        if (cat != null && "nil".equals(cat)) {
-            cat = null;
-        }
         WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
-        wesc.setCatName(cat);
+        wesc.setCatName("nil".equals(cat) ? null : cat);
         return recentEntries(wesc, length);
     }
     
@@ -413,11 +410,8 @@ public final class WeblogWrapper {
      * @param length Max entries to return (1-100)
      */
     public List<WeblogEntryWrapper> getRecentWeblogEntriesByTag(String tag, int length) {
-        if (tag != null && "nil".equals(tag)) {
-            tag = null;
-        }
         WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
-        wesc.setTags(tag != null ? List.of(tag) : Collections.emptyList());
+        wesc.setTags(tag != null && !"nil".equals(tag) ? List.of(tag) : Collections.emptyList());
         return recentEntries(wesc, length);
     }
 
@@ -428,16 +422,13 @@ public final class WeblogWrapper {
      * when the query fails -- a sidebar must not take the page down.
      */
     private List<WeblogEntryWrapper> recentEntries(WeblogEntrySearchCriteria wesc, int length) {
-        if (length > MAX_ENTRIES) {
-            length = MAX_ENTRIES;
-        }
         if (length < 1) {
             return Collections.emptyList();
         }
         try {
             wesc.setWeblog(this.pojo);
             wesc.setStatus(WeblogEntry.PubStatus.PUBLISHED);
-            wesc.setMaxResults(length);
+            wesc.setMaxResults(Math.min(length, MAX_ENTRIES));
             return weblogger.getWeblogEntryManager().getWeblogEntries(wesc).stream()
                     .map(entry -> WeblogEntryWrapper.wrap(entry, urlStrategy, weblogger))
                     .collect(Collectors.toList());

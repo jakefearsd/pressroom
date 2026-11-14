@@ -95,20 +95,21 @@ public class PressroomResourceLoader extends ResourceLoader {
 
 		// theme template names are <template>|<renditionType> (e.g., mytemplate|standard)
 		RenditionType renditionType = RenditionType.STANDARD;
+		String templateName = name;
 		if (name.contains("|")) {
 			String[] pair = name.split("\\|");
-			name = pair[0];
+			templateName = pair[0];
 			renditionType = RenditionType.valueOf(pair[1].toUpperCase(Locale.ROOT));
 		}
 
-		log.debug("   Actually, it's {}", name);
+		log.debug("   Actually, it's {}", templateName);
 
 		try {
-			WeblogTemplate page = weblogger.getWeblogManager().getTemplate(name);
+			WeblogTemplate page = weblogger.getWeblogManager().getTemplate(templateName);
 
 			if (page == null) {
 				throw new ResourceNotFoundException(
-						"PressroomResourceLoader: page \"" + name + "\" not found");
+						"PressroomResourceLoader: page \"" + templateName + "\" not found");
 			}
 			String contents = "";
 			TemplateRendition templateCode = page.getTemplateRendition(renditionType);
@@ -132,7 +133,7 @@ public class PressroomResourceLoader extends ResourceLoader {
 
 		} catch (WebloggerException | ResourceNotFoundException re) {
 			String msg = "PressroomResourceLoader Error: "
-					+ "database problem trying to load resource " + name;
+					+ "database problem trying to load resource " + templateName;
 //			log.error(msg, re);
 			throw new ResourceNotFoundException(msg, re);
 		}

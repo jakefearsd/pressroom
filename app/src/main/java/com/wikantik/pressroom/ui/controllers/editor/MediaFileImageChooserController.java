@@ -100,10 +100,8 @@ public class MediaFileImageChooserController extends MediaFileBase {
                 }
             } else if (directoryName != null) {
                 directory = manager.getMediaFileDirectoryByName(getActionWeblog(request), directoryName);
-                directoryId = directory.getId();
             } else {
                 directory = manager.getDefaultMediaFileDirectory(getActionWeblog(request));
-                directoryId = directory.getId();
             }
 
             // imagesOnly: the featured-image and social-image pickers, where
@@ -116,7 +114,7 @@ public class MediaFileImageChooserController extends MediaFileBase {
 
             model.addAttribute("childFiles", childFiles);
             model.addAttribute("currentDirectory", directory);
-            model.addAttribute("directoryId", directoryId);
+            model.addAttribute("directoryId", directory.getId());
 
             // List of available directories
             List<MediaFileDirectory> sortedDirList = new ArrayList<>();
