@@ -218,19 +218,16 @@ public final class ShortcodeExpander {
         while (last < text.length() && matcher.find(last)) {
             String name = matcher.group(2).toLowerCase(Locale.ROOT);
             ShortcodeHandler handler = handlers.get(name);
+            expandedAnything |= appendPlainText(out, text, last, matcher.start());
             if (handler == null) {
                 // Unknown shortcode: pass through unchanged (forward-compat).
-                expandedAnything |= appendPlainText(out, text, last, matcher.start());
                 out.append(text, matcher.start(), matcher.end());
                 last = matcher.end();
                 continue;
             }
 
-            expandedAnything |= appendPlainText(out, text, last, matcher.start());
-
             boolean doubledBracket = !matcher.group(1).isEmpty();
-            if (doubledBracket && matcher.end() < text.length()
-                    && text.charAt(matcher.end()) == ']') {
+            if (doubledBracket && closesDoubled(text, matcher.end())) {
                 // [[name ...]] is the escape form: emit the literal [name ...]
                 out.append(text, matcher.start() + 1, matcher.end());
                 last = matcher.end() + 1;
@@ -242,46 +239,14 @@ public final class ShortcodeExpander {
                 out.append('[');
             }
             int tagStart = matcher.start() + (doubledBracket ? 1 : 0);
-
-            boolean selfClosing = isSelfClosing(matcher.group(3), matcher.group(4));
-            String attributeText = matcher.group(3);
-            if (selfClosing) {
-                // strip the explicit self-close slash so it never reads as
-                // part of a bare attribute value
-                String stripped = attributeText.stripTrailing();
-                if (stripped.endsWith("/")) {
-                    attributeText = stripped.substring(0, stripped.length() - 1);
-                }
-            }
-
-            // Body: text up to the MATCHING [/name] (nested same-name opens
-            // are balanced), unless written self-closing.
-            String body = null;
-            int consumedEnd = matcher.end();
-            if (!selfClosing) {
-                int closerAt = findMatchingCloser(text, name, matcher.end());
-                if (closerAt >= 0) {
-                    body = expand(content, text.substring(matcher.end(), closerAt), reads, depth + 1);
-                    consumedEnd = closerAt + name.length() + 3; // "[/" + name + "]"
-                }
-            }
-
-            String replacement = null;
-            try {
-                replacement = handler.render(parseAttributes(attributeText), body, content, reads);
-            } catch (Exception e) {
-                log.warn("Shortcode [{}] handler failed; leaving the "
-                        + "shortcode text as the author wrote it", name, e);
-                // a degraded render, not the render: never kept
-                reads.readFrom(null);
-            }
-            if (replacement != null) {
-                out.append(replacement);
+            Rendered rendered = render(content, text, reads, depth, matcher, name, handler);
+            if (rendered.replacement() != null) {
+                out.append(rendered.replacement());
                 expandedAnything = true;
             } else {
-                out.append(text, tagStart, consumedEnd);
+                out.append(text, tagStart, rendered.consumedEnd());
             }
-            last = consumedEnd;
+            last = rendered.consumedEnd();
         }
 
         expandedAnything |= appendPlainText(out, text, last, text.length());
@@ -289,6 +254,55 @@ public final class ShortcodeExpander {
             return text;
         }
         return out.toString();
+    }
+
+    /** What one registered tag rendered to (null: leave it as written) and where it ended. */
+    private record Rendered(String replacement, int consumedEnd) {
+    }
+
+    /** Whether the text at {@code at} is the {@code ]} that closes a doubled-bracket form. */
+    private static boolean closesDoubled(String text, int at) {
+        return at < text.length() && text.charAt(at) == ']';
+    }
+
+    /**
+     * Renders the registered tag {@code matcher} found: its attributes, and
+     * the body up to the MATCHING {@code [/name]} (nested same-name opens
+     * are balanced, and the body is expanded first) unless it is written
+     * self-closing or has no closer. A handler that fails leaves the tag as
+     * the author wrote it.
+     */
+    private Rendered render(ShortcodeContext content, String text, ShortcodeReads reads, int depth,
+            Matcher matcher, String name, ShortcodeHandler handler) {
+        boolean selfClosing = isSelfClosing(matcher.group(3), matcher.group(4));
+        String attributeText = matcher.group(3);
+        if (selfClosing) {
+            // strip the explicit self-close slash so it never reads as
+            // part of a bare attribute value
+            String stripped = attributeText.stripTrailing();
+            if (stripped.endsWith("/")) {
+                attributeText = stripped.substring(0, stripped.length() - 1);
+            }
+        }
+
+        String body = null;
+        int consumedEnd = matcher.end();
+        int closerAt = selfClosing ? -1 : findMatchingCloser(text, name, matcher.end());
+        if (closerAt >= 0) {
+            body = expand(content, text.substring(matcher.end(), closerAt), reads, depth + 1);
+            consumedEnd = closerAt + name.length() + 3; // "[/" + name + "]"
+        }
+
+        try {
+            return new Rendered(handler.render(parseAttributes(attributeText), body, content, reads),
+                    consumedEnd);
+        } catch (Exception e) {
+            log.warn("Shortcode [{}] handler failed; leaving the "
+                    + "shortcode text as the author wrote it", name, e);
+            // a degraded render, not the render: never kept
+            reads.readFrom(null);
+            return new Rendered(null, consumedEnd);
+        }
     }
 
     /**
@@ -380,10 +394,7 @@ public final class ShortcodeExpander {
         int idx;
         while ((idx = text.indexOf('[', pos)) >= 0) {
             if (text.regionMatches(true, idx, closer, 0, closer.length())) {
-                boolean escapedCloser = idx > 0 && text.charAt(idx - 1) == '['
-                        && idx + closer.length() < text.length()
-                        && text.charAt(idx + closer.length()) == ']';
-                if (escapedCloser) {
+                if (idx > 0 && text.charAt(idx - 1) == '[' && closesDoubled(text, idx + closer.length())) {
                     // [[/name]]: a literal mention, not structure.
                     pos = idx + closer.length() + 1;
                     continue;
@@ -403,9 +414,7 @@ public final class ShortcodeExpander {
             if (open.lookingAt()) {
                 // A well-formed tag (any name): skip its whole span so its
                 // quoted attribute values are opaque to this scan.
-                boolean escapedOpen = !open.group(1).isEmpty()
-                        && open.end() < text.length()
-                        && text.charAt(open.end()) == ']';
+                boolean escapedOpen = !open.group(1).isEmpty() && closesDoubled(text, open.end());
                 boolean opensABody = !escapedOpen
                         && open.group(2).equalsIgnoreCase(name)
                         && !isSelfClosing(open.group(3), open.group(4));
