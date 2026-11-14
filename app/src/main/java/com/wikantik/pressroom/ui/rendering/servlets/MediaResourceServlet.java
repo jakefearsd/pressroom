@@ -38,7 +38,6 @@ import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.FileContentManager;
-import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.RenditionSupport;
 import com.wikantik.pressroom.pojos.FileContent;
 import com.wikantik.pressroom.pojos.MediaFile;
@@ -86,11 +85,8 @@ public class MediaResourceServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        MediaFileManager mfMgr = weblogger.getMediaFileManager();
-
-        Weblog weblog;
-
         WeblogMediaResourceRequest resourceRequest;
+        Weblog weblog;
         try {
             // parse the incoming request and extract the relevant data
             resourceRequest = new WeblogMediaResourceRequest(weblogger, request);
@@ -112,19 +108,67 @@ public class MediaResourceServlet extends HttpServlet {
             return;
         }
 
-        long resourceLastMod;
+        MediaFile mediaFile = servableMediaFile(resourceRequest, weblog, response);
+        if (mediaFile == null) {
+            return;
+        }
+
+        // A ?w= URL serves different bytes and a different Content-Type
+        // depending on the request's Accept header (webp sibling vs raster
+        // rendition), so any shared cache must key on that header. Set before
+        // the 304 branch below so revalidation responses carry it too.
+        boolean renditionRequest = RenditionSupport.ladderWidths()
+                .contains(resourceRequest.getWidth());
+        if (renditionRequest) {
+            response.setHeader("Vary", "Accept");
+        }
+
+        // Respond with 304 Not Modified if it is not modified.
+        long resourceLastMod = mediaFile.getLastModified();
+        if (ModDateHeaderUtil.respondIfNotModified(request, response,
+                resourceLastMod)) {
+            return;
+        }
+        ModDateHeaderUtil.setLastModifiedHeader(response, resourceLastMod);
+
+        Served served = null;
+        if (resourceRequest.isThumbnail()) {
+            served = thumbnail(mediaFile);
+        } else if (renditionRequest) {
+            served = rendition(request, weblog, mediaFile, resourceRequest.getWidth());
+        }
+        if (served == null) {
+            served = new Served(mediaFile.getContentType(), mediaFile.getInputStream());
+        }
+        // The type is the uploader's claim: never sniffed, and anything that
+        // could run script on this origin is sandboxed (MediaResponseHeaders).
+        response.setContentType(MediaResponseHeaders.apply(response, served.contentType()));
+
+        serve(served.stream(), mediaFile, response);
+    }
+
+    /**
+     * The media file the request names, when this weblog may serve it to
+     * this requester; otherwise null, with the 404 already sent. The three
+     * refusals answer alike: an unknown id, a file of another weblog, and a
+     * private file asked for by someone who may not edit the weblog.
+     */
+    private MediaFile servableMediaFile(WeblogMediaResourceRequest resourceRequest, Weblog weblog,
+            HttpServletResponse response) throws IOException {
         MediaFile mediaFile;
-
         try {
-            mediaFile = mfMgr.getMediaFile(resourceRequest.getResourceId(),
+            mediaFile = weblogger.getMediaFileManager().getMediaFile(resourceRequest.getResourceId(),
                     true);
-            resourceLastMod = mediaFile.getLastModified();
-
         } catch (Exception ex) {
             // still not found? then we don't have it, 404.
             log.debug("Unable to get resource", ex);
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
+            return null;
+        }
+        if (mediaFile == null || mediaFile.getLastUpdated() == null) {
+            log.debug("No servable media file {}", resourceRequest.getResourceId());
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return null;
         }
 
         // A media file is only addressable through its own weblog's URL
@@ -139,7 +183,7 @@ public class MediaResourceServlet extends HttpServlet {
             log.debug("media file {} does not belong to weblog {}", resourceRequest.getResourceId(),
                     weblog.getHandle());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
+            return null;
         }
 
         // A private directory's files are not served publicly at all. The
@@ -153,84 +197,66 @@ public class MediaResourceServlet extends HttpServlet {
                 log.debug("media file {} is in a private directory; not serving it on the base path",
                         resourceRequest.getResourceId());
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                return;
+                return null;
             }
             response.setHeader("Cache-Control", "private, no-store");
         }
+        return mediaFile;
+    }
 
-        // A ?w= URL serves different bytes and a different Content-Type
-        // depending on the request's Accept header (webp sibling vs raster
-        // rendition), so any shared cache must key on that header. Set before
-        // the 304 branch below so revalidation responses carry it too.
-        boolean renditionRequest = RenditionSupport.ladderWidths()
-                .contains(resourceRequest.getWidth());
-        if (renditionRequest) {
-            response.setHeader("Vary", "Accept");
+    /** The bytes to send and the type they are sent as. */
+    private record Served(String contentType, InputStream stream) {
+    }
+
+    /** The file's thumbnail, or null (the original is served) when it cannot be read. */
+    private static Served thumbnail(MediaFile mediaFile) {
+        try {
+            return new Served("image/png", mediaFile.getThumbnailInputStream());
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("ERROR loading thumbnail for {}", mediaFile.getId(), e);
+            } else {
+                log.warn("ERROR loading thumbnail for {}", mediaFile.getId());
+            }
+            return null;
         }
+    }
 
-        // Respond with 304 Not Modified if it is not modified.
-        if (ModDateHeaderUtil.respondIfNotModified(request, response,
-                resourceLastMod)) {
-            return;
-        } else {
-            // set last-modified date
-            ModDateHeaderUtil.setLastModifiedHeader(response, resourceLastMod);
-        }
+    /**
+     * A ladder width's rendition: its webp sibling when the reader takes
+     * webp and one was generated, else the raster rendition, else null (the
+     * original is served). Only a ladder width reaches here; any other ?w=
+     * value (including a syntactically valid width Pressroom never
+     * generates) falls straight through to the original.
+     */
+    private Served rendition(HttpServletRequest request, Weblog weblog, MediaFile mediaFile, int width) {
+        FileContentManager cmgr = weblogger.getFileContentManager();
 
-        // set the content type based on whatever is in our web.xml mime defs
-        String servedContentType = null;
-        InputStream resourceStream = null;
-        if (resourceRequest.isThumbnail()) {
-            servedContentType = "image/png";
+        if (acceptsWebp(request)) {
             try {
-                resourceStream = mediaFile.getThumbnailInputStream();
-            } catch (Exception e) {
-                if (log.isDebugEnabled()) {
-                    log.debug("ERROR loading thumbnail for {}", mediaFile.getId(), e);
-                } else {
-                    log.warn("ERROR loading thumbnail for {}", mediaFile.getId());
-                }
-            }
-        } else if (renditionRequest) {
-            // ?w= is validated against the ladder set only; any other value
-            // (including a syntactically valid width Pressroom never generates)
-            // falls straight through to the original below.
-            int width = resourceRequest.getWidth();
-            FileContentManager cmgr = weblogger.getFileContentManager();
-
-            if (acceptsWebp(request)) {
-                try {
-                    FileContent webp = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width + ".webp");
-                    resourceStream = webp.getInputStream();
-                    servedContentType = "image/webp";
-                } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
-                    // no webp sibling (cwebp unavailable at generation time, or
-                    // this width was never generated) -- fall through
-                    log.debug("No webp rendition for {} at width {}", mediaFile.getId(), width);
-                }
-            }
-
-            if (resourceStream == null) {
-                try {
-                    FileContent rendition = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width);
-                    resourceStream = rendition.getInputStream();
-                    servedContentType = mediaFile.getContentType();
-                } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
-                    // rendition was never generated (narrower than the original,
-                    // or generation failed) -- 404-safe fallback to the original
-                    log.debug("No {}w rendition for {}; serving original", width, mediaFile.getId());
-                }
+                FileContent webp = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width + ".webp");
+                return new Served("image/webp", webp.getInputStream());
+            } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
+                // no webp sibling (cwebp unavailable at generation time, or
+                // this width was never generated) -- fall through
+                log.debug("No webp rendition for {} at width {}", mediaFile.getId(), width);
             }
         }
 
-        if (resourceStream == null) {
-            servedContentType = mediaFile.getContentType();
-            resourceStream = mediaFile.getInputStream();
+        try {
+            FileContent rendition = cmgr.getFileContent(weblog, mediaFile.getId() + "_" + width);
+            return new Served(mediaFile.getContentType(), rendition.getInputStream());
+        } catch (FileNotFoundException | FilePathException | UncheckedIOException e) {
+            // rendition was never generated (narrower than the original,
+            // or generation failed) -- 404-safe fallback to the original
+            log.debug("No {}w rendition for {}; serving original", width, mediaFile.getId());
+            return null;
         }
-        // The type is the uploader's claim: never sniffed, and anything that
-        // could run script on this origin is sandboxed (MediaResponseHeaders).
-        response.setContentType(MediaResponseHeaders.apply(response, servedContentType));
+    }
 
+    /** Copies the stream to the reader and closes it; a reader who leaves is not an error. */
+    private static void serve(InputStream resourceStream, MediaFile mediaFile, HttpServletResponse response)
+            throws IOException {
         // make sure stream to resource file is closed
         try (InputStream in = resourceStream) {
             // ok, lets serve up the file
@@ -258,7 +284,6 @@ public class MediaResourceServlet extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         }
-
     }
 
     /**

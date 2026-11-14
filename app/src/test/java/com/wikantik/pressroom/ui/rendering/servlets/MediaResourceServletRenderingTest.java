@@ -1,6 +1,8 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import com.wikantik.pressroom.TestUtils;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import com.wikantik.pressroom.business.CwebpEncoder;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -391,6 +394,41 @@ class MediaResourceServletRenderingTest {
         assertNotEquals("image/webp", response.getContentType(),
                 "no webp sibling exists when cwebp was unavailable at generation time");
         assertEquals("image/jpeg", response.getContentType());
+    }
+
+    /**
+     * Characterisation test, written before doGet was split up and passing
+     * against the old code: the webp negotiation itself, without cwebp. A
+     * planted {@code <id>_480.webp} sibling is served as image/webp to a
+     * reader who accepts it, and the raster rendition to one who does not.
+     */
+    @Test
+    void aWebpSiblingOnDiskIsNegotiatedOnAccept() throws Exception {
+        CwebpEncoder.setAvailableForTesting(false);
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "plantedwebp.jpg");
+        byte[] planted = "not really webp".getBytes(StandardCharsets.US_ASCII);
+        TestUtils.weblogger().getFileContentManager().saveFileContent(weblog, image.getId() + "_480.webp",
+                new ByteArrayInputStream(planted));
+        TestUtils.endSession(true);
+
+        MockHttpServletRequest webpRequest = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
+        webpRequest.setParameter("w", "480");
+        webpRequest.addHeader("Accept", "image/webp,image/*,*/*");
+        MockHttpServletRequest plainRequest = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
+        plainRequest.setParameter("w", "480");
+
+        MockHttpServletResponse webpResponse = RenderingTestSupport.execute(
+                RenderingTestSupport.mediaResourceServlet(), webpRequest);
+        MockHttpServletResponse plainResponse = RenderingTestSupport.execute(
+                RenderingTestSupport.mediaResourceServlet(), plainRequest);
+
+        assertEquals(200, webpResponse.getStatus());
+        assertEquals("image/webp", webpResponse.getContentType());
+        assertArrayEquals(planted, webpResponse.getContentAsByteArray());
+        assertEquals("image/jpeg", plainResponse.getContentType());
+        assertNotEquals(planted.length, plainResponse.getContentAsByteArray().length);
     }
 
     @Test
