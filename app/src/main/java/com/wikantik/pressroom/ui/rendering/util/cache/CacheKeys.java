@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
 import com.wikantik.pressroom.util.Utilities;
 
 
@@ -44,6 +45,75 @@ final class CacheKeys {
 
     private CacheKeys() {}
 
+
+    /**
+     * The segments of a page key after its prefix, which the per-weblog and
+     * site-wide page caches share: the view ([/entry/anchor[/page/name]] for
+     * a permalink, else [/pageslug/slug][/page/name][/date/d][/cat/c]
+     * [/tags/t]), then [/locale], [/page=n] (not for a permalink) and
+     * [/user=u]. Every segment built from request data is labelled and
+     * escaped: a category called "en" must not produce the key of the
+     * English front page.
+     */
+    static void appendPageSegments(StringBuilder key, WeblogPageRequest pageRequest) {
+        if (pageRequest.getWeblogAnchor() != null) {
+            // may contain spaces or other bad chars
+            key.append("/entry/").append(encode(pageRequest.getWeblogAnchor()));
+            if (pageRequest.getWeblogPageName() != null) {
+                // /page/<name>?entry=x renders the named template, not the
+                // permalink: without this the theme's stylesheet could be
+                // cached over a post (code review, 2026-11-03)
+                key.append("/page/").append(encode(pageRequest.getWeblogPageName()));
+            }
+        } else {
+            appendListingView(key, pageRequest);
+        }
+
+        if (pageRequest.getLocale() != null) {
+            key.append('/').append(pageRequest.getLocale());
+        }
+
+        // add page number when applicable
+        if (pageRequest.getWeblogAnchor() == null) {
+            key.append("/page=").append(pageRequest.getPageNum());
+        }
+
+        // add login state
+        if (pageRequest.getAuthenticUser() != null) {
+            key.append("/user=").append(pageRequest.getAuthenticUser());
+        }
+    }
+
+    private static void appendListingView(StringBuilder key, WeblogPageRequest pageRequest) {
+        if (pageRequest.getPageSlug() != null) {
+            // the raw path segment of a bare-slug page (/<handle>/about),
+            // read here rather than the WeblogPage it resolves to, so
+            // that generating a key never queries the database. Without
+            // this segment every bare-slug page on a weblog -- and the
+            // weblog's homepage -- shared one cache key, so whichever
+            // page rendered first was served for all of them.
+            key.append("/pageslug/").append(encode(pageRequest.getPageSlug()));
+        }
+
+        if (pageRequest.getWeblogPageName() != null) {
+            // comes straight off the url path, so it may contain slashes
+            key.append("/page/").append(encode(pageRequest.getWeblogPageName()));
+        }
+
+        if (pageRequest.getWeblogDate() != null) {
+            key.append("/date/").append(pageRequest.getWeblogDate());
+        }
+
+        if (pageRequest.getWeblogCategoryName() != null) {
+            // may contain spaces or other bad chars
+            key.append("/cat/").append(encode(pageRequest.getWeblogCategoryName()));
+        }
+
+        if ("tags".equals(pageRequest.getContext())
+                && pageRequest.getTags() != null && !pageRequest.getTags().isEmpty()) {
+            key.append("/tags/").append(tags(pageRequest.getTags()));
+        }
+    }
 
     /**
      * Escape a request-supplied value for use as a single key segment.

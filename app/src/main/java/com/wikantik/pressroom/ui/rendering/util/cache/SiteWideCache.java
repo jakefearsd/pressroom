@@ -228,19 +228,13 @@ public final class SiteWideCache implements CacheHandler {
     }
     
     
-    // CPD-OFF -- This key builder is duplicated in SiteWideCache and
-    // WeblogPageCache. Note that WeblogPageCache *does* now sit on a shared
-    // base (LazyExpiringRenderCache) -- just not one shared with SiteWideCache,
-    // and that is the distinction this marker records. The two caches' expiry
-    // contracts genuinely differ: SiteWideCache is the one render cache
-    // registered as a CacheHandler (constructCache(this, ...)), so CacheManager
-    // invalidates it eagerly and wholesale; WeblogPageCache registers none
-    // (constructCache(null, ...)) and a rendered page is only ever expired
-    // lazily against weblog.lastModified. Giving SiteWideCache that base would
-    // hand it an expiry contract it does not have -- a behavioural change
-    // wearing cleanup's clothes. Callers that just want "the cache for this
-    // request" have RenderCache, which adapts all three without merging any.
-    // See CLAUDE.md, Templates.
+    // The segments this key shares with SiteWideCache's come from
+    // CacheKeys.appendPageSegments; only the prefix and the query-parameter
+    // rule differ. The two caches still share no base class: their expiry
+    // contracts differ (SiteWideCache is the one render cache registered as
+    // a CacheHandler, so CacheManager invalidates it eagerly and wholesale;
+    // WeblogPageCache registers none and a rendered page is only ever
+    // expired lazily against weblog.lastModified). See CLAUDE.md, Templates.
     /**
      * Generate a cache key from a parsed weblog page request.
      * This generates a key of the form ...
@@ -267,58 +261,7 @@ public final class SiteWideCache implements CacheHandler {
 
         key.append(CACHE_ID).append(":page/")
                 .append(pageRequest.getWeblogHandle());
-
-        if(pageRequest.getWeblogAnchor() != null) {
-            // may contain spaces or other bad chars
-            key.append("/entry/").append(CacheKeys.encode(pageRequest.getWeblogAnchor()));
-            if(pageRequest.getWeblogPageName() != null) {
-                // /page/<name>?entry=x renders the named template, not the
-                // permalink: without this the theme's stylesheet could be
-                // cached over a post (code review, 2026-11-03)
-                key.append("/page/").append(CacheKeys.encode(pageRequest.getWeblogPageName()));
-            }
-        } else {
-
-            if(pageRequest.getPageSlug() != null) {
-                // the raw path segment of a bare-slug page (/<handle>/about),
-                // read here rather than the WeblogPage it resolves to, so
-                // that generating a key never queries the database.
-                key.append("/pageslug/").append(CacheKeys.encode(pageRequest.getPageSlug()));
-            }
-
-            if(pageRequest.getWeblogPageName() != null) {
-                // comes straight off the url path, so it may contain slashes
-                key.append("/page/").append(CacheKeys.encode(pageRequest.getWeblogPageName()));
-            }
-
-            if(pageRequest.getWeblogDate() != null) {
-                key.append("/date/").append(pageRequest.getWeblogDate());
-            }
-
-            if(pageRequest.getWeblogCategoryName() != null) {
-                // may contain spaces or other bad chars
-                key.append("/cat/").append(CacheKeys.encode(pageRequest.getWeblogCategoryName()));
-            }
-
-            if("tags".equals(pageRequest.getContext())
-                    && pageRequest.getTags() != null && !pageRequest.getTags().isEmpty()) {
-                key.append("/tags/").append(CacheKeys.tags(pageRequest.getTags()));
-            }
-        }
-
-        if(pageRequest.getLocale() != null) {
-            key.append('/').append(pageRequest.getLocale());
-        }
-
-        // add page number when applicable
-        if(pageRequest.getWeblogAnchor() == null) {
-            key.append("/page=").append(pageRequest.getPageNum());
-        }
-
-        // add login state
-        if(pageRequest.getAuthenticUser() != null) {
-            key.append("/user=").append(pageRequest.getAuthenticUser());
-        }
+        CacheKeys.appendPageSegments(key, pageRequest);
 
         // we allow for arbitrary query params for custom pages
         if(!pageRequest.getCustomParams().isEmpty()) {
@@ -327,7 +270,6 @@ public final class SiteWideCache implements CacheHandler {
 
         return key.toString();
     }
-    // CPD-ON
     
     
     /**
