@@ -194,6 +194,50 @@ class ThemeResourceLoaderTest {
     }
 
     /**
+     * What this loader cannot serve is a ResourceNotFoundException, so
+     * Velocity asks the next loader: no name, a name with no theme part, a
+     * template the theme lacks, and a rendition the template lacks.
+     */
+    @Test
+    void whatTheThemeDoesNotHoldIsResourceNotFound() throws Exception {
+        SharedTheme theme = mock(SharedTheme.class);
+        ThemeTemplate template = mock(ThemeTemplate.class);
+        when(theme.getTemplateByName("weblog")).thenReturn(template);
+        when(themeManager.getTheme("mytheme")).thenReturn(theme);
+
+        assertTrue(assertThrows(ResourceNotFoundException.class, () -> loader.getResourceReader("", "UTF-8"))
+                .getMessage().contains("template name"));
+        assertTrue(assertThrows(ResourceNotFoundException.class, () -> loader.getResourceReader(null, "UTF-8"))
+                .getMessage().contains("template name"));
+        assertTrue(assertThrows(ResourceNotFoundException.class,
+                () -> loader.getResourceReader("weblog.vm", "UTF-8")).getMessage().contains("Invalid ThemeRL key"));
+        assertTrue(assertThrows(ResourceNotFoundException.class,
+                () -> loader.getResourceReader("mytheme:sidebar", "UTF-8")).getMessage().contains("[sidebar]"));
+        assertTrue(assertThrows(ResourceNotFoundException.class,
+                () -> loader.getResourceReader("mytheme:weblog|standard", "UTF-8")).getMessage()
+                .contains("Rendering [STANDARD]"));
+    }
+
+    /** A rendition suffix (any case) picks that rendition, read in the encoding asked for. */
+    @Test
+    void aRenditionSuffixPicksThatRendition() throws Exception {
+        SharedTheme theme = mock(SharedTheme.class);
+        ThemeTemplate template = mock(ThemeTemplate.class);
+        TemplateRendition standard = mock(TemplateRendition.class);
+        when(standard.getTemplate()).thenReturn("small \u00e9");
+        when(template.getTemplateRendition(RenditionType.STANDARD)).thenReturn(standard);
+        when(theme.getTemplateByName("weblog")).thenReturn(template);
+        when(themeManager.getTheme("mytheme")).thenReturn(theme);
+
+        try (Reader reader = loader.getResourceReader("mytheme:weblog|Standard", "ISO-8859-1")) {
+            StringBuilder read = new StringBuilder();
+            int c;
+            while ((c = reader.read()) != -1) { read.append((char) c); }
+            assertEquals("small \u00e9", read.toString());
+        }
+    }
+
+    /**
      * A resource with no name, or none at all, reports 0 rather than throwing.
      *
      * <p>Velocity asks for a last-modified time on paths this loader does not

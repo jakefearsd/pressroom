@@ -18,6 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import jakarta.servlet.ServletContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -180,6 +181,50 @@ class WebappResourceLoaderBehaviourTest {
 
         assertFalse(loader.isSourceModified(resource),
                 "Same file, same timestamp: nothing to reload");
+    }
+
+    /**
+     * A template now found under an earlier path than the one it was loaded
+     * from is a different file: Velocity must reload it, whatever the times.
+     */
+    @Test
+    void aTemplateNowFoundUnderAnEarlierPathIsModified(@TempDir Path root) throws IOException {
+        when(context.getRealPath("/")).thenReturn(root + "/");
+        loader.paths = new String[]{"first/", "sub/"};
+        loader.templatePaths.put("weblog.vm", "sub/");
+        Path cached = root.resolve("sub/weblog.vm");
+        Files.createDirectories(cached.getParent());
+        Files.writeString(cached, "hello");
+        Resource resource = resourceNamed("weblog.vm");
+        when(resource.getLastModified()).thenReturn(cached.toFile().lastModified());
+        assertFalse(loader.isSourceModified(resource), "precondition: only the cached file exists");
+
+        Path earlier = root.resolve("first/weblog.vm");
+        Files.createDirectories(earlier.getParent());
+        Files.writeString(earlier, "override");
+
+        assertTrue(loader.isSourceModified(resource), "an earlier path now shadows the cached file");
+    }
+
+    /** init: no configured path means the webapp root, and every path ends with a slash. */
+    @Test
+    void initDefaultsToTheRootAndEndsEveryPathWithASlash() {
+        ServletContext previous = com.wikantik.pressroom.ui.core.PressroomContext.getServletContext();
+        com.wikantik.pressroom.ui.core.PressroomContext.hold(context);
+        try {
+            WebappResourceLoader fresh = new WebappResourceLoader();
+            fresh.init(new org.apache.velocity.util.ExtProperties());
+            assertArrayEquals(new String[]{"/"}, fresh.paths);
+
+            org.apache.velocity.util.ExtProperties configured = new org.apache.velocity.util.ExtProperties();
+            configured.setProperty("path", java.util.List.of("/WEB-INF/velocity", "/themes/"));
+            fresh.init(configured);
+            assertArrayEquals(new String[]{"/WEB-INF/velocity/", "/themes/"}, fresh.paths);
+            assertTrue(fresh.templatePaths.isEmpty());
+            assertEquals(context, fresh.servletContext);
+        } finally {
+            com.wikantik.pressroom.ui.core.PressroomContext.hold(previous);
+        }
     }
 
     @Test
