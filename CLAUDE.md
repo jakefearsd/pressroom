@@ -114,8 +114,8 @@ Fixture, mock and render-cache conventions for tests: `docs/dev/build-and-ci.md`
 
 ## Gates (each one fails the build)
 
-- **JaCoCo floors** LINE 0.9590 / BRANCH 0.9100, plus two PACKAGE rules:
-  rendering L 0.86 / B 0.78 and the security boundary (sso, comments, API
+- **JaCoCo floors** LINE 0.9680 / BRANCH 0.9210, plus two PACKAGE rules:
+  rendering L 0.90 / B 0.82 and the security boundary (sso, comments, API
   auth, v1, MCP) L 0.93 / B 0.89 (parent `pom.xml`). Floors only move up, sit
   a few tenths under measured, and are measured **without** `cwebp` on `PATH`.
 - **Diff coverage ~90%** on changed lines (`bin/check-diff-coverage.sh`),

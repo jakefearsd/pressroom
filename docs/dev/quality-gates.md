@@ -11,6 +11,13 @@ resolves through the index at the end of `CLAUDE.md`.
   (`jacoco.line.minimum` / `jacoco.branch.minimum`, plus a PACKAGE rule for
   `ui.rendering.*` and one for the security boundary). Floors only ever move
   up; "raise" means raise where there is slack, not all three.
+  **2026-11-14** (maintenance-pass coverage wave, `mvn clean install`
+  without `cwebp`): LINE 0.9709, BRANCH 0.9240 (from 0.9639 / 0.9158 at
+  the start of the wave). Floors are now **0.9680 / 0.9210**; the
+  rendering PACKAGE rule is LINE 0.90 (servlets 0.9254 binds) / BRANCH
+  0.82 (velocity 0.8472 binds); the security-boundary rule stays at
+  0.93 / 0.89 (auth L 0.9528 unchanged, mcp B 0.9054).
+  Earlier:
   **2026-10-13** (after the post-0.1.17 coverage pass, two identical clean
   runs without `cwebp`): LINE 0.9621, BRANCH 0.9141. Floors are now
   **0.9590 / 0.9100**.

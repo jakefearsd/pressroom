@@ -105,9 +105,15 @@ limitations under the License.
              coverage agents, ~170 test classes' worth of behaviour tests):
              measured LINE 0.9621, BRANCH 0.9141, identical over two clean
              runs without cwebp. 0.9590 leaves ~74 lines (23 864 total),
-             0.9100 leaves ~36 branches (8 852 total). -->
-        <jacoco.line.minimum>0.9590</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.9100</jacoco.branch.minimum>
+             0.9100 leaves ~36 branches (8 852 total).
+
+             Raised 2026-11-14 after the maintenance pass's coverage wave
+             (behaviour tests for failure paths, dead code deleted): measured
+             LINE 0.9709, BRANCH 0.9240 on `mvn clean install` without cwebp.
+             0.9680 leaves ~86 lines (29 631 total), 0.9210 leaves ~38
+             branches (12 724 total). -->
+        <jacoco.line.minimum>0.9680</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.9210</jacoco.branch.minimum>
         <jacoco.check.skip>false</jacoco.check.skip>
 
         <quality.check.skip>false</quality.check.skip>
@@ -403,8 +409,13 @@ limitations under the License.
                                                  0.80 to 0.86 on 2026-10-13, after a coverage pass.
                                                  Re-measured: velocity 0.8815 (binding; 270 lines,
                                                  so ~6 lines of headroom), servlets 0.9058,
-                                                 rendering 0.9600. -->
-                                            <minimum>0.86</minimum>
+                                                 rendering 0.9600.
+
+                                                 0.86 to 0.90 on 2026-11-14. Re-measured:
+                                                 servlets 0.9254 (binding; ~764 lines, so ~19
+                                                 lines of headroom), velocity 0.9410,
+                                                 rendering 0.9768. -->
+                                            <minimum>0.90</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
@@ -412,8 +423,10 @@ limitations under the License.
                                             <!-- Added 2026-10-13. Re-measured: velocity 0.8033
                                                  (binding; 122 branches, one is 0.8 points, so ~3
                                                  branches of headroom), servlets 0.8401, rendering
-                                                 0.9062. -->
-                                            <minimum>0.78</minimum>
+                                                 0.9062. 0.78 to 0.82 on 2026-11-14:
+                                                 velocity 0.8472 (binding; 144 branches, ~3 of
+                                                 headroom), servlets 0.9033, rendering 0.9370. -->
+                                            <minimum>0.82</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -430,7 +443,11 @@ limitations under the License.
                                          packages are small: in auth (106 lines, 62
                                          branches) one line is 0.9 points and one branch
                                          1.6, so a few tenths would be a tripwire, not a
-                                         ratchet. -->
+                                         ratchet. Re-measured 2026-11-14 and left
+                                         alone: auth L 0.9528 (unchanged, 127 lines)
+                                         and mcp B 0.9054 bind, and neither has
+                                         gained enough to move a floor that must sit
+                                         a couple of lines/branches under. -->
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>com.wikantik.pressroom.ui.core.security.sso</include>
