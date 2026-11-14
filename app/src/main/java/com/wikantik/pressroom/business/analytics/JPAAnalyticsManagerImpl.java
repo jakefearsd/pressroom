@@ -422,12 +422,9 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         if (toRead.isEmpty()) {
             return;
         }
-        Map<String, String> failures = new HashMap<>();
-        readFailures.forEach((id, error) -> {
-            if (toRead.containsKey(id)) {
-                failures.put(id, error);
-            }
-        });
+        // the failures of blogs still registered carry over until each is read again
+        Map<String, String> failures = new HashMap<>(readFailures);
+        failures.keySet().retainAll(toRead.keySet());
         // a read starts from a clean transaction, whatever the reconcile left
         rollback();
         ReadRun run = new ReadRun();
@@ -449,16 +446,7 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                         context), run)
                         : UNREACHABLE;
                 run.record(weblog.getHandle(), error);
-                if (error == null) {
-                    failures.remove(current);
-                } else {
-                    failures.put(current, error);
-                    if (!run.answered && run.up == null) {
-                        // nothing has answered yet: is the service there at all?
-                        run.up = service.ping();
-                        run.open = run.up;
-                    }
-                }
+                settle(run, failures, current, error);
             }
             current = null;
             forgetMissing(run.missing, weblogs);
@@ -479,6 +467,25 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         }
         lastReadError = run.failureSummary();
         publishRead(run.answered ? Boolean.TRUE : run.up == null ? reachable : run.up);
+    }
+
+    /**
+     * Records one blog's read: a success clears its failure, a failure
+     * replaces it. After the first failure of a run in which nothing has
+     * answered yet, the service is pinged: a run against a service that is
+     * not there stops reading.
+     */
+    private void settle(ReadRun run, Map<String, String> failures, String weblogId, String error) {
+        if (error == null) {
+            failures.remove(weblogId);
+            return;
+        }
+        failures.put(weblogId, error);
+        if (!run.answered && run.up == null) {
+            // nothing has answered yet: is the service there at all?
+            run.up = service.ping();
+            run.open = run.up;
+        }
     }
 
     /**

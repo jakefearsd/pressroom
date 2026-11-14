@@ -25,7 +25,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
+import java.util.stream.Collectors;
 
 /**
  * Fills the slots of one front-page section: the top-ranked items first, then a
@@ -100,30 +102,22 @@ public final class DiscoverySlots {
             final Map<?, Integer> alreadyShown) {
         final List<T> chosen = new ArrayList<>();
         final Map<Object, Integer> picked = new HashMap<>(alreadyShown);
+        final Predicate<T> groupHasRoom = item -> picked.getOrDefault(group.apply(item), 0) < perGroup;
         final int rankedWanted = slots - randomSlots(slots, sharePercent);
         for (final T item : ranked) {
             if (chosen.size() >= rankedWanted) {
                 break;
             }
-            if (!taken.contains(item) && !chosen.contains(item)
-                    && picked.getOrDefault(group.apply(item), 0) < perGroup) {
+            if (!taken.contains(item) && !chosen.contains(item) && groupHasRoom.test(item)) {
                 chosen.add(item);
                 picked.merge(group.apply(item), 1, Integer::sum);
             }
         }
-        final List<T> remaining = new ArrayList<>();
-        for (final T item : pool) {
-            if (!taken.contains(item) && !chosen.contains(item)) {
-                remaining.add(item);
-            }
-        }
+        final List<T> remaining = pool.stream()
+                .filter(item -> !taken.contains(item) && !chosen.contains(item))
+                .collect(Collectors.toCollection(ArrayList::new));
         while (chosen.size() < slots) {
-            final List<T> open = new ArrayList<>();
-            for (final T item : remaining) {
-                if (picked.getOrDefault(group.apply(item), 0) < perGroup) {
-                    open.add(item);
-                }
-            }
+            final List<T> open = remaining.stream().filter(groupHasRoom).toList();
             if (open.isEmpty()) {
                 break;
             }
