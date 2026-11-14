@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -223,6 +224,7 @@ public class MessageKeyTest {
         Properties bundle = loadDefaultBundle();
         assertFalse(bundle.isEmpty(), "Default bundle is empty");
         String allSources = readAllSources();
+        Set<String> tokens = keyTokens(allSources);
         Set<String> dynamic = dynamicallyAddressedKeys();
 
         Set<String> orphans = new TreeSet<>();
@@ -230,7 +232,7 @@ public class MessageKeyTest {
             if (dynamic.contains(key) || UNEXPLAINED_UNREFERENCED_KEYS.contains(key)) {
                 continue;
             }
-            if (!wholeKeyPattern(key).matcher(allSources).find()) {
+            if (!isWholeKeyReferenced(key, allSources, tokens)) {
                 orphans.add(key);
             }
         }
@@ -273,12 +275,73 @@ public class MessageKeyTest {
             "macro.weblog.time.toStringFormat");
 
     /**
+     * Guards the speed-up in {@link #isWholeKeyReferenced}: it must answer
+     * exactly what {@link #wholeKeyPattern} answers, which is the rule this
+     * class documents. Written against the regex definition before the token
+     * lookup existed, as a characterisation of it.
+     *
+     * <p>The cases are the ones the rule exists for (a key that is a prefix
+     * or a suffix of a longer key, a key at either end of the text, a key
+     * beside punctuation that is not a key character) plus a key containing
+     * a non-key character, which the token lookup cannot see and must hand to
+     * the regex.
+     */
+    @Test
+    public void tokenLookupAgreesWithTheWholeKeyRule() {
+        String text = "userAdmin.title.editUser x error.upload.filemax \"pageForm.template\" "
+                + "<spring:message code='error'/> a-b.c tabbedmenu.website.members "
+                + "_lead.key trail.key_ (paren.key) end.key";
+        Set<String> tokens = keyTokens(text);
+        List<String> keys = List.of(
+                "userAdmin.title", "userAdmin.title.editUser", "title.editUser",
+                "error.upload.file", "error.upload.filemax", "upload", "pageForm.template",
+                "error", "a", "b.c", "a-b.c", "a-b", "tabbedmenu.website",
+                "lead.key", "_lead.key", "trail.key", "trail.key_", "paren.key",
+                "end.key", "userAdmin.title.editUser x", "missing.key");
+        for (String key : keys) {
+            assertEquals(wholeKeyPattern(key).matcher(text).find(),
+                    isWholeKeyReferenced(key, text, tokens),
+                    "token lookup and the whole-key regex disagree on '" + key + "'");
+        }
+    }
+
+    /**
      * A key character is a letter, a digit, {@code _} or {@code .}; a reference
      * counts only when the key is not flanked by one, so {@code userAdmin.title}
      * does not match inside {@code userAdmin.title.editUser}.
      */
     private static Pattern wholeKeyPattern(String key) {
         return Pattern.compile("(?<![A-Za-z0-9_.])" + Pattern.quote(key) + "(?![A-Za-z0-9_.])");
+    }
+
+    private static final Pattern KEY_RUN = Pattern.compile("[A-Za-z0-9_.]+");
+
+    /**
+     * Every maximal run of key characters in {@code text}. An occurrence of a
+     * key made only of key characters is flanked by non-key characters exactly
+     * when it IS one of these runs, so one pass over the sources replaces a
+     * regex scan per bundle key (that scan was ~24 s locally and ~40 s on CI,
+     * the slowest class in the unit suite).
+     */
+    private static Set<String> keyTokens(String text) {
+        Set<String> tokens = new HashSet<>();
+        Matcher m = KEY_RUN.matcher(text);
+        while (m.find()) {
+            tokens.add(m.group());
+        }
+        return tokens;
+    }
+
+    /**
+     * {@link #wholeKeyPattern}'s answer, from the token set when the key is made
+     * only of key characters, and from the regex itself when it is not (a key
+     * containing, say, {@code -} spans several runs).
+     */
+    private static boolean isWholeKeyReferenced(String key, String text, Set<String> tokens) {
+        if (KEY_RUN.matcher(key).matches()) {
+            return tokens.contains(key);
+        }
+        return wholeKeyPattern(key).matcher(text).find();
     }
 
     /**

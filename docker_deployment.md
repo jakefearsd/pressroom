@@ -1244,7 +1244,7 @@ docker run --rm \
     -v pressroom_pressroom-mediafiles:/data/mediafiles \
     -v pressroom_pressroom-uploads:/data/uploads \
     -v pressroom_pressroom-backups:/backups \
-    postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280 \
+    postgres:18@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553 \
     tar xzf /backups/volumes-<timestamp>.tar.gz -C /
 docker compose up -d
 ```
@@ -1283,9 +1283,9 @@ equivalent rather than identical.
 Building the image needs outbound network access, and not only for the
 Maven/apt steps already implied by "a build": the builder stage's
 `generate-resources` phase runs `frontend-maven-plugin`, which fetches Node
-`v24.22.1` from `nodejs.org` and then the editor bundle's npm packages from
+`v26.13.1` from `nodejs.org` and then the editor bundle's npm packages from
 `registry.npmjs.org`, fresh, every time, because the builder stage starts
-from a clean `maven:3.9-eclipse-temurin-25` image with no cached
+from a clean `maven:3.10-eclipse-temurin-25` image with no cached
 `app/frontend/node/` or `node_modules/` on it. An air-gapped `docker build`
 fails at that step. (This is the image-build case specifically; see
 "Frontend build" in `docs/dev/build-and-ci.md` for how a persistent checkout avoids re-paying

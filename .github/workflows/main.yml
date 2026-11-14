@@ -19,9 +19,10 @@ name: Pressroom
 
 # Two tiers, split by what each costs.
 #
-# The unit suite is ~3 minutes, so it gates every push -- a regression there
-# should never survive the commit that caused it. The browser ITs are ~16
-# minutes of Chrome driving a real WAR against a real Postgres, and paying
+# The unit suite and gates are ~6-8 minutes (2026-11; the suite itself is
+# ~80% of that), so they gate every push -- a regression there should never
+# survive the commit that caused it. The browser ITs are ~17-21 minutes of
+# Chrome driving a real WAR against a real Postgres, and paying
 # that on every push made a red mail arrive for things a re-run fixes (see
 # the GalleryIT upload race). They run nightly and on demand instead.
 #
@@ -81,7 +82,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           java-version: ${{ matrix.java }}
           distribution: 'zulu'
@@ -153,7 +154,7 @@ jobs:
           show-progress: false
 
       - name: Set up JDK 25
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           java-version: '25'
           distribution: 'zulu'
