@@ -345,28 +345,24 @@ public class FileContentManagerImpl implements FileContentManager {
      * files the user actually uploaded count.
      */
     private long getDirSize(File dir, boolean recurse) {
-
-        long size = 0;
-
-        if (dir.exists() && dir.isDirectory() && dir.canRead()) {
-            long dirSize = 0L;
-            File[] files = dir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (!file.isDirectory()) {
-                        if (RenditionSupport.isRenditionFileName(file.getName())) {
-                            continue;
-                        }
-                        dirSize += file.length();
-                    } else if (recurse) {
-                        // count a subdirectory
-                        dirSize += getDirSize(file, recurse);
-                    }
-                }
-            }
-            size += dirSize;
+        if (!dir.exists() || !dir.isDirectory() || !dir.canRead()) {
+            return 0;
         }
-
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return 0;
+        }
+        long size = 0;
+        for (File file : files) {
+            if (file.isDirectory()) {
+                if (recurse) {
+                    // count a subdirectory
+                    size += getDirSize(file, recurse);
+                }
+            } else if (!RenditionSupport.isRenditionFileName(file.getName())) {
+                size += file.length();
+            }
+        }
         return size;
     }
 
@@ -374,99 +370,52 @@ public class FileContentManagerImpl implements FileContentManager {
      * Return true if file is allowed to be uplaoded given specified allowed and
      * forbidden file types.
      */
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Compares an upload's name with the admin's ASCII extension rules, both "
-                    + "lower-cased in Locale.ROOT. ASCII letters fold only to ASCII, so no name escapes a "
-                    + "forbid rule it matches as typed; the one non-ASCII fold onto ASCII (KELVIN SIGN to "
-                    + "k) can only let an allow rule accept a name stored under its own spelling.")
     private boolean checkFileType(String[] allowFiles, String[] forbidFiles,
             String fileName, String contentType) {
 
-        // TODO: Atom Publishing Protocol figure out how to handle file
-        // allow/forbid using contentType.
-        // TEMPORARY SOLUTION: In the allow/forbid lists we will continue to
-        // allow user to specify file extensions (e.g. gif, png, jpeg) but will
-        // now also allow them to specify content-type rules (e.g. */*, image/*,
-        // text/xml, etc.).
+        // A rule holding a '/' is a content-type rule (image/*, text/xml);
+        // any other rule is a file extension (gif, png).
 
         // if content type is invalid, reject file
         if (contentType == null || contentType.indexOf('/') == -1) {
             return false;
         }
 
-        // default to false
-        boolean allowFile = false;
-
         // if this person hasn't listed any allows, then assume they want
         // to allow *all* filetypes, except those listed under forbid
-        if (allowFiles == null || allowFiles.length < 1) {
-            allowFile = true;
+        boolean allowed = allowFiles == null || allowFiles.length < 1
+                || matchesAnyRule(allowFiles, fileName, contentType);
+
+        // a forbid rule overrides any allow
+        return allowed && !matchesAnyRule(forbidFiles, fileName, contentType);
+    }
+
+    /**
+     * True when the name ends with one of the extension rules or the content
+     * type matches one of the content-type rules. Extensions are tried first.
+     */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares an upload's name with the admin's ASCII extension rules, both "
+                    + "lower-cased in Locale.ROOT. ASCII letters fold only to ASCII, so no name escapes a "
+                    + "forbid rule it matches as typed; the one non-ASCII fold onto ASCII (KELVIN SIGN to "
+                    + "k) can only let an allow rule accept a name stored under its own spelling.")
+    private boolean matchesAnyRule(String[] rules, String fileName, String contentType) {
+        if (rules == null) {
+            return false;
         }
-
-        // First check against what is ALLOWED
-
-        // check file against allowed file extensions
-        if (allowFiles != null && allowFiles.length > 0) {
-            for (String allowRule : allowFiles) {
-                // oops, this allowed rule is a content-type, skip it
-                if (allowRule.indexOf('/') != -1) {
-                    continue;
-                }
-                if (fileName.toLowerCase(Locale.ROOT)
-                        .endsWith(allowRule.toLowerCase(Locale.ROOT))) {
-                    allowFile = true;
-                    break;
-                }
+        for (String rule : rules) {
+            if (rule.indexOf('/') == -1 && fileName.toLowerCase(Locale.ROOT)
+                    .endsWith(rule.toLowerCase(Locale.ROOT))) {
+                return true;
             }
         }
-
-        // check file against allowed contentTypes
-        if (allowFiles != null && allowFiles.length > 0) {
-            for (String allowRule : allowFiles) {
-                // oops, this allowed rule is NOT a content-type, skip it
-                if (allowRule.indexOf('/') == -1) {
-                    continue;
-                }
-                if (matchContentType(allowRule, contentType)) {
-                    allowFile = true;
-                    break;
-                }
+        for (String rule : rules) {
+            if (rule.indexOf('/') != -1 && matchContentType(rule, contentType)) {
+                return true;
             }
         }
-
-        // First check against what is FORBIDDEN
-
-        // check file against forbidden file extensions, overrides any allows
-        if (forbidFiles != null && forbidFiles.length > 0) {
-            for (String forbidRule : forbidFiles) {
-                // oops, this forbid rule is a content-type, skip it
-                if (forbidRule.indexOf('/') != -1) {
-                    continue;
-                }
-                if (fileName.toLowerCase(Locale.ROOT).endsWith(
-                        forbidRule.toLowerCase(Locale.ROOT))) {
-                    allowFile = false;
-                    break;
-                }
-            }
-        }
-
-        // check file against forbidden contentTypes, overrides any allows
-        if (forbidFiles != null && forbidFiles.length > 0) {
-            for (String forbidRule : forbidFiles) {
-                // oops, this forbid rule is NOT a content-type, skip it
-                if (forbidRule.indexOf('/') == -1) {
-                    continue;
-                }
-                if (matchContentType(forbidRule, contentType)) {
-                    allowFile = false;
-                    break;
-                }
-            }
-        }
-
-        return allowFile;
+        return false;
     }
 
     /**

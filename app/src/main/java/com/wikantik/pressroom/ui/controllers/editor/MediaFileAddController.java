@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -107,111 +108,118 @@ public class MediaFileAddController extends MediaFileBase {
             return ".MediaFileAdd";
         }
 
-        if (!hasErrors(model) && uploadedFiles != null && uploadedFiles.length > 0) {
-            MediaFileManager manager = weblogger.getMediaFileManager();
-            PressroomMessages errors = new PressroomMessages();
-            List<MediaFile> uploaded = new ArrayList<>();
-            List<MediaFile> newImages = new ArrayList<>();
-            List<MediaFile> newFiles = new ArrayList<>();
+        if (hasErrors(model) || uploadedFiles == null || uploadedFiles.length == 0) {
+            return ".MediaFileAdd";
+        }
 
-            for (MultipartFile uploadedFile : uploadedFiles) {
-                if (uploadedFile == null || uploadedFile.isEmpty()) {
-                    continue;
-                }
-
-                try {
-                    MediaFile mediaFile = new MediaFile();
-                    bean.copyTo(mediaFile, weblogger.getMediaFileManager());
-
-                    String fileName = uploadedFile.getOriginalFilename();
-                    if (fileName != null) {
-                        int terminated = fileName.indexOf('\000');
-                        if (terminated != -1) {
-                            fileName = fileName.substring(0, terminated).trim();
-                        }
-                        if (fileName.indexOf('/') != -1 || fileName.indexOf('\\') != -1 || fileName.contains("..")) {
-                            addError(model, "uploadFiles.error.badPath",
-                                    StringEscapeUtils.escapeHtml4(fileName), request);
-                            continue;
-                        }
-                    }
-
-                    mediaFile.setName(fileName);
-                    mediaFile.setDirectory(directory);
-                    mediaFile.setWeblog(getActionWeblog(request));
-                    mediaFile.setLength(uploadedFile.getSize());
-                    mediaFile.setInputStream(uploadedFile.getInputStream());
-
-                    mediaFile.setContentType(MediaUploads.effectiveContentType(
-                            uploadedFile.getContentType(), mediaFile.getName()));
-
-                    // createMediaFile reports a validation refusal (quota, forbidden
-                    // file type, ...) by adding to this shared collector and returning
-                    // normally rather than throwing -- so a growth in the error count
-                    // across this one call is this file being refused, not persisted.
-                    int errorCountBeforeThisFile = errors.getErrorCount();
-                    manager.createMediaFile(getActionWeblog(request), mediaFile, errors);
-                    weblogger.flush();
-
-                    if (errors.getErrorCount() > errorCountBeforeThisFile) {
-                        continue;
-                    }
-
-                    if (mediaFile.isImageFile()) {
-                        newImages.add(mediaFile);
-                    } else {
-                        newFiles.add(mediaFile);
-                    }
+        PressroomMessages errors = new PressroomMessages();
+        List<MediaFile> uploaded = new ArrayList<>();
+        for (MultipartFile uploadedFile : uploadedFiles) {
+            if (uploadedFile == null || uploadedFile.isEmpty()) {
+                continue;
+            }
+            try {
+                MediaFile mediaFile = stored(uploadedFile, bean, directory, errors, request, model);
+                if (mediaFile != null) {
                     uploaded.add(mediaFile);
-
-                } catch (Exception e) {
-                    log.error("Error uploading media file", e);
-                    addError(model, "mediaFileAdd.errorUploading",
-                            StringEscapeUtils.escapeHtml4(uploadedFile.getOriginalFilename()), request);
                 }
+            } catch (WebloggerException | IOException | RuntimeException e) {
+                log.error("Error uploading media file", e);
+                addError(model, "mediaFileAdd.errorUploading",
+                        StringEscapeUtils.escapeHtml4(uploadedFile.getOriginalFilename()), request);
             }
+        }
+        reportRefusals(errors, model, request);
 
-            for (Iterator<PressroomMessage> it = errors.getErrors(); it.hasNext();) {
-                PressroomMessage msg = it.next();
-                String[] args = msg.getArgs();
-                if (args == null || args.length == 0) {
-                    addError(model, msg.getKey(), request);
-                } else {
-                    // The manager's refusals carry the uploaded file's name and
-                    // content type, both sent by the browser; the banner is
-                    // printed unescaped.
-                    Object[] escaped = new Object[args.length];
-                    for (int i = 0; i < args.length; i++) {
-                        escaped[i] = StringEscapeUtils.escapeHtml4(args[i]);
-                    }
-                    addError(model, msg.getKey(), escaped, request);
-                }
+        // A batch upload can partly succeed: report BOTH what landed and what
+        // did not, rather than one generic failure that hides which of thirty
+        // files actually made it. Whenever anything landed, land on the success
+        // page -- it lists exactly the files in `uploaded`, and any errors
+        // recorded above render in the same response via the shared errors
+        // banner, so a mixed batch shows both the successes and the failures at
+        // once instead of suppressing the successes because something else in
+        // the batch failed. Only a batch where nothing landed at all falls back
+        // to redisplaying the form.
+        if (uploaded.isEmpty()) {
+            return ".MediaFileAdd";
+        }
+        addMessage(model, "uploadFiles.uploadedFiles", request);
+        List<MediaFile> newImages = new ArrayList<>();
+        List<MediaFile> newFiles = new ArrayList<>();
+        for (MediaFile upload : uploaded) {
+            addMessage(model, "uploadFiles.uploadedFile",
+                    weblogger.getUrlStrategy().getMediaFileURL(upload.getWeblog(), upload.getId(), true),
+                    request);
+            (upload.isImageFile() ? newImages : newFiles).add(upload);
+        }
+        model.addAttribute("newImages", newImages);
+        model.addAttribute("newFiles", newFiles);
+        return ".MediaFileAddSuccess";
+    }
+
+    /**
+     * Stores one uploaded file, or returns null when it is refused: a name
+     * that is a path (an error added here) or a refusal the manager adds to
+     * {@code errors} (quota, forbidden type, ...).
+     */
+    private MediaFile stored(MultipartFile uploadedFile, MediaFileBean bean, MediaFileDirectory directory,
+            PressroomMessages errors, HttpServletRequest request, Model model)
+            throws WebloggerException, IOException {
+        MediaFile mediaFile = new MediaFile();
+        bean.copyTo(mediaFile, weblogger.getMediaFileManager());
+
+        String fileName = uploadedFile.getOriginalFilename();
+        if (fileName != null) {
+            int terminated = fileName.indexOf('\000');
+            if (terminated != -1) {
+                fileName = fileName.substring(0, terminated).trim();
             }
-
-            // A batch upload can partly succeed: report BOTH what landed and what
-            // did not, rather than one generic failure that hides which of thirty
-            // files actually made it. Whenever anything landed, land on the success
-            // page -- it lists exactly the files in `uploaded`, and any errors
-            // recorded above render in the same response via the shared errors
-            // banner, so a mixed batch shows both the successes and the failures at
-            // once instead of suppressing the successes because something else in
-            // the batch failed. Only a batch where nothing landed at all falls back
-            // to redisplaying the form.
-            if (!uploaded.isEmpty()) {
-                addMessage(model, "uploadFiles.uploadedFiles", request);
-                for (MediaFile upload : uploaded) {
-                    addMessage(model, "uploadFiles.uploadedFile",
-                            weblogger.getUrlStrategy().getMediaFileURL(upload.getWeblog(), upload.getId(), true),
-                            request);
-                }
-
-                model.addAttribute("newImages", newImages);
-                model.addAttribute("newFiles", newFiles);
-                return ".MediaFileAddSuccess";
+            if (fileName.indexOf('/') != -1 || fileName.indexOf('\\') != -1 || fileName.contains("..")) {
+                addError(model, "uploadFiles.error.badPath",
+                        StringEscapeUtils.escapeHtml4(fileName), request);
+                return null;
             }
         }
 
-        return ".MediaFileAdd";
+        mediaFile.setName(fileName);
+        mediaFile.setDirectory(directory);
+        mediaFile.setWeblog(getActionWeblog(request));
+        mediaFile.setLength(uploadedFile.getSize());
+        mediaFile.setInputStream(uploadedFile.getInputStream());
+
+        mediaFile.setContentType(MediaUploads.effectiveContentType(
+                uploadedFile.getContentType(), mediaFile.getName()));
+
+        // createMediaFile reports a validation refusal (quota, forbidden
+        // file type, ...) by adding to this shared collector and returning
+        // normally rather than throwing -- so a growth in the error count
+        // across this one call is this file being refused, not persisted.
+        int errorCountBeforeThisFile = errors.getErrorCount();
+        weblogger.getMediaFileManager().createMediaFile(getActionWeblog(request), mediaFile, errors);
+        weblogger.flush();
+
+        return errors.getErrorCount() > errorCountBeforeThisFile ? null : mediaFile;
+    }
+
+    /**
+     * The manager's refusals as page errors. Their arguments carry the
+     * uploaded file's name and content type, both sent by the browser, and
+     * the banner is printed unescaped.
+     */
+    private void reportRefusals(PressroomMessages errors, Model model, HttpServletRequest request) {
+        for (Iterator<PressroomMessage> it = errors.getErrors(); it.hasNext();) {
+            PressroomMessage msg = it.next();
+            String[] args = msg.getArgs();
+            if (args == null || args.length == 0) {
+                addError(model, msg.getKey(), request);
+            } else {
+                Object[] escaped = new Object[args.length];
+                for (int i = 0; i < args.length; i++) {
+                    escaped[i] = StringEscapeUtils.escapeHtml4(args[i]);
+                }
+                addError(model, msg.getKey(), escaped, request);
+            }
+        }
     }
 
     /**
