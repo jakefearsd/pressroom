@@ -127,6 +127,16 @@ class ThemeManagerImplTest {
         assertThrows(ThemeNotFoundException.class, () -> themeManager.getTheme("no-such-theme"));
     }
 
+    /**
+     * No id is an unknown theme too: the documented ThemeNotFoundException,
+     * not the NullPointerException ConcurrentHashMap throws for a null key
+     * (review M3; the theme map became concurrent in 5c060322d).
+     */
+    @Test
+    void aNullThemeIdIsAnUnknownTheme() {
+        assertThrows(ThemeNotFoundException.class, () -> themeManager.getTheme((String) null));
+    }
+
     @Test
     void everyBundledThemeIsLoadedAndSortedByName() {
         List<SharedTheme> themes = themeManager.getEnabledThemesList();

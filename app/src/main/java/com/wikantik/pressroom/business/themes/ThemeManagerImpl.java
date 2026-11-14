@@ -145,8 +145,8 @@ public class ThemeManagerImpl implements ThemeManager {
     @Override
 	public SharedTheme getTheme(String id) throws WebloggerException {
 
-		// try to lookup theme from library
-		SharedTheme theme = this.themes.get(id);
+		// try to lookup theme from library (a ConcurrentHashMap: no null key)
+		SharedTheme theme = id == null ? null : this.themes.get(id);
 
 		// no theme? throw exception.
 		if (theme == null) {
