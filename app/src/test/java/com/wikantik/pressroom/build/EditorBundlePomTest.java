@@ -33,7 +33,7 @@ class EditorBundlePomTest {
                 "parent pluginManagement must declare frontend-maven-plugin");
         Matcher node = Pattern.compile("<nodeVersion>v(\\d+)\\.(\\d+)\\.(\\d+)</nodeVersion>").matcher(parent);
         assertTrue(node.find(), "nodeVersion must be pinned to an exact vX.Y.Z");
-        assertEquals("24", node.group(1), "Node 24 LTS");
+        assertEquals("26", node.group(1), "Node 26, the active LTS line (24 entered maintenance in October 2026)");
         String pinned = "v" + node.group(1) + "." + node.group(2) + "." + node.group(3);
         assertTrue(Files.readString(Path.of("..", "docs", "dev", "build-and-ci.md"))
                         .contains("fetches a pinned Node `" + pinned + "`"),

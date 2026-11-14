@@ -215,7 +215,7 @@ limitations under the License.
                              from this runtime, and a floating major would move the
                              output under everyone. Downloaded once into app/frontend/node
                              (git-ignored); only the first build needs the network. -->
-                        <nodeVersion>v24.22.1</nodeVersion>
+                        <nodeVersion>v26.13.1</nodeVersion>
                         <installDirectory>${project.basedir}/frontend</installDirectory>
                     </configuration>
                 </plugin>
