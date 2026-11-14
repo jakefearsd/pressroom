@@ -40,7 +40,7 @@ limitations under the License.
         <commons-text.version>1.15.0</commons-text.version>
         <eclipse-link.version>5.0.2</eclipse-link.version>
         <jdom2.version>2.0.6.1</jdom2.version>
-        <lucene.version>10.5.2</lucene.version>
+        <lucene.version>10.6.0</lucene.version>
         <maven-war.version>3.5.1</maven-war.version>
         <pitest.version>1.30.2</pitest.version>
         <pitest-junit5.version>1.2.3</pitest-junit5.version>
@@ -193,7 +193,7 @@ limitations under the License.
             <dependency>
                 <groupId>io.modelcontextprotocol.sdk</groupId>
                 <artifactId>mcp-bom</artifactId>
-                <version>2.1.0</version>
+                <version>2.2.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -241,7 +241,7 @@ limitations under the License.
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
-            <version>3.1.1</version>
+            <version>3.2.0</version>
         </dependency>
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
@@ -697,32 +697,32 @@ limitations under the License.
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-tables</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-autolink</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-alerts</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-heading-anchor</artifactId>
-            <version>0.31.0</version>
+            <version>0.32.0</version>
         </dependency>
 
         <!-- Spring deps. Versions are no longer pinned here: spring-boot-dependencies
@@ -907,7 +907,7 @@ limitations under the License.
         <dependency>
             <groupId>org.instancio</groupId>
             <artifactId>instancio-junit</artifactId>
-            <version>6.1.0</version>
+            <version>6.2.1</version>
             <scope>test</scope>
         </dependency>
 
