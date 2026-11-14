@@ -477,27 +477,7 @@ public class PageServlet extends HttpServlet {
         // to the branches below: a page slug never doubles as a permalink or
         // the weblog's default view.
         if (pageRequest.getPageSlug() != null) {
-            if (pageRequest.getWeblogPageContent() == null) {
-                return null;
-            }
-
-            // The theme may override with a custom template named _page;
-            // otherwise the shipped default renders it. Falling back rather
-            // than 404ing means a theme does not have to know pages exist.
-            ThemeTemplate template = null;
-            try {
-                template = themes.getTheme(weblog).getTemplateByName("_page");
-            } catch (Exception e) {
-                // Not simply "no _page override" -- getTemplateByName
-                // returns null for that. An exception here means a real
-                // lookup failure, so fall back to the default page template
-                // (unchanged behavior) but leave a trace for whoever is
-                // debugging why a themed page render looks generic.
-                log.warn("Error looking up '_page' template for weblog {}", weblog.getHandle(), e);
-            }
-            return template != null ? template
-                    : new StaticThemeTemplate("templates/weblog/page.vm",
-                            TemplateLanguage.VELOCITY);
+            return pageRequest.getWeblogPageContent() == null ? null : staticPageTemplate(weblog, themes);
         }
 
         // If request specified the page, then go with that. No fallback: this
@@ -525,20 +505,12 @@ public class PageServlet extends HttpServlet {
         // so without the fallback every tag link 404ed. An unknown tag
         // combination is still a 404, through rejectionReason.
         if ("tags".equals(pageRequest.getContext()) && pageRequest.getTags() != null) {
-            try {
-                page = themes.getTheme(weblog).getTemplateByAction(ComponentType.TAGSINDEX);
-            } catch (Exception e) {
-                log.error("Error getting weblog page for action 'tagsIndex'", e);
-            }
+            page = templateForAction(weblog, themes, ComponentType.TAGSINDEX);
         }
 
         // If this is a permalink then look for a permalink template
         if (pageRequest.getWeblogAnchor() != null) {
-            try {
-                page = themes.getTheme(weblog).getTemplateByAction(ComponentType.PERMALINK);
-            } catch (Exception e) {
-                log.error("Error getting weblog page for action 'permalink'", e);
-            }
+            page = templateForAction(weblog, themes, ComponentType.PERMALINK);
         }
 
         // if we haven't found a page yet then try our default page
@@ -551,6 +523,39 @@ public class PageServlet extends HttpServlet {
         }
 
         return page;
+    }
+
+    /**
+     * The template for a static page: the theme may override with a custom
+     * template named _page; otherwise the shipped default renders it.
+     * Falling back rather than 404ing means a theme does not have to know
+     * pages exist.
+     */
+    private static ThemeTemplate staticPageTemplate(Weblog weblog, ThemeManager themes) {
+        ThemeTemplate template = null;
+        try {
+            template = themes.getTheme(weblog).getTemplateByName("_page");
+        } catch (Exception e) {
+            // Not simply "no _page override" -- getTemplateByName
+            // returns null for that. An exception here means a real
+            // lookup failure, so fall back to the default page template
+            // (unchanged behavior) but leave a trace for whoever is
+            // debugging why a themed page render looks generic.
+            log.warn("Error looking up '_page' template for weblog {}", weblog.getHandle(), e);
+        }
+        return template != null ? template
+                : new StaticThemeTemplate("templates/weblog/page.vm",
+                        TemplateLanguage.VELOCITY);
+    }
+
+    /** The theme's template for this action, or null when it has none or the lookup fails. */
+    private static ThemeTemplate templateForAction(Weblog weblog, ThemeManager themes, ComponentType action) {
+        try {
+            return themes.getTheme(weblog).getTemplateByAction(action);
+        } catch (Exception e) {
+            log.error("Error getting weblog page for action '{}'", action, e);
+            return null;
+        }
     }
 
     /**

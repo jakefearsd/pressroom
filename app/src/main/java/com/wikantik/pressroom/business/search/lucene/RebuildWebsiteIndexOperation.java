@@ -105,53 +105,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
 
         try {
             if (writer != null) {
-
-                // Fetch the entries to re-add. This runs only once the
-                // writer is open -- and so only once WriteToIndexOperation's
-                // write lock is held -- so a concurrent AddEntryOperation for
-                // a newly published entry cannot slip in between this fetch
-                // and the delete below and be silently dropped by the
-                // re-add. If the query fails, the catch below rolls back the
-                // delete too: a rebuild that deletes first and only then
-                // discovers the query failed would otherwise leave the
-                // weblog with no search results until the next successful
-                // rebuild.
-                WeblogEntryManager weblogManager = pressroom.getWeblogEntryManager();
-                WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
-                wesc.setWeblog(website);
-                wesc.setStatus(PubStatus.PUBLISHED);
-                List<WeblogEntry> entries = weblogManager.getWeblogEntries(wesc);
-
-                log.debug("Entries to index: {}", entries.size());
-
-                // Delete Doc
-                Term tWebsite = null;
-                if (website != null) {
-                    tWebsite = IndexUtil.handleTerm(website.getHandle());
-                }
-                if (tWebsite != null) {
-                    writer.deleteDocuments(tWebsite);
-                } else {
-                    // A site-wide rebuild replaces everything. It deleted by
-                    // the "constant" field, which no document carries, so it
-                    // deleted nothing and every entry was indexed twice.
-                    writer.deleteAll();
-                }
-
-                // Add Doc. A post that cannot be made into a document is
-                // skipped, not allowed to roll back every other post's.
-                for (WeblogEntry entry : entries) {
-                    Document doc = documentOrNull(entry);
-                    if (doc != null) {
-                        writer.addDocument(doc);
-                        log.debug("Indexed entry {}: {}", entry.getPubTime(), entry.getAnchor());
-                    }
-                }
-                writer.commit();
-                if (website == null) {
-                    // only now is there a completed build to certify
-                    manager.fullRebuildCompleted();
-                }
+                replaceDocuments(writer);
             }
             succeeded = true;
         } catch (Exception e) {
@@ -165,11 +119,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
             // analyzer and (via the write lock in WriteToIndexOperation) the
             // index is never left half-written.
             if (writer != null && !succeeded) {
-                try {
-                    writer.rollback();
-                } catch (IOException ioe) {
-                    log.error("ERROR rolling back index writer", ioe);
-                }
+                rollBack(writer);
             }
             endWriting();
             if (pressroom != null) {
@@ -185,6 +135,63 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         } else {
             log.info("Completed rebuilding index for website handle: '{}' in '{}' seconds",
                     website.getHandle(), length);
+        }
+    }
+
+    /**
+     * Deletes the weblog's documents (every document, for a site-wide
+     * rebuild) and adds its published entries back, then commits.
+     *
+     * <p>The entries are fetched only once the writer is open -- and so only
+     * once WriteToIndexOperation's write lock is held -- so a concurrent
+     * AddEntryOperation for a newly published entry cannot slip in between
+     * this fetch and the delete below and be silently dropped by the re-add.
+     * If the query fails, the caller rolls back the delete too: a rebuild
+     * that deletes first and only then discovers the query failed would
+     * otherwise leave the weblog with no search results until the next
+     * successful rebuild.
+     */
+    private void replaceDocuments(IndexWriter writer) throws WebloggerException, IOException {
+        WeblogEntryManager weblogManager = pressroom.getWeblogEntryManager();
+        WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
+        wesc.setWeblog(website);
+        wesc.setStatus(PubStatus.PUBLISHED);
+        List<WeblogEntry> entries = weblogManager.getWeblogEntries(wesc);
+
+        log.debug("Entries to index: {}", entries.size());
+
+        // Delete Doc
+        Term tWebsite = website == null ? null : IndexUtil.handleTerm(website.getHandle());
+        if (tWebsite != null) {
+            writer.deleteDocuments(tWebsite);
+        } else {
+            // A site-wide rebuild replaces everything. It deleted by
+            // the "constant" field, which no document carries, so it
+            // deleted nothing and every entry was indexed twice.
+            writer.deleteAll();
+        }
+
+        // Add Doc. A post that cannot be made into a document is
+        // skipped, not allowed to roll back every other post's.
+        for (WeblogEntry entry : entries) {
+            Document doc = documentOrNull(entry);
+            if (doc != null) {
+                writer.addDocument(doc);
+                log.debug("Indexed entry {}: {}", entry.getPubTime(), entry.getAnchor());
+            }
+        }
+        writer.commit();
+        if (website == null) {
+            // only now is there a completed build to certify
+            manager.fullRebuildCompleted();
+        }
+    }
+
+    private static void rollBack(IndexWriter writer) {
+        try {
+            writer.rollback();
+        } catch (IOException ioe) {
+            log.error("ERROR rolling back index writer", ioe);
         }
     }
 

@@ -97,11 +97,7 @@ final class EntryImports {
         boolean importBody = Boolean.TRUE.equals(body.importExternalImages()) || defaulted;
         String featuredUrl = body.featuredImageUrl();
         if (body.featuredImageAlt() != null) {
-            if (featuredUrl == null) {
-                errors.add("featuredImageAlt", "featuredImageAlt applies only with featuredImageUrl.");
-            }
-            errors.check("featuredImageAlt", () -> ColumnLimits.requireMaxLength(
-                    "featuredImageAlt", body.featuredImageAlt(), ColumnLimits.MEDIA_ALT_TEXT));
+            checkFeaturedAlt(errors, body);
         }
         if (featuredUrl == null && !importBody) {
             return Plan.NONE;
@@ -112,19 +108,7 @@ final class EntryImports {
             importBody = false;
         }
         if (featuredUrl != null) {
-            if (featuredUrl.isBlank()) {
-                errors.add("featuredImageUrl", "featuredImageUrl cannot be blank.");
-            }
-            if (body.featuredImageId() != null) {
-                errors.add("featuredImageUrl", "Give featuredImageUrl or featuredImageId, not both.");
-            }
-            if (cleared.contains("featuredImageId")) {
-                errors.add("featuredImageUrl",
-                        "featuredImageUrl sets the featured image; do not also clear featuredImageId.");
-            }
-            if (!uploads) {
-                errors.add("featuredImageUrl", "File upload is disabled for this site.");
-            }
+            checkFeaturedUrl(errors, body, cleared, uploads);
         }
         if (!importBody) {
             return featuredUrl == null ? Plan.NONE : new Plan(featuredUrl, body.featuredImageAlt(), null, null, false);
@@ -135,14 +119,44 @@ final class EntryImports {
         String text = body.text() != null ? body.text() : storedText;
         ExternalImages.Scan scan = ExternalImages.scan(text, ownHosts(weblogger.getUrlStrategy(), weblog));
         if (!defaulted) {
-            scan.refusals().forEach(refusal -> errors.add("text", refusal));
-            int distinct = scan.distinctUrls().size();
-            if (distinct > MAX_BODY_IMAGES) {
-                errors.add("text", "The text loads " + distinct + " images from other sites; at most "
-                        + MAX_BODY_IMAGES + " are imported in one write.");
-            }
+            checkExplicitScan(errors, scan);
         }
         return new Plan(featuredUrl, body.featuredImageAlt(), text, scan, defaulted);
+    }
+
+    private static void checkFeaturedAlt(FieldErrors errors, EntryDtos.EntryWrite body) {
+        if (body.featuredImageUrl() == null) {
+            errors.add("featuredImageAlt", "featuredImageAlt applies only with featuredImageUrl.");
+        }
+        errors.check("featuredImageAlt", () -> ColumnLimits.requireMaxLength(
+                "featuredImageAlt", body.featuredImageAlt(), ColumnLimits.MEDIA_ALT_TEXT));
+    }
+
+    private static void checkFeaturedUrl(FieldErrors errors, EntryDtos.EntryWrite body, Set<String> cleared,
+            boolean uploads) {
+        if (body.featuredImageUrl().isBlank()) {
+            errors.add("featuredImageUrl", "featuredImageUrl cannot be blank.");
+        }
+        if (body.featuredImageId() != null) {
+            errors.add("featuredImageUrl", "Give featuredImageUrl or featuredImageId, not both.");
+        }
+        if (cleared.contains("featuredImageId")) {
+            errors.add("featuredImageUrl",
+                    "featuredImageUrl sets the featured image; do not also clear featuredImageId.");
+        }
+        if (!uploads) {
+            errors.add("featuredImageUrl", "File upload is disabled for this site.");
+        }
+    }
+
+    /** An import the write asked for refuses what it cannot import, and more than the cap. */
+    private static void checkExplicitScan(FieldErrors errors, ExternalImages.Scan scan) {
+        scan.refusals().forEach(refusal -> errors.add("text", refusal));
+        int distinct = scan.distinctUrls().size();
+        if (distinct > MAX_BODY_IMAGES) {
+            errors.add("text", "The text loads " + distinct + " images from other sites; at most "
+                    + MAX_BODY_IMAGES + " are imported in one write.");
+        }
     }
 
     /**
