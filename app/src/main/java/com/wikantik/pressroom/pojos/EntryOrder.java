@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.pojos;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -42,6 +43,10 @@ public enum EntryOrder {
      * Reads submitted input strictly: case-insensitive NEWEST or OLDEST, and
      * empty for anything else so the caller can refuse it.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Upper-cases input only to match the fixed ASCII names NEWEST and OLDEST; "
+                    + "it is never a typed identity, and anything that is not one of them is refused.")
     public static Optional<EntryOrder> parse(String input) {
         if (input == null) {
             return Optional.empty();
