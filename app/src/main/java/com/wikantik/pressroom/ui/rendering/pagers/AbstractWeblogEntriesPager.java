@@ -28,9 +28,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
@@ -242,6 +244,20 @@ public abstract class AbstractWeblogEntriesPager implements WeblogEntriesPager {
     }
     
     
+    private boolean oldestFirst() {
+        return weblog.entryOrder() == EntryOrder.OLDEST;
+    }
+
+    /**
+     * An empty day map keyed in the blog's own order: newest day first by
+     * default, oldest day first when the blog is set to {@code OLDEST}. The
+     * subclasses create their entries map here so the day headings and the
+     * query's sort order always agree.
+     */
+    protected <V> Map<Date, V> newDayMap() {
+        return oldestFirst() ? new TreeMap<>() : new TreeMap<>(Collections.reverseOrder());
+    }
+
     /**
      * Runs the entry search described by {@code wesc} and wraps the results
      * into {@code target}, the same way for every subclass. The caller has
@@ -269,6 +285,9 @@ public abstract class AbstractWeblogEntriesPager implements WeblogEntriesPager {
         wesc.setLocale(locale);
         wesc.setOffset(offset);
         wesc.setMaxResults(length + 1);
+        wesc.setSortOrder(oldestFirst()
+                ? WeblogEntrySearchCriteria.SortOrder.ASCENDING
+                : WeblogEntrySearchCriteria.SortOrder.DESCENDING);
         Map<Date, List<WeblogEntry>> mmap =
                 weblogger.getWeblogEntryManager().getWeblogEntryObjectMap(wesc);
 

@@ -28,6 +28,7 @@ import com.wikantik.pressroom.config.RuntimeConfigAttachment;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.ui.rendering.pagers.Pager;
 import com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest;
@@ -337,5 +338,39 @@ class FeedModelTest {
         assertEquals(50, criteria.getValue().getOffset(),
                 "Page 2 of 25-entry pages starts at offset 50; a wrong entry count "
                         + "silently shifts every page boundary.");
+    }
+
+    private WeblogEntry feedEntry(String anchor) {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setAnchor(anchor);
+        entry.setWebsite(weblog);
+        return entry;
+    }
+
+    /**
+     * A blog may list its posts oldest first, but a feed reader expects the
+     * newest item on top: the feed query never asks for ascending order.
+     */
+    @Test
+    void feedStaysNewestFirstOnAnOldestFirstBlog() throws Exception {
+        weblog.setEntryOrder("OLDEST");
+        when(properties.getProperty("site.newsfeeds.defaultEntries"))
+                .thenReturn(new RuntimeConfigProperty("site.newsfeeds.defaultEntries", "25"));
+        WeblogEntryManager entryManager = mock(WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
+        WeblogEntry c = feedEntry("c");
+        WeblogEntry b = feedEntry("b");
+        WeblogEntry a = feedEntry("a");
+        when(entryManager.getWeblogEntries(any())).thenReturn(List.of(c, b, a));
+
+        Pager<?> pager = modelFor(feedRequest("entries", "atom")).getWeblogEntriesPager();
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> criteria =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(entryManager).getWeblogEntries(criteria.capture());
+        assertEquals(WeblogEntrySearchCriteria.SortOrder.DESCENDING, criteria.getValue().getSortOrder(),
+                "A feed is newest first whatever order the blog's own pages use");
+        assertEquals(List.of("c", "b", "a"), pager.getItems().stream()
+                .map(e -> ((com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper) e).getAnchor()).toList());
     }
 }

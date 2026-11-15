@@ -111,6 +111,36 @@ class WeblogEntriesArchivePagerTest extends EntriesPagerTestSupport {
     // ------------------------------------------------------------ month pager
 
     @Test
+    void anOldestFirstMonthArchiveRunsOldestFirst() throws Exception {
+        Weblog blog = weblog();
+        blog.setEntryOrder("OLDEST");
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(days(1, 1));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesMonthPager pager = monthPager(blog, PAST_MONTH, 0);
+
+            List<Date> dayKeys = List.copyOf(pager.getEntries().keySet());
+            assertEquals(2, dayKeys.size());
+            assertTrue(dayKeys.get(0).before(dayKeys.get(1)),
+                    "An oldest-first blog's month archive starts with its earliest day; got " + dayKeys);
+        });
+    }
+
+    @Test
+    void anOldestFirstDayArchiveAsksForAscendingOrder() throws Exception {
+        Weblog blog = weblog();
+        blog.setEntryOrder("OLDEST");
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(Map.of());
+
+        withRuntimeConfig(() -> dayPager(blog, PAST_DAY, 0));
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> criteria =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(entryManager).getWeblogEntryObjectMap(criteria.capture());
+        assertEquals(WeblogEntrySearchCriteria.SortOrder.ASCENDING, criteria.getValue().getSortOrder());
+    }
+
+    @Test
     void monthPagerQueriesOnlyThatMonth() throws Exception {
         when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(Map.of());
 

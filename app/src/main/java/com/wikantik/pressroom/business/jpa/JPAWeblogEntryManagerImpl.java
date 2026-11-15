@@ -1234,7 +1234,11 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public Map<Date, List<WeblogEntry>> getWeblogEntryObjectMap(WeblogEntrySearchCriteria wesc) throws WebloggerException {
-        Map<Date, List<WeblogEntry>> map = new TreeMap<>(Collections.reverseOrder());
+        // Day keys follow the criteria's sort order, so a day map read oldest
+        // first iterates oldest first.
+        Map<Date, List<WeblogEntry>> map =
+                wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING
+                        ? new TreeMap<>() : new TreeMap<>(Collections.reverseOrder());
 
         List<WeblogEntry> entries = getWeblogEntries(wesc);
 

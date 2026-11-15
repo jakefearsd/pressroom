@@ -18,11 +18,9 @@
 
 package com.wikantik.pressroom.ui.rendering.pagers;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.Weblogger;
@@ -69,7 +67,7 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
     public Map<Date, List<WeblogEntryWrapper>> getEntries() {
 
         if (entries == null) {
-            entries = new TreeMap<>(Collections.reverseOrder());
+            entries = newDayMap();
             try {
                 WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
                 wesc.setEndDate(new Date());

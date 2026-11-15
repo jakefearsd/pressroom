@@ -248,4 +248,106 @@ class WeblogEntriesLatestPagerTest extends EntriesPagerTestSupport {
             assertFalse(pager.hasMoreEntries());
         });
     }
+
+    // ------------------------------------------------------- blog entry order
+
+    private WeblogEntriesLatestPager pagerFor(com.wikantik.pressroom.pojos.Weblog blog, String cat,
+            List<String> tags, int page) {
+        return new WeblogEntriesLatestPager(urlStrategy, weblogger, blog, "en_US", null, null, null,
+                cat, tags, page);
+    }
+
+    private static com.wikantik.pressroom.pojos.Weblog oldestFirstBlog() {
+        com.wikantik.pressroom.pojos.Weblog blog = weblog();
+        blog.setEntryOrder("OLDEST");
+        return blog;
+    }
+
+    /** The anchors in the order a theme iterating the day map would print them. */
+    private static List<String> anchors(Map<Date, ? extends List<com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper>> entries) {
+        return entries.values().stream().flatMap(List::stream)
+                .map(com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper::getAnchor).toList();
+    }
+
+    /** Posts A (oldest), B, C (newest), one per day, the way the manager hands them over. */
+    private Map<Date, List<WeblogEntry>> threeDays() {
+        Map<Date, List<WeblogEntry>> map = days(1, 1, 1);
+        int n = 0;
+        for (List<WeblogEntry> day : map.values()) {
+            day.get(0).setAnchor(String.valueOf((char) ('A' + n++)));
+        }
+        return map;
+    }
+
+    @Test
+    void anOldestFirstBlogListsItsOldestPostFirst() throws Exception {
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(threeDays());
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(oldestFirstBlog(), null, null, 0);
+
+            List<Date> dayKeys = List.copyOf(pager.getEntries().keySet());
+            assertTrue(dayKeys.get(0).before(dayKeys.get(1)) && dayKeys.get(1).before(dayKeys.get(2)),
+                    "An oldest-first blog lists the oldest day first; got " + dayKeys);
+            assertEquals(List.of("A", "B", "C"), anchors(pager.getEntries()));
+        });
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> criteria =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(entryManager).getWeblogEntryObjectMap(criteria.capture());
+        assertEquals(WeblogEntrySearchCriteria.SortOrder.ASCENDING, criteria.getValue().getSortOrder());
+    }
+
+    @Test
+    void aBlogWithNoOrderSetListsNewestFirst() throws Exception {
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(threeDays());
+
+        withRuntimeConfig(() -> assertEquals(List.of("C", "B", "A"),
+                anchors(pagerFor(weblog(), null, null, 0).getEntries())));
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> criteria =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(entryManager).getWeblogEntryObjectMap(criteria.capture());
+        assertEquals(WeblogEntrySearchCriteria.SortOrder.DESCENDING, criteria.getValue().getSortOrder());
+    }
+
+    @Test
+    void anOldestFirstCategoryListingRunsOldestFirst() throws Exception {
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(threeDays());
+
+        withRuntimeConfig(() -> assertEquals(List.of("A", "B", "C"),
+                anchors(pagerFor(oldestFirstBlog(), "Java", null, 0).getEntries())));
+    }
+
+    @Test
+    void anOldestFirstTagListingRunsOldestFirst() throws Exception {
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(threeDays());
+
+        withRuntimeConfig(() -> assertEquals(List.of("A", "B", "C"),
+                anchors(pagerFor(oldestFirstBlog(), null, List.of("testing"), 0).getEntries())));
+    }
+
+    @Test
+    void anOldestFirstBlogPagesForward() throws Exception {
+        com.wikantik.pressroom.pojos.Weblog blog = oldestFirstBlog();
+        blog.setEntryDisplayCount(2);
+        // The manager answers page 0 with two posts plus the probe entry.
+        Map<Date, List<WeblogEntry>> all = threeDays();
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(all);
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager first = pagerFor(blog, null, null, 0);
+            assertEquals(List.of("A", "B"), anchors(first.getEntries()));
+            assertTrue(first.hasMoreEntries());
+        });
+
+        Map<Date, List<WeblogEntry>> rest = new LinkedHashMap<>();
+        all.entrySet().stream().skip(2).forEach(e -> rest.put(e.getKey(), e.getValue()));
+        when(entryManager.getWeblogEntryObjectMap(any())).thenReturn(rest);
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager second = pagerFor(blog, null, null, 1);
+            assertEquals(List.of("C"), anchors(second.getEntries()));
+            assertFalse(second.hasMoreEntries());
+        });
+    }
 }

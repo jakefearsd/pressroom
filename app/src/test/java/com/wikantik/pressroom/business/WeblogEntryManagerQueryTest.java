@@ -89,6 +89,24 @@ class WeblogEntryManagerQueryTest {
         TestUtils.endSession(true);
     }
 
+    // ------------------------------------------------------------ object map
+
+    @Test
+    void theObjectMapFollowsTheCriteriaSortOrder() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria wesc =
+                new com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria();
+        wesc.setWeblog(TestUtils.getManagedWebsite(blog));
+        wesc.setStatus(PubStatus.PUBLISHED);
+
+        List<Date> newestFirst = List.copyOf(entries().getWeblogEntryObjectMap(wesc).keySet());
+        assertEquals(2, newestFirst.size(), "the two fixtures sit on different days");
+        assertTrue(newestFirst.get(0).after(newestFirst.get(1)), "default is newest day first: " + newestFirst);
+
+        wesc.setSortOrder(com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria.SortOrder.ASCENDING);
+        List<Date> oldestFirst = List.copyOf(entries().getWeblogEntryObjectMap(wesc).keySet());
+        assertTrue(oldestFirst.get(0).before(oldestFirst.get(1)), "ASCENDING is oldest day first: " + oldestFirst);
+    }
+
     // ------------------------------------------------------------------ tags
 
     @Test
