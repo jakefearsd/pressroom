@@ -37,6 +37,8 @@ public final class McpInstructions {
             is not.
             - `weblogs update` entryOrder NEWEST or OLDEST orders a blog's lists (feeds stay newest first); \
             `pinned: true` puts an entry atop its blog's home, at most 3.
+            - A series: `pages update` strand true, then `pages set_parts` with entry ids in reading order; \
+            or `strand` (a strand page's id) on an entry appends it.
             - SEO: `fields` trims responses (fields: ["anchor", "searchDescription"] on `entries list`); \
             `audits seo` lists gaps, seo_entry checks one entry.
             - `traffic get` shows what readers read, to pick what to update or write next; `asOf` dates it, \

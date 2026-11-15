@@ -33,7 +33,7 @@ public final class EntryDtos {
     /** The fields {@code clear} may name on an entry. */
     public static final List<String> ENTRY_CLEARABLE = List.of("summary", "metaTitle", "searchDescription",
             "canonicalUrl", "featuredImageId", "ogImageId", "jsonLdType", "geoLatitude", "geoLongitude",
-            "eventStart", "eventEnd", "eventLocation");
+            "eventStart", "eventEnd", "eventLocation", "strand");
 
     /** Fields that are cleared together or not at all. */
     public static final List<List<String>> ENTRY_PAIRS = List.of(List.of("geoLatitude", "geoLongitude"));
@@ -69,7 +69,9 @@ public final class EntryDtos {
             String jsonLdType, Double geoLatitude, Double geoLongitude,
             Instant eventStart, Instant eventEnd, String eventLocation, Boolean commentsClosed,
             @Schema(description = "True when the entry is pinned to the top of its blog's home listing.")
-            Boolean pinned) {
+            Boolean pinned,
+            @Schema(description = "Id of the strand page this entry is a part of; absent when it is in none.")
+            String strand) {
     }
 
     public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
@@ -137,7 +139,8 @@ public final class EntryDtos {
                 instant(entry.getEventEnd()),
                 entry.getEventLocation(),
                 entry.getCommentsClosed(),
-                entry.getPinned());
+                entry.getPinned(),
+                entry.getStrandPageId());
     }
 
     /**
@@ -276,8 +279,8 @@ public final class EntryDtos {
             Boolean importExternalImages,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
-                    + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "
-                    + "Null never removes anything.")
+                    + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation, strand (out of its "
+                    + "strand). Null never removes anything.")
             List<String> clear,
             @Schema(description = EDITS_DESCRIPTION)
             List<TextEdit> edits,
@@ -290,7 +293,10 @@ public final class EntryDtos {
             String revisionNote,
             @Schema(description = "True to pin this entry to the top of its blog's home listing; at most 3 per "
                     + "blog. Needs publish rights.")
-            Boolean pinned) {
+            Boolean pinned,
+            @Schema(description = "Id of one of this blog's strand pages: the entry joins it as the last part. "
+                    + "clear: [\"strand\"] takes it out.")
+            String strand) {
 
         /**
          * This write with what the import step produced: the featured image it
@@ -315,7 +321,7 @@ public final class EntryDtos {
                     searchDescription, canonicalUrl, noindex, newFeaturedImageId, ogImageId, jsonLdType,
                     geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed, anchor,
                     featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash,
-                    revisionNote, pinned);
+                    revisionNote, pinned, strand);
         }
     }
 
@@ -514,6 +520,11 @@ public final class EntryDtos {
             case "eventStart" -> entry.setEventStart(null);
             case "eventEnd" -> entry.setEventEnd(null);
             case "eventLocation" -> entry.setEventLocation(null);
+            // Both fields, as WeblogEntryManager.leaveStrand clears them.
+            case "strand" -> {
+                entry.setStrandPageId(null);
+                entry.setStrandPosition(null);
+            }
             default -> throw new IllegalArgumentException("Not clearable: " + name);
         }
     }

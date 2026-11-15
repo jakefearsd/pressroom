@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Set;
 import com.wikantik.pressroom.pojos.ReservedSlugs;
 import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
@@ -39,7 +40,31 @@ public final class PageDtos {
     public record PageView(String id, String slug, String title, String text,
                             String status, boolean showInNav, int navOrder,
                             String metaTitle, String searchDescription, String canonicalUrl,
-                            boolean noindex, String ogImageId, Instant updateTime) {
+                            boolean noindex, String ogImageId, Instant updateTime,
+                            @Schema(description = "True when the page is a strand: an ordered series of this "
+                                    + "blog's posts.")
+                            boolean strand,
+                            @Schema(description = "A strand's parts, every member in order, drafts and the trash "
+                                    + "included; empty for a page that is not a strand. Change them with "
+                                    + "PUT .../pages/{id}/parts.")
+                            List<PartView> parts) {
+    }
+
+    /**
+     * One part of a strand. {@code title} is the entry's stored (escaped)
+     * title, as {@code EntryView} carries it; {@code position} is the stored
+     * position, which orders the parts but need not be contiguous: readers
+     * see "Part N of M" counted over the published parts only.
+     */
+    public record PartView(String id, String anchor, String title, String status, int position) {
+    }
+
+    /** The body of {@code PUT .../pages/{id}/parts}: the whole membership, in reading order. */
+    public record PartsWrite(
+            @Schema(description = "Ids of this blog's posts, in reading order: they become the strand's parts, "
+                    + "replacing the whole list. An empty list removes every part. A post already in another "
+                    + "strand is refused; move it with entries update strand.")
+            List<String> entries) {
     }
 
     /**
@@ -73,12 +98,20 @@ public final class PageDtos {
             @Schema(description = "Id of an image in this weblog's media, outside any private directory, "
                     + "used as the share image.")
             String ogImageId,
+            @Schema(description = "True makes this page a strand: an ordered series of this blog's posts, "
+                    + "listed beneath its text. Refused while it has parts if set false.")
+            Boolean strand,
             @Schema(description = "On update, fields to remove: metaTitle, searchDescription, canonicalUrl, "
                     + "ogImageId. Null never removes anything.")
             List<String> clear) {
     }
 
-    public static PageView toView(WeblogPage page) {
+    /**
+     * The view of {@code page} with {@code parts}, its strand's members in
+     * order (empty for a page that is not a strand): the caller reads them,
+     * since this pure mapper makes no manager lookup.
+     */
+    public static PageView toView(WeblogPage page, List<WeblogEntry> parts) {
         return new PageView(
                 page.getId(),
                 page.getSlug(),
@@ -92,7 +125,15 @@ public final class PageDtos {
                 page.getCanonicalUrl(),
                 Boolean.TRUE.equals(page.getNoindex()),
                 page.getOgImageId(),
-                instant(page.getUpdated()));
+                instant(page.getUpdated()),
+                Boolean.TRUE.equals(page.getStrand()),
+                parts.stream().map(PageDtos::toPartView).toList());
+    }
+
+    private static PartView toPartView(WeblogEntry entry) {
+        return new PartView(entry.getId(), entry.getAnchor(), entry.getTitle(),
+                entry.getStatus() == null ? null : entry.getStatus().name(),
+                entry.getStrandPosition() == null ? 0 : entry.getStrandPosition());
     }
 
     private static Instant instant(Timestamp ts) {
@@ -151,6 +192,11 @@ public final class PageDtos {
         }
         if (write.ogImageId() != null) {
             errors.check("ogImageId", () -> page.setOgImageId(SeoFields.ogImageId(write.ogImageId())));
+        }
+        // Whether it may be unset needs a count of its parts, so the
+        // controller checks that (PagesApi.checkStrand).
+        if (write.strand() != null) {
+            page.setStrand(write.strand());
         }
         for (String name : cleared) {
             clearField(page, name);

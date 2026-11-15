@@ -238,8 +238,8 @@ The clearable fields, per resource:
 
 - **Entry:** `summary`, `metaTitle`, `searchDescription`, `canonicalUrl`,
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
-  `eventStart`, `eventEnd` and `eventLocation`. `geoLatitude` and `geoLongitude`
-  clear together, as a pair.
+  `eventStart`, `eventEnd`, `eventLocation` and `strand` (takes the entry out of
+  its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
 - **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`,
   `newsletterListUuid`, `businessId`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
@@ -900,6 +900,7 @@ GET    /api/v1/weblogs/{handle}/pages/{id}
 POST   /api/v1/weblogs/{handle}/pages
 PATCH  /api/v1/weblogs/{handle}/pages/{id}
 DELETE /api/v1/weblogs/{handle}/pages/{id}
+PUT    /api/v1/weblogs/{handle}/pages/{id}/parts
 ```
 
 `POST`-role required. `status` is one of `DRAFT`/`PUBLISHED` only — pages
@@ -936,6 +937,47 @@ omits a field leaves it alone; `clear` removes `metaTitle`,
 `searchDescription`, `canonicalUrl` or `ogImageId` (see [Removing a
 value](#removing-a-value)), and `clear` on a create is a 400. A duplicate
 slug is still a 409, reported once every field has passed.
+
+### Strands
+
+A strand is a page that carries an ordered series of its blog's posts: the
+page's text frames the topic, and the posts are listed beneath it, in order.
+Each post reader-visible in the series (published, and not dated in the
+future) shows "Part N of M" linking to the strand page, with links to the
+previous and next parts. A post is in at most one strand, and a strand's
+parts are posts of its own blog.
+
+Every page view carries `strand` (boolean) and `parts`, read-only: a strand's
+members in order, drafts and the trash included, each
+`{id, anchor, title, status, position}` (`title` is the entry's stored,
+escaped title, as in the entry view; `position` orders the parts and need not
+be contiguous). `parts` is empty for a page that is not a strand.
+
+- **Make a page a strand** with `"strand": true` on create or `PATCH`.
+  `"strand": false` on a strand that still has parts (any status, the trash
+  included) is a 400 on `strand`, and nothing of that write is saved: take the
+  parts out first. A site page cannot be a strand.
+- **Set its parts** with `PUT /v1/weblogs/{handle}/pages/{id}/parts` and
+  `{"entries": ["<id>", ...]}`, the post ids in reading order. It replaces the
+  whole membership in one step (add, remove and reorder at once) and answers
+  the page view; `{"entries": []}` removes every part. Each id that cannot be
+  a part is its own `errors` entry on `entries`, naming it, and nothing
+  changes: an id this blog has no post for (another blog's post reads the
+  same), a post already in another strand (move it from the entry side), or
+  an id listed twice. A page that is not a strand, or a body without
+  `entries`, is a 400 on `entries`; another blog's page is a 404.
+- **Put one post in a strand** with the entry's `strand`, a strand page's id,
+  on entry create or `PATCH`: the post joins as the last part, and from
+  another strand it moves. Sending the strand it is already in changes
+  nothing. A plain page, another blog's page or an unknown id is a 400 on
+  `strand`, and nothing of that write is saved. `"clear": ["strand"]` takes it
+  out; `null` never does. The entry view carries `strand` while the entry is
+  in one.
+
+Changing either needs publish rights (`POST` role), as every page and entry
+write does. Deleting a strand page keeps its posts and takes them out of it.
+Over MCP: `pages update` with `strand`, `pages set_parts` with `entries`, and
+`entries update` with `strand` or `clear`.
 
 ## Redirects
 
@@ -1375,7 +1417,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
-| `pages` | `list`, `get`, `create`, `update`, `delete` |
+| `pages` | `list`, `get`, `create`, `update`, `delete`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |

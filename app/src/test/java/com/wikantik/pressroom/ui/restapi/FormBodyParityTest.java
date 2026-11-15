@@ -55,7 +55,8 @@ class FormBodyParityTest {
                                 "categoryId", "category",
                                 "pubTimeLocal", "pubTime",
                                 "eventStartLocal", "eventStart",
-                                "eventEndLocal", "eventEnd"),
+                                "eventEndLocal", "eventEnd",
+                                "strandPageId", "strand"),
                         Map.of("id", "The entry's id is the update route's path variable; create assigns one.",
                                 "locale", "A hidden field the editor round-trips unchanged; no surface edits "
                                         + "an entry's locale.",
@@ -68,9 +69,7 @@ class FormBodyParityTest {
                         Map.of("content", "text"),
                         Map.of("id", "The page's id is the update route's path variable; create assigns one.",
                                 "partIds", "The Parts panel's ordered list reaches the API as its own route, "
-                                        + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.",
-                                "strand", "Strands release 2 lands the API body's strand flag in a later task "
-                                        + "of the same release; this exclusion goes stale (and fails) then.")));
+                                        + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.")));
     }
 
     @ParameterizedTest(name = "{0}")

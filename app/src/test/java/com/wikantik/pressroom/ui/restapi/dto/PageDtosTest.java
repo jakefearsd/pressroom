@@ -49,7 +49,7 @@ class PageDtosTest {
     void aWriteWithAnUnknownStatusIsRefusedOnTheStatusField() {
         WeblogPage page = new WeblogPage();
         PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, "bogus", null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write, Set.of()));
 

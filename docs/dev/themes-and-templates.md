@@ -539,6 +539,37 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   the image macro's `$eager`); journal's post page has no hero. Card and
   list pictures stay lazy.
 
+## Strands (parts list and strand bar)
+
+What a strand looks like to a reader (model: `docs/dev/entries.md`,
+"Strands"). Two macros in `weblog.vm`, called by every theme with a page
+template (journal, portfolio, travel):
+- **The showStrandParts macro**, `showStrandParts($model.page)`, in each
+  theme's `page.vm` right after the page text: `ol.strand-parts`, one
+  `li.strand-part` per reader-visible part (PUBLISHED, `pubTime` come), title
+  linked with `$url.entry`, then `p.strand-part-excerpt`. It reads
+  `WeblogPageWrapper.getParts()`, empty for a page that is not a strand, so a
+  plain page prints nothing. Entry titles are stored escaped and go out bare;
+  the excerpt is plain text and is escaped in the macro.
+- **The showStrandBar macro**, `showStrandBar($strandNav)`, in each theme's
+  `_day.vm` permalink branch under the title and byline (above the blog
+  line): `p.strand-bar`, "Part N of M in" (`entryMeta.strandPart`) and the
+  strand page's title, linked with `$url.staticPage`. The page title is raw,
+  so it goes through `$utils.escapeHTML`.
+- **`$strandNav`** is `WeblogEntriesPermalinkPager.getStrandNav()` (a
+  `StrandNav`: strand page, number, total, previous, next), set by each
+  theme's `permalink.vm` and null unless the post is a reader-visible part of
+  a PUBLISHED strand page. When it is set, `permalink.vm` shows "Previous
+  part"/"Next part" steps in place of the blog's Older/Newer, and the last
+  part's next step is "All parts", back to the strand page; when it is null
+  the blog's Older/Newer stay. Because it is null outside a strand, its
+  references are on `ThemeReferenceLeakTest`'s allowlist of nulls a theme
+  tests with `#if`; a new theme using it adds its own lines there.
+- **Freshness**: no cache work of its own. Every strand change bumps
+  `weblog.lastModified`, which re-renders the strand page and every part.
+- Styles (`.strand-parts`, `.strand-bar`) are in each theme's
+  `*-custom.css`, unlike the after-article macro's inline style.
+
 ## Search results
 
 The showSearchResults macro (`weblog.vm`) renders every results page; the

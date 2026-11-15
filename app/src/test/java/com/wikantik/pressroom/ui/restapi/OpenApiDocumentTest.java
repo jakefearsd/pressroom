@@ -47,4 +47,18 @@ class OpenApiDocumentTest {
         assertTrue(text.contains(".pressroom-dev-secret"),
                 "the README must say where the dev credential lives");
     }
+
+    /**
+     * Strands (spec 2026-11-15, release 2): the README documents the parts
+     * route, the page's strand flag and parts, and the entry's strand with
+     * how to remove it.
+     */
+    @Test
+    void strandsAreDocumented() throws Exception {
+        String text = docs();
+        assertTrue(text.contains("PUT /v1/weblogs/{handle}/pages/{id}/parts"), "the parts route");
+        assertTrue(text.contains("\"strand\": true"), "the page's strand flag");
+        assertTrue(text.contains("clear: [\"strand\"]") || text.contains("\"clear\": [\"strand\"]"),
+                "how an entry leaves its strand");
+    }
 }

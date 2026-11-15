@@ -93,6 +93,30 @@ class McpToolExecutorTest {
     }
 
     /**
+     * Spec 2026-11-15 criterion 18: an agent makes a series through MCP --
+     * pages set_parts sends the ordered ids as the PUT body, and entries
+     * update carries strand in the PATCH body, as does clear: ["strand"].
+     */
+    @Test
+    void anAgentSetsAStrandsPartsAndPutsAnEntryInOne() {
+        CallToolResult parts = call("pages", Map.of("action", "set_parts", "weblog", "b", "id", "p1",
+                "entries", List.of("e3", "e1")));
+        CallToolResult join = call("entries", Map.of("action", "update", "weblog", "b", "id", "e2",
+                "strand", "p1"));
+        CallToolResult leave = call("entries", Map.of("action", "update", "weblog", "b", "id", "e2",
+                "clear", List.of("strand")));
+
+        assertFalse(parts.isError(), text(parts));
+        assertFalse(join.isError(), text(join));
+        assertFalse(leave.isError(), text(leave));
+        assertEquals(List.of("PUT /v1/weblogs/b/pages/p1/parts", "PATCH /v1/weblogs/b/entries/e2",
+                "PATCH /v1/weblogs/b/entries/e2"), dispatched.stream().map(c -> c.method() + " " + c.path()).toList());
+        assertEquals("{\"entries\":[\"e3\",\"e1\"]}", dispatched.get(0).jsonBody());
+        assertEquals("{\"strand\":\"p1\"}", dispatched.get(1).jsonBody());
+        assertEquals("{\"clear\":[\"strand\"]}", dispatched.get(2).jsonBody());
+    }
+
+    /**
      * fields (spec 2026-10-24, section 2) is a query array on every entries
      * action that returns entries, whichever variant of get the call selects,
      * and on update it travels beside the JSON body, never inside it.

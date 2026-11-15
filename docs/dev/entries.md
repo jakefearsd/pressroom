@@ -359,6 +359,52 @@ the new dimension from spreading.
 - **Entries list**: a pinned row says "Pinned" (`weblogEntryQuery.pinned`,
   `.entry-pinned`) in its meta line.
 
+## Strands
+Spec `docs/superpowers/specs/2026-11-15-ordering-strands-pages-design.md`,
+release 2. A strand is a page with `is_strand` (V048) carrying an ordered list
+of its blog's posts: its text frames the topic, its parts are listed beneath,
+and each part shows "Part N of M" with steps to the parts either side.
+- **Membership lives on the post** (`weblogentry.strand_page_id`,
+  `strand_position`; FK `ON DELETE SET NULL` as a backstop only), so "zero or
+  one strand per post" holds by construction. Parts are posts of the **same
+  blog**. One rule decides who may be named: `StrandRules.refusals` (unknown,
+  other blog, in another strand, listed twice), a reason key per refused id,
+  shared by the page editor, the entry editor and the API.
+- **Positions**: `appendToStrand` puts a post at max + 1 over ALL members of
+  any status, the trash included (first part = 1), and from another strand it
+  moves without renumbering the old one. `setStrandParts` rewrites 1..n in list
+  order and detaches members not listed; it trusts its input, so run
+  `StrandRules` first. Positions need not be contiguous: numbering is computed.
+  Trashing keeps strand and position, so a restore returns the post to its
+  place; `copyAsDraft` never copies the strand (as it never copies the pin).
+- **Reader-visible part** = PUBLISHED and `pubTime <= now`
+  (`getStrandParts(page, true)`). N is the rank among those by position, M
+  their count (`StrandPlace`). A strand page not PUBLISHED, or not a strand:
+  its posts get no strand bar and keep the blog's Older/Newer
+  (`WeblogEntriesPermalinkPager.getStrandNav` is null). Never a link to a 404.
+- **Editor surfaces** (all need `WeblogPermission.POST`): the page editor's
+  "This page is a strand" switch and Parts panel (`PageEditController`; every
+  member any status, trashed shown; up/down, drag, remove, "Add posts" of this
+  blog's live posts in no strand; the server trusts only the posted order of
+  `bean.partIds`); the entry editor's Strand select (`EntryEditController`,
+  this blog's strand pages, drafts included; a plain page, another blog's page
+  or an unknown id is one field error, `weblogEdit.error.notAStrand`; the
+  current strand re-sent changes nothing). Site pages have no strand.
+- **API surfaces** (`docs/api/README.md`, "Strands"; `api.md`): page `strand`
+  and read-only `parts`; `PUT .../pages/{id}/parts` replaces the membership
+  (each refused id a 400 on `entries`); entry `strand` appends or moves,
+  `clear: ["strand"]` leaves. MCP: `pages set_parts`, `strand` on `pages
+  update` and `entries update`.
+- **Untick and delete**: unticking `is_strand` while the page has parts (any
+  status, trashed included) is refused, in the editor (`pageEdit.error.strandHasParts`)
+  and the API (400 on `strand`). Deleting a strand page detaches its parts
+  (`removePage` clears them through `WeblogEntry.clearStrandByPage`; posts stay
+  published), after a `data-confirm` naming the count; removing a weblog
+  clears its posts' strands first, so no FK fails.
+- **Cache**: every change a reader sees bumps `weblog.lastModified`:
+  `setStrandParts` saves the weblog, an entry save bumps it as usual, and a
+  page save goes through `savePage`.
+
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on
 purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.

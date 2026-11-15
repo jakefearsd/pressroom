@@ -483,6 +483,159 @@ class EntriesWriteApiControllerTest {
         assertFalse(entry.getPinned());
     }
 
+    // ------------------------------------------------------------ strands (spec 2026-11-15, release 2)
+
+    /** A strand page of {@code weblog}, found by id through the page manager. */
+    private static com.wikantik.pressroom.pojos.WeblogPage aStrandPage(
+            Weblogger weblogger, Weblog weblog, String id, boolean strand) throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId(id);
+        page.setWeblog(weblog);
+        page.setStrand(strand);
+        when(weblogger.getWeblogPageManager().getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    private Weblogger strandWeblogger() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        com.wikantik.pressroom.business.WeblogPageManager pageManager =
+                mock(com.wikantik.pressroom.business.WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
+        WeblogEntryManager entryManager = weblogger.getWeblogEntryManager();
+        // appendToStrand, as the manager does it, so the view can be read back.
+        doAnswer(inv -> {
+            WeblogEntry entry = inv.getArgument(0);
+            com.wikantik.pressroom.pojos.WeblogPage page = inv.getArgument(1);
+            if (!page.getId().equals(entry.getStrandPageId())) {
+                entry.setStrandPageId(page.getId());
+                entry.setStrandPosition(7);
+            }
+            return null;
+        }).when(entryManager).appendToStrand(any(), any());
+        return weblogger;
+    }
+
+    private static WeblogEntry anEntry(Weblog weblog) {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("t");
+        entry.setText("b");
+        return entry;
+    }
+
+    /** Criterion 15: setting strand appends the entry, and the view reads it back. */
+    @Test
+    void settingStrandAppendsTheEntryAndShowsIt() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        com.wikantik.pressroom.pojos.WeblogPage strand = aStrandPage(weblogger, weblog, "strand-1", true);
+
+        String body = patchEntry(weblogger, weblog, "{\"strand\":\"strand-1\"}")
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        verify(weblogger.getWeblogEntryManager()).appendToStrand(entry, strand);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
+        assertEquals("strand-1", entry.getStrandPageId());
+        assertEquals("strand-1", new tools.jackson.databind.ObjectMapper().readTree(body).get("strand").asString());
+    }
+
+    /** A post is in one strand: naming another moves it there, at the end. */
+    @Test
+    void settingAnotherStrandMovesTheEntry() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(2);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        com.wikantik.pressroom.pojos.WeblogPage other = aStrandPage(weblogger, weblog, "strand-2", true);
+
+        patchEntry(weblogger, weblog, "{\"strand\":\"strand-2\"}").andExpect(status().isOk());
+
+        verify(weblogger.getWeblogEntryManager()).appendToStrand(entry, other);
+        assertEquals("strand-2", entry.getStrandPageId());
+    }
+
+    /** Re-sending the strand the entry is already in changes nothing: no lookup, no new position. */
+    @Test
+    void resendingTheCurrentStrandChangesNothing() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(2);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"strand\":\"strand-1\"}").andExpect(status().isOk());
+
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+        assertEquals(2, entry.getStrandPosition());
+    }
+
+    @Test
+    void clearingStrandTakesTheEntryOut() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(2);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        String body = patchEntry(weblogger, weblog, "{\"clear\":[\"strand\"]}")
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertNull(entry.getStrandPageId());
+        assertNull(entry.getStrandPosition());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
+        assertNull(new tools.jackson.databind.ObjectMapper().readTree(body).get("strand"));
+    }
+
+    /**
+     * Review Focus 4: a plain page, another blog's strand and an unknown id
+     * are one 400 on strand, and the write is refused whole.
+     */
+    @Test
+    void aStrandThatIsNotOneOfThisBlogsStrandsIs400AndNothingIsSaved() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        aStrandPage(weblogger, weblog, "plain-1", false);
+        aStrandPage(weblogger, aWeblog("elsewhere"), "theirs-1", true);
+
+        for (String id : List.of("plain-1", "theirs-1", "ghost", " ")) {
+            patchEntry(weblogger, weblog, "{\"strand\":\"" + id + "\",\"text\":\"changed\"}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(errorFieldIs("strand"));
+        }
+
+        assertNull(entry.getStrandPageId());
+        assertEquals("b", entry.getText());
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
+    }
+
+    /** A new entry may be created straight into a strand. */
+    @Test
+    void creatingAnEntryInAStrandAppendsIt() throws Exception {
+        Weblogger weblogger = strandWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        com.wikantik.pressroom.pojos.WeblogPage strand = aStrandPage(weblogger, weblog, "strand-1", true);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"b\",\"strand\":\"strand-1\"}"))
+                .andExpect(status().isCreated());
+
+        verify(weblogger.getWeblogEntryManager()).appendToStrand(any(), eq(strand));
+    }
+
     /**
      * Criterion 11's last step, the import-then-featuredImageId flow: the id
      * POST /media/imports answers with (a MediaFile id, a 36-character UUID)

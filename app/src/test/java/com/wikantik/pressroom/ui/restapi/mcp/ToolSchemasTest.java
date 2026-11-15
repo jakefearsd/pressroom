@@ -38,6 +38,27 @@ class ToolSchemasTest {
                 "revisions", "revision", "restore_revision"), action.get("enum"));
     }
 
+    /**
+     * pages set_parts takes the ordered ids as one array of strings, with
+     * PartsWrite's own text; the strand flag on create and update keeps
+     * PageWrite's text, which says untick is refused while it has parts.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void thePagesToolSetsPartsFromAnArrayOfIdsAndCarriesTheStrandFlag() throws Exception {
+        Map<String, Object> action = (Map<String, Object>) properties("pages").get("action");
+        assertEquals(List.of("list", "get", "create", "update", "delete", "set_parts"), action.get("enum"));
+        Map<String, Object> entries = (Map<String, Object>) properties("pages").get("entries");
+        assertEquals("array", entries.get("type"));
+        assertEquals(Map.of("type", "string"), entries.get("items"));
+        assertEquals(com.wikantik.pressroom.ui.restapi.dto.PageDtos.PartsWrite.class.getMethod("entries")
+                .getAnnotation(io.swagger.v3.oas.annotations.media.Schema.class).description(),
+                entries.get("description"));
+        Map<String, Object> strand = (Map<String, Object>) properties("pages").get("strand");
+        assertEquals("boolean", strand.get("type"));
+        assertTrue(((String) strand.get("description")).contains("Refused while it has parts"), strand.toString());
+    }
+
     @Test
     void whoamiTakesNoArgumentsAtAll() {
         assertEquals(Map.of(), properties("whoami"));
@@ -127,8 +148,8 @@ class ToolSchemasTest {
         // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
         // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
         // (spec 2026-10-24), 20; revisionNote (Wave B), 21; metaTitle and searchDescription (Bing scan), 23;
-        // pinned (blog pins), 24.
-        assertEquals(24, described);
+        // pinned (blog pins), 24; strand (strands), 25.
+        assertEquals(25, described);
     }
 
     /**

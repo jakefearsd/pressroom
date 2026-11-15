@@ -223,6 +223,32 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **`EntryImports.BUDGET` (60 s) and `MAX_BODY_IMAGES` (10).** Cloudflare ends a request at 100
   seconds, and the entry still has to save after the last fetch; each fetch has its own 30-second
   deadline, so the budget only decides whether a new fetch starts.
+- **An entry's `strand` is resolved twice, never stored between** (`EntriesWriteApi.strandFor`):
+  once in `checkWrite`, where a page that is not one of this blog's strands (through
+  `WeblogOwnership.page`, so another blog's page and an unknown id are one 400) refuses the write,
+  and again in `apply`, which calls `WeblogEntryManager.appendToStrand` (append, or move from
+  another strand). The strand the entry is already in resolves to nothing, so re-sending it keeps
+  its position, as in the entry editor. Leaving is `clear: ["strand"]`, applied by
+  `EntryDtos.clearField` on both fields (the pure twin of `leaveStrand`). `FormBodyParityTest`
+  renames the editor's `strandPageId` to `strand`.
+
+## Strands over the API (2026-11-15, release 2)
+
+- **`PUT /v1/weblogs/{handle}/pages/{id}/parts` is the API's only `PUT`**: it replaces the whole
+  membership, which is what PUT means, where every other write is a partial `PATCH`.
+  `ApiScopeInterceptor.isWrite` treats every method but GET/HEAD as a write, so it needed no change;
+  `bin/pressroom-api` has no command for it yet.
+- **Parts ids go through `WeblogOwnership.entry`, not the global lookup the page editor uses.** The
+  editor resolves ids globally so `StrandRules` can say "another blog's post"; the API turns another
+  blog's post into an unknown one before `StrandRules` sees it, so a refusal never tells a token what
+  another blog holds (the 404-never-403 rule, applied to a list). Each refused id is its own `errors`
+  entry on `entries`, naming the id; `PagesApi.refusal` maps the `strand.error.*` keys to English (the
+  API is not localised).
+- **`PageView.parts` costs one query per strand page** (`getStrandParts(page, false)`, every member,
+  any status) and none for a plain page, so a `pages list` stays one query for a blog without strands.
+- **Unsetting `strand` reads the part count before anything is applied** (`PagesApi.checkStrand`);
+  a count that cannot be read throws (500), never passes. A site page refuses `strand: true`, as
+  the page editor forces it off.
 
 ## Agent accounts (2026-10-13)
 

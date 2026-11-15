@@ -1,9 +1,12 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import java.util.ArrayList;
 import java.util.List;
+import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
@@ -14,6 +17,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -22,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static com.wikantik.pressroom.ui.restapi.ErrorFieldMatchers.errorFieldIs;
@@ -37,7 +43,7 @@ class PagesApiTest {
     void thePageTitleIsStoredRaw() {
         WeblogPage page = new WeblogPage();
         PageDtos.applyWrite(page, new PageDtos.PageWrite(null, "Cats & Dogs", null, null, null,
-                null, null, null, null, null, null, null), java.util.Set.of());
+                null, null, null, null, null, null, null, null), java.util.Set.of());
         assertEquals("Cats & Dogs", page.getTitle());
     }
 
@@ -551,5 +557,302 @@ class PagesApiTest {
                         .content("{\"title\":\"   \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("title"));
+    }
+    // -----------------------------------------------------------------
+    // Strands (spec 2026-11-15, release 2): the page's strand flag, its
+    // read-only parts, and PUT .../parts, which replaces the membership.
+    // -----------------------------------------------------------------
+
+    /** A strand page and a stateful stand-in for the manager's membership. */
+    private static final class StrandFixture {
+        final Weblogger weblogger = mock(Weblogger.class);
+        final WeblogPageManager pageManager = mock(WeblogPageManager.class);
+        final WeblogEntryManager entryManager = mock(WeblogEntryManager.class);
+        final Weblog weblog = aWeblog("myblog");
+        final WeblogPage strand = aPage(weblog, "strand-1", "series", "The Series");
+        final List<WeblogEntry> members = new ArrayList<>();
+
+        StrandFixture() throws Exception {
+            when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
+            when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
+            strand.setStrand(true);
+            when(pageManager.getPage("strand-1")).thenReturn(strand);
+            when(entryManager.getStrandParts(strand, false)).thenAnswer(inv -> List.copyOf(members));
+            when(entryManager.getStrandPartCount(strand)).thenAnswer(inv -> (long) members.size());
+            doAnswer(inv -> {
+                List<WeblogEntry> parts = inv.getArgument(1);
+                members.forEach(m -> {
+                    m.setStrandPageId(null);
+                    m.setStrandPosition(null);
+                });
+                members.clear();
+                int position = 1;
+                for (WeblogEntry part : parts) {
+                    part.setStrandPageId("strand-1");
+                    part.setStrandPosition(position++);
+                    members.add(part);
+                }
+                return null;
+            }).when(entryManager).setStrandParts(eq(strand), any());
+        }
+
+        WeblogEntry post(String id, Weblog of) throws Exception {
+            WeblogEntry entry = new WeblogEntry();
+            entry.setId(id);
+            entry.setWebsite(of);
+            entry.setAnchor("anchor-" + id);
+            entry.setTitle("Title " + id);
+            entry.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+            when(entryManager.getWeblogEntry(id)).thenReturn(entry);
+            return entry;
+        }
+
+        PagesApi controller() {
+            PagesApi controller = new PagesApi();
+            controller.weblogger = weblogger;
+            return controller;
+        }
+    }
+
+    private tools.jackson.databind.JsonNode json(String body) {
+        return new tools.jackson.databind.ObjectMapper().readTree(body);
+    }
+
+    private String putParts(StrandFixture f, String page, String json, int expectedStatus) throws Exception {
+        org.springframework.mock.web.MockHttpServletResponse response = mockMvc(f.controller())
+                .perform(put("/v1/weblogs/myblog/pages/{id}/parts", page)
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andReturn().getResponse();
+        assertEquals(expectedStatus, response.getStatus(), response.getContentAsString());
+        return response.getContentAsString();
+    }
+
+    /** Criterion 18's read side: strand round-trips, parts list every member in order with its status. */
+    @Test
+    void aStrandPageShowsItsFlagAndEveryPartInOrder() throws Exception {
+        StrandFixture f = new StrandFixture();
+        WeblogEntry first = f.post("e1", f.weblog);
+        WeblogEntry draft = f.post("e2", f.weblog);
+        draft.setStatus(WeblogEntry.PubStatus.DRAFT);
+        first.setStrandPosition(1);
+        draft.setStrandPosition(3);
+        f.members.addAll(List.of(first, draft));
+
+        tools.jackson.databind.JsonNode view = json(mockMvc(f.controller())
+                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        assertTrue(view.get("strand").asBoolean());
+        tools.jackson.databind.JsonNode parts = view.get("parts");
+        assertEquals(2, parts.size());
+        assertEquals("e1", parts.get(0).get("id").asString());
+        assertEquals("anchor-e1", parts.get(0).get("anchor").asString());
+        assertEquals("Title e1", parts.get(0).get("title").asString());
+        assertEquals("PUBLISHED", parts.get(0).get("status").asString());
+        assertEquals(1, parts.get(0).get("position").asInt());
+        assertEquals("DRAFT", parts.get(1).get("status").asString());
+        assertEquals(3, parts.get(1).get("position").asInt());
+    }
+
+    /** A plain page reads strand false and an empty parts list, without asking for any. */
+    @Test
+    void aPlainPageShowsStrandFalseAndNoParts() throws Exception {
+        StrandFixture f = new StrandFixture();
+        f.strand.setStrand(false);
+
+        tools.jackson.databind.JsonNode view = json(mockMvc(f.controller())
+                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        assertFalse(view.get("strand").asBoolean());
+        assertEquals(0, view.get("parts").size());
+        verify(f.entryManager, never()).getStrandParts(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void strandIsSetOnCreateAndOnUpdate() throws Exception {
+        StrandFixture f = new StrandFixture();
+        f.strand.setStrand(false);
+
+        String created = mockMvc(f.controller())
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"walks\",\"title\":\"Walks\",\"strand\":true}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(json(created).get("strand").asBoolean());
+
+        mockMvc(f.controller())
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"strand\":true}"))
+                .andExpect(status().isOk());
+        assertTrue(f.strand.getStrand());
+        verify(f.pageManager).savePage(f.strand);
+    }
+
+    /** Unticking a strand that has parts is refused, on strand, and nothing is saved. */
+    @Test
+    void unsettingStrandWhileItHasPartsIs400OnStrand() throws Exception {
+        StrandFixture f = new StrandFixture();
+        WeblogEntry part = f.post("e1", f.weblog);
+        part.setStatus(WeblogEntry.PubStatus.TRASHED);
+        f.members.add(part);
+
+        mockMvc(f.controller())
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"strand\":false,\"title\":\"Renamed\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("strand"));
+
+        assertTrue(f.strand.getStrand());
+        assertEquals("The Series", f.strand.getTitle());
+        verify(f.pageManager, never()).savePage(any());
+    }
+
+    @Test
+    void unsettingStrandWithNoPartsIsAllowed() throws Exception {
+        StrandFixture f = new StrandFixture();
+
+        mockMvc(f.controller())
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"strand\":false}"))
+                .andExpect(status().isOk());
+
+        assertFalse(f.strand.getStrand());
+    }
+
+    /** As in the page editor: a site page is never a strand. */
+    @Test
+    void aSitePageCannotBecomeAStrand() throws Exception {
+        StrandFixture f = new StrandFixture();
+        f.weblog.setSiteSpace(true);
+        f.strand.setStrand(false);
+
+        mockMvc(f.controller())
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
+                        .requestAttr("actionWeblog", f.weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"strand\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("strand"));
+
+        assertFalse(f.strand.getStrand());
+        verify(f.pageManager, never()).savePage(any());
+    }
+
+    /** Criterion 10/16 happy path: [C, A] become parts 1 and 2, in that order, and the view says so. */
+    @Test
+    void setPartsReplacesTheMembershipInTheGivenOrder() throws Exception {
+        StrandFixture f = new StrandFixture();
+        WeblogEntry a = f.post("a", f.weblog);
+        f.post("b", f.weblog);
+        WeblogEntry c = f.post("c", f.weblog);
+
+        tools.jackson.databind.JsonNode view = json(putParts(f, "strand-1", "{\"entries\":[\"c\",\"a\"]}", 200));
+
+        verify(f.entryManager).setStrandParts(f.strand, List.of(c, a));
+        verify(f.weblogger).flush();
+        tools.jackson.databind.JsonNode parts = view.get("parts");
+        assertEquals(2, parts.size());
+        assertEquals("c", parts.get(0).get("id").asString());
+        assertEquals(1, parts.get(0).get("position").asInt());
+        assertEquals("a", parts.get(1).get("id").asString());
+        assertEquals(2, parts.get(1).get("position").asInt());
+    }
+
+    /** Review Focus 3: an empty list removes every part. */
+    @Test
+    void setPartsWithAnEmptyListRemovesEveryPart() throws Exception {
+        StrandFixture f = new StrandFixture();
+        WeblogEntry a = f.post("a", f.weblog);
+        a.setStrandPageId("strand-1");
+        a.setStrandPosition(1);
+        f.members.add(a);
+
+        tools.jackson.databind.JsonNode view = json(putParts(f, "strand-1", "{\"entries\":[]}", 200));
+
+        verify(f.entryManager).setStrandParts(f.strand, List.of());
+        assertEquals(0, view.get("parts").size());
+        assertNull(a.getStrandPageId());
+    }
+
+    /**
+     * Criterion 16 and Review Focus 3: a post of another blog, one in another
+     * strand, a duplicate and an unknown id are each one errors entry on
+     * entries naming the id, and nothing changes. Another blog's post reads
+     * exactly as an unknown id does: the API does not say what exists elsewhere.
+     */
+    @Test
+    void setPartsRefusesEveryBadIdByNameAndChangesNothing() throws Exception {
+        StrandFixture f = new StrandFixture();
+        f.post("a", f.weblog);
+        f.post("foreign", aWeblog("elsewhere"));
+        WeblogEntry taken = f.post("taken", f.weblog);
+        taken.setStrandPageId("strand-2");
+        taken.setStrandPosition(1);
+
+        String body = putParts(f, "strand-1",
+                "{\"entries\":[\"a\",\"foreign\",\"taken\",\"a\",\"ghost\"]}", 400);
+
+        tools.jackson.databind.JsonNode errors = json(body).get("errors");
+        assertEquals(4, errors.size(), body);
+        String[] named = {"foreign", "taken", "a", "ghost"};
+        for (int i = 0; i < named.length; i++) {
+            assertEquals("entries", errors.get(i).get("field").asString());
+            assertTrue(errors.get(i).get("message").asString().contains("'" + named[i] + "'"), body);
+        }
+        assertEquals(errors.get(0).get("message").asString().replace("foreign", "ghost"),
+                errors.get(3).get("message").asString(), "another blog's post reads as unknown");
+        assertTrue(errors.get(1).get("message").asString().contains("another strand"), body);
+        assertTrue(errors.get(2).get("message").asString().contains("twice"), body);
+        verify(f.entryManager, never()).setStrandParts(any(), any());
+        verify(f.weblogger, never()).flush();
+        assertEquals("strand-2", taken.getStrandPageId());
+    }
+
+    @Test
+    void setPartsOnAPageThatIsNotAStrandIs400OnEntries() throws Exception {
+        StrandFixture f = new StrandFixture();
+        f.strand.setStrand(false);
+        f.post("a", f.weblog);
+
+        putParts(f, "strand-1", "{\"entries\":[\"a\"]}", 400);
+
+        verify(f.entryManager, never()).setStrandParts(any(), any());
+    }
+
+    /** null never means a value: without entries there is nothing to set, so it is a 400, not "no parts". */
+    @Test
+    void setPartsWithoutEntriesIs400() throws Exception {
+        StrandFixture f = new StrandFixture();
+
+        String body = putParts(f, "strand-1", "{}", 400);
+
+        assertEquals("entries", json(body).get("errors").get(0).get("field").asString());
+        verify(f.entryManager, never()).setStrandParts(any(), any());
+    }
+
+    /** By-id ownership: another blog's page is the 404 an unknown id gets. */
+    @Test
+    void setPartsOnAnotherBlogsPageIs404() throws Exception {
+        StrandFixture f = new StrandFixture();
+        WeblogPage foreign = aPage(aWeblog("elsewhere"), "strand-9", "theirs", "Theirs");
+        foreign.setStrand(true);
+        when(f.pageManager.getPage("strand-9")).thenReturn(foreign);
+
+        putParts(f, "strand-9", "{\"entries\":[]}", 404);
+
+        verify(f.entryManager, never()).setStrandParts(any(), any());
     }
 }

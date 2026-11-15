@@ -25,6 +25,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.EntryDeletion;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
@@ -530,6 +531,29 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (Boolean.TRUE.equals(body.pinned()) && !entry.getPinned()) {
             errors.check("pinned", () -> requirePinRoom(weblog));
         }
+        errors.check("strand", () -> strandFor(weblog, entry, body.strand()));
+    }
+
+    /**
+     * The strand page {@code strandId} names, for the entry to join as its
+     * last part, or null when there is nothing to join: no strand sent, or
+     * the one the entry is already in (re-sending it changes nothing, as in
+     * the entry editor). Anything else must be one of this blog's strand
+     * pages: another blog's page, an unknown id, a blank one and a plain page
+     * are one 400 on {@code strand}. {@link WeblogOwnership#page} is the
+     * ownership check, and a lookup that fails answers null, so it refuses.
+     * Joining needs POST, which every write here requires.
+     */
+    private WeblogPage strandFor(Weblog weblog, WeblogEntry entry, String strandId) {
+        if (strandId == null || strandId.equals(entry.getStrandPageId())) {
+            return null;
+        }
+        WeblogPage page = WeblogOwnership.page(weblogger, strandId, weblog);
+        if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
+            throw ApiException.invalidField("strand", "strand must be the id of one of this blog's strand pages; "
+                    + "pages list shows which pages are strands.");
+        }
+        return page;
     }
 
     /**
@@ -569,6 +593,11 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             entry.setCategory(category);
         }
         applyTags(entry, body.tags());
+        WeblogPage strand = strandFor(weblog, entry, body.strand());
+        if (strand != null) {
+            // Appends, and from another strand moves: one strand per post.
+            weblogger.getWeblogEntryManager().appendToStrand(entry, strand);
+        }
         applyPublishNowDefault(entry);
         requireScheduledHasPubTime(entry);
     }

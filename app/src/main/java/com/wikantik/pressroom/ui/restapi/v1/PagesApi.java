@@ -2,11 +2,14 @@ package com.wikantik.pressroom.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.StrandRules;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,14 +54,17 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     @GetMapping("")
     public List<PageDtos.PageView> list(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        return weblogger.getWeblogPageManager().getPages(weblog).stream()
-                .map(PageDtos::toView)
-                .toList();
+        List<PageDtos.PageView> views = new ArrayList<>();
+        for (WeblogPage page : weblogger.getWeblogPageManager().getPages(weblog)) {
+            views.add(view(page));
+        }
+        return views;
     }
 
     @GetMapping("/{id}")
-    public PageDtos.PageView get(HttpServletRequest request, @PathVariable("id") String id) {
-        return PageDtos.toView(requirePage(request, id));
+    public PageDtos.PageView get(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        return view(requirePage(request, id));
     }
 
     @PostMapping("")
@@ -82,6 +89,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         String[] slug = new String[1];
         errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(body.slug()));
         checkWrite(errors, weblog, body, Set.of(), null);
+        checkStrand(errors, weblog, null, body.strand());
         errors.throwIfAny();
         // A clash with stored state, not a field format problem: a 409,
         // reported only once every field passed (as an entry's anchor is).
@@ -99,7 +107,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
                 .path("/{id}")
                 .buildAndExpand(page.getId())
                 .toUri();
-        return ResponseEntity.created(location).body(PageDtos.toView(page));
+        return ResponseEntity.created(location).body(view(page));
     }
 
     @PatchMapping("/{id}")
@@ -120,6 +128,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         errors.check("clear", () -> cleared.addAll(
                 ClearFields.validate(body.clear(), body, PageDtos.PAGE_CLEARABLE, List.of())));
         checkWrite(errors, page.getWeblog(), body, cleared, page.getOgImageId());
+        checkStrand(errors, page.getWeblog(), page, body.strand());
         errors.throwIfAny();
         if (slug[0] != null) {
             requireSlugAvailable(page.getWeblog(), slug[0], page.getId());
@@ -133,7 +142,89 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         weblogger.getWeblogPageManager().savePage(page);
         weblogger.flush();
 
-        return PageDtos.toView(page);
+        return view(page);
+    }
+
+    /**
+     * Makes exactly {@code body.entries} the strand's parts, in that order,
+     * in one step: posts not listed leave it, and a refused list changes
+     * nothing. Each id is looked up through {@link WeblogOwnership#entry}, so
+     * another blog's post is refused exactly as an unknown id is, never told
+     * apart from one; {@link StrandRules} then refuses a post already in
+     * another strand and an id listed twice. Each refused id is its own
+     * {@code errors} entry on {@code entries}, naming it. The manager bumps
+     * {@code weblog.lastModified}, which expires the rendered strand page and
+     * its parts.
+     */
+    @PutMapping("/{id}/parts")
+    public PageDtos.PageView replaceParts(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @RequestBody PageDtos.PartsWrite body) throws WebloggerException {
+        WeblogPage page = requirePage(request, id);
+        List<String> ids = body.entries();
+        if (ids == null) {
+            throw ApiException.invalidField("entries", "entries is required: the strand's post ids in reading "
+                    + "order. An empty list removes every part.");
+        }
+        if (!Boolean.TRUE.equals(page.getStrand())) {
+            throw ApiException.invalidField("entries", "This page is not a strand; set strand true on it first.");
+        }
+        List<WeblogEntry> requested = new ArrayList<>(ids.size());
+        for (String entryId : ids) {
+            requested.add(WeblogOwnership.entry(weblogger, entryId, page.getWeblog()));
+        }
+        FieldErrors errors = new FieldErrors();
+        StrandRules.refusals(page, requested, ids)
+                .forEach((entryId, reason) -> errors.add("entries", refusal(entryId, reason)));
+        errors.throwIfAny();
+
+        weblogger.getWeblogEntryManager().setStrandParts(page, requested);
+        weblogger.flush();
+        return view(page);
+    }
+
+    private static String refusal(String entryId, String reason) {
+        return switch (reason) {
+            case "strand.error.inAnotherStrand" -> "Post '" + entryId + "' is already in another strand; "
+                    + "move it with entries update strand, or take it out with clear: [\"strand\"].";
+            case "strand.error.duplicate" -> "Post '" + entryId + "' is listed twice.";
+            // unknownPost, and otherBlog, which the ownership lookup above
+            // already turns into unknown: what another blog holds is not said.
+            default -> "No post of this blog has id '" + entryId + "'.";
+        };
+    }
+
+    /**
+     * The page as the API shows it: a strand's parts are every member, any
+     * status, in order. A page that is not a strand has none and costs no
+     * query.
+     */
+    private PageDtos.PageView view(WeblogPage page) throws WebloggerException {
+        List<WeblogEntry> parts = Boolean.TRUE.equals(page.getStrand())
+                ? weblogger.getWeblogEntryManager().getStrandParts(page, false)
+                : List.of();
+        return PageDtos.toView(page, parts);
+    }
+
+    /**
+     * The page editor's two strand rules: a site page is never a strand, and
+     * a strand that still has parts (any status, the trash included) cannot
+     * be unset. A count that cannot be read throws rather than passing.
+     *
+     * @param page the stored page, or null on create (which has no parts)
+     */
+    private void checkStrand(FieldErrors errors, Weblog weblog, WeblogPage page, Boolean strand)
+            throws WebloggerException {
+        if (Boolean.TRUE.equals(strand) && weblog.isSiteSpace()) {
+            errors.add("strand", "A site page cannot be a strand.");
+        }
+        if (Boolean.FALSE.equals(strand) && page != null && Boolean.TRUE.equals(page.getStrand())) {
+            long parts = weblogger.getWeblogEntryManager().getStrandPartCount(page);
+            if (parts > 0) {
+                errors.add("strand", "This strand has " + parts + " posts. Take them out first: "
+                        + "PUT .../pages/{id}/parts with an empty entries list.");
+            }
+        }
     }
 
     /**
