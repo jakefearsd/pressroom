@@ -35,6 +35,8 @@ public final class McpInstructions {
             geoLatitude and geoLongitude.
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED; trash is undone by restore, delete_forever \
             is not.
+            - `weblogs update` entryOrder NEWEST or OLDEST orders a blog's lists (feeds stay newest first); \
+            `pinned: true` puts an entry atop its blog's home, at most 3.
             - SEO: `fields` trims responses (fields: ["anchor", "searchDescription"] on `entries list`); \
             `audits seo` lists gaps, seo_entry checks one entry.
             - `traffic get` shows what readers read, to pick what to update or write next; `asOf` dates it, \
