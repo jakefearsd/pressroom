@@ -43,4 +43,14 @@ class WeblogPageTest {
     void aNewPageShowsInNavByDefault() {
         assertTrue(new WeblogPage().getShowInNav());
     }
+
+    @Test
+    void aNewPageIsNotAStrandAndNeverReadsNull() {
+        WeblogPage page = new WeblogPage();
+        assertEquals(Boolean.FALSE, page.getStrand());
+        page.setStrand(Boolean.TRUE);
+        assertEquals(Boolean.TRUE, page.getStrand());
+        page.setStrand(null);
+        assertEquals(Boolean.FALSE, page.getStrand(), "null reads as not a strand");
+    }
 }

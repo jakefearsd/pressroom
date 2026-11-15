@@ -95,6 +95,12 @@
             <basic name="pinned">
                 <column name="pinned" insertable="true" updatable="true" unique="false"/>
             </basic>
+            <basic name="strandPageId">
+                <column name="strand_page_id" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="strandPosition">
+                <column name="strand_position" insertable="true" updatable="true" unique="false"/>
+            </basic>
             <basic name="locale">
                 <column name="locale" insertable="true" updatable="true" unique="false"/>
             </basic>

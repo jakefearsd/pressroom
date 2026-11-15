@@ -186,6 +186,14 @@ public final class WeblogEntryWrapper {
     public Boolean getPinned() {
         return this.pojo.getPinned();
     }
+
+    public String getStrandPageId() {
+        return this.pojo.getStrandPageId();
+    }
+
+    public Integer getStrandPosition() {
+        return this.pojo.getStrandPosition();
+    }
     
     
     public String getLocale() {

@@ -96,6 +96,10 @@ public final class WeblogPageWrapper {
         return this.pojo.getStatus();
     }
 
+    public Boolean getStrand() {
+        return this.pojo.getStrand();
+    }
+
     public Boolean getShowInNav() {
         return this.pojo.getShowInNav();
     }

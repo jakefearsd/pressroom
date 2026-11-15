@@ -72,6 +72,8 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     private Boolean   rightToLeft   = Boolean.FALSE;
     private Boolean   pinnedToMain  = Boolean.FALSE;
     private Boolean   pinned        = Boolean.FALSE;
+    private String    strandPageId;
+    private Integer   strandPosition;
     private PubStatus status        = PubStatus.DRAFT;
     private String    locale;
     private String    creatorUserName;
@@ -177,6 +179,8 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         this.setRightToLeft(other.getRightToLeft());
         this.setPinnedToMain(other.getPinnedToMain());
         this.setPinned(other.getPinned());
+        this.setStrandPageId(other.getStrandPageId());
+        this.setStrandPosition(other.getStrandPosition());
         this.setLocale(other.getLocale());
     }
 
@@ -264,7 +268,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      *       has never been published, so it cannot appear on the blog before
      *       its author has looked at it;</li>
      *   <li>the pin to the top of the blog -- drafts count toward the blog's
-     *       pin limit, so a copied pin could make one more than it allows.</li>
+     *       pin limit, so a copied pin could make one more than it allows;</li>
+     *   <li>the strand and position -- a copy is a new post, and a strand's
+     *       parts are chosen, not inherited.</li>
      * </ul>
      *
      * <p>Tags are re-added by name rather than shared, so the copy owns its own
@@ -283,6 +289,8 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         copy.setAnchor(null);
         copy.setStatus(PubStatus.DRAFT);
         copy.setPinned(Boolean.FALSE);
+        copy.setStrandPageId(null);
+        copy.setStrandPosition(null);
         copy.setPubTime(null);
         copy.setUpdateTime(new Timestamp(System.currentTimeMillis()));
         copy.setTagsAsString(getTagsAsString());
@@ -753,6 +761,24 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
 
     public void setPinned(Boolean pinned) {
         this.pinned = pinned == null ? Boolean.FALSE : pinned;
+    }
+
+    /** Id of the strand page this post is a part of, or null. */
+    public String getStrandPageId() {
+        return strandPageId;
+    }
+
+    public void setStrandPageId(String strandPageId) {
+        this.strandPageId = strandPageId;
+    }
+
+    /** Position within the strand (ascending), or null when in no strand. */
+    public Integer getStrandPosition() {
+        return strandPosition;
+    }
+
+    public void setStrandPosition(Integer strandPosition) {
+        this.strandPosition = strandPosition;
     }
 
     /**

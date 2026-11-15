@@ -45,6 +45,9 @@
             <basic name="showInNav">
                 <column name="show_in_nav" insertable="true" updatable="true" nullable="false"/>
             </basic>
+            <basic name="strand">
+                <column name="is_strand" insertable="true" updatable="true" nullable="false"/>
+            </basic>
             <basic name="navOrder">
                 <column name="nav_order" insertable="true" updatable="true" nullable="false"/>
             </basic>

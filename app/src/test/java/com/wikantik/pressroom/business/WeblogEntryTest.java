@@ -107,6 +107,17 @@ public class WeblogEntryTest  {
         testEntry.setCategory(cat);
         assertEquals(Boolean.FALSE, testEntry.getPinned(), "an entry starts unpinned");
         testEntry.setPinned(Boolean.TRUE);
+        assertNull(testEntry.getStrandPageId(), "an entry starts in no strand");
+        assertNull(testEntry.getStrandPosition());
+        WeblogPage strand = new WeblogPage();
+        strand.setWeblog(TestUtils.weblogger().getWeblogManager().getWeblog(testWeblog.getId()));
+        strand.setSlug("loire");
+        strand.setTitle("Loire");
+        strand.setStrand(Boolean.TRUE);
+        TestUtils.weblogger().getWeblogPageManager().savePage(strand);
+        TestUtils.endSession(true);
+        testEntry.setStrandPageId(strand.getId());
+        testEntry.setStrandPosition(3);
         
         // create a weblog entry
         mgr.saveWeblogEntry(testEntry);
@@ -119,6 +130,13 @@ public class WeblogEntryTest  {
         assertEquals(testEntry, entry);
         assertEquals(Boolean.TRUE, entry.getPinned(), "the pin is stored");
         assertEquals(Boolean.TRUE, new WeblogEntry(entry).getPinned(), "the copy constructor keeps the pin");
+        assertEquals(strand.getId(), entry.getStrandPageId(), "the strand is stored");
+        assertEquals(Integer.valueOf(3), entry.getStrandPosition(), "the position is stored");
+        assertEquals(Boolean.TRUE, TestUtils.weblogger().getWeblogPageManager().getPage(strand.getId()).getStrand());
+        assertEquals(strand.getId(), new WeblogEntry(entry).getStrandPageId(), "the copy constructor keeps the strand");
+        assertEquals(Integer.valueOf(3), new WeblogEntry(entry).getStrandPosition());
+        assertNull(entry.copyAsDraft("Copy").getStrandPageId(), "a duplicate joins no strand");
+        assertNull(entry.copyAsDraft("Copy").getStrandPosition());
         entry.setPinned(Boolean.FALSE);
         mgr.saveWeblogEntry(entry);
         TestUtils.endSession(true);

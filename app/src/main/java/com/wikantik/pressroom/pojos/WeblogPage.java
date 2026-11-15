@@ -54,6 +54,7 @@ public class WeblogPage implements ShortcodeContext, Serializable {
     private String searchDescription;
     private String canonicalUrl;
     private Boolean noindex = Boolean.FALSE;
+    private Boolean strand = Boolean.FALSE;
     private String ogImageId;
 
     public WeblogPage() {
@@ -168,6 +169,18 @@ public class WeblogPage implements ShortcodeContext, Serializable {
 
     public void setShowInNav(Boolean showInNav) {
         this.showInNav = showInNav;
+    }
+
+    /**
+     * Whether the page is a strand: it carries an ordered list of this blog's
+     * posts (membership lives on the post). Never null.
+     */
+    public Boolean getStrand() {
+        return strand == null ? Boolean.FALSE : strand;
+    }
+
+    public void setStrand(Boolean strand) {
+        this.strand = strand == null ? Boolean.FALSE : strand;
     }
 
     /**
