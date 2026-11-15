@@ -59,6 +59,10 @@ public class EntryBean {
     // Pinned to the top of this blog's home listing. Applied by
     // EntryEditController, never copyTo: only a user with POST changes it.
     private boolean pinned;
+    // The strand (a page id) this post is a part of. null = the form did not
+    // carry the field, so the stored strand stays; "" = none. Applied by
+    // EntryEditController, never copyTo: only a user with POST changes it.
+    private String strandPageId;
     private String searchDescription;
 
     // Wave 1 media & SEO foundation -- no editor UI yet, plumbing only
@@ -177,6 +181,14 @@ public class EntryBean {
 
     public void setPinned(boolean pinned) {
         this.pinned = pinned;
+    }
+
+    public String getStrandPageId() {
+        return this.strandPageId;
+    }
+
+    public void setStrandPageId(String strandPageId) {
+        this.strandPageId = strandPageId;
     }
 
     public String getSearchDescription() {
@@ -405,7 +417,7 @@ public class EntryBean {
             throw new WebloggerException("No category specified");
         }
 
-        // NOTE: pubtime, pinned to main and pinned are set by EntryEditController
+        // NOTE: pubtime, pinned to main, pinned and the strand are set by EntryEditController
     }
     
     
@@ -458,6 +470,7 @@ public class EntryBean {
 
         setPinnedToMain(entry.getPinnedToMain());
         setPinned(entry.getPinned());
+        setStrandPageId(entry.getStrandPageId() == null ? "" : entry.getStrandPageId());
     }
     
     

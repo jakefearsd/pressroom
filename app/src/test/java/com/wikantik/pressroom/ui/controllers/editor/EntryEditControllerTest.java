@@ -1411,6 +1411,111 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
                 .thenReturn("http://media/" + id + "?t=true");
     }
 
+    // --- strand ---
+
+    private com.wikantik.pressroom.pojos.WeblogPage strandPage(String id, boolean strand,
+            com.wikantik.pressroom.pojos.Weblog owner) throws WebloggerException {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId(id);
+        page.setWeblog(owner);
+        page.setStrand(strand);
+        when(weblogger.getWeblogPageManager().getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    @Test
+    void aPublisherChoosingAStrandAppendsThePost() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        com.wikantik.pressroom.pojos.WeblogPage strand = strandPage("strand-1", true, weblog);
+        bean.setStrandPageId("strand-1");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        verify(weblogger.getWeblogEntryManager()).appendToStrand(entry, strand);
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+    }
+
+    @Test
+    void choosingAnotherStrandAppendsThereAndNoneLeaves() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setStrandPageId("strand-1");
+        com.wikantik.pressroom.pojos.WeblogPage other = strandPage("strand-2", true, weblog);
+        bean.setStrandPageId("strand-2");
+        controller.entryEditSaveDraft(request, model, bean);
+        verify(weblogger.getWeblogEntryManager()).appendToStrand(entry, other);
+
+        bean.setStrandPageId("");
+        controller.entryEditSaveDraft(request, model, bean);
+        verify(weblogger.getWeblogEntryManager()).leaveStrand(entry);
+    }
+
+    @Test
+    void aPageOfAnotherBlogOrANonStrandOrUnknownIdIsRefusedAndNothingSaved() throws Exception {
+        userMayPost = true;
+        registerMessage("weblogEdit.error.notAStrand", "Choose one of this blog's strands.");
+        existingEntry(PubStatus.PUBLISHED);
+        com.wikantik.pressroom.pojos.Weblog foreign = new com.wikantik.pressroom.pojos.Weblog();
+        foreign.setHandle("elsewhere");
+        strandPage("foreign", true, foreign);
+        strandPage("plain", false, weblog);
+        for (String id : new String[] {"foreign", "plain", "nope"}) {
+            model = newModel();
+            bean.setStrandPageId(id);
+
+            controller.entryEditSaveDraft(request, model, bean);
+
+            assertEquals(java.util.List.of("entry_bean_strandPageId"), invalidFields(model), id);
+            assertTrue(errors(model).contains("Choose one of this blog's strands."), id);
+        }
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+    }
+
+    @Test
+    void aUserWithoutPostKeepsThePostsStrand() throws Exception {
+        userMayPost = false;
+        WeblogEntry entry = existingEntry(PubStatus.DRAFT);
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(3);
+        bean.setStrandPageId("");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertEquals("strand-1", captureSavedEntry().getStrandPageId());
+        verify(weblogger.getWeblogEntryManager(), never()).leaveStrand(any());
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+    }
+
+    @Test
+    void resavingInItsStrandKeepsThePosition() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(3);
+        strandPage("strand-1", true, weblog);
+        bean.setStrandPageId("strand-1");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertEquals(3, captureSavedEntry().getStrandPosition());
+        verify(weblogger.getWeblogEntryManager(), never()).leaveStrand(any());
+    }
+
+    @Test
+    void theEditorListsThisBlogsStrandPagesDraftsIncluded() throws Exception {
+        userMayPost = true;
+        existingEntry(PubStatus.DRAFT);
+        com.wikantik.pressroom.pojos.WeblogPage a = strandPage("s1", true, weblog);
+        com.wikantik.pressroom.pojos.WeblogPage b = strandPage("p1", false, weblog);
+        when(weblogger.getWeblogPageManager().getPages(weblog)).thenReturn(java.util.List.of(a, b));
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertEquals(java.util.List.of(a), model.getAttribute("strandPages"));
+    }
+
     private WeblogEntry existingEntry(PubStatus status) throws WebloggerException {
         WeblogEntry entry = new WeblogEntry();
         entry.setId("entry-1");

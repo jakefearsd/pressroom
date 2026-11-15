@@ -45,6 +45,7 @@ import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
@@ -685,6 +686,9 @@ public class EntryEditController extends BaseController {
         if (mayPin) {
             checkPinLimit(model, entry, bean.getPinned(), request);
         }
+        // Resolved and checked before anything is applied or saved; null when
+        // the strand is left as it is or the post is taken out of its strand.
+        WeblogPage strand = mayPin ? checkedStrand(bean, entry, model, request) : null;
         if (!hasErrors(model)) {
             try {
                 applyForm(request, bean, entry, pubTime);
@@ -692,6 +696,7 @@ public class EntryEditController extends BaseController {
                 // the absent field keeps the stored pin (Review Focus 3).
                 if (mayPin) {
                     entry.setPinned(bean.getPinned());
+                    applyStrand(bean, entry, strand);
                 }
                 weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
@@ -715,6 +720,40 @@ public class EntryEditController extends BaseController {
             bean.setStatus(null);
         }
         return ".EntryEdit";
+    }
+
+    /**
+     * The strand the form chose, or null when there is nothing to append to:
+     * the field is absent (keep), empty (none) or names the strand the post
+     * is already in. Anything else must be one of this blog's strand pages --
+     * a page of another blog, an unknown id and a plain page are one field
+     * error, so nothing is saved ({@link #lookupPage} is the ownership check).
+     */
+    private WeblogPage checkedStrand(EntryBean bean, WeblogEntry entry, Model model,
+                                     HttpServletRequest request) {
+        String id = bean.getStrandPageId();
+        if (StringUtils.isBlank(id) || id.equals(entry.getStrandPageId())) {
+            return null;
+        }
+        WeblogPage page = lookupPage(id, request);
+        if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
+            addFieldError(model, "entry_bean_strandPageId", "weblogEdit.error.notAStrand", request);
+            return null;
+        }
+        return page;
+    }
+
+    /** Applies the checked choice; an absent field (null) keeps the stored strand. */
+    private void applyStrand(EntryBean bean, WeblogEntry entry, WeblogPage strand)
+            throws WebloggerException {
+        if (bean.getStrandPageId() == null) {
+            return;
+        }
+        if (strand != null) {
+            weblogger.getWeblogEntryManager().appendToStrand(entry, strand);
+        } else if (bean.getStrandPageId().isBlank()) {
+            weblogger.getWeblogEntryManager().leaveStrand(entry);
+        }
     }
 
     /**
@@ -787,6 +826,22 @@ public class EntryEditController extends BaseController {
         }
     }
 
+    /**
+     * This blog's strand pages, drafts included, for the select. A display
+     * path (the save validates the chosen id again), so a failed read shows
+     * an empty list rather than failing the editor.
+     */
+    private List<WeblogPage> strandPages(Weblog weblog) {
+        try {
+            return weblogger.getWeblogPageManager().getPages(weblog).stream()
+                    .filter(p -> Boolean.TRUE.equals(p.getStrand()))
+                    .toList();
+        } catch (WebloggerException ex) {
+            log.error("Error listing the strand pages of weblog {}", weblog.getHandle(), ex);
+            return List.of();
+        }
+    }
+
     // Package-private rather than private for EntryEditControllerTest --
     // both real callers guard TRASHED away before reaching this method (see
     // the case's own comment below), so the only way to exercise that
@@ -851,6 +906,7 @@ public class EntryEditController extends BaseController {
         }
 
         model.addAttribute("categories", getCategories(request));
+        model.addAttribute("strandPages", strandPages(getActionWeblog(request)));
         // The SEO drawer's character counts read the same limits the audits use.
         model.addAttribute("seoTitleMax", SeoLimits.TITLE_MAX);
         model.addAttribute("seoDescriptionMax", SeoLimits.DESCRIPTION_MAX);

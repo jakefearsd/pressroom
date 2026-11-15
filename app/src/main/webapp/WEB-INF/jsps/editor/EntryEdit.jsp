@@ -301,6 +301,19 @@
                 </div>
             </c:if>
 
+            <%-- The strand this post is a part of: publish rights only, like the
+                 pin. For anyone else the field is absent and the controller
+                 keeps the stored strand. Page titles are raw, hence escapeXml. --%>
+            <c:if test="${userAnAuthor}">
+                <label class="editor-field-label" for="entry_bean_strandPageId"><spring:message code="weblogEdit.strand"/></label>
+                <select name="bean.strandPageId" id="entry_bean_strandPageId" class="form-select">
+                    <option value="" ${empty bean.strandPageId ? 'selected' : ''}><spring:message code="weblogEdit.strand.none"/></option>
+                    <c:forEach items="${strandPages}" var="opt">
+                        <option value="${opt.id}" ${opt.id == bean.strandPageId ? 'selected' : ''}>${fn:escapeXml(opt.title)}</option>
+                    </c:forEach>
+                </select>
+            </c:if>
+
             <%-- global admin can pin items to front page weblog --%>
             <c:if test="${isGlobalAdmin}">
                 <div class="form-check editor-quiet-check">

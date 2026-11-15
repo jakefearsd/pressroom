@@ -671,6 +671,37 @@ class EntryBeanTest extends EditorControllerTestSupport {
         assertTrue(entry.getPinned(), "copyTo must leave pinned alone");
     }
 
+    /**
+     * The controller applies the strand, as it does the pin: only a user with
+     * POST sees the select, so copyTo must leave the stored strand standing.
+     */
+    @Test
+    void copyToDoesNotTouchTheStrand() throws Exception {
+        WeblogEntry entry = entryInCategory("cat-1");
+        entry.setStrandPageId("strand-1");
+        entry.setStrandPosition(2);
+        bean.setStatus(PubStatus.DRAFT.name());
+        bean.setCategoryId("cat-1");
+        bean.setStrandPageId("");
+
+        bean.copyTo(entry, entry.getCategory());
+
+        assertEquals("strand-1", entry.getStrandPageId(), "copyTo must leave the strand alone");
+        assertEquals(2, entry.getStrandPosition());
+    }
+
+    @Test
+    void copyFromShowsTheStrandOrEmptyForNone() throws Exception {
+        WeblogEntry entry = storedEntry();
+        entry.setStrandPageId("strand-1");
+        bean.copyFrom(entry, Locale.US);
+        assertEquals("strand-1", bean.getStrandPageId());
+
+        entry.setStrandPageId(null);
+        bean.copyFrom(entry, Locale.US);
+        assertEquals("", bean.getStrandPageId());
+    }
+
     private WeblogEntry entryInCategory(String categoryId) throws WebloggerException {
         WeblogCategory category = new WeblogCategory();
         category.setId(categoryId);

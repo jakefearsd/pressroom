@@ -74,6 +74,27 @@ class EntryEditJspTest {
                         + "shape -- .editor-box/.rail-group-label -- never a Bootstrap .card:\n" + rail);
     }
 
+    /**
+     * The strand select is the pin's shape: publish rights only (an author
+     * without POST sends no field, and the controller keeps the stored
+     * strand), page titles through fn:escapeXml, and an empty "None".
+     */
+    @Test
+    void theStrandSelectIsGatedEscapedAndHasANoneOption() throws IOException {
+        String jsp = read();
+        int at = jsp.indexOf("name=\"bean.strandPageId\"");
+        assertTrue(at >= 0, "EntryEdit.jsp must render the bean.strandPageId select");
+        int gate = jsp.lastIndexOf("<c:if test=\"${userAnAuthor}\">", at);
+        int close = jsp.indexOf("</c:if>", gate);
+        assertTrue(gate >= 0 && gate < at && at < close,
+                "the strand select must sit inside the userAnAuthor gate");
+        String block = jsp.substring(gate, close);
+        assertTrue(block.contains("<option value=\"\""), block);
+        assertTrue(block.contains("weblogEdit.strand.none"), block);
+        assertTrue(block.contains("${fn:escapeXml(opt.title)}"), block);
+        assertTrue(block.contains("items=\"${strandPages}\""), block);
+    }
+
     @Test
     void theDeleteLinkIsTheLastThingInTheRail() throws IOException {
         String rail = railRegion(read());
