@@ -283,4 +283,14 @@ class WeblogWrapperTest {
         assertTrue(wrapper.hasFrontDoor());
         assertEquals("page-1", wrapper.getFrontPageId());
     }
+
+    /** The site root belongs to the site front door: the site space never has a blog front door. */
+    @Test
+    void theSiteSpaceNeverHasAFrontDoor() {
+        weblog.setFrontPageId("page-1");
+        weblog.setSiteSpace(true);
+
+        assertFalse(wrapper.hasFrontDoor());
+        assertFalse(weblog.hasFrontDoor());
+    }
 }

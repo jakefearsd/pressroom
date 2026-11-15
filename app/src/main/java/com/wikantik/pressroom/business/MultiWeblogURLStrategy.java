@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.util.URLUtilities;
 
 
@@ -31,6 +32,9 @@ import com.wikantik.pressroom.util.URLUtilities;
  * A Weblogger URLStrategy which builds urls for a multi-weblog environment.
  */
 public class MultiWeblogURLStrategy extends AbstractURLStrategy {
+
+    /** The post listing's own path under a blog that has a front door (a reserved slug). */
+    private static final String POSTS_PATH = "posts";
     
     public MultiWeblogURLStrategy() {}
     
@@ -244,12 +248,7 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         } else if(tags != null && !tags.isEmpty()) {
             pathinfo.append("tags/").append(URLUtilities.getEncodedTagsString(tags));
         } else {
-            if(dateString != null) {
-                params.put("date", dateString);
-            }
-            if(cat != null) {
-                params.put("cat", cat);
-            }
+            appendListing(pathinfo, params, weblog, cat, dateString);
         }
 
         if(pageNum > 0) {
@@ -260,6 +259,26 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
     }
     
     
+    /**
+     * The post listing, where no single category, date or tag view applies:
+     * the blog root, or {@code /posts} when the blog has a front door (its
+     * root shows the front page), with a category and date that came
+     * together as query parameters.
+     */
+    private static void appendListing(StringBuilder pathinfo, Map<String, String> params,
+            Weblog weblog, String cat, String dateString) {
+        if (weblog.hasFrontDoor()) {
+            pathinfo.append(POSTS_PATH);
+        }
+        if (dateString != null) {
+            params.put("date", dateString);
+        }
+        if (cat != null) {
+            params.put("cat", cat);
+        }
+    }
+
+
     /**
      * Get url for a custom page on a given weblog.
      */
@@ -319,6 +338,25 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
             return weblogRoot(weblog, null, absolute);
         }
         return weblogRoot(weblog, null, absolute) + URLUtilities.encode(slug);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The blog's front page IS its root, as the site front door's page is
+     * the site root above: "&lt;root&gt;", never a second address. Its slug
+     * address keeps rendering it, with this url as its canonical.
+     */
+    @Override
+    public String getWeblogStaticPageURL(Weblog weblog, WeblogPage page, boolean absolute) {
+        if (weblog == null || page == null) {
+            return null;
+        }
+        if (weblog.hasFrontDoor() && weblog.getFrontPageId().equals(page.getId())) {
+            return weblogRoot(weblog, null, absolute);
+        }
+        return getWeblogStaticPageURL(weblog, page.getSlug(), absolute);
     }
 
 

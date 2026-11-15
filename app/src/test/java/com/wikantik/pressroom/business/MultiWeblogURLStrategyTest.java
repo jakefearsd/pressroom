@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -275,6 +276,98 @@ class MultiWeblogURLStrategyTest {
     @Test
     void aStaticPageUrlNeedsAWeblogAndASlug() {
         assertNull(strategy.getWeblogStaticPageURL(null, "privacy", false));
-        assertNull(strategy.getWeblogStaticPageURL(weblog("b", null), null, false));
+        assertNull(strategy.getWeblogStaticPageURL(weblog("b", null), (String) null, false));
+    }
+
+    // --- the front door: the root shows a page, the listing is /posts -------
+
+    private static Weblog frontDoor(String handle, String customDomain) {
+        Weblog weblog = weblog(handle, customDomain);
+        weblog.setFrontPageId("front-id");
+        return weblog;
+    }
+
+    private static WeblogPage page(String id, String slug) {
+        WeblogPage page = new WeblogPage();
+        page.setId(id);
+        page.setSlug(slug);
+        return page;
+    }
+
+    @Test
+    void withoutAFrontDoorTheListingIsTheRoot() {
+        assertEquals("/plainblog/",
+                strategy.getWeblogCollectionURL(weblog("plainblog", null), null, null, null, null, -1, false));
+        assertEquals("/plainblog/?page=2",
+                strategy.getWeblogCollectionURL(weblog("plainblog", null), null, null, null, null, 2, false));
+    }
+
+    @Test
+    void withAFrontDoorTheListingIsPostsWithItsPaging() {
+        Weblog blog = frontDoor("plainblog", null);
+
+        assertEquals("/plainblog/posts",
+                strategy.getWeblogCollectionURL(blog, null, null, null, null, -1, false));
+        assertEquals("/plainblog/posts?page=2",
+                strategy.getWeblogCollectionURL(blog, null, null, null, null, 2, false));
+        assertEquals("/plainblog/posts", strategy.getWeblogCollectionURL(blog, null, "root", null, null, 0, false),
+                "the root category is no category");
+    }
+
+    @Test
+    void withAFrontDoorCategoryDateAndTagUrlsDoNotMove() {
+        Weblog blog = frontDoor("plainblog", null);
+
+        assertEquals("/plainblog/category/Travel",
+                strategy.getWeblogCollectionURL(blog, null, "Travel", null, null, -1, false));
+        assertEquals("/plainblog/date/202611",
+                strategy.getWeblogCollectionURL(blog, null, null, "202611", null, -1, false));
+        assertEquals("/plainblog/tags/spain",
+                strategy.getWeblogCollectionURL(blog, null, null, null, List.of("spain"), -1, false));
+    }
+
+    @Test
+    void withAFrontDoorTheListingFollowsTheContextPathAndTheCustomDomain() {
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+
+        assertEquals("/pressroom/plainblog/posts?page=3",
+                strategy.getWeblogCollectionURL(frontDoor("plainblog", null), null, null, null, null, 3, false));
+        assertEquals("https://vhost.example.com/pressroom/posts",
+                strategy.getWeblogCollectionURL(frontDoor("vhostblog", "vhost.example.com"),
+                        null, null, null, null, -1, true));
+    }
+
+    @Test
+    void theFrontPagesUrlIsTheBlogRoot() {
+        Weblog blog = frontDoor("plainblog", null);
+
+        assertEquals("/plainblog/", strategy.getWeblogStaticPageURL(blog, page("front-id", "start"), false));
+        assertEquals("/plainblog/about", strategy.getWeblogStaticPageURL(blog, page("other", "about"), false),
+                "every other page keeps its slug address");
+        assertEquals("/plainblog/start",
+                strategy.getWeblogStaticPageURL(weblog("plainblog", null), page("front-id", "start"), false),
+                "no front door, no root address");
+        assertNull(strategy.getWeblogStaticPageURL(blog, (WeblogPage) null, false));
+        assertNull(strategy.getWeblogStaticPageURL(null, page("front-id", "start"), false));
+    }
+
+    @Test
+    void theFrontPagesUrlFollowsTheContextPathAndTheCustomDomain() {
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+
+        assertEquals("/pressroom/plainblog/",
+                strategy.getWeblogStaticPageURL(frontDoor("plainblog", null), page("front-id", "start"), false));
+        assertEquals("https://vhost.example.com/pressroom/",
+                strategy.getWeblogStaticPageURL(frontDoor("vhostblog", "vhost.example.com"),
+                        page("front-id", "start"), true));
+    }
+
+    /** The site space's root belongs to the site front door: a stray id there moves nothing. */
+    @Test
+    void theSiteSpaceIgnoresAFrontPageId() {
+        Weblog site = frontDoor("site-space", null);
+        site.setSiteSpace(true);
+
+        assertEquals("/", strategy.getWeblogCollectionURL(site, null, null, null, null, -1, false));
     }
 }

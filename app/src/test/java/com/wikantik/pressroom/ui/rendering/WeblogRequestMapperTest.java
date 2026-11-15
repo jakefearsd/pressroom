@@ -439,6 +439,56 @@ class WeblogRequestMapperTest {
                 response.getForwardedUrl());
     }
 
+    // ----------------------------------------------------------------- /posts
+
+    /**
+     * {@code /<handle>/posts} is the post listing's own address: forwarded
+     * with the segment kept, as the root is forwarded, so the page request
+     * reads it as the listing. (Before {@code posts} was a forward target it
+     * left on the page-slug branch with the same url; this pins that the
+     * address survives the table, locale and custom domain included.)
+     */
+    @Test
+    void postsForwardsToThePageServletWithItsSegment() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/posts"), response));
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/posts", response.getForwardedUrl());
+
+        MockHttpServletResponse localized = new MockHttpServletResponse();
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/en/posts"), localized));
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/en/posts", localized.getForwardedUrl());
+    }
+
+    @Test
+    void postsOnACustomDomainForwardsToThePageServlet() throws Exception {
+        givenCustomDomain("vhost.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(vhostUrl("GET", "/posts"), response));
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/posts", response.getForwardedUrl());
+    }
+
+    /** {@code /posts/} is a 404, as a trailing slash is on every context. */
+    @Test
+    void postsWithATrailingSlashIsNotFound() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/posts/"), response));
+        assertEquals(404, response.getStatus());
+        assertNull(response.getForwardedUrl());
+    }
+
+    /** Nothing lives under {@code /posts}: a further segment is not a second address for the listing. */
+    @Test
+    void postsWithAFurtherSegmentIsNotForwarded() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mapperblog/posts/2"), response));
+        assertNull(response.getForwardedUrl());
+        assertNull(mapper.calculateForwardUrl(publicUrl("GET", "/x"), "mapperblog", null, "posts", "2"));
+    }
+
     // ------------------------------------------------------------ POST rules
 
     /**

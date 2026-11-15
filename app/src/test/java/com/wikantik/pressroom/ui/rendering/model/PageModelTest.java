@@ -542,6 +542,43 @@ class PageModelTest {
                 "The canonical URL must be absolute; was: " + canonical);
     }
 
+    // ----------------------------------------- canonical under a front door
+
+    /** No front door: the listing is the root, at /posts too (one address, the root). */
+    @Test
+    void withoutAFrontDoorTheListingCanonicalisesToTheRoot() throws Exception {
+        WeblogPageRequest posts = pageRequest();
+        posts.setPageNum(0);
+
+        assertEquals("http://localhost:8080/pressroom/testblog/", modelFor(posts).getCanonicalUrl());
+    }
+
+    /** A front door: the listing (at /posts or at an old ?page=2 root link) canonicalises to /posts, paging kept. */
+    @Test
+    void withAFrontDoorTheListingCanonicalisesToPosts() throws Exception {
+        weblog.setFrontPageId("front-id");
+        WeblogPageRequest listing = pageRequest();
+
+        assertEquals("http://localhost:8080/pressroom/testblog/posts", modelFor(listing).getCanonicalUrl());
+
+        listing.setPageNum(2);
+        assertEquals("http://localhost:8080/pressroom/testblog/posts?page=2", modelFor(listing).getCanonicalUrl());
+    }
+
+    /** The front page canonicalises to the blog root, at the root and at its own slug alike. */
+    @Test
+    void theFrontPageCanonicalisesToTheRoot() throws Exception {
+        weblog.setFrontPageId("front-id");
+        WeblogPage front = new WeblogPage();
+        front.setId("front-id");
+        front.setSlug("start-here");
+        WeblogPageRequest request = pageRequest();
+        request.setPageSlug("start-here");
+        request.setWeblogPageContent(front);
+
+        assertEquals("http://localhost:8080/pressroom/testblog/", modelFor(request).getCanonicalUrl());
+    }
+
     /**
      * The discovery front page is served at {@code /}, so that is its
      * canonical -- never the site space's internal {@code page/discovery}

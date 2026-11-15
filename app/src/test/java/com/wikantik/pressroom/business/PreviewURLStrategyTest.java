@@ -352,4 +352,23 @@ class PreviewURLStrategyTest {
         assertEquals(0, url.chars().filter(c -> c == '?').count(),
                 "and needs no query string at all: " + url);
     }
+
+    /**
+     * A previewed blog with a front door links its listing at /posts inside
+     * the preview, carrying the theme, and its front page at the preview root
+     * (the preview request parses /posts as the listing, as the live one does).
+     */
+    @Test
+    void aFrontDoorListingAndFrontPageStayInsideThePreview() {
+        Weblog weblog = weblog();
+        weblog.setFrontPageId("front-id");
+        com.wikantik.pressroom.pojos.WeblogPage front = new com.wikantik.pressroom.pojos.WeblogPage();
+        front.setId("front-id");
+        front.setSlug("start");
+
+        assertEquals(ROOT + "posts?theme=journal",
+                preview.getWeblogCollectionURL(weblog, null, null, null, null, -1, false));
+        assertEquals(ROOT, preview.getWeblogStaticPageURL(weblog, front, false),
+                "as a page's slug url is: the root, no theme parameter");
+    }
 }

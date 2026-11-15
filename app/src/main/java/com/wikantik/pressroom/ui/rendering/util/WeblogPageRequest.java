@@ -54,6 +54,9 @@ public class WeblogPageRequest extends WeblogRequest {
 
     private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
+    /** The post listing's own path, {@code /<handle>/posts}: a reserved slug, never a context. */
+    private static final String POSTS_PATH = "posts";
+
     // lightweight attributes
     private String context;
     private String weblogAnchor;
@@ -68,6 +71,9 @@ public class WeblogPageRequest extends WeblogRequest {
     // page request (/<handle>/<slug>), set during parsing with no database
     // access. null on every other kind of request.
     private String pageSlug;
+
+    // lightweight: the request is /<handle>/posts, the post listing's own path
+    private boolean postsPath;
 
     // heavyweight attributes
     private WeblogEntry weblogEntry;
@@ -143,6 +149,7 @@ public class WeblogPageRequest extends WeblogRequest {
      *   /category/&lt;category&gt; category collection view
      *   /tags/&lt;tag&gt;+&lt;tag&gt;    tags
      *   /page/&lt;pagelink&gt;     custom page
+     *   /posts                the post listing (no context)
      * </pre>
      * A null or blank path is the weblog homepage.
      */
@@ -211,7 +218,8 @@ public class WeblogPageRequest extends WeblogRequest {
 
     /**
      * A single path element. It is either /tags (the one context that takes no
-     * argument) or a page slug: /&lt;handle&gt;/about.
+     * argument), /posts (the post listing, which is no context at all) or a
+     * page slug: /&lt;handle&gt;/about.
      *
      * <p>Reserved words are rejected here (a cheap string check, no database);
      * resolving the slug against the database is deferred to
@@ -223,6 +231,16 @@ public class WeblogPageRequest extends WeblogRequest {
             throws InvalidRequestException {
 
         if ("tags".equals(this.context)) {
+            return;
+        }
+
+        // /posts is the post listing, whether or not the blog has a front
+        // door. Not a context: everything that asks "is this the home
+        // listing?" (pins, "All" current, the default template, the cache
+        // key) must answer as it does for the root.
+        if (POSTS_PATH.equals(this.context)) {
+            this.context = null;
+            this.postsPath = true;
             return;
         }
 
@@ -244,12 +262,16 @@ public class WeblogPageRequest extends WeblogRequest {
      *
      * <p>Params are only honoured when the path carried no view of its own, or
      * on user-defined pages (for backwards compatibility). That is what keeps
-     * path-based and query-param urls from being mixed.
+     * path-based and query-param urls from being mixed. /posts takes the
+     * listing's own parameters, date and cat (and page, below), never a
+     * permalink's.
      */
     private void parseQueryParameters(String pathInfo, HttpServletRequest request)
             throws InvalidRequestException {
 
-        if (pathInfo == null || this.weblogPageName != null) {
+        if (this.postsPath) {
+            parseDateAndCategory(request);
+        } else if (pathInfo == null || this.weblogPageName != null) {
 
             // "entry" wins outright when present -- including when it is
             // present but empty, which suppresses "anchor" rather than falling
@@ -370,6 +392,71 @@ public class WeblogPageRequest extends WeblogRequest {
                 .length() == 6 || dateString.length() == 8);
     }
 
+    /** Whether this is {@code /<handle>/posts}, the post listing's own path. */
+    public boolean isPostsPath() {
+        return postsPath;
+    }
+
+    /**
+     * Turns a plain root request into its blog's front page: sets
+     * {@link #getPageSlug()} to the page's slug and the page content, so the
+     * cache key, the template and the model are exactly those of
+     * {@code /<handle>/<slug>}. Asked by the page servlet before it builds the
+     * cache key.
+     *
+     * <p>Changes nothing and answers false for {@code /posts}, for a root
+     * carrying a listing parameter ({@code page} &gt; 0, {@code cat},
+     * {@code date}, or a permalink's {@code entry}), for a locale view, for a
+     * blog without a front page (the site space never has one), and when the
+     * id does not name a PUBLISHED page of this blog or the lookup fails: a
+     * blog root is never a 404, it lists posts.
+     *
+     * <p>The lookup is the page manager's published-page list, which it
+     * remembers per weblog stamp and the nav reads on every render anyway: no
+     * query of its own once warm.
+     *
+     * @return true when this request is now the front page's
+     */
+    public boolean resolveFrontDoor() {
+        if (!isPlainRoot()) {
+            return false;
+        }
+        Weblog weblog = getWeblog();
+        if (weblog == null || !weblog.hasFrontDoor()) {
+            return false;
+        }
+        WeblogPage front = publishedPage(weblog, weblog.getFrontPageId());
+        if (front == null) {
+            return false;
+        }
+        this.pageSlug = front.getSlug();
+        setWeblogPageContent(front);
+        return true;
+    }
+
+    /** The bare blog root: no path, no locale, no view or listing parameter. */
+    private boolean isPlainRoot() {
+        return getPathInfo() == null && getLocale() == null && !postsPath
+                && context == null && pageSlug == null && weblogPageName == null
+                && weblogAnchor == null && weblogDate == null && weblogCategoryName == null
+                && tags == null && pageNum <= 0;
+    }
+
+    /** The PUBLISHED page of this weblog with that id, or null (unknown, a draft, another blog's, a failed lookup). */
+    private WeblogPage publishedPage(Weblog weblog, String id) {
+        try {
+            for (WeblogPage page : weblogger().getWeblogPageManager().getPublishedPages(weblog)) {
+                if (id.equals(page.getId())) {
+                    return page;
+                }
+            }
+        } catch (WebloggerException ex) {
+            log.error("Error looking up the front page of weblog {}; listing posts instead",
+                    weblog.getHandle(), ex);
+        }
+        return null;
+    }
+
     public String getContext() {
         return context;
     }
@@ -477,7 +564,10 @@ public class WeblogPageRequest extends WeblogRequest {
      * (/<handle>/<slug>), or null on every other kind of request. Set during
      * parsing with no database access -- this is the field cache-key
      * generation reads, precisely so that generating a key never resolves
-     * the page it might name.
+     * the page it might name. The one other writer is
+     * {@link #resolveFrontDoor()}, which gives a plain root its front page's
+     * slug from the page manager's remembered published pages, so the root
+     * shares that page's key.
      */
     public String getPageSlug() {
         return pageSlug;

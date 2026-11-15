@@ -318,13 +318,22 @@ public class SeoController extends BaseController {
                 .getSitemapEntries(weblog, MAX_SITEMAP_URLS);
         List<WeblogPage> pages = weblogger.getWeblogPageManager().getPublishedPages(weblog);
 
+        // With a front door the root IS the front page: listed once, as the
+        // root (never again at its slug), and only while that page is
+        // indexable; the post listing has moved to /posts.
+        WeblogPage frontPage = frontPage(weblog, pages);
+
         StringBuilder xml = new StringBuilder(256);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
-                .append("\" xmlns:image=\"").append(IMAGE_NS)
-                // the weblog home page follows the urlset opening
-                .append("\">\n  <url>\n    <loc>").append(escapeXml(weblogURL)).append("</loc>\n");
-        appendLastmod(xml, "    ", instant(weblog.getLastModified()));
-        xml.append("  </url>\n");
+                .append("\" xmlns:image=\"").append(IMAGE_NS).append("\">\n");
+        // the weblog home page follows the urlset opening
+        if (frontPage == null || isSubmitted(frontPage, weblogURL)) {
+            appendWeblogUrl(xml, weblogURL, weblog);
+        }
+        if (weblog.hasFrontDoor()) {
+            appendWeblogUrl(xml, urlStrategy.getWeblogCollectionURL(weblog, null, null, null, null, -1, true),
+                    weblog);
+        }
 
         for (SitemapEntry entry : entries) {
             String loc = urlStrategy.getWeblogEntryURL(weblog, null, entry.anchor(), true);
@@ -341,9 +350,36 @@ public class SeoController extends BaseController {
         // business site most wants indexed. noindex is honoured here for the
         // same reason it is for entries -- a page excluded from search must be
         // excluded from what we hand the crawler.
-        appendPages(xml, pages, weblog, urlStrategy);
+        List<WeblogPage> otherPages = frontPage == null ? pages
+                : pages.stream().filter(page -> !page.getId().equals(frontPage.getId())).toList();
+        appendPages(xml, otherPages, weblog, urlStrategy);
         xml.append("</urlset>\n");
         return xml.toString();
+    }
+
+    /** One {@code url} for a weblog-level address (its root, its listing), dated by the weblog. */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "The URL is built by the URL strategy from the stored weblog and goes "
+                    + "through escapeXml().")
+    private static void appendWeblogUrl(StringBuilder xml, String loc, Weblog weblog) {
+        xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
+        appendLastmod(xml, "    ", instant(weblog.getLastModified()));
+        xml.append("  </url>\n");
+    }
+
+    /** The blog's front page among its published pages, or null (no front door, or the id resolves to none). */
+    private static WeblogPage frontPage(Weblog weblog, List<WeblogPage> pages) {
+        if (!weblog.hasFrontDoor()) {
+            return null;
+        }
+        return pages.stream().filter(page -> weblog.getFrontPageId().equals(page.getId()))
+                .findFirst().orElse(null);
+    }
+
+    /** Whether a page at {@code loc} belongs in the sitemap: indexable and not canonical elsewhere. */
+    private static boolean isSubmitted(WeblogPage page, String loc) {
+        return !Boolean.TRUE.equals(page.getNoindex()) && !canonicalElsewhere(page.getCanonicalUrl(), loc);
     }
 
     /**
@@ -358,9 +394,8 @@ public class SeoController extends BaseController {
     private void appendPages(StringBuilder xml, List<WeblogPage> pages, Weblog weblog,
             URLStrategy urlStrategy) {
         for (WeblogPage page : pages) {
-            String loc = urlStrategy.getWeblogStaticPageURL(weblog, page.getSlug(), true);
-            if (Boolean.TRUE.equals(page.getNoindex())
-                    || canonicalElsewhere(page.getCanonicalUrl(), loc)) {
+            String loc = urlStrategy.getWeblogStaticPageURL(weblog, page, true);
+            if (!isSubmitted(page, loc)) {
                 continue;
             }
             xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");

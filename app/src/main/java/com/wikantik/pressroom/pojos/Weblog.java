@@ -423,6 +423,17 @@ public class Weblog implements Serializable {
         this.frontPageId = frontPageId;
     }
 
+    /**
+     * Whether this blog's root shows its front page instead of the post list:
+     * exactly when a front page is named. Never for the site space, whose
+     * root belongs to the site front door ({@code FrontDoor}). The request
+     * path still falls back to the post list when the id does not resolve to
+     * a published page of this blog.
+     */
+    public boolean hasFrontDoor() {
+        return frontPageId != null && !isSiteSpace();
+    }
+
     /** The listing order to use: the stored value, newest first when null, blank or unknown. */
     public EntryOrder entryOrder() {
         return EntryOrder.of(entryOrder);

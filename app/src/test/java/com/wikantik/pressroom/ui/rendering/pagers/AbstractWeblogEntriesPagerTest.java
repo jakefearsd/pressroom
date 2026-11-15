@@ -295,6 +295,32 @@ class AbstractWeblogEntriesPagerTest {
         });
     }
 
+    /**
+     * On a blog with a front door the listing lives at /posts, so its paging
+     * does too, through the real strategy: home, next and previous all stay
+     * on /posts rather than landing on the front page.
+     */
+    @Test
+    void aFrontDoorBlogPagesThroughPosts() {
+        String previous = com.wikantik.pressroom.config.WebloggerRuntimeConfig.getRelativeContextURL();
+        com.wikantik.pressroom.config.WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+        try {
+            withSiteMaxEntries(SITE_MAX_ENTRIES, () -> {
+                Weblog blog = weblog(10);
+                blog.setFrontPageId("front-id");
+                FixedEntriesPager pager = new FixedEntriesPager(
+                        new com.wikantik.pressroom.business.MultiWeblogURLStrategy(), blog, null,
+                        null, null, null, null, null, 1, true);
+
+                assertEquals("/pressroom/myblog/posts?page=2", pager.getNextLink());
+                assertEquals("/pressroom/myblog/posts", pager.getPrevLink());
+                assertEquals("/pressroom/myblog/posts", pager.getHomeLink());
+            });
+        } finally {
+            com.wikantik.pressroom.config.WebloggerRuntimeConfig.setRelativeContextURL(previous);
+        }
+    }
+
     // -------------------------------------------------------- url dispatching
 
     @Test

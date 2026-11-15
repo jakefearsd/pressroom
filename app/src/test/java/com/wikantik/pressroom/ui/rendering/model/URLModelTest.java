@@ -291,6 +291,41 @@ class URLModelTest {
                 "Locale and page number must combine.");
     }
 
+    /**
+     * $url.home means the blog (its root); $url.posts the post listing. They
+     * are one address until the blog names a front page, when the listing
+     * moves to /posts and home stays at the root.
+     */
+    @Test
+    void homeIsTheBlogRootAndPostsTheListing() throws Exception {
+        assertEquals(ABSOLUTE_SITE + "/testblog/", model.getPosts(), "no front door: the listing is the root");
+
+        weblog.setFrontPageId("front-id");
+        URLModel withFrontDoor = modelFor(weblog, null, new MultiWeblogURLStrategy());
+
+        assertEquals(ABSOLUTE_SITE + "/testblog/", withFrontDoor.getHome(), "home stays the blog root");
+        assertEquals(ABSOLUTE_SITE + "/testblog/posts", withFrontDoor.getPosts());
+        assertEquals(ABSOLUTE_SITE + "/testblog/posts?page=2", withFrontDoor.home(2),
+                "a paged home is a page of the listing");
+        assertEquals(ABSOLUTE_SITE + "/testblog/fr/", withFrontDoor.home("fr"), "a localised home is the root");
+    }
+
+    /** The front page's link is the root: the nav and every theme link it with $url.staticPage($page). */
+    @Test
+    void theFrontPagesStaticPageUrlIsTheRoot() throws Exception {
+        weblog.setFrontPageId("front-id");
+        URLModel withFrontDoor = modelFor(weblog, null, new MultiWeblogURLStrategy());
+        com.wikantik.pressroom.pojos.WeblogPage front = new com.wikantik.pressroom.pojos.WeblogPage();
+        front.setId("front-id");
+        front.setSlug("start");
+        com.wikantik.pressroom.pojos.WeblogPage about = new com.wikantik.pressroom.pojos.WeblogPage();
+        about.setId("about-id");
+        about.setSlug("about");
+
+        assertEquals(SITE + "/testblog/", withFrontDoor.staticPage(front));
+        assertEquals(SITE + "/testblog/about", withFrontDoor.staticPage(about));
+    }
+
     @Test
     void aLocalisedRequestPutsTheLocaleInEveryUrl() throws Exception {
         // The locale is picked up from the request, not passed per call, so a

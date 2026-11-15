@@ -127,6 +127,9 @@ class ThemeReferenceLeakTest {
             "frontpage:_header|standard: $fdMetaTitle", // null unless a static page has a meta title; tested with #if in frontpage _header.vm
             "frontpage:_header|standard: $fdPageTitle", // unset on the home view; tested with #elseif in frontpage _header.vm
             "frontpage:_header|standard: $fdReading", // unset except on a page whose title is the h1; tested with #if in frontpage _header.vm
+            "frontpage:_header|standard: $fdTab", // unset on a static page (the front-door render), which marks no tab; compared with == in frontpage _header.vm
+            "frontpage:_page|standard: $model.page.metaTitle", // null when the page has no meta title; assigned to $fdMetaTitle, which is tested with #if
+            "frontpage:_page|standard: fdMetaTitle", // #set of a null meta title; tested with #if in frontpage _header.vm
             "journal:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
             "journal:Weblog|standard: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
             "journal:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
@@ -351,6 +354,47 @@ class ThemeReferenceLeakTest {
 
         assertTrue(failures.isEmpty(), "unresolved Velocity references leaked into the "
                 + theme + " theme's rendered pages:\n" + String.join("\n", failures));
+    }
+
+    /**
+     * A blog with a front door: the root renders the page, /posts the listing
+     * with its "Posts" nav link ($url.posts, the weblog.nav.posts key), in
+     * every theme, frontpage's "Recent posts" tab included.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("contentThemesAndFrontpage")
+    void aFrontDoorBlogRendersWithoutAnUnresolvedReference(String theme) throws Exception {
+        Weblog blog = "frontpage".equals(theme) ? frontpageWeblog : fixtures.get(theme).weblog();
+        String base = "/" + blog.getHandle();
+        if ("frontpage".equals(theme)) {
+            savePage(blog, PAGE_SLUG, "About These Leaks", "Some prose about the weblog.");
+        }
+        setFrontPage(blog, PAGE_SLUG);
+        List<String> failures = new ArrayList<>();
+        try {
+            scan(failures, theme + " front page", page(base + "/", 200));
+            scan(failures, theme + " posts", page(base + "/posts", 200));
+        } finally {
+            setFrontPage(blog, null);
+        }
+
+        assertTrue(failures.isEmpty(), "unresolved Velocity references leaked into the "
+                + theme + " theme's front-door pages:\n" + String.join("\n", failures));
+    }
+
+    static List<String> contentThemesAndFrontpage() {
+        List<String> themes = new ArrayList<>(CONTENT_THEMES);
+        themes.add("frontpage");
+        return themes;
+    }
+
+    private static void setFrontPage(Weblog weblog, String slug) throws Exception {
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setFrontPageId(slug == null ? null
+                : TestUtils.weblogger().getWeblogPageManager().getPageBySlug(managed, slug).getId());
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
     }
 
     @Test

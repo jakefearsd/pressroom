@@ -19,7 +19,12 @@
 package com.wikantik.pressroom.ui.rendering.util;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import java.util.List;
 
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -28,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -510,5 +516,170 @@ class WeblogPageRequestTest {
     void aDateQueryParamIsValidatedTheSameWayAsAPathDate() {
         assertThrows(InvalidRequestException.class, () -> parse(null, "date", "2005XX"),
                 "the query-param route must not be a way around the path route's check");
+    }
+
+    // ------------------------------------------- /posts and the front door
+
+    /**
+     * {@code /<handle>/posts} is the post listing, not a new context: the
+     * context stays null so every "home listing" test (pins, "All" current,
+     * the default template, the cache key) holds for it as for the root.
+     */
+    @Test
+    void postsIsTheHomeListingWithNoContext() throws Exception {
+        WeblogPageRequest request = parse("/myblog/posts");
+
+        assertNull(request.getContext(), "/posts is the listing, not a context");
+        assertNull(request.getPageSlug(), "and not a page slug");
+        assertTrue(request.isPostsPath());
+        assertFalse(parse("/myblog").isPostsPath(), "the root is not the posts path");
+    }
+
+    @Test
+    void postsReadsTheListingParametersTheRootReads() throws Exception {
+        WeblogPageRequest paged = parse("/myblog/posts", "page", "2");
+        assertEquals(2, paged.getPageNum());
+
+        WeblogPageRequest filtered = parse("/myblog/posts", "cat", "travel", "date", "202611");
+        assertEquals("travel", filtered.getWeblogCategoryName());
+        assertEquals("202611", filtered.getWeblogDate());
+    }
+
+    @Test
+    void postsIgnoresTheEntryParameter() throws Exception {
+        assertNull(parse("/myblog/posts", "entry", "a-post").getWeblogAnchor(),
+                "/posts accepts page, cat and date, never a permalink");
+    }
+
+    @Test
+    void postsRefusesAMalformedDateLikeTheRoot() {
+        assertThrows(InvalidRequestException.class, () -> parse("/myblog/posts", "date", "2005XX"));
+    }
+
+    private static Weblog frontDoorBlog(String frontPageId) {
+        Weblog weblog = new Weblog();
+        weblog.setHandle("myblog");
+        weblog.setFrontPageId(frontPageId);
+        return weblog;
+    }
+
+    private static WeblogPage page(String id, String slug, Weblog weblog) {
+        WeblogPage page = new WeblogPage();
+        page.setId(id);
+        page.setSlug(slug);
+        page.setWeblog(weblog);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        return page;
+    }
+
+    /** A request whose page manager answers {@code published} for the blog. */
+    private static WeblogPageRequest parseFor(Weblog weblog, List<WeblogPage> published,
+            String pathInfo, String... params) throws Exception {
+        Weblogger weblogger = mock(Weblogger.class);
+        WeblogPageManager pages = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pages);
+        when(pages.getPublishedPages(weblog)).thenReturn(published);
+        WeblogPageRequest request = new WeblogPageRequest(weblogger,
+                MockRequest.with(PAGE_SERVLET, pathInfo, params));
+        request.setWeblog(weblog);
+        return request;
+    }
+
+    @Test
+    void thePlainRootBecomesTheFrontPage() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        WeblogPage front = page("p1", "start-here", weblog);
+        WeblogPageRequest request = parseFor(weblog,
+                List.of(page("p0", "about", weblog), front), "/myblog");
+
+        assertTrue(request.resolveFrontDoor());
+        assertEquals("start-here", request.getPageSlug(),
+                "the key and the template follow the page slug, as /myblog/start-here");
+        assertSame(front, request.getWeblogPageContent());
+    }
+
+    @Test
+    void customParametersDoNotStopTheFrontDoor() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        assertTrue(parseFor(weblog, List.of(page("p1", "start-here", weblog)),
+                "/myblog", "utm_source", "x", "page", "0").resolveFrontDoor(),
+                "only page > 0, cat and date ask for the listing");
+    }
+
+    @Test
+    void aListingParameterKeepsTheRootAListing() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        List<WeblogPage> published = List.of(page("p1", "start-here", weblog));
+        for (String[] params : List.of(new String[] {"page", "2"}, new String[] {"cat", "travel"},
+                new String[] {"date", "202611"}, new String[] {"entry", "a-post"})) {
+            WeblogPageRequest request = parseFor(weblog, published, "/myblog", params);
+
+            assertFalse(request.resolveFrontDoor(), "?" + params[0] + " lists, as old links did");
+            assertNull(request.getPageSlug());
+        }
+    }
+
+    @Test
+    void postsNeverBecomesTheFrontPage() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        WeblogPageRequest request = parseFor(weblog, List.of(page("p1", "start-here", weblog)),
+                "/myblog/posts");
+
+        assertFalse(request.resolveFrontDoor());
+        assertNull(request.getPageSlug());
+    }
+
+    @Test
+    void otherViewsAndALocaleRootAreNotTheFrontDoor() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        List<WeblogPage> published = List.of(page("p1", "start-here", weblog));
+
+        assertFalse(parseFor(weblog, published, "/myblog/about").resolveFrontDoor());
+        assertFalse(parseFor(weblog, published, "/myblog/tags").resolveFrontDoor());
+        assertFalse(parseFor(weblog, published, "/myblog/category/travel").resolveFrontDoor());
+        assertFalse(parseFor(weblog, published, "/myblog/de").resolveFrontDoor(),
+                "a locale view is not the blog root");
+    }
+
+    @Test
+    void aBlogWithoutAFrontPageLists() throws Exception {
+        Weblog weblog = frontDoorBlog(null);
+        WeblogPageRequest request = parseFor(weblog, List.of(page("p1", "start-here", weblog)), "/myblog");
+
+        assertFalse(request.resolveFrontDoor());
+        assertNull(request.getPageSlug());
+    }
+
+    /** An id that is not among the blog's published pages (a draft, deleted, another blog's) lists: never a 404. */
+    @Test
+    void anIdThatIsNotAPublishedPageOfTheBlogLists() throws Exception {
+        Weblog weblog = frontDoorBlog("gone");
+        WeblogPageRequest request = parseFor(weblog, List.of(page("p1", "start-here", weblog)), "/myblog");
+
+        assertFalse(request.resolveFrontDoor());
+        assertNull(request.getPageSlug(), "nothing changed");
+    }
+
+    @Test
+    void theSiteSpaceNeverHasAFrontDoor() throws Exception {
+        Weblog site = frontDoorBlog("p1");
+        site.setSiteSpace(true);
+        WeblogPageRequest request = parseFor(site, List.of(page("p1", "start-here", site)), "/myblog");
+
+        assertFalse(request.resolveFrontDoor(), "the site root belongs to FrontDoor");
+    }
+
+    @Test
+    void aFailedLookupLists() throws Exception {
+        Weblog weblog = frontDoorBlog("p1");
+        Weblogger weblogger = mock(Weblogger.class);
+        WeblogPageManager pages = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pages);
+        when(pages.getPublishedPages(weblog)).thenThrow(new WebloggerException("down"));
+        WeblogPageRequest request = new WeblogPageRequest(weblogger, MockRequest.with(PAGE_SERVLET, "/myblog"));
+        request.setWeblog(weblog);
+
+        assertFalse(request.resolveFrontDoor(), "a root never 404s: it falls back to the listing");
+        assertNull(request.getPageSlug());
     }
 }

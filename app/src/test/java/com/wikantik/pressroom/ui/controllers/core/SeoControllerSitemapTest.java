@@ -231,6 +231,65 @@ class SeoControllerSitemapTest {
         }
     }
 
+    // --- the front door ---
+
+    private void frontPage(WeblogPage page) throws Exception {
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setFrontPageId(page.getId());
+        weblogs().saveWeblog(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    private static int count(String body, String needle) {
+        return body.split(java.util.regex.Pattern.quote(needle), -1).length - 1;
+    }
+
+    /**
+     * With a front door the root is the front page: it is listed once, as
+     * the root, never again at its slug; the post listing has moved to
+     * /posts, which is listed beside it. Other pages keep their addresses.
+     */
+    @Test
+    void aFrontPageIsListedOnceAsTheRootAndTheListingAtPosts() throws Exception {
+        String root = ABSOLUTE_CONTEXT + "/" + HANDLE + "/";
+        WeblogPage start = page("start-here", WeblogPage.PubStatus.PUBLISHED, false);
+        page("about", WeblogPage.PubStatus.PUBLISHED, false);
+        frontPage(start);
+
+        String body = sitemap().getBody();
+
+        assertEquals(1, count(body, "<loc>" + root + "</loc>"), body);
+        assertEquals(1, count(body, "<loc>" + root + "posts</loc>"), body);
+        assertEquals(0, count(body, root + "start-here"), "not at its slug too:\n" + body);
+        assertEquals(1, count(body, "<loc>" + root + "about</loc>"), body);
+    }
+
+    /** A noindex front page keeps the root out of the sitemap, as it keeps a page out; the listing stays. */
+    @Test
+    void aNoindexFrontPageLeavesTheRootOut() throws Exception {
+        String root = ABSOLUTE_CONTEXT + "/" + HANDLE + "/";
+        frontPage(page("start-here", WeblogPage.PubStatus.PUBLISHED, true));
+
+        String body = sitemap().getBody();
+
+        assertEquals(0, count(body, "<loc>" + root + "</loc>"), body);
+        assertEquals(1, count(body, "<loc>" + root + "posts</loc>"), body);
+    }
+
+    /** No front door: one root entry and no /posts, exactly as before. */
+    @Test
+    void withoutAFrontDoorThereIsNoPostsEntry() throws Exception {
+        String root = ABSOLUTE_CONTEXT + "/" + HANDLE + "/";
+        page("start-here", WeblogPage.PubStatus.PUBLISHED, false);
+
+        String body = sitemap().getBody();
+
+        assertEquals(1, count(body, "<loc>" + root + "</loc>"), body);
+        assertEquals(0, count(body, root + "posts"), body);
+        assertEquals(1, count(body, "<loc>" + root + "start-here</loc>"), body);
+    }
+
     private void canonical(WeblogEntry entry, String url) throws Exception {
         WeblogEntry managed = TestUtils.getManagedWeblogEntry(entry);
         managed.setCanonicalUrl(url);

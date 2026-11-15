@@ -97,6 +97,13 @@ public class WeblogRequestMapper {
     private static final ForwardTarget PAGE_SLUG =
             new ForwardTarget(PAGE_SERVLET, true, true, false);
 
+    /**
+     * {@code /<handle>/posts}, the post listing's own path: forwarded as the
+     * home page is, with the segment kept so the page request reads it as the
+     * listing. Nothing lives under it, so a further segment is declined.
+     */
+    private static final String POSTS = "posts";
+
     private static final Map<String, ForwardTarget> FORWARD_TARGETS = Map.of(
             "page",          new ForwardTarget(PAGE_SERVLET, true, true, true),
             "entry",         new ForwardTarget(PAGE_SERVLET, true, true, true),
@@ -106,7 +113,8 @@ public class WeblogRequestMapper {
             "feed",          new ForwardTarget(FEED_SERVLET, true, false, true),
             "resource",      new ForwardTarget(RESOURCE_SERVLET, false, false, true),
             "mediaresource", new ForwardTarget(MEDIA_SERVLET, false, false, true),
-            "search",        new ForwardTarget(SEARCH_SERVLET, true, false, false));
+            "search",        new ForwardTarget(SEARCH_SERVLET, true, false, false),
+            POSTS,           new ForwardTarget(PAGE_SERVLET, true, true, false));
 
     /**
      * The contexts the site space answers under its handle: its assets. Its
@@ -527,6 +535,9 @@ public class WeblogRequestMapper {
                 return null;
             }
             target = PAGE_SLUG;
+        } else if (POSTS.equals(context) && data != null) {
+            // /posts/<anything> is no second address for the listing
+            return null;
         }
 
         StringBuilder forwardUrl = new StringBuilder(64);

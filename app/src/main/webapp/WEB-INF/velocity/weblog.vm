@@ -2033,10 +2033,17 @@ Navigation links for a weblog's published pages, in nav order.
 Emits <li> items and nothing else -- no <ul>, no wrapper -- so each theme
 supplies its own container and keeps its own CSS. That is why this is a
 separate macro from #showPageMenu rather than an extension of it.
+
+A blog with a front door shows a page at its root, so its post listing
+($url.posts, /posts) leads the list as "Posts". Each page is linked through
+$url.staticPage($navPage), which answers the root for the front page.
 *#
 #macro(showPageLinks $weblog)
+#if($weblog.hasFrontDoor())
+    <li class="page-nav-item"><a href="$url.posts">$text.get("weblog.nav.posts")</a></li>
+#end
 #foreach($navPage in $model.getNavPages($weblog))
-    <li class="page-nav-item"><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
+    <li class="page-nav-item"><a href="$url.staticPage($navPage)">$utils.escapeHTML($navPage.title)</a></li>
 #end
 #end
 
@@ -2057,9 +2064,9 @@ emitting the raw one are both bugs; they just look identical in the source.
     ## shows less than all ($model.weblogDate is the archive's yyyyMM[dd]).
     #set($catsAllCurrent = !$model.weblogCategory && !$model.permalink && !$model.page && !($model.tags && !$model.tags.isEmpty()) && !$model.weblogDate)
     #if ($catsAllCurrent)
-        <li class="selected"><a href="$url.home" aria-current="page">$text.get("generic.all")</a></li>
+        <li class="selected"><a href="$url.posts" aria-current="page">$text.get("generic.all")</a></li>
     #else
-        <li><a href="$url.home">$text.get("generic.all")</a></li>
+        <li><a href="$url.posts">$text.get("generic.all")</a></li>
     #end
     #set($cats = $model.weblog.getWeblogCategories())
     #foreach($cat in $cats)

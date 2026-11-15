@@ -50,7 +50,7 @@ class ReservedSlugsTest {
      */
     private static final Set<String> MAPPER_GET_CONTEXTS = Set.of(
             "page", "entry", "date", "category", "tags",
-            "feed", "resource", "mediaresource", "search");
+            "feed", "resource", "mediaresource", "search", "posts");
 
     @Test
     void everyMapperGetContextIsReserved() {

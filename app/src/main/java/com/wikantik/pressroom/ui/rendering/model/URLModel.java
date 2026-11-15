@@ -30,6 +30,7 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
@@ -149,18 +150,31 @@ public class URLModel implements Model {
         return themeResource(theme, filePath);
     }
         
+    /**
+     * {@code $url.home}: the blog, its root -- which shows the front page when
+     * the blog has one. A link that means "the post listing" is
+     * {@link #getPosts()}; the two are one address until a front door is set.
+     */
     public String getHome() {
+        return urlStrategy.getWeblogURL(weblog, locale, true);
+    }
+
+
+    /** {@code $url.posts}: the post listing, the root or, with a front door, {@code /posts}. */
+    public String getPosts() {
         return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, null, -1, true);
     }
-    
-    
+
+
+    /** A page of the post listing (page 0 is the listing itself). */
     public String home(int pageNum) {
         return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, null, pageNum, true);
     }
     
     
+    /** The blog's root in another locale. */
     public String home(String customLocale) {
-        return urlStrategy.getWeblogCollectionURL(weblog, customLocale, null, null, null, -1, true);
+        return urlStrategy.getWeblogURL(weblog, customLocale, true);
     }
     
     
@@ -263,6 +277,15 @@ public class URLModel implements Model {
      */
     public String staticPage(String slug) {
         return urlStrategy.getWeblogStaticPageURL(weblog, slug, false);
+    }
+
+    /**
+     * URL for a static page of this weblog: the blog root while the page is
+     * its front page, else its slug address. The nav links pages through
+     * this form, so the front page's link and its canonical agree.
+     */
+    public String staticPage(WeblogPage page) {
+        return urlStrategy.getWeblogStaticPageURL(weblog, page, false);
     }
 
     

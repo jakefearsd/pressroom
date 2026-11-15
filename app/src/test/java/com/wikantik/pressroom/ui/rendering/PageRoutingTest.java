@@ -192,4 +192,178 @@ class PageRoutingTest {
         assertFalse(get("/tags").getStatus() == 404,
                 "/tags must keep resolving to the tags view, not a page lookup");
     }
+
+    // ------------------------------------------------------- the front door
+
+    private static final String PAGE_BODY = "<strong>about</strong>";
+    private static final String POSTS_LINK = ">Posts</a>";
+
+    private MockHttpServletResponse get(String path, String... params) throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/pressroom-ui/rendering/page", "/routeblog" + path);
+        for (int i = 0; i < params.length; i += 2) {
+            request.setParameter(params[i], params[i + 1]);
+        }
+        return RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
+    }
+
+    private String pageId(String slug) throws Exception {
+        String id = TestUtils.weblogger().getWeblogPageManager()
+                .getPageBySlug(TestUtils.getManagedWebsite(weblog), slug).getId();
+        TestUtils.endSession(true);
+        return id;
+    }
+
+    /**
+     * Names the front page straight on the weblog row, past the page
+     * manager's rule (which never leaves a draft there): what a row changed
+     * behind the app's back looks like to the request path.
+     */
+    private void frontPage(String pageId) throws Exception {
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setFrontPageId(pageId);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        RenderingTestSupport.clearRenderCaches();
+    }
+
+    private void post(String anchor, String title, boolean pinned) throws Exception {
+        com.wikantik.pressroom.pojos.WeblogEntry entry = TestUtils.setupWeblogEntry(anchor,
+                TestUtils.getManagedWebsite(weblog), TestUtils.getManagedUser(user));
+        com.wikantik.pressroom.business.WeblogEntryManager mgr =
+                TestUtils.weblogger().getWeblogEntryManager();
+        com.wikantik.pressroom.pojos.WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setTitle(title);
+        managed.setPinned(pinned);
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+        RenderingTestSupport.clearRenderCaches();
+    }
+
+    private static String canonical(String body) {
+        int at = body.indexOf("rel=\"canonical\" href=\"");
+        assertTrue(at > 0, "no canonical link:\n" + body);
+        int from = at + "rel=\"canonical\" href=\"".length();
+        return body.substring(from, body.indexOf('"', from));
+    }
+
+    @Test
+    void withAFrontPageTheRootRendersIt() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+        frontPage(pageId("about"));
+
+        MockHttpServletResponse response = get("/");
+
+        assertEquals(200, response.getStatus());
+        String body = response.getContentAsString();
+        assertTrue(body.contains(PAGE_BODY), "the root shows the page:\n" + body);
+        assertFalse(body.contains("LISTEDTITLE"), "not the post listing:\n" + body);
+        assertTrue(canonical(body).endsWith("/routeblog/"), "its canonical is the root: " + canonical(body));
+        assertEquals(canonical(body), canonical(get("/about").getContentAsString()),
+                "its own slug address canonicalises to the root too");
+    }
+
+    @Test
+    void withAFrontPagePostsListsWithTheNavLinkAndAPostsCanonical() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+        frontPage(pageId("about"));
+
+        String posts = get("/posts").getContentAsString();
+
+        assertTrue(posts.contains("LISTEDTITLE"), "/posts is the listing:\n" + posts);
+        assertTrue(canonical(posts).endsWith("/routeblog/posts"), canonical(posts));
+        assertTrue(posts.contains("/routeblog/posts\">Posts</a>"), "the nav links the listing:\n" + posts);
+        assertTrue(get("/").getContentAsString().contains(POSTS_LINK), "on the front page too");
+    }
+
+    /** Old listing links keep listing on a blog that gained a front door; their canonical is the /posts form. */
+    @Test
+    void withAFrontPageARootListingParameterStillLists() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+        frontPage(pageId("about"));
+
+        String paged = get("/", "page", "1").getContentAsString();
+        assertFalse(paged.contains(PAGE_BODY), paged);
+        assertTrue(canonical(paged).endsWith("/routeblog/posts?page=1"), canonical(paged));
+
+        String dated = get("/", "date", "202611").getContentAsString();
+        assertFalse(dated.contains(PAGE_BODY), dated);
+        assertEquals(200, get("/", "date", "202611").getStatus());
+    }
+
+    /** A front page id that does not name a published page of this blog lists at the root: never a 404. */
+    @Test
+    void aDraftOrForeignFrontPageListsAtTheRoot() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+        frontPage(pageId("draft-page"));
+
+        MockHttpServletResponse draft = get("/");
+        assertEquals(200, draft.getStatus());
+        assertTrue(draft.getContentAsString().contains("LISTEDTITLE"), draft.getContentAsString());
+
+        User other = TestUtils.setupUser("routeotheruser");
+        Weblog otherBlog = TestUtils.setupWeblog("routeotherblog", other);
+        TestUtils.endSession(true);
+        try {
+            WeblogPage foreign = new WeblogPage();
+            foreign.setWeblog(TestUtils.getManagedWebsite(otherBlog));
+            foreign.setSlug("theirs");
+            foreign.setTitle("Theirs");
+            foreign.setContent("Not this blog's");
+            foreign.setStatus(WeblogPage.PubStatus.PUBLISHED);
+            TestUtils.weblogger().getWeblogPageManager().savePage(foreign);
+            TestUtils.weblogger().flush();
+            TestUtils.endSession(true);
+            frontPage(foreign.getId());
+
+            MockHttpServletResponse response = get("/");
+            assertEquals(200, response.getStatus());
+            assertTrue(response.getContentAsString().contains("LISTEDTITLE"), response.getContentAsString());
+            assertFalse(response.getContentAsString().contains("Not this blog's"));
+        } finally {
+            frontPage(null);
+            TestUtils.teardownWeblog(otherBlog.getId());
+            TestUtils.teardownUser(other.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** No front door: /posts is the same page as the root, canonical at the root, and no "Posts" link. */
+    @Test
+    void withoutAFrontDoorPostsIsTheRootsListing() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+
+        String root = get("/").getContentAsString();
+        String posts = get("/posts").getContentAsString();
+
+        assertTrue(root.contains("LISTEDTITLE"), root);
+        assertEquals(root, posts, "the same listing, byte for byte");
+        assertTrue(canonical(posts).endsWith("/routeblog/"), canonical(posts));
+        assertFalse(root.contains(POSTS_LINK), "no front door, no Posts link:\n" + root);
+    }
+
+    @Test
+    void postsWithAPageNumberAndACategoryLists() throws Exception {
+        post("listed-post", "LISTEDTITLE", false);
+        frontPage(pageId("about"));
+        String category = TestUtils.getManagedWebsite(weblog).getWeblogCategories().iterator().next().getName();
+        TestUtils.endSession(true);
+
+        assertTrue(get("/posts", "cat", category).getContentAsString().contains("LISTEDTITLE"));
+        assertEquals(200, get("/posts", "page", "1").getStatus());
+    }
+
+    /** /posts is the home listing: the blog's pinned post still heads page one. */
+    @Test
+    void aPinnedPostHeadsPageOneOfPosts() throws Exception {
+        post("fresh-post", "FRESHTITLE", false);
+        post("pinned-post", "PINNEDTITLE", true);
+        frontPage(pageId("about"));
+
+        String body = get("/posts").getContentAsString();
+
+        assertTrue(body.contains("class=\"entry-pinned\">Pinned<"), body);
+        assertTrue(body.indexOf("PINNEDTITLE") < body.indexOf("FRESHTITLE"), body);
+    }
 }

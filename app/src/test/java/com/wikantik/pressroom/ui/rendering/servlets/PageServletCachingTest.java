@@ -428,6 +428,61 @@ class PageServletCachingTest {
                 "and the write side leaves the existing entry alone");
     }
 
+    // ------------------------------------------------------- the front door
+
+    /** A published page named as the blog's front page; returns its slug request. */
+    private MockHttpServletRequest givenAFrontPage() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(weblog));
+        page.setSlug("start-here");
+        page.setTitle("Start Here");
+        page.setContent("Front page body");
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setFrontPageId(page.getId());
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        long stamped = TestUtils.getManagedWebsite(weblog).getLastModified().getTime();
+        TestUtils.endSession(true);
+        while (System.currentTimeMillis() <= stamped) {
+            Thread.onSpinWait();
+        }
+        MockHttpServletRequest slug = RenderingTestSupport
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagecacheblog/start-here");
+        slug.removeAttribute("skipCache");
+        return slug;
+    }
+
+    /**
+     * The front door is resolved before the key: the root is cached under the
+     * key of /handle/slug (the same page, the same bytes), so the entry one
+     * address stored answers the other.
+     */
+    @Test
+    void theRootWithAFrontPageSharesTheKeyOfThePagesOwnAddress() throws Exception {
+        MockHttpServletRequest slug = givenAFrontPage();
+        RenderCaches.forPage(false).put(keyFor(slug), sentinel(), FRESH);
+
+        assertEquals(SENTINEL, get(null).getContentAsString(),
+                "the root is answered from the entry kept for /pagecacheblog/start-here");
+    }
+
+    @Test
+    void aRootRenderOfTheFrontPageIsStoredUnderThePagesKey() throws Exception {
+        MockHttpServletRequest slug = givenAFrontPage();
+
+        String rendered = get(null).getContentAsString();
+
+        assertTrue(rendered.contains("Front page body"), rendered);
+        assertTrue(cacheHolds(keyFor(slug)), "stored under the page's key");
+        assertFalse(cacheHolds(keyFor(pageRequest(null, null))),
+                "not under the plain listing key, which /posts uses");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private MockHttpServletResponse get(String ifModifiedSince) throws Exception {

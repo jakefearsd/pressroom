@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business;
 import java.util.List;
 import java.util.Map;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 
 
 /**
@@ -150,6 +151,14 @@ public interface URLStrategy {
      * {@link #getWeblogPageURL}, which serves CUSTOM templates).
      */
     String getWeblogStaticPageURL(Weblog weblog, String slug, boolean absolute);
+
+
+    /**
+     * The url of a published static Page of this weblog: the weblog's root
+     * while the page is its front page ({@code weblog.frontPageId}), else the
+     * page's slug address, {@link #getWeblogStaticPageURL(Weblog, String, boolean)}.
+     */
+    String getWeblogStaticPageURL(Weblog weblog, WeblogPage page, boolean absolute);
 
 
     /**

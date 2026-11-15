@@ -195,6 +195,12 @@ public class PageServlet extends HttpServlet {
             ModDateHeaderUtil.setLastModifiedHeader(response, lastModified);
         }
 
+        // A blog with a front door shows its front page at the plain root.
+        // Resolved before the key, so the root is cached as /<handle>/<slug>
+        // (the same page, the same bytes) and selectTemplate takes the page
+        // branch; anything that does not resolve leaves a listing, never a 404.
+        pageRequest.resolveFrontDoor();
+
         // generate cache key
         String cacheKey = renderCache.generateKey(pageRequest);
 

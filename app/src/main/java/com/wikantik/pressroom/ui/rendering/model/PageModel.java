@@ -190,7 +190,10 @@ public class PageModel implements Model {
      * so the canonical link matches the href readers actually follow), the
      * custom page URL, or the collection URL (home/category/date/tags --
      * keeping the page number, so page 2 canonicalizes to itself instead of
-     * claiming to duplicate page 1). Returns null on search results pages,
+     * claiming to duplicate page 1). The post listing's collection URL is the
+     * blog root, or {@code /posts} when the blog has a front door, whether
+     * the listing was reached at /posts or by an old {@code ?page=} root
+     * link. Returns null on search results pages,
      * which have no canonical form.
      */
     public String getCanonicalUrl() {
@@ -212,8 +215,10 @@ public class PageModel implements Model {
                     return page.getCanonicalUrl();
                 }
                 // The one page-URL rule, absolute like every other branch
-                // here (URLModel#staticPage asks for the relative form).
-                return urlStrategy.getWeblogStaticPageURL(weblog, page.getSlug(), true);
+                // here (URLModel#staticPage asks for the relative form): the
+                // blog root while this is its front page, at the root and at
+                // the page's own slug alike.
+                return urlStrategy.getWeblogStaticPageURL(weblog, page, true);
             }
         }
         if (weblog.isSiteSpace() && FrontDoor.DISCOVERY_TEMPLATE.equals(pageRequest.getWeblogPageName())) {

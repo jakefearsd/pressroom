@@ -80,7 +80,7 @@
       #end
       <a href="$url.site/pressroom-ui/siteDirectory.rol">Directory</a>
       #else
-      <a href="$url.home"#if($fdTab == "home") aria-current="page"#end>Recent posts</a>
+      <a href="$url.posts"#if($fdTab == "home") aria-current="page"#end>Recent posts</a>
       <a href="$url.page("directory")"#if($fdTab == "directory") aria-current="page"#end>Directory</a>
       #end
   </nav>
