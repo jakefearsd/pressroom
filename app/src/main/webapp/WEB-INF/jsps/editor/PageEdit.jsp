@@ -35,6 +35,8 @@
 
 <%-- Local draft recovery -- see EntryEdit.jsp. --%>
 <script src="<c:url value='/theme/scripts/pressroom-draft.js'/>"></script>
+<%-- The strand Parts panel: move, remove, add and drag rows. --%>
+<script src="<c:url value='/theme/scripts/pressroom-strand-parts.js'/>"></script>
 <script>
     // ClipboardJS is loaded globally by head.jsp.
     $(document).ready(function () {
@@ -246,6 +248,85 @@
             <div class="form-text"><spring:message code="weblogPagesForm.navOrder.tip"/></div>
         </div>
 
+        <c:if test="${not actionWeblog.siteSpace}">
+        <%-- Strand: the switch, and the ordered posts beneath the page. Site
+             pages are never strands, so the site space has no box at all.
+
+             The server trusts only the order of the hidden bean.partIds
+             inputs, one per row, and validates every id; the row buttons and
+             drag-and-drop (pressroom-strand-parts.js) only move rows. The
+             "_strand" and "_partIds" markers follow _showInNav's naming (the
+             bean's property path, never "_bean."): the first lets an
+             unticked box bind to false, the second turns "every row
+             removed" into an empty list rather than "no panel posted".
+             Titles are the controller's plain-text labels, escaped once. --%>
+        <div class="editor-box">
+            <p class="rail-group-label"><spring:message code="pageEdit.parts"/></p>
+
+            <div class="form-check editor-quiet-check">
+                <input type="hidden" name="_strand" value="on"/>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" id="page_bean_strand" name="bean.strand" value="true" ${bean.strand ? 'checked' : ''}/>
+                    <spring:message code="pageEdit.strand"/>
+                </label>
+            </div>
+            <div class="form-text"><spring:message code="pageEdit.strand.help"/></div>
+
+            <div id="page_strand_parts" class="strand-parts" ${bean.strand ? '' : 'hidden'}>
+                <input type="hidden" name="_partIds" value="on"/>
+                <spring:message code="pageEdit.parts.moveUp" var="moveUpLabel"/>
+                <spring:message code="pageEdit.parts.moveDown" var="moveDownLabel"/>
+                <spring:message code="pageEdit.parts.remove" var="removeLabel"/>
+                <ol class="strand-parts-list">
+                    <c:forEach items="${strandParts}" var="part">
+                    <li class="strand-part" draggable="true" data-status="${fn:escapeXml(fn:toLowerCase(part.status.name()))}">
+                        <input type="hidden" name="bean.partIds" value="${fn:escapeXml(part.id)}"/>
+                        <span class="strand-part-title">${fn:escapeXml(entryTitles[part.id])}</span>
+                        <c:set var="pillStatus" value="${part.status.name()}" scope="request"/>
+                        <c:remove var="pillWhen" scope="request"/>
+                        <jsp:include page="/WEB-INF/jsps/editor/StatusPill.jsp"/>
+                        <span class="strand-part-actions">
+                            <button type="button" class="row-action strand-part-up" data-label="${fn:escapeXml(moveUpLabel)}"
+                                    aria-label="${fn:escapeXml(moveUpLabel)}: ${fn:escapeXml(entryTitles[part.id])}"><span class="bi bi-arrow-up" aria-hidden="true" title="${fn:escapeXml(moveUpLabel)}"></span></button>
+                            <button type="button" class="row-action strand-part-down" data-label="${fn:escapeXml(moveDownLabel)}"
+                                    aria-label="${fn:escapeXml(moveDownLabel)}: ${fn:escapeXml(entryTitles[part.id])}"><span class="bi bi-arrow-down" aria-hidden="true" title="${fn:escapeXml(moveDownLabel)}"></span></button>
+                            <button type="button" class="row-action row-action-danger strand-part-remove" data-label="${fn:escapeXml(removeLabel)}"
+                                    aria-label="${fn:escapeXml(removeLabel)}: ${fn:escapeXml(entryTitles[part.id])}"><span class="bi bi-x-lg" aria-hidden="true" title="${fn:escapeXml(removeLabel)}"></span></button>
+                        </span>
+                    </li>
+                    </c:forEach>
+                </ol>
+
+                <%-- The row the script stamps out for a post picked below.
+                     Inert inside a <template>: its input is not a form field
+                     until the script appends a copy. --%>
+                <template id="strandPartTemplate">
+                    <li class="strand-part" draggable="true">
+                        <input type="hidden" name="bean.partIds" value=""/>
+                        <span class="strand-part-title"></span>
+                        <span class="status-pill"></span>
+                        <span class="strand-part-actions">
+                            <button type="button" class="row-action strand-part-up" data-label="${fn:escapeXml(moveUpLabel)}"><span class="bi bi-arrow-up" aria-hidden="true" title="${fn:escapeXml(moveUpLabel)}"></span></button>
+                            <button type="button" class="row-action strand-part-down" data-label="${fn:escapeXml(moveDownLabel)}"><span class="bi bi-arrow-down" aria-hidden="true" title="${fn:escapeXml(moveDownLabel)}"></span></button>
+                            <button type="button" class="row-action row-action-danger strand-part-remove" data-label="${fn:escapeXml(removeLabel)}"><span class="bi bi-x-lg" aria-hidden="true" title="${fn:escapeXml(removeLabel)}"></span></button>
+                        </span>
+                    </li>
+                </template>
+
+                <%-- No name: the picker is not a form field, the rows are. --%>
+                <label class="editor-field-label" for="strandAddSelect"><spring:message code="pageEdit.parts.add"/></label>
+                <select id="strandAddSelect" class="form-select">
+                    <option value=""></option>
+                    <c:forEach items="${strandCandidates}" var="candidate">
+                    <spring:message code="weblogEdit.${fn:toLowerCase(candidate.status.name())}" var="candidateStatus"/>
+                    <option value="${fn:escapeXml(candidate.id)}" data-status="${fn:escapeXml(fn:toLowerCase(candidate.status.name()))}"
+                            data-status-label="${fn:escapeXml(candidateStatus)}">${fn:escapeXml(entryTitles[candidate.id])}</option>
+                    </c:forEach>
+                </select>
+            </div>
+        </div>
+        </c:if>
+
         <%-- SEO and social sharing: the same card the entry editor carries,
              behind the same quiet drawer. Field ids/names and the picker JS
              are a browser-test contract -- do not rename. --%>
@@ -340,6 +421,12 @@
                 <div class="modal-header">
                     <p id="delete-page-modal-title" class="modal-title"><spring:message code="generic.delete"/>: <span id="page-delete-title"></span></p>
                 </div>
+                <%-- Deleting a strand detaches its parts; say how many. --%>
+                <c:if test="${not empty strandParts}">
+                <div class="modal-body">
+                    <p><spring:message code="pages.deleteStrandConfirm" arguments="${fn:length(strandParts)}"/></p>
+                </div>
+                </c:if>
                 <%-- Dismiss first, destructive last: Bootstrap packs a
                      .modal-footer left-to-right in DOM order, so the reading
                      order IS the markup order (task B7). --%>
@@ -414,7 +501,7 @@
                      bean.status is deliberately NOT excluded here: it is a
                      visible <select> the author sets and PageBean.copyTo
                      writes it straight through, so it is real content. --%>
-                exclude: ['bean.content'],
+                exclude: ['bean.content', 'bean.partIds'],
                 getText: pressroomGetEntryText,
                 setText: pressroomSetEntryText,
                 onEditorChange: function (callback) {

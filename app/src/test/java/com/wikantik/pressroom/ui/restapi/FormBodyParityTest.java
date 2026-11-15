@@ -66,7 +66,11 @@ class FormBodyParityTest {
                         Map.of("handle", "The weblog's handle is the route's path variable and never changes.")),
                 new Parity("PageBean -> PageWrite", PageBean.class, PageDtos.PageWrite.class,
                         Map.of("content", "text"),
-                        Map.of("id", "The page's id is the update route's path variable; create assigns one.")));
+                        Map.of("id", "The page's id is the update route's path variable; create assigns one.",
+                                "partIds", "The Parts panel's ordered list reaches the API as its own route, "
+                                        + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.",
+                                "strand", "Strands release 2 lands the API body's strand flag in a later task "
+                                        + "of the same release; this exclusion goes stale (and fails) then.")));
     }
 
     @ParameterizedTest(name = "{0}")

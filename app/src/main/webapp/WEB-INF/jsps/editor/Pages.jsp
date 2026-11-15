@@ -113,10 +113,17 @@
                              page titled e.g. "Maiia's bio" made the old
                              onclick-string approach a permanent SyntaxError. An
                              HTML attribute has no second parser, so data-confirm
-                             is safe with the same escape. --%>
+                             is safe with the same escape.
+
+                             A strand with parts adds how many posts leave it
+                             (they stay published): strandPartCounts holds
+                             only strands that have parts. --%>
+                        <c:if test="${not empty strandPartCounts[p.id]}">
+                            <spring:message code="pages.deleteStrandConfirm" arguments="${strandPartCounts[p.id]}" var="strandConfirm"/>
+                        </c:if>
                         <button type="submit" class="row-action row-action-danger page-delete-btn"
                                 name="removeId" value="${p.id}"
-                                data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?"
+                                data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?<c:if test="${not empty strandPartCounts[p.id]}"> ${fn:escapeXml(strandConfirm)}</c:if>"
                                 aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(p.title)}">
                             <span class="bi bi-trash" aria-hidden="true" title="<spring:message code="generic.delete"/>"></span>
                         </button>

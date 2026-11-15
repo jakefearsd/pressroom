@@ -1047,6 +1047,57 @@ table.mm_table_actions td {
     color: var(--ink-soft);
 }
 
+/* The page editor's strand Parts panel: a numbered list of rows in the rail,
+   each a title over its status pill and the row-action buttons. The number is
+   a CSS counter, so it follows the rows as they move (a part's place is
+   computed from order, never stored as typed). */
+.strand-parts-list {
+    counter-reset: strand-part;
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+}
+
+.strand-part {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+    cursor: grab;
+}
+
+.strand-part:first-child {
+    border-top: 0;
+}
+
+.strand-part::before {
+    counter-increment: strand-part;
+    content: counter(strand-part) ".";
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+}
+
+.strand-part-title {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 14.5px;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.strand-part-actions {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.strand-part.is-dragging {
+    opacity: .5;
+}
+
 /* The SEO card's Google-result preview. These lived in a page-local <style>
    in EntryEdit.jsp until the consistency pass; they are on the scale (16 /
    12 mono / 14.5) rather than the shrunken proportions of a real SERP,

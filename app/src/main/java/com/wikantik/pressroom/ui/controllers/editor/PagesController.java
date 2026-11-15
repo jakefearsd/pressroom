@@ -19,7 +19,9 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -120,10 +122,37 @@ public class PagesController extends BaseController {
 
     private void loadPagesList(HttpServletRequest request, Model model) {
         try {
-            model.addAttribute("pages", weblogger.getWeblogPageManager().getPages(getActionWeblog(request)));
+            List<WeblogPage> pages = weblogger.getWeblogPageManager().getPages(getActionWeblog(request));
+            model.addAttribute("pages", pages);
+            model.addAttribute("strandPartCounts", strandPartCounts(pages));
         } catch (WebloggerException ex) {
             log.error("Error getting pages for weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "generic.error.check.logs", request);
         }
+    }
+
+    /**
+     * How many posts each strand with parts holds, by page id, for that row's
+     * delete confirmation: deleting a strand detaches its parts (they stay
+     * published), and the confirmation says how many. A count that cannot be
+     * read leaves the row with the plain confirmation; the delete itself
+     * detaches the parts either way.
+     */
+    private Map<String, Long> strandPartCounts(List<WeblogPage> pages) {
+        Map<String, Long> counts = new HashMap<>();
+        for (WeblogPage page : pages) {
+            if (!Boolean.TRUE.equals(page.getStrand())) {
+                continue;
+            }
+            try {
+                long count = weblogger.getWeblogEntryManager().getStrandPartCount(page);
+                if (count > 0) {
+                    counts.put(page.getId(), count);
+                }
+            } catch (WebloggerException ex) {
+                log.error("Error counting the parts of strand {}", page.getId(), ex);
+            }
+        }
+        return counts;
     }
 }

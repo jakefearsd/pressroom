@@ -18,8 +18,12 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -29,8 +33,11 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.SiteSlugClashException;
+import com.wikantik.pressroom.business.StrandRules;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
@@ -102,11 +109,12 @@ public class PageEditController extends BaseController {
         }
 
         PageBean bean = new PageBean();
+        WeblogPage page = null;
         if (!StringUtils.isBlank(id)) {
             // Ownership-checked: id is client input and getPage is a global
             // by-id lookup, so without this an editor on one weblog could
             // open (and, on save, overwrite) another weblog's page.
-            WeblogPage page = lookupPage(id, request);
+            page = lookupPage(id, request);
             if (page == null) {
                 addError(model, "pageEdit.notFound", request);
                 return DENIED_VIEW;
@@ -115,7 +123,7 @@ public class PageEditController extends BaseController {
             model.addAttribute("page", page);
         }
 
-        addPageEditModelAttributes(request, model, bean);
+        addPageEditModelAttributes(request, model, bean, page);
         model.addAttribute("bean", bean);
         return ".PageEdit";
     }
@@ -157,7 +165,10 @@ public class PageEditController extends BaseController {
         // the API's rule), checked against the stored value before copyTo.
         checkPickedImage(model, "weblogEdit.error.ogImageUnusable", bean.getOgImageId(),
                 page.getOgImageId(), request);
-        boolean saved = !hasErrors(model) && saved(bean, page, model, request);
+        // The strand switch and the Parts panel, validated like the fields
+        // above: a refused id or a refused untick saves nothing at all.
+        Optional<List<WeblogEntry>> parts = checkedStrandParts(bean, page, model, request);
+        boolean saved = !hasErrors(model) && saved(bean, page, parts, model, request);
         if (saved || !isNew) {
             model.addAttribute("page", page);
         }
@@ -175,9 +186,77 @@ public class PageEditController extends BaseController {
             model.addAttribute("pageTitle", "pageEdit.title.new");
         }
 
-        addPageEditModelAttributes(request, model, bean);
+        addPageEditModelAttributes(request, model, bean, StringUtils.isBlank(bean.getId()) ? null : page);
         model.addAttribute("bean", bean);
         return ".PageEdit";
+    }
+
+    /**
+     * The parts to store for this save, in the posted order, or empty to leave
+     * them as they are (unlike an empty list, which removes every part): the
+     * page is not (or stays not) a strand, or the form carried no Parts
+     * panel. Every refusal is reported on the model before anything is saved.
+     *
+     * <p>A site page is never a strand. Unticking a strand that still has
+     * parts (any status, the trash included) is refused, and the form keeps
+     * showing it as a strand. Each requested id is resolved with the global
+     * lookup rather than the ownership-checked one, so {@link StrandRules}
+     * can tell "another blog's post" from "no such post"; a failed lookup is
+     * an unknown post, never a pass.
+     */
+    private Optional<List<WeblogEntry>> checkedStrandParts(PageBean bean, WeblogPage page, Model model,
+                                                           HttpServletRequest request) {
+        if (getActionWeblog(request).isSiteSpace()) {
+            bean.setStrand(false);
+        }
+        if (!bean.getStrand()) {
+            if (Boolean.TRUE.equals(page.getStrand())) {
+                checkUntick(bean, page, model, request);
+            }
+            return Optional.empty();
+        }
+        List<String> ids = bean.getPartIds();
+        if (ids == null) {
+            return Optional.empty();
+        }
+        List<WeblogEntry> requested = new ArrayList<>(ids.size());
+        for (String id : ids) {
+            requested.add(postById(id));
+        }
+        Map<String, String> refused = StrandRules.refusals(page, requested, ids);
+        // One line per reason: two foreign ids are one thing to fix.
+        for (String key : new LinkedHashSet<>(refused.values())) {
+            addFieldError(model, "page_strand_parts", key, request);
+        }
+        return Optional.of(requested);
+    }
+
+    private void checkUntick(PageBean bean, WeblogPage page, Model model, HttpServletRequest request) {
+        try {
+            long count = weblogger.getWeblogEntryManager().getStrandPartCount(page);
+            if (count > 0) {
+                addFieldError(model, "page_bean_strand", "pageEdit.error.strandHasParts",
+                        new Object[] {count}, request);
+                bean.setStrand(true);
+            }
+        } catch (WebloggerException ex) {
+            // A count that could not be read is not a count of zero.
+            log.error("Error counting the parts of strand {}", page.getId(), ex);
+            addError(model, "generic.error.check.logs", request);
+            bean.setStrand(true);
+        }
+    }
+
+    private WeblogEntry postById(String id) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            return weblogger.getWeblogEntryManager().getWeblogEntry(id);
+        } catch (WebloggerException ex) {
+            log.error("Error looking up post {} for a strand", id, ex);
+            return null;
+        }
     }
 
     /**
@@ -185,14 +264,26 @@ public class PageEditController extends BaseController {
      * on the model and answers false: nothing here may turn a bad POST into
      * a 500.
      */
-    private boolean saved(PageBean bean, WeblogPage page, Model model, HttpServletRequest request) {
+    private boolean saved(PageBean bean, WeblogPage page, Optional<List<WeblogEntry>> parts, Model model,
+                          HttpServletRequest request) {
         // copyTo is inside the try, not before it, the same shape as
         // EntryEditController#doSave -- it is defensive against a garbage
         // status (see PageBean#parseStatus) but is still ordinary application
         // code reachable from a crafted POST.
         try {
             bean.copyTo(page);
+            boolean isNew = StringUtils.isBlank(bean.getId());
             weblogger.getWeblogPageManager().savePage(page);
+            if (parts.isPresent()) {
+                // The parts' strand_page_id references the page row through a
+                // plain id column, not a mapped relationship, so nothing
+                // orders a new page's INSERT before their UPDATEs: commit it
+                // first.
+                if (isNew && !parts.get().isEmpty()) {
+                    weblogger.flush();
+                }
+                weblogger.getWeblogEntryManager().setStrandParts(page, parts.get());
+            }
             weblogger.flush();
             bean.copyFrom(page);
             addMessage(model, "pageEdit.saved", request);
@@ -270,7 +361,8 @@ public class PageEditController extends BaseController {
                 .body(weblogger.getEntryRenderer().pageContent(scratch));
     }
 
-    private void addPageEditModelAttributes(HttpServletRequest request, Model model, PageBean bean) {
+    private void addPageEditModelAttributes(HttpServletRequest request, Model model, PageBean bean,
+                                            WeblogPage page) {
         // The editor's insert menu, generated from the shortcode registry
         // itself so it can never advertise a shortcode that does not render,
         // or omit one that does. Pages go through the same shortcode-expanding
@@ -295,6 +387,44 @@ public class PageEditController extends BaseController {
         if (ogImageThumbnailUrl != null) {
             model.addAttribute("ogImageThumbnailUrl", ogImageThumbnailUrl);
         }
+
+        addStrandModelAttributes(getActionWeblog(request), page, model);
+    }
+
+    /**
+     * What the Parts panel renders from: every member of a stored strand, any
+     * status, by position; and this blog's posts that are in no strand and
+     * not in the trash, for its add control. A failed lookup here is a
+     * display path (the save validates every id again), so it shows an
+     * empty list rather than failing the editor. Site pages have no panel.
+     */
+    private void addStrandModelAttributes(Weblog weblog, WeblogPage page, Model model) {
+        if (weblog.isSiteSpace()) {
+            return;
+        }
+        List<WeblogEntry> parts = List.of();
+        if (page != null && Boolean.TRUE.equals(page.getStrand())) {
+            try {
+                parts = weblogger.getWeblogEntryManager().getStrandParts(page, false);
+            } catch (WebloggerException ex) {
+                log.error("Error loading the parts of strand {}", page.getId(), ex);
+            }
+        }
+        List<WeblogEntry> candidates = List.of();
+        try {
+            WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
+            criteria.setWeblog(weblog);
+            candidates = weblogger.getWeblogEntryManager().getWeblogEntries(criteria).stream()
+                    .filter(e -> e.getStrandPageId() == null && e.getStatus() != WeblogEntry.PubStatus.TRASHED)
+                    .toList();
+        } catch (WebloggerException ex) {
+            log.error("Error listing posts for the strand panel of weblog {}", weblog.getHandle(), ex);
+        }
+        List<WeblogEntry> titled = new ArrayList<>(parts);
+        titled.addAll(candidates);
+        model.addAttribute("strandParts", parts);
+        model.addAttribute("strandCandidates", candidates);
+        model.addAttribute("entryTitles", EntriesController.plainTitles(titled));
     }
 
     /**

@@ -18,6 +18,8 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.WeblogPage;
 
@@ -46,6 +48,9 @@ public class PageBean {
     private String canonicalUrl;
     private boolean noindex;
     private String ogImageId;
+
+    private boolean strand;
+    private List<String> partIds;
 
     public String getId() {
         return id;
@@ -143,6 +148,27 @@ public class PageBean {
         this.ogImageId = ogImageId;
     }
 
+    public boolean getStrand() {
+        return strand;
+    }
+
+    public void setStrand(boolean strand) {
+        this.strand = strand;
+    }
+
+    /**
+     * The strand's parts, in the order the Parts panel's rows were posted;
+     * null when the form carried no panel at all (leave the parts alone), an
+     * empty list when every row was removed (the {@code _partIds} marker).
+     */
+    public List<String> getPartIds() {
+        return partIds;
+    }
+
+    public void setPartIds(List<String> partIds) {
+        this.partIds = partIds;
+    }
+
     /**
      * Applies this bean's fields onto {@code page}. The id and the weblog are
      * deliberately not touched here -- both are the caller's business
@@ -161,6 +187,7 @@ public class PageBean {
         page.setCanonicalUrl(canonicalUrl);
         page.setNoindex(noindex);
         page.setOgImageId(ogImageId);
+        page.setStrand(strand);
     }
 
     /**
@@ -197,5 +224,6 @@ public class PageBean {
         this.canonicalUrl = page.getCanonicalUrl();
         this.noindex = page.getNoindex() != null && page.getNoindex();
         this.ogImageId = page.getOgImageId();
+        this.strand = Boolean.TRUE.equals(page.getStrand());
     }
 }

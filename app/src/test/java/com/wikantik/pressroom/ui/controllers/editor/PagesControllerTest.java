@@ -152,6 +152,50 @@ class PagesControllerTest extends EditorControllerTestSupport {
                 "Expected a generic failure, got: " + errors(model));
     }
 
+    // --- strands ---
+
+    @Test
+    void theListCountsEachStrandsPartsForItsDeleteConfirmation() throws Exception {
+        WeblogPage strand = pageOn(weblogA, "trip");
+        strand.setStrand(true);
+        WeblogPage plain = pageOn(weblogA, "about");
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of(strand, plain));
+        when(weblogger.getWeblogEntryManager().getStrandPartCount(strand)).thenReturn(3L);
+
+        controller.execute(requestFor(weblogA), model);
+
+        assertEquals(java.util.Map.of(strand.getId(), 3L), model.getAttribute("strandPartCounts"));
+        verify(weblogger.getWeblogEntryManager(), never()).getStrandPartCount(plain);
+    }
+
+    @Test
+    void aFailedPartCountLeavesThatRowWithThePlainConfirmation() throws Exception {
+        WeblogPage strand = pageOn(weblogA, "trip");
+        strand.setStrand(true);
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of(strand));
+        when(weblogger.getWeblogEntryManager().getStrandPartCount(strand))
+                .thenThrow(new WebloggerException("database down"));
+
+        String view = controller.execute(requestFor(weblogA), model);
+
+        assertEquals(".Pages", view);
+        assertEquals(java.util.Map.of(), model.getAttribute("strandPartCounts"));
+    }
+
+    @Test
+    void deletingAStrandRemovesOnlyThePageItsPostsStay() throws Exception {
+        // removePage clears the parts' strand fields (StrandMembershipTest);
+        // the controller must not take the posts with it.
+        WeblogPage strand = pageOn(weblogA, "trip");
+        strand.setStrand(true);
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
+
+        controller.remove(requestFor(weblogA), model, strand.getId());
+
+        verify(weblogger.getWeblogPageManager()).removePage(strand);
+        verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
+    }
+
     // --- fixtures ---
 
     private HttpServletRequest requestFor(Weblog weblog) {

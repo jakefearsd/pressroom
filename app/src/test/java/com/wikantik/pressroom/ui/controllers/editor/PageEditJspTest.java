@@ -334,4 +334,86 @@ class PageEditJspTest {
         assertTrue(script.contains("view.dispatch("),
                 "a targeted edit is a CodeMirror transaction, not a setValue");
     }
+
+    // ------------------------------------------------ strands: switch and Parts panel
+
+    private static final Path STRAND_SCRIPT =
+            Paths.get("src/main/webapp/theme/scripts/pressroom-strand-parts.js");
+
+    /** The markup between the panel's site-space guard and the end of its box. */
+    private static String strandBox() throws IOException {
+        String jsp = read(PAGE_EDIT);
+        int start = jsp.indexOf("<c:if test=\"${not actionWeblog.siteSpace}\">");
+        assertTrue(start >= 0, "the strand box is guarded off the site space: site pages are never strands");
+        int end = jsp.indexOf("</c:if>", jsp.indexOf("id=\"strandAddSelect\"", start));
+        assertTrue(end > start, "the guard must enclose the whole panel, add control included");
+        return jsp.substring(start, end);
+    }
+
+    @Test
+    void theStrandSwitchIsACheckboxWithItsOwnMarker() throws IOException {
+        String box = strandBox();
+        assertTrue(box.contains("name=\"bean.strand\"") && box.contains("id=\"page_bean_strand\""),
+                "the switch binds to PageBean.strand; its id is where the untick refusal points");
+        assertTrue(box.contains("name=\"_strand\""),
+                "the marker names the bean's property path (see _showInNav), never _bean.strand");
+        assertTrue(box.contains("pageEdit.strand\"") && box.contains("pageEdit.strand.help"),
+                "the switch says what a strand is");
+    }
+
+    @Test
+    void thePanelRendersOneRowPerMemberWithItsStatusAndControls() throws IOException {
+        String box = strandBox();
+        assertTrue(box.contains("id=\"page_strand_parts\""), "the refusals point at the panel by this id");
+        assertTrue(box.contains("items=\"${strandParts}\""), "one row per member, any status");
+        assertTrue(box.contains("name=\"bean.partIds\" value=\"${fn:escapeXml(part.id)}\""),
+                "each row carries its id as a hidden partIds, in row order");
+        assertTrue(box.contains("name=\"_partIds\""),
+                "with every row removed the form still says the panel was there: an empty list");
+        assertTrue(box.contains("StatusPill.jsp"), "each row shows its status, trashed included");
+        for (String key : new String[] {"pageEdit.parts.moveUp", "pageEdit.parts.moveDown",
+                "pageEdit.parts.remove"}) {
+            assertTrue(box.contains(key), "each row has its " + key + " button");
+        }
+        assertTrue(box.contains("${fn:escapeXml(entryTitles[part.id])}"),
+                "a post title is stored escaped; the plain label is escaped exactly once");
+        assertFalse(box.contains("${part.title}"), "never the stored title bare in an attribute or label");
+    }
+
+    @Test
+    void theAddControlListsThePostsInNoStrand() throws IOException {
+        String box = strandBox();
+        assertTrue(box.contains("items=\"${strandCandidates}\""), "the add control lists the controller's candidates");
+        assertTrue(box.contains("pageEdit.parts.add"), "it is labelled Add posts");
+        assertTrue(box.contains("${fn:escapeXml(entryTitles[candidate.id])}"));
+    }
+
+    @Test
+    void theStrandScriptIsLoadedAndOwnsMovingRemovingAddingAndDragging() throws IOException {
+        assertTrue(read(PAGE_EDIT).contains("/theme/scripts/pressroom-strand-parts.js"));
+        String js = read(STRAND_SCRIPT);
+        for (String hook : new String[] {"strand-part-up", "strand-part-down", "strand-part-remove",
+                "strandAddSelect", "dragstart", "dragover", "drop", "page_bean_strand"}) {
+            assertTrue(js.contains(hook), "pressroom-strand-parts.js must handle " + hook);
+        }
+    }
+
+    @Test
+    void draftRecoveryLeavesThePartsAlone() throws IOException {
+        // pressroom-draft.js keys a snapshot by field name, so every same-named
+        // hidden partIds would be restored to the last one's value: a list of
+        // one post repeated, which the save then refuses as duplicates.
+        assertTrue(read(PAGE_EDIT).contains("exclude: ['bean.content', 'bean.partIds']"));
+    }
+
+    @Test
+    void deletingAStrandSaysHowManyPostsLeaveIt() throws IOException {
+        String pages = read(PAGES);
+        assertTrue(pages.contains("code=\"pages.deleteStrandConfirm\" arguments=\"${strandPartCounts[p.id]}\""),
+                "the list's delete confirmation names the count for a strand with parts");
+        assertTrue(pages.contains("${fn:escapeXml(strandConfirm)}"),
+                "the confirmation text lands in data-confirm escaped");
+        assertTrue(read(PAGE_EDIT).contains("pages.deleteStrandConfirm"),
+                "the editor's own delete dialog says it too");
+    }
 }
