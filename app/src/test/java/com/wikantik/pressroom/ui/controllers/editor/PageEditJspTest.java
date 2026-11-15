@@ -167,9 +167,9 @@ class PageEditJspTest {
                         + "CUSTOM-template route and hands an author a 404 from their own "
                         + "admin screen");
         assertTrue(pages.contains(
-                        "href=\"${fn:escapeXml(urls.staticPage(actionWeblog, p.slug))}\""),
+                        "href=\"${fn:escapeXml(urls.page(actionWeblog, p))}\""),
                 "the list's permalink must come from the one strategy rule, escaped -- the "
-                        + "same construction PageEdit.jsp's own links use");
+                        + "page form, so a front page links the blog root it is served at");
         assertFalse(pages.contains("weblogAbsolute(actionWeblog)}${"),
                 "a page link is never the weblog root glued to a slug: the site space "
                         + "and its front-door page have a different shape");

@@ -138,6 +138,23 @@ class PageReferenceTest {
                 PageReference.parse("privacy").orElseThrow().absoluteUrl(weblogger));
     }
 
+    /**
+     * A page that exists is linked through the strategy's page form, so a
+     * blog's front page (the privacy page may be one) links the blog root;
+     * a slug that names no page keeps the slug form.
+     */
+    @Test
+    void absoluteUrlOfAnExistingPageAsksForThePagesOwnAddress() throws Exception {
+        Weblog blog = weblog("wikantik");
+        page(blog, "privacy", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage privacy = pages.getPageBySlug(blog, "privacy");
+        when(urls.getWeblogStaticPageURL(blog, privacy, true)).thenReturn("https://x.test/wikantik/");
+        when(urls.getWeblogStaticPageURL(blog, "privacy", true)).thenReturn("https://x.test/wikantik/privacy");
+
+        assertEquals(Optional.of("https://x.test/wikantik/"),
+                PageReference.parse("wikantik/privacy").orElseThrow().absoluteUrl(weblogger));
+    }
+
     @Test
     void absoluteUrlIsEmptyWhenTheBlogIsGone() throws Exception {
         assertEquals(Optional.empty(), PageReference.parse("ghost/privacy").orElseThrow().absoluteUrl(weblogger));

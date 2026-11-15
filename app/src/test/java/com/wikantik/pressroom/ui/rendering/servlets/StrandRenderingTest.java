@@ -123,7 +123,7 @@ class StrandRenderingTest {
         assertEquals(200, response.getStatus(), path);
         String body = response.getContentAsString();
         for (String leak : new String[] {"$pager", "$text.", "entryMeta.", "$part", "$strand", "#set(",
-                "#showStrand"}) {
+                "#showStrand", "$url.", "$sbNav"}) {
             assertFalse(body.contains(leak), "'" + leak + "' leaked into the page:\n" + body);
         }
         return body;
@@ -203,6 +203,38 @@ class StrandRenderingTest {
         assertTrue(all > 0, body);
         String before = body.substring(0, all);
         assertTrue(before.substring(before.lastIndexOf("<a ")).contains("/tale\""), body);
+    }
+
+    /**
+     * A strand page that is its blog's front door lives at the blog root, so a
+     * part's strand bar and the last part's "All parts" step link the root,
+     * never the slug: one address for the "start here" page.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"journal", "portfolio", "travel"})
+    void aStrandThatIsTheFrontDoorIsLinkedAtTheBlogRoot(String theme) throws Exception {
+        threeParts();
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setFrontPageId(strandId);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+        theme(theme);
+        String root = TestUtils.weblogger().getUrlStrategy()
+                .getWeblogURL(TestUtils.getManagedWebsite(weblog), null, false);
+
+        String middle = get("/entry/two");
+        // the bar itself: the nav also links the page (at the root) by the same title
+        int bar = middle.indexOf("<p class=\"strand-bar\">");
+        assertTrue(bar > 0, middle);
+        assertTrue(middle.substring(bar, middle.indexOf("</p>", bar)).contains("<a href=\"" + root + "\">The Tale</a>"),
+                "the strand bar links the root:\n" + middle);
+        String last = get("/entry/three");
+        int all = last.indexOf("All parts");
+        assertTrue(all > 0, last);
+        String before = last.substring(0, all);
+        assertTrue(before.substring(before.lastIndexOf("<a ")).contains("href=\"" + root + "\""),
+                "All parts links the root:\n" + last);
+        assertFalse(middle.contains("/tale\"") || last.contains("/tale\""), "no link to the slug");
     }
 
     @ParameterizedTest

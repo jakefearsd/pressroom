@@ -191,8 +191,8 @@ public class SearchResultsModel extends PageModel {
 	 * updated in the background, so it can still name a page that has been
 	 * unpublished, set noindex or deleted since: each id is loaded and
 	 * dropped unless the page is still PUBLISHED and indexable. This is a
-	 * display path: a failure here shows no pages and never costs the post
-	 * results.
+	 * display path: a failure here shows no pages, a page that fails to
+	 * render is left out alone (pageHit), and neither costs the post results.
 	 */
 	private List<PageHit> findPageHits(IndexManager indexMgr, String handle) {
 		String category = searchRequest.getWeblogCategoryName();
@@ -209,7 +209,11 @@ public class SearchResultsModel extends PageModel {
 						|| Boolean.TRUE.equals(page.getNoindex())) {
 					continue;
 				}
-				found.add(new PageHit(WeblogPageWrapper.wrap(page, urlStrategy, weblogger), snippetOf(page)));
+				PageHit hit = pageHit(page);
+				if (hit == null) {
+					continue;
+				}
+				found.add(hit);
 				if (found.size() == PAGES_IN_GROUP) {
 					break;
 				}
@@ -221,13 +225,29 @@ public class SearchResultsModel extends PageModel {
 		}
 	}
 
+	/**
+	 * One page's hit, or null when it cannot be built: a page whose content
+	 * fails to render (a shortcode, the renderer) is logged and left out, and
+	 * costs neither the other pages nor the post results.
+	 */
+	private PageHit pageHit(WeblogPage page) {
+		WeblogPageWrapper wrapped = WeblogPageWrapper.wrap(page, urlStrategy, weblogger);
+		try {
+			return new PageHit(wrapped, snippetOf(wrapped));
+		} catch (RuntimeException e) {
+			log.warn("Could not show page {} among the results for \"{}\"; leaving it out", page.getId(),
+					searchRequest.getQuery(), e);
+			return null;
+		}
+	}
+
 	/** The page's own search description, else the opening sentences of its content; plain text. */
-	private String snippetOf(WeblogPage page) {
-		String description = page.getSearchDescription();
+	private static String snippetOf(WeblogPageWrapper page) {
+		String description = page.getPojo().getSearchDescription();
 		if (description != null && !description.isBlank()) {
 			return description;
 		}
-		return WeblogPageWrapper.wrap(page, urlStrategy, weblogger).getExcerpt();
+		return page.getExcerpt();
 	}
 
 	/** A search that failed shows no results, only its message. */

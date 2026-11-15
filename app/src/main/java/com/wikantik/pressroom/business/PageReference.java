@@ -65,11 +65,21 @@ public record PageReference(String handle, String slug) {
                 ? Optional.of(page) : Optional.empty();
     }
 
-    /** The page's absolute URL; empty when the blog it names does not exist. */
+    /**
+     * The page's absolute URL; empty when the blog it names does not exist. A
+     * page that exists is linked through the strategy's page form, so a blog's
+     * front page links the blog root it is served at; a slug that names no
+     * page (yet) keeps its slug address.
+     */
     public Optional<String> absoluteUrl(Weblogger weblogger) throws WebloggerException {
         Weblog blog = weblog(weblogger);
-        return blog == null ? Optional.empty()
-                : Optional.of(weblogger.getUrlStrategy().getWeblogStaticPageURL(blog, slug, true));
+        if (blog == null) {
+            return Optional.empty();
+        }
+        URLStrategy urls = weblogger.getUrlStrategy();
+        WeblogPage page = weblogger.getWeblogPageManager().getPageBySlug(blog, slug);
+        return Optional.of(page == null ? urls.getWeblogStaticPageURL(blog, slug, true)
+                : urls.getWeblogStaticPageURL(blog, page, true));
     }
 
     /**

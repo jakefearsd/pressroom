@@ -31,6 +31,7 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.wrapper.WeblogPageWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
@@ -286,6 +287,16 @@ public class URLModel implements Model {
      */
     public String staticPage(WeblogPage page) {
         return urlStrategy.getWeblogStaticPageURL(weblog, page, false);
+    }
+
+    /**
+     * The same for the wrapper templates hold ({@code $strandNav.strand},
+     * {@code $model.page}): Velocity picks an overload by the argument's
+     * runtime type, so without this one a wrapper would match no method and
+     * the link would print as literal text.
+     */
+    public String staticPage(WeblogPageWrapper page) {
+        return urlStrategy.getWeblogStaticPageURL(weblog, page.getPojo(), false);
     }
 
     

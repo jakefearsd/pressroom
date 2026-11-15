@@ -19,6 +19,7 @@ import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -544,6 +545,104 @@ class SearchServletRenderingTest {
         setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
         RenderingTestSupport.clearRenderCaches();
         assertTrue(search(site.getHandle(), "zzznope").contains("No posts matched that search."));
+    }
+
+    // ------------------------------------- a search that matches only a page
+
+    /** A published page on {@code blog}; the save queues its indexing in the background. */
+    private static void publishPage(Weblog blog, String slug, String title, String content, boolean noindex)
+            throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(blog));
+        page.setSlug(slug);
+        page.setTitle(title);
+        page.setContent(content);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        page.setNoindex(noindex);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    private static void awaitPageIndexed(Weblog blog, String word) throws Exception {
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        SearchSpec spec = new SearchSpec(word, SearchSpec.Scope.BLOG, blog.getHandle(), null, 0, 3, "en_US");
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        while (index.findPages(spec, 3).isEmpty()) {
+            if (System.nanoTime() > deadline) {
+                throw new AssertionError(blog.getHandle() + ": no page indexed for " + word);
+            }
+            Thread.sleep(50);
+        }
+    }
+
+    /**
+     * A search that matches a page and no post shows the Pages group, so the
+     * results page must not also say that nothing matched (the article
+     * themes' empty line). The blog view's own heading says that no posts
+     * matched.
+     */
+    @Test
+    void aSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
+        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort");
+
+        inEveryTheme(theme -> {
+            String body = search("searchblog", "quillwort");
+            assertTrue(body.contains("search-group-pages"), body);
+            assertFalse(body.contains(NO_RESULTS_SENTENCE), body);
+            assertTrue(body.contains("<h2 class=\"search-group\">No posts in Test Weblog matched.</h2>"), body);
+            assertFalse(body.contains("Nothing in Test Weblog matched."), body);
+        });
+    }
+
+    /** The same in frontpage's search branch (the aggregated front-page blog): no "No posts matched" line. */
+    @Test
+    void aFrontpageSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
+        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort");
+        Weblog site = newBlog("searchsite", "The Site", "frontpage");
+        setProperty(FRONTPAGE_HANDLE_PROP, "searchsite");
+        setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
+        RenderingTestSupport.clearRenderCaches();
+        String front = search(site.getHandle(), "quillwort");
+        assertTrue(front.contains("search-group-pages"), front);
+        assertFalse(front.contains("No posts matched that search."), front);
+    }
+
+    /** The same at the site's search: with a Pages group, no "No posts matched" line above it. */
+    @Test
+    void theSiteSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
+        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort");
+        givenSiteSpace("frontpage");
+
+        String body = siteSearchBody("quillwort");
+
+        assertTrue(body.contains("search-group-pages"), body);
+        assertFalse(body.contains("class=\"site-search-empty\""), body);
+    }
+
+    /**
+     * A noindex page is never a result, though its title is still on the
+     * results page: the nav lists every published page (showInNav is on by
+     * default) whatever its SEO settings. SearchIT once looked for the title
+     * anywhere on the page and failed on that nav link; it now looks inside
+     * the Pages group. A characterisation test (it passed on its first run):
+     * it pins, on the real tier, the read-side and index exclusion SearchIT
+     * relies on, and the nav link that made the whole-page check wrong.
+     */
+    @Test
+    void aNoindexPageIsNeverAResultThoughTheNavStillLinksIt() throws Exception {
+        publishPage(weblog, "hidden", "Hidden Bongo", "All about bongofish.", true);
+        publishPage(weblog, "shown", "Visible Okapi", "All about okapifish.", false);
+        awaitPageIndexed(weblog, "okapifish");
+
+        String body = search("searchblog", "bongofish");
+
+        assertTrue(body.contains(">Hidden Bongo</a>"), "the nav links the page:\n" + body);
+        assertFalse(body.contains("search-group-pages"), "but it is no result:\n" + body);
+        assertTrue(body.contains(NO_RESULTS_SENTENCE), body);
     }
 
     // ------------------------------------- site-wide search: the site space at /search

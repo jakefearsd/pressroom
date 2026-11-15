@@ -17,6 +17,11 @@
  */
 package com.wikantik.pressroom.it;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 
 import com.codeborne.selenide.WebDriverRunner;
@@ -221,9 +226,23 @@ class SearchIT extends PressroomIT {
     /**
      * A published page with a distinctive word shows under "Pages" in its
      * blog's search and in the site-wide search; a page with the same kind of
-     * word set to noindex shows in neither (criterion 24). Indexing is
-     * asynchronous, so the indexable page is awaited first, then the noindex
-     * page is checked after the index has demonstrably caught up.
+     * word set to noindex shows in neither (criterion 24).
+     *
+     * <p>Every result check looks inside {@code section.search-results}, never
+     * at the whole page: the blog's nav lists every published page by title,
+     * noindex or not, so the hidden page's title is on every page of its blog.
+     * The first browser run looked at the whole page and failed on that nav
+     * link, though the page was no result.
+     *
+     * <p>The noindex page is saved first. Its reindex job is queued when its
+     * save commits, before the visible page is even saved, so by the time the
+     * visible page shows it has had every chance to run. That is not a strict
+     * guarantee -- index jobs run on a cached thread pool and take a non-fair
+     * write lock (ThreadManagerImpl, WriteToIndexOperation), so the queue is
+     * not FIFO -- and the check does not lean on it: the results model re-reads
+     * every page the index names and drops a noindex one
+     * (SearchResultsModel.findPageHits), so once the positive control has
+     * shown the flag saved, the page cannot show whatever the index holds.
      */
     @Test
     void aMatchingPageShowsUnderPagesAndANoindexPageDoesNot() {
@@ -233,15 +252,22 @@ class SearchIT extends PressroomIT {
         String shownTitle = "Visible " + shown;
         String hiddenTitle = "Hidden " + hidden;
         String handle = createWeblog("Pages Blog " + nonce);
-        savePage(handle, "shown-" + nonce, shownTitle, "All about " + shown + ".", false);
         savePage(handle, "hidden-" + nonce, hiddenTitle, "All about " + hidden + ".", true);
+        savePage(handle, "shown-" + nonce, shownTitle, "All about " + shown + ".", false);
         logout();
+
+        // the positive control: the hidden page is published and its noindex saved
+        HttpResponse<String> hiddenPage = getWithStatus(baseUrl() + "/" + handle + "/hidden-" + nonce);
+        assertEquals(200, hiddenPage.statusCode(), "the noindex page is published");
+        assertTrue(hiddenPage.body().contains("All about " + hidden), "the noindex page renders");
+        assertTrue(hiddenPage.body().contains("<meta name=\"robots\" content=\"noindex\">"),
+                "the editor saved the page's noindex setting");
 
         String blogSearch = baseUrl() + "/" + handle + "/search?q=";
         String siteSearch = baseUrl() + "/search?q=";
-        assertTrue(waitForPage(blogSearch + shown, "search-group-pages", shownTitle),
+        assertTrue(waitForResults(blogSearch + shown, "search-group-pages", shownTitle),
                 "the page never showed in its blog's search");
-        assertTrue(waitForPage(siteSearch + shown, "search-group-pages", shownTitle),
+        assertTrue(waitForResults(siteSearch + shown, "search-group-pages", shownTitle),
                 "the page never showed in the site search");
 
         openPath("/" + handle + "/");
@@ -249,13 +275,51 @@ class SearchIT extends PressroomIT {
         $("h2.search-group-pages").shouldHave(exactText("Pages"));
         $("h2.search-group-pages ~ ol li.search-hit h3.search-title a").shouldHave(exactText(shownTitle));
 
-        // the indexable page is already in the index, so a noindex page that
-        // slipped in would be there by now: give the index the same chance
-        sleepFor(Duration.ofSeconds(5));
-        assertFalse(getAnonymously(blogSearch + hidden).contains(hiddenTitle),
+        assertFalse(results(getAnonymously(blogSearch + hidden)).contains(hiddenTitle),
                 "a noindex page showed in its blog's search");
-        assertFalse(getAnonymously(siteSearch + hidden).contains(hiddenTitle),
+        assertFalse(results(getAnonymously(siteSearch + hidden)).contains(hiddenTitle),
                 "a noindex page showed in the site search");
+    }
+
+    /** The results section's markup, or "" when the page has none: never the nav, which lists every page. */
+    private static String results(String html) {
+        int start = html.indexOf("<section class=\"search-results\">");
+        if (start < 0) {
+            return "";
+        }
+        int end = html.indexOf("</section>", start);
+        return end < 0 ? html.substring(start) : html.substring(start, end);
+    }
+
+    /** Polls an anonymous search until its results section holds every needle: the index is asynchronous. */
+    private boolean waitForResults(String url, String... needles) {
+        long deadline = System.currentTimeMillis() + INDEX_TIMEOUT.toMillis();
+        do {
+            String found = results(getAnonymously(url));
+            boolean all = true;
+            for (String needle : needles) {
+                all &= found.contains(needle);
+            }
+            if (all) {
+                return true;
+            }
+            sleepFor(Duration.ofSeconds(2));
+        } while (System.currentTimeMillis() < deadline);
+        return false;
+    }
+
+    /** Like {@link #getAnonymously}, keeping the status, so a not-found page cannot pass for the page. */
+    private static HttpResponse<String> getWithStatus(String url) {
+        try {
+            return HttpClient.newHttpClient().send(
+                    HttpRequest.newBuilder().uri(URI.create(url)).timeout(Duration.ofSeconds(20)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not GET " + url + " anonymously", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted getting " + url, e);
+        }
     }
 
     private void savePage(String handle, String slug, String title, String body, boolean noindex) {

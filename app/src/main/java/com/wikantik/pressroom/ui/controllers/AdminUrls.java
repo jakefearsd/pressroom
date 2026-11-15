@@ -24,6 +24,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 
 /**
  * The one place the admin JSPs build weblog-content urls, exposed to every
@@ -74,6 +75,19 @@ public final class AdminUrls {
     public String staticPage(Weblog weblog, String slug) {
         Objects.requireNonNull(weblog, "weblog");
         return strategy().getWeblogStaticPageURL(weblog, slug == null ? "" : slug, true);
+    }
+
+    /**
+     * The absolute url of this page: the blog root while it is the blog's
+     * front page, else its slug address (the strategy's page form, the one
+     * the renderer links pages with). A separate name, not a
+     * {@code staticPage} overload: EL cannot choose between a String and a
+     * WeblogPage parameter when the argument is null ({@code bean.slug} of a
+     * new page), and fails the page.
+     */
+    public String page(Weblog weblog, WeblogPage page) {
+        Objects.requireNonNull(weblog, "weblog");
+        return strategy().getWeblogStaticPageURL(weblog, page, true);
     }
 
     /** The entry's absolute permalink -- what {@code WeblogEntry.getPermalink()} returned. */

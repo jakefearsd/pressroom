@@ -2509,14 +2509,16 @@ is escaped here.
 Show the strand bar under a post's title and byline:
     #showStrandBar($strandNav)
 
-"Part N of M in" and the strand page's title, linked. $strandNav is the
+"Part N of M in" and the strand page's title, linked through
+$url.staticPage with the page itself (not its slug), so a strand page that is
+the blog's front door links the blog root. $strandNav is the
 permalink pager's strandNav, null (so nothing prints) when the post is not a
 reader-visible part of a published strand. The page title is raw, so it is
 escaped here.
 *#
 #macro(showStrandBar $sbNav)
 #if($sbNav)
-<p class="strand-bar">$text.get("entryMeta.strandPart", [$sbNav.number, $sbNav.total]) <a href="$url.staticPage($sbNav.strand.slug)">$utils.escapeHTML($sbNav.strand.title)</a></p>
+<p class="strand-bar">$text.get("entryMeta.strandPart", [$sbNav.number, $sbNav.total]) <a href="$url.staticPage($sbNav.strand)">$utils.escapeHTML($sbNav.strand.title)</a></p>
 #end
 #end
 
@@ -2726,8 +2728,11 @@ search-again form and its empty and error lines:
     the showSearchResults macro, passed $model
 
 It renders nothing when this search found nothing, so the theme's own empty
-and error lines stand alone. Three shapes, all from SearchResultsModel:
-the blog view (this blog's best matches, then other blogs'), a paged blog
+and error lines stand alone. Those lines also test the page hits: a search
+that matched only pages shows the Pages group and no "nothing matched", and
+the blog view's heading then says that no posts matched
+(search.fromBlogNoPosts). Three shapes, all from SearchResultsModel: the blog
+view (this blog's best matches, then other blogs'), a paged blog
 view (scope=blog or a category: one heading and the current page), and the
 site view (one ranked list across blogs, each hit naming its blog).
 
@@ -2815,6 +2820,8 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
     <a class="search-all" href="$utils.escapeHTML($srModel.showAllUrl)">$text.get("search.showAll", [$srModel.ownTotal])</a>
 #end
 #end
+#elseif(!$srModel.pageHits.isEmpty())
+    <h2 class="search-group">$text.get("search.fromBlogNoPosts", [$srModel.weblog.name])</h2>
 #else
     <h2 class="search-group">$text.get("search.fromBlogNone", [$srModel.weblog.name])</h2>
 #end

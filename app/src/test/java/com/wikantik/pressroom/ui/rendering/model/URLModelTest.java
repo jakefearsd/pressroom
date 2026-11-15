@@ -29,6 +29,8 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.wrapper.WeblogPageWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 import com.wikantik.pressroom.util.URLUtilities;
 import org.junit.jupiter.api.AfterEach;
@@ -315,15 +317,37 @@ class URLModelTest {
     void theFrontPagesStaticPageUrlIsTheRoot() throws Exception {
         weblog.setFrontPageId("front-id");
         URLModel withFrontDoor = modelFor(weblog, null, new MultiWeblogURLStrategy());
-        com.wikantik.pressroom.pojos.WeblogPage front = new com.wikantik.pressroom.pojos.WeblogPage();
+        WeblogPage front = new WeblogPage();
         front.setId("front-id");
         front.setSlug("start");
-        com.wikantik.pressroom.pojos.WeblogPage about = new com.wikantik.pressroom.pojos.WeblogPage();
+        WeblogPage about = new WeblogPage();
         about.setId("about-id");
         about.setSlug("about");
 
         assertEquals(SITE + "/testblog/", withFrontDoor.staticPage(front));
         assertEquals(SITE + "/testblog/about", withFrontDoor.staticPage(about));
+    }
+
+    /**
+     * The strand bar and the step links hold a WeblogPageWrapper
+     * ($strandNav.strand): it answers as the page does, the root for the
+     * front page.
+     */
+    @Test
+    void aWrappedPageIsLinkedAsThePageIs() throws Exception {
+        weblog.setFrontPageId("front-id");
+        MultiWeblogURLStrategy strategy = new MultiWeblogURLStrategy();
+        URLModel withFrontDoor = modelFor(weblog, null, strategy);
+        WeblogPage front = new WeblogPage();
+        front.setId("front-id");
+        front.setSlug("start");
+        WeblogPage about = new WeblogPage();
+        about.setId("about-id");
+        about.setSlug("about");
+
+        assertEquals(SITE + "/testblog/", withFrontDoor.staticPage(WeblogPageWrapper.wrap(front, strategy, null)));
+        assertEquals(SITE + "/testblog/about",
+                withFrontDoor.staticPage(WeblogPageWrapper.wrap(about, strategy, null)));
     }
 
     @Test

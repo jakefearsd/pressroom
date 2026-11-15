@@ -64,7 +64,7 @@
     ## because a failed search also reports zero hits.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="qj-search-error">Search is temporarily unavailable. Please try again shortly.</p>
-    #elseif($model.hits == 0 && $model.otherHits.isEmpty())
+    #elseif($model.hits == 0 && $model.otherHits.isEmpty() && $model.pageHits.isEmpty())
     <p class="qj-search-empty">No entries matched that search. Try a different word, or a shorter phrase.</p>
     #end
     #showSearchResults($model)

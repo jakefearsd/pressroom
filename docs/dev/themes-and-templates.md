@@ -556,6 +556,17 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   `weblog.nav.posts` text first, only when `$weblog.hasFrontDoor()`. Nav
   pages link through `$url.staticPage($navPage)` so the front page links to
   the root, not its slug. Pages are listed by `navOrder`.
+- **Every link to a front page is the blog root**: `$url.staticPage` takes
+  the page (`WeblogPage`) or its wrapper (`WeblogPageWrapper`, e.g.
+  `$strandNav.strand`), never `.slug`, wherever a template links a page it
+  holds: the nav, the strand bar, the "All parts" step. Velocity picks the
+  overload by runtime type, so a new wrapper-like argument needs its own
+  overload or the link prints as text. Outside templates the same rule is
+  `AdminUrls.page` (the Pages screen's view link; not a `staticPage`
+  overload, because EL cannot choose between overloads on a null argument)
+  and `PageReference.absoluteUrl` (the privacy link), both through
+  `URLStrategy.getWeblogStaticPageURL(Weblog, WeblogPage, boolean)`. The
+  slug address keeps rendering the page, canonical at the root.
 - **Canonical and SEO** follow the strategy (`PageModel.getCanonicalUrl`):
   listing canonical = the collection URL, front page canonical = the root.
 
@@ -574,14 +585,16 @@ template (journal, portfolio, travel):
 - **The showStrandBar macro**, `showStrandBar($strandNav)`, in each theme's
   `_day.vm` permalink branch under the title and byline (above the blog
   line): `p.strand-bar`, "Part N of M in" (`entryMeta.strandPart`) and the
-  strand page's title, linked with `$url.staticPage`. The page title is raw,
-  so it goes through `$utils.escapeHTML`.
+  strand page's title, linked with `$url.staticPage($sbNav.strand)` (the
+  page, not its slug: a strand page that is the blog's front door links the
+  root). The page title is raw, so it goes through `$utils.escapeHTML`.
 - **`$strandNav`** is `WeblogEntriesPermalinkPager.getStrandNav()` (a
   `StrandNav`: strand page, number, total, previous, next), set by each
   theme's `permalink.vm` and null unless the post is a reader-visible part of
   a PUBLISHED strand page. When it is set, `permalink.vm` shows "Previous
   part"/"Next part" steps in place of the blog's Older/Newer, and the last
-  part's next step is "All parts", back to the strand page; when it is null
+  part's next step is "All parts", back to the strand page (the root when it
+  is the front door; `StrandRenderingTest`); when it is null
   the blog's Older/Newer stay. Because it is null outside a strand, its
   references are on `ThemeReferenceLeakTest`'s allowlist of nulls a theme
   tests with `#if`; a new theme using it adds its own lines there.
@@ -633,9 +646,15 @@ showSiteMasthead and showSiteFooter macros.
   The snippet is the page's search description, else its opening sentences
   (`WeblogPageWrapper.getExcerpt()`). The section now renders when *only*
   pages match (it used to hide on zero post hits); in that case the blog view
-  still prints "Nothing in X matched." and the site view prints no post
-  heading or list (never "0 articles across 0 blogs"). No new CSS and no
-  theme change: the themes and `site-search.vm` call the one macro.
+  prints "No posts in X matched." (`search.fromBlogNoPosts`, never "Nothing
+  in X matched" under a group that matched) and the site view prints no post
+  heading or list (never "0 articles across 0 blogs"). The empty lines of
+  the three `searchresults.vm`, frontpage's `weblog.vm` and `site-search.vm`
+  test `$model.pageHits.isEmpty()` with the post counts, so a pages-only
+  search never also says nothing matched (`SearchServletRenderingTest`, every
+  theme and the site search). A page whose content fails to render is left
+  out of the group and logged (`SearchResultsModel.pageHit`); it costs
+  neither the other pages nor the posts. No new CSS.
   `ThemeReferenceLeakTest` renders each theme's search with a Pages group.
 - **Counts**: one and many through `choice` formats ("1 article", "1 article
   across 1 blog", "1 more post from this blog"); Russian keeps its

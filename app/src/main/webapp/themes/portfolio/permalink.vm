@@ -74,7 +74,7 @@
             <span class="pf-step-title">$strandNav.next.title</span>
         </a>
         #else
-        <a class="pf-step pf-step-fwd" href="$url.staticPage($strandNav.strand.slug)">
+        <a class="pf-step pf-step-fwd" href="$url.staticPage($strandNav.strand)">
             <span class="pf-step-label">$text.get("entryMeta.strandAllParts")</span>
             <span class="pf-step-title">$utils.escapeHTML($strandNav.strand.title)</span>
         </a>

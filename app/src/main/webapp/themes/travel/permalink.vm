@@ -74,7 +74,7 @@
             <span class="tg-step-title">$strandNav.next.title</span>
         </a>
         #else
-        <a class="tg-step tg-step-fwd" href="$url.staticPage($strandNav.strand.slug)">
+        <a class="tg-step tg-step-fwd" href="$url.staticPage($strandNav.strand)">
             <span class="tg-step-label">$text.get("entryMeta.strandAllParts")</span>
             <span class="tg-step-title">$utils.escapeHTML($strandNav.strand.title)</span>
         </a>

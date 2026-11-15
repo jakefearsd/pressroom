@@ -66,7 +66,7 @@ never cached.
     ## fixed words: the exception text is internal detail on a public page.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="site-search-error">$text.get("search.unavailable")</p>
-    #elseif($utils.isNotEmpty($model.term) && $model.hits == 0 && $model.otherHits.isEmpty())
+    #elseif($utils.isNotEmpty($model.term) && $model.hits == 0 && $model.otherHits.isEmpty() && $model.pageHits.isEmpty())
     <p class="site-search-empty">$text.get("search.siteEmpty")</p>
     #end
     #showSearchResults($model)

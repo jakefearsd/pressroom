@@ -107,6 +107,29 @@ class FrontPageInvariantTest {
         assertNull(managed().getFrontPageId(), "and so does the row");
     }
 
+    /**
+     * Removing a whole weblog whose front page is set, end to end on the real
+     * database: weblog.front_page_id references one of the pages being
+     * removed, and nothing fails on that foreign key. A characterisation test:
+     * it passed on its first run, and still passes with removePages' in-memory
+     * clear disabled, because V049's ON DELETE SET NULL is what keeps the bulk
+     * page delete legal. With the page delete itself disabled it fails on the
+     * pages' weblog foreign key, so it does see a removal that cannot finish.
+     */
+    @Test
+    void removingAWeblogWithAFrontPageRemovesTheWeblogAndItsPages() throws Exception {
+        WeblogPage about = savePage("about");
+        WeblogPage contact = savePage("contact");
+        makeFrontPage(about);
+
+        weblogs().removeWeblog(managed());
+        TestUtils.endSession(true);
+
+        assertNull(weblogs().getWeblog(weblog.getId()), "the weblog is gone");
+        assertNull(pages().getPage(about.getId()), "its front page is gone");
+        assertNull(pages().getPage(contact.getId()), "and its other pages");
+    }
+
     @Test
     void savingADifferentPageLeavesTheFrontPage() throws Exception {
         WeblogPage about = savePage("about");

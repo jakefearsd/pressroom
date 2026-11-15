@@ -91,13 +91,14 @@
                                  single segment. The "page/" this used to carry
                                  is the CUSTOM-*template* route, so the link was
                                  a 404 of exactly the kind the c:when above
-                                 exists to avoid. Same construction as
-                                 PageEdit.jsp's own address line, escape
-                                 included: a slug is author-controlled and is
-                                 restricted only against '/' and reserved names,
-                                 never against quote or angle-bracket
-                                 characters. --%>
-                            <a href="${fn:escapeXml(urls.staticPage(actionWeblog, p.slug))}"
+                                 exists to avoid. The page form (urls.page),
+                                 so the blog's front page links the blog root
+                                 it is served at. Escaped like PageEdit.jsp's
+                                 own address line: a slug is author-controlled
+                                 and is restricted only against '/' and
+                                 reserved names, never against quote or
+                                 angle-bracket characters. --%>
+                            <a href="${fn:escapeXml(urls.page(actionWeblog, p))}"
                                target="_blank" rel="noopener">/<c:out value="${p.slug}"/></a>
                         </c:when>
                         <c:otherwise>/<c:out value="${p.slug}"/></c:otherwise>

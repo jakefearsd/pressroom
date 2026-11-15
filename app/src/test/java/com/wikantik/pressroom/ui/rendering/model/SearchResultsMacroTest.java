@@ -39,9 +39,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogManager;
-import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -62,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +87,7 @@ class SearchResultsMacroTest {
     private Weblog blog;
     private MockedStatic<WebloggerRuntimeConfig> config;
     private WeblogPageManager pageManager;
+    private EntryRenderer renderer;
     private final Timestamp published = new Timestamp(System.currentTimeMillis() - 86_400_000L);
 
     @BeforeEach
@@ -103,7 +105,7 @@ class SearchResultsMacroTest {
                 .thenAnswer(inv -> "https://example.test/" + ((Weblog) inv.getArgument(0)).getHandle() + "/");
         pageManager = mock(WeblogPageManager.class);
         when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
-        EntryRenderer renderer = mock(EntryRenderer.class);
+        renderer = mock(EntryRenderer.class);
         when(renderer.pageContent(any())).thenReturn("<p>Rooms &amp; <b>rates</b> for Spain.</p>");
         when(weblogger.getEntryRenderer()).thenReturn(renderer);
         when(urls.getWeblogStaticPageURL(any(), any(WeblogPage.class), anyBoolean())).thenAnswer(inv ->
@@ -181,7 +183,10 @@ class SearchResultsMacroTest {
         assertTrue(two.contains(">2 more posts from this blog</a>"), two);
     }
 
-    /** Every bundle's counted search copy formats for one and for many, with no placeholder left over. */
+    /**
+     * Every bundle's counted search copy formats for one and for many, with no
+     * placeholder left over; so does the no-posts line of a pages-only search.
+     */
     @Test
     void everyBundlesSearchCountsFormatForOneAndMany() {
         List<String> broken = new ArrayList<>();
@@ -198,6 +203,7 @@ class SearchResultsMacroTest {
                 check(broken, suffix, bundle, "searchSummary.textCapped", 1, 10, n);
                 check(broken, suffix, bundle, "macro.weblog.searchhitsCapped", "word", n);
             }
+            check(broken, suffix, bundle, "search.fromBlogNoPosts", "Blog");
         }
         assertTrue(broken.isEmpty(), String.join("\n", broken));
     }
@@ -359,13 +365,45 @@ class SearchResultsMacroTest {
                 "Rooms &amp; rates for Spain.", "From Test Blog", "Title own");
     }
 
+    /**
+     * Pages showed, so "Nothing in X matched" would contradict the group just
+     * above it: the blog heading says no POSTS matched.
+     */
     @Test
     void aQueryMatchingOnlyAPageShowsTheGroupAndTheNoPostsWording() throws Exception {
         pagesMatch(blog, "About us");
         String body = blogView(SearchHits.NONE, SearchHits.NONE);
 
         assertInOrder(body, "<section class=\"search-results\">", ">Pages</h2>", "About us",
-                "Nothing in Test Blog matched.");
+                "<h2 class=\"search-group\">No posts in Test Blog matched.</h2>");
+        assertFalse(body.contains("Nothing in"), body);
+    }
+
+    @Test
+    void aBlogNameIsEscapedOnceInTheNoPostsHeading() throws Exception {
+        rename(blog, NASTY_NAME);
+        pagesMatch(blog, "About us");
+        String body = blogView(SearchHits.NONE, SearchHits.NONE);
+
+        assertTrue(body.contains("<h2 class=\"search-group\">No posts in " + NASTY_ESCAPED + " matched.</h2>"), body);
+        assertEscapedOnce(body);
+    }
+
+    /**
+     * A page whose content fails to render costs only itself: the other page
+     * and the post results still show (findPageHits skips and logs it).
+     */
+    @Test
+    void aPageWhoseContentFailsToRenderIsSkippedAndThePostsStillShow() throws Exception {
+        pagesMatch(blog, "Broken page", "Fine page");
+        when(renderer.pageContent(argThat(page -> page != null && "p0".equals(page.getId()))))
+                .thenThrow(new UnsupportedOperationException("a shortcode that cannot render"));
+        String body = blogView(new SearchHits(List.of(hit("own", blog)), 1, false, Map.of(), Set.of()),
+                SearchHits.NONE);
+
+        assertFalse(body.contains("Broken page"), body);
+        assertInOrder(body, ">Pages</h2>", "Fine page", "Rooms &amp; rates for Spain.", "From Test Blog",
+                "Title own");
     }
 
     @Test

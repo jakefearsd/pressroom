@@ -91,7 +91,7 @@
     ## exception text is internal detail and never printed.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="fd-search-error">Search is temporarily unavailable. Please try again shortly.</p>
-    #elseif($model.hits == 0 && $model.otherHits.isEmpty())
+    #elseif($model.hits == 0 && $model.otherHits.isEmpty() && $model.pageHits.isEmpty())
     <p class="fd-search-empty">No posts matched that search. Try a different word, or a shorter phrase.</p>
     #end
 

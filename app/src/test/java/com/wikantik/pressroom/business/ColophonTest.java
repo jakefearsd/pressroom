@@ -44,6 +44,8 @@ class ColophonTest {
         weblogManager = mock(WeblogManager.class);
         urls = mock(URLStrategy.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
+        // no page found: the privacy link keeps its slug address
+        when(weblogger.getWeblogPageManager()).thenReturn(mock(WeblogPageManager.class));
         when(weblogger.getUrlStrategy()).thenReturn(urls);
         when(weblogger.getVersion()).thenReturn("0.4.0");
         when(weblogger.getRevision()).thenReturn("abcdef0123456");

@@ -135,7 +135,8 @@ public record Colophon(String version, String shortRevision, String releaseDate,
      * The privacy page's absolute URL, or null when none is configured or it
      * cannot be built. The setting is a {@link PageReference}: a bare slug is
      * a site page, {@code handle/slug} a blog's. Validated when the setting is
-     * saved, so there is no per-request existence check here.
+     * saved; the page is looked up here only so that a blog's front page is
+     * linked at the blog root ({@link PageReference#absoluteUrl}).
      */
     private static String privacyUrl(Weblogger weblogger) {
         try {

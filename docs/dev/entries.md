@@ -434,7 +434,15 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   **republishing does not restore it**, the author sets it again. Routing,
   `/posts`, canonical and sitemap rules: `routing.md`, "A blog's front door";
   the nav gains a "Posts" link (`themes-and-templates.md`); the API field is
-  `frontPage` (`api.md`). Saved pages also enter the search index
+  `frontPage` (`api.md`). **Every link to the front page is the blog root**,
+  not its slug: the nav, a strand's bar and "All parts" step (a strand page
+  may be the front door: one address for a tutorial's "start here"), the
+  Pages screen's view link and the privacy link (`themes-and-templates.md`,
+  "Every link to a front page is the blog root"). A `noindex` page, or one
+  whose canonical points elsewhere, may be chosen (the author's call); the
+  setting's help says that its SEO settings then apply to the blog root.
+  Removing the whole weblog clears the id with its pages
+  (`FrontPageInvariantTest`). Saved pages also enter the search index
   (`architecture.md`, "Document kinds"): PUBLISHED and not `noindex`.
 - **Routing**: a published page is served at `/<handle>/<slug>`. **Not
   `/<handle>/page/<slug>`**, the CUSTOM-template route (see Templates); both

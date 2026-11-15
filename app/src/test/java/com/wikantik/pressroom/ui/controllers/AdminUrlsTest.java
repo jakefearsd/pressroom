@@ -23,6 +23,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -85,6 +86,18 @@ class AdminUrlsTest {
         assertEquals("http://example.com/pressroom/about", urls.staticPage(weblog, "about"),
                 "an admin link to a page must come from the one rule the renderer uses");
         verify(strategy).getWeblogStaticPageURL(weblog, "about", true);
+    }
+
+    /** The Pages screen's view link: the strategy's page form, the blog root for its front page. */
+    @Test
+    void pageAsksTheStrategyForThePagesOwnAbsoluteUrl() {
+        WeblogPage page = new WeblogPage();
+        page.setId("front-id");
+        page.setSlug("start");
+        when(strategy.getWeblogStaticPageURL(weblog, page, true)).thenReturn("http://example.com/pressroom/testblog/");
+
+        assertEquals("http://example.com/pressroom/testblog/", urls.page(weblog, page));
+        verify(strategy).getWeblogStaticPageURL(weblog, page, true);
     }
 
     @Test
