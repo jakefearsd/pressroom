@@ -68,6 +68,7 @@ import com.wikantik.pressroom.pojos.TagStatComparator;
 import com.wikantik.pressroom.pojos.TagStatCountComparator;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -257,6 +258,69 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         q.setParameter(1, weblog);
         q.setParameter(2, PubStatus.TRASHED);
         return q.getSingleResult();
+    }
+
+    @Override
+    public List<WeblogEntry> getStrandParts(WeblogPage strand, boolean readerVisibleOnly)
+            throws WebloggerException {
+        String jpql = "SELECT e FROM WeblogEntry e WHERE e.strandPageId = ?1"
+                + (readerVisibleOnly ? " AND e.status = ?2 AND e.pubTime <= ?3" : "")
+                + " ORDER BY e.strandPosition ASC, e.id ASC";
+        TypedQuery<WeblogEntry> q = strategy.getDynamicQuery(jpql, WeblogEntry.class);
+        q.setParameter(1, strand.getId());
+        if (readerVisibleOnly) {
+            q.setParameter(2, PubStatus.PUBLISHED);
+            q.setParameter(3, new Timestamp(System.currentTimeMillis()));
+        }
+        return q.getResultList();
+    }
+
+    @Override
+    public long getStrandPartCount(WeblogPage strand) throws WebloggerException {
+        TypedQuery<Long> q = strategy.getDynamicQuery(
+                "SELECT COUNT(e) FROM WeblogEntry e WHERE e.strandPageId = ?1", Long.class);
+        q.setParameter(1, strand.getId());
+        return q.getSingleResult();
+    }
+
+    @Override
+    public void appendToStrand(WeblogEntry entry, WeblogPage strand) throws WebloggerException {
+        if (strand.getId().equals(entry.getStrandPageId())) {
+            return;
+        }
+        TypedQuery<Integer> q = strategy.getDynamicQuery(
+                "SELECT MAX(e.strandPosition) FROM WeblogEntry e WHERE e.strandPageId = ?1", Integer.class);
+        q.setParameter(1, strand.getId());
+        Integer max = q.getSingleResult();
+        entry.setStrandPageId(strand.getId());
+        entry.setStrandPosition(max == null ? 1 : max + 1);
+    }
+
+    @Override
+    public void leaveStrand(WeblogEntry entry) {
+        entry.setStrandPageId(null);
+        entry.setStrandPosition(null);
+    }
+
+    @Override
+    public void setStrandParts(WeblogPage strand, List<WeblogEntry> parts) throws WebloggerException {
+        java.util.Set<String> keep = new java.util.HashSet<>();
+        for (WeblogEntry part : parts) {
+            keep.add(part.getId());
+        }
+        for (WeblogEntry member : getStrandParts(strand, false)) {
+            if (!keep.contains(member.getId())) {
+                leaveStrand(member);
+                strategy.store(member);
+            }
+        }
+        int position = 1;
+        for (WeblogEntry part : parts) {
+            part.setStrandPageId(strand.getId());
+            part.setStrandPosition(position++);
+            strategy.store(part);
+        }
+        pressroom.getWeblogManager().saveWeblog(strand.getWeblog());
     }
 
     /**

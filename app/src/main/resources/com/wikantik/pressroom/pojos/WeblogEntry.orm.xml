@@ -41,6 +41,13 @@
                  (an existence test on the we_creator_idx index). -->
             <query>SELECT e.id FROM WeblogEntry e WHERE e.creatorUserName = ?1</query>
         </named-query>
+        <!-- A strand page is going: its parts stay, outside any strand. -->
+        <named-query name="WeblogEntry.clearStrandByPage">
+            <query>UPDATE WeblogEntry e SET e.strandPageId = NULL, e.strandPosition = NULL WHERE e.strandPageId = ?1</query>
+        </named-query>
+        <named-query name="WeblogEntry.clearStrandByWeblog">
+            <query>UPDATE WeblogEntry e SET e.strandPageId = NULL, e.strandPosition = NULL WHERE e.strandPageId IN (SELECT p.id FROM WeblogPage p WHERE p.weblog = ?1)</query>
+        </named-query>
         <named-query name="WeblogEntry.getCountDistinctByStatus">
             <!-- DISTINCT is not required for this query -->
             <query>SELECT COUNT(e) FROM WeblogEntry e WHERE e.status = ?1</query>

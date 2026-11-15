@@ -29,6 +29,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 
@@ -247,6 +248,33 @@ public interface WeblogEntryManager {
      * {@link EntryPins#wouldExceed} counts against. A count query.
      */
     long getPinnedEntryCount(Weblog weblog) throws WebloggerException;
+
+    /**
+     * The parts of {@code strand}, by position. With {@code readerVisibleOnly}
+     * only PUBLISHED posts whose publish time has come; otherwise every
+     * member, the trash included.
+     */
+    List<WeblogEntry> getStrandParts(WeblogPage strand, boolean readerVisibleOnly) throws WebloggerException;
+
+    /** How many posts are parts of {@code strand}, any status (the trash included). */
+    long getStrandPartCount(WeblogPage strand) throws WebloggerException;
+
+    /**
+     * Makes {@code entry} the last part of {@code strand}: position is the
+     * highest held by any member, trashed included, plus one. A no-op when it
+     * is already a part of that strand. Does not save the entry.
+     */
+    void appendToStrand(WeblogEntry entry, WeblogPage strand) throws WebloggerException;
+
+    /** Takes {@code entry} out of its strand (both fields). Does not save the entry. */
+    void leaveStrand(WeblogEntry entry);
+
+    /**
+     * Makes exactly {@code parts} the members of {@code strand}, positions 1..n
+     * in list order; former members not listed leave the strand. Bumps the
+     * blog's last-modified stamp.
+     */
+    void setStrandParts(WeblogPage strand, List<WeblogEntry> parts) throws WebloggerException;
         
     /**
      * Get category by id.

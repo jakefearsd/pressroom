@@ -227,6 +227,47 @@ class WeblogEntryTrashOperationsTest {
                         + afterTrash);
     }
 
+    /**
+     * Trashing keeps the strand and the position (a trashed part still holds
+     * its place and still counts for the next append); restoring keeps them too.
+     */
+    @Test
+    void trashingAndRestoringAPartKeepsItsPlace() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage strand = new com.wikantik.pressroom.pojos.WeblogPage();
+        strand.setSlug("trash-strand");
+        strand.setTitle("trash-strand");
+        strand.setContent("x");
+        strand.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        strand.setStrand(Boolean.TRUE);
+        strand.setWeblog(TestUtils.getManagedWebsite(blog));
+        TestUtils.weblogger().getWeblogPageManager().savePage(strand);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        WeblogEntry created = TestUtils.setupWeblogEntry("strand-part", blog, user, PubStatus.PUBLISHED);
+        TestUtils.endSession(true);
+
+        WeblogEntry part = entries().getWeblogEntry(created.getId());
+        entries().appendToStrand(part,
+                TestUtils.weblogger().getWeblogPageManager().getPage(strand.getId()));
+        entries().saveWeblogEntry(part);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        entries().trashWeblogEntry(entries().getWeblogEntry(created.getId()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        WeblogEntry trashed = entries().getWeblogEntry(created.getId());
+        assertEquals(strand.getId(), trashed.getStrandPageId());
+        assertEquals(1, trashed.getStrandPosition());
+
+        entries().restoreWeblogEntry(trashed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        WeblogEntry restored = entries().getWeblogEntry(created.getId());
+        assertEquals(strand.getId(), restored.getStrandPageId());
+        assertEquals(1, restored.getStrandPosition());
+    }
+
     // --------------------------------------------------------------- restore
 
     @Test
