@@ -61,6 +61,7 @@ class WeblogsApiTest {
         WeblogManager weblogManager = mock(WeblogManager.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         when(weblogger.getBusinessManager()).thenReturn(mock(BusinessManager.class));
+        when(weblogger.getWeblogPageManager()).thenReturn(mock(com.wikantik.pressroom.business.WeblogPageManager.class));
         return weblogger;
     }
 
@@ -353,7 +354,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -506,6 +507,7 @@ class WeblogsApiTest {
                 w.setPlaceLng(new BigDecimal("-117.29"));
             }
             case "bookingUrl" -> w.setBookingUrl("https://book.example.com");
+            case "frontPage" -> w.setFrontPageId("p1");
             default -> throw new IllegalArgumentException("No fixture for " + name);
         }
     }
@@ -526,6 +528,7 @@ class WeblogsApiTest {
             case "placeLat" -> w.getPlaceLat();
             case "placeLng" -> w.getPlaceLng();
             case "bookingUrl" -> w.getBookingUrl();
+            case "frontPage" -> w.getFrontPageId();
             default -> throw new IllegalArgumentException(name);
         };
     }
@@ -563,6 +566,50 @@ class WeblogsApiTest {
         doPatch(weblogger, weblog, "{\"clear\":[\"placeLocality\"]}").andExpect(status().isBadRequest());
 
         assertEquals("Encinitas", weblog.getPlaceLocality());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    private static com.wikantik.pressroom.pojos.WeblogPage pageOf(Weblogger weblogger, String id, Weblog owner,
+            com.wikantik.pressroom.pojos.WeblogPage.PubStatus status) throws Exception {
+        var page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId(id);
+        page.setWeblog(owner);
+        page.setStatus(status);
+        when(weblogger.getWeblogPageManager().getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    @Test
+    void frontPageIsShownSetAndCleared() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        pageOf(weblogger, "p1", weblog, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        assertNull(AdminDtos.toView(weblog).frontPage());
+
+        var result = doPatch(weblogger, weblog, "{\"frontPage\":\"p1\"}").andExpect(status().isOk());
+        assertEquals("p1", weblog.getFrontPageId());
+        assertEquals("p1", json(result).get("frontPage").asString());
+
+        doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
+        assertEquals("p1", weblog.getFrontPageId(), "a patch that omits it leaves it alone");
+
+        result = doPatch(weblogger, weblog, "{\"clear\":[\"frontPage\"]}").andExpect(status().isOk());
+        assertNull(weblog.getFrontPageId());
+        assertFalse(json(result).has("frontPage"));
+    }
+
+    @Test
+    void aDraftForeignOrUnknownFrontPageIsA400OnFrontPage() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        pageOf(weblogger, "draft", weblog, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT);
+        pageOf(weblogger, "foreign", aWeblog("other"), com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        for (String id : List.of("draft", "foreign", "nope")) {
+            doPatch(weblogger, weblog, "{\"frontPage\":\"" + id + "\"}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(errorFieldIs("frontPage"));
+        }
+        assertNull(weblog.getFrontPageId());
         verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
     }
 
@@ -774,7 +821,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));

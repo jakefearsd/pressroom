@@ -21,16 +21,19 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import org.slf4j.Logger;
@@ -81,14 +84,19 @@ public final class WeblogSettingsRules {
         }
     }
 
-    /** What the rules need beyond the bean: the weblog's own handle, the site, and two lookups. */
-    public record Context(String ownHandle, int maxEntries, String siteAbsoluteUrl,
-                          BusinessManager businesses, WeblogManager weblogs) {
-        public static Context current(String ownHandle, Weblogger weblogger) {
-            return new Context(ownHandle,
+    /** What the rules need beyond the bean: the weblog itself, the site, and three lookups. */
+    public record Context(Weblog weblog, int maxEntries, String siteAbsoluteUrl,
+                          BusinessManager businesses, WeblogManager weblogs, WeblogPageManager pages) {
+        public static Context current(Weblog weblog, Weblogger weblogger) {
+            return new Context(weblog,
                     WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries"),
                     WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"),
-                    weblogger.getBusinessManager(), weblogger.getWeblogManager());
+                    weblogger.getBusinessManager(), weblogger.getWeblogManager(),
+                    weblogger.getWeblogPageManager());
+        }
+
+        public String ownHandle() {
+            return weblog.getHandle();
         }
     }
 
@@ -121,6 +129,7 @@ public final class WeblogSettingsRules {
         tooLong("about", "websiteSettings.about", bean.getAbout(), MAX_TEXT, found);
         mustBeUuid("newsletterListUuid", "websiteSettings.newsletterListUuid.invalid", bean.getNewsletterListUuid(), found);
         checkBusiness(bean, context, found);
+        checkFrontDoor(bean, context, found);
         checkPlace(bean, found);
         checkCustomDomain(bean, context, found);
         return found;
@@ -141,6 +150,34 @@ public final class WeblogSettingsRules {
         }
         if (!known) {
             found.add(simple("businessId", "websiteSettings.business.invalid", "No such business."));
+        }
+    }
+
+    /**
+     * The front page must be a published page of this very blog. Another
+     * blog's page and an unknown id read the same: the API never reveals what
+     * the caller may not see. The site space has no front-door setting.
+     */
+    private static void checkFrontDoor(WeblogConfigBean bean, Context context, List<Violation> found) {
+        String pageId = StringUtils.trimToNull(bean.getFrontPageId());
+        if (pageId == null) {
+            return;
+        }
+        boolean usable = false;
+        if (!context.weblog().isSiteSpace()) {
+            try {
+                WeblogPage page = context.pages().getPage(pageId);
+                usable = page != null && page.getStatus() == WeblogPage.PubStatus.PUBLISHED
+                        && page.getWeblog() != null
+                        && Objects.equals(page.getWeblog().getId(), context.weblog().getId());
+            } catch (WebloggerException e) {
+                // A lookup that could not run is not one that passed.
+                log.error("Error checking front page", e);
+            }
+        }
+        if (!usable) {
+            found.add(simple("frontPageId", "weblogSettings.error.frontDoor",
+                    "frontPage must be the id of a published page of this blog."));
         }
     }
 

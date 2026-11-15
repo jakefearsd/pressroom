@@ -241,7 +241,7 @@ The clearable fields, per resource:
   `eventStart`, `eventEnd`, `eventLocation` and `strand` (takes the entry out of
   its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
 - **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`,
-  `newsletterListUuid`, `businessId`, `placeType`,
+  `newsletterListUuid`, `businessId`, `frontPage`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
   `bookingUrl`. `placeLat` and `placeLng` clear together.
 - **Page:** `metaTitle`, `searchDescription`, `canonicalUrl` and `ogImageId`.
@@ -1081,6 +1081,14 @@ the view always answers in upper case. Any other value is a 400 with an
 page, site-wide lists and search stay newest first. It cannot be cleared. The
 MCP `weblogs` tool's `update` action carries it like any other field.
 
+A weblog's `frontPage` is the id of one of its published pages. While set, the
+blog's root shows that page and the post list moves to `/<handle>/posts`
+(the nav gains a "Posts" link). Send `"clear": ["frontPage"]` to return the root
+to the post list; the view omits the field when none is set. A draft page,
+another blog's page and an unknown id are all a 400 with an `errors` entry on
+`frontPage`, and nothing is stored. Making the front page a draft or deleting
+it clears the setting by itself. The site space has no front page.
+
 An entry's `pinned` (default false) puts it at the top of its blog's home
 page, above the regular posts, on the first page only. It is a field of the
 entry view and of entry create and update; `false` unpins. A blog has at most
@@ -1270,7 +1278,7 @@ with the new weblog and a `Location` header.
 `null`, is unchanged. To remove a value, name its field in `clear`
 (`"clear": ["about", "bookingUrl"]`); `clear` applies only to updates. The
 clearable weblog fields are `tagline`, `copyright`, `customDomain`, `icon`, `about`,
-`newsletterListUuid`, `businessId`,
+`newsletterListUuid`, `businessId`, `frontPage`,
 `placeType`, `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`,
 `placeLng` and `bookingUrl`; `placeLat` and `placeLng` clear together, as a
 pair. The weblog view shows all of the fields below. The eleven settings

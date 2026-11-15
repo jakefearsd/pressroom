@@ -72,6 +72,9 @@ public final class AdminDtos {
                               @Schema(description = "NEWEST (the default) or OLDEST: the order of this blog's "
                                       + "listings. Feeds stay newest first.")
                               String entryOrder,
+                              @Schema(description = "Id of the published page shown at the blog's root; absent "
+                                      + "when the root lists posts (they then live at /posts).")
+                              String frontPage,
                               @Schema(description = "The same value as theme, under its older name.",
                                       deprecated = true)
                               String editorTheme,
@@ -142,18 +145,23 @@ public final class AdminDtos {
                                @Schema(description = "NEWEST or OLDEST (any case): the order of this blog's listings. "
                                        + "Feeds stay newest first. Not clearable.")
                                String entryOrder,
+                               @Schema(description = "Id of a published page of this blog to show at its root; the "
+                                       + "post list then moves to /posts. Remove with clear.")
+                               String frontPage,
                                @Schema(description = THEME_DESCRIPTION)
                                String theme,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
-                                       + "newsletterListUuid, businessId, "
+                                       + "newsletterListUuid, businessId, frontPage, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
                                        + "placeLng, bookingUrl. Null never removes anything.")
                                List<String> clear) {
     }
 
     public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "copyright", "customDomain", "icon", "about",
-            "newsletterListUuid", "businessId", "placeType",
+            "newsletterListUuid", "businessId", "frontPage", "placeType",
             "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl");
+    /** The settings bean's name for the API's {@code frontPage}. */
+    public static final String FRONT_PAGE_BEAN_FIELD = "frontPageId";
     public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
 
     public static UserView toView(User user, List<String> roles) {
@@ -170,7 +178,7 @@ public final class AdminDtos {
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
                 !Boolean.FALSE.equals(weblog.getShowMoreFromSite()),
                 !Boolean.FALSE.equals(weblog.getShareRowEnabled()), weblog.entryOrder().name(),
-                weblog.getEditorTheme(),
+                weblog.getFrontPageId(), weblog.getEditorTheme(),
                 weblog.getEditorTheme(), weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
@@ -242,6 +250,7 @@ public final class AdminDtos {
             bean.setEntryOrder(EntryOrder.parse(patch.entryOrder()).map(EntryOrder::name)
                     .orElse(patch.entryOrder()));
         }
+        setIfPresent(patch.frontPage(), bean::setFrontPageId);
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);
         setIfPresent(patch.about(), bean::setAbout);
@@ -263,6 +272,10 @@ public final class AdminDtos {
         }
         Set<String> touched = new HashSet<>(ClearFields.fieldsWithValue(patch));
         touched.addAll(cleared);
+        if (touched.contains("frontPage")) {
+            // The bean (and so every rule violation) names it frontPageId.
+            touched.add(FRONT_PAGE_BEAN_FIELD);
+        }
         return touched;
     }
 
@@ -289,6 +302,7 @@ public final class AdminDtos {
             case "about" -> bean.setAbout(null);
             case "newsletterListUuid" -> bean.setNewsletterListUuid(null);
             case "businessId" -> bean.setBusinessId(null);
+            case "frontPage" -> bean.setFrontPageId(null);
             case "placeType" -> bean.setPlaceType(null);
             case "placeLocality" -> bean.setPlaceLocality(null);
             case "placeRegion" -> bean.setPlaceRegion(null);

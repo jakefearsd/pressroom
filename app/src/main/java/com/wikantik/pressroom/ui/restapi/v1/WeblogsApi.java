@@ -107,7 +107,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         Set<String> touched = AdminDtos.applyPatch(bean, body, cleared);
 
         List<WeblogSettingsRules.Violation> broken = WeblogSettingsRules.check(bean,
-                WeblogSettingsRules.Context.current(weblog.getHandle(), weblogger)).stream()
+                WeblogSettingsRules.Context.current(weblog, weblogger)).stream()
                 .filter(v -> v.involvesAny(touched))
                 .toList();
         if (!broken.isEmpty()) {
@@ -119,7 +119,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
                         : ApiException.conflict(detail);
             }
             throw ApiException.validation(detail, broken.stream()
-                    .map(v -> new ApiProblem.FieldError(v.field(), v.detail())).toList());
+                    .map(v -> new ApiProblem.FieldError(apiField(v.field()), v.detail())).toList());
         }
 
         bean.copyTo(weblog, weblogger.getBusinessManager());
@@ -132,6 +132,11 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         // WeblogPageCache expires only against weblog.lastModified; invalidate bumps it.
         CacheManager.invalidate(weblog);
         return AdminDtos.toView(weblog);
+    }
+
+    /** The API names the bean's {@code frontPageId} {@code frontPage}. */
+    private static String apiField(String beanField) {
+        return AdminDtos.FRONT_PAGE_BEAN_FIELD.equals(beanField) ? "frontPage" : beanField;
     }
 
     /**

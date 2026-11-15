@@ -31,6 +31,7 @@ import com.wikantik.pressroom.business.SubscribeFormStatus;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Business;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.CustomDomainRules;
@@ -124,7 +125,7 @@ public class WeblogConfigController extends BaseController {
         // The real action weblog's handle, never bean.getHandle(): the "bean." prefix binds
         // bean.handle from POST data the JSP never renders (I4), so it cannot be trusted here.
         WeblogSettingsRules.Context context =
-                WeblogSettingsRules.Context.current(getActionWeblog(request).getHandle(), weblogger);
+                WeblogSettingsRules.Context.current(getActionWeblog(request), weblogger);
         for (WeblogSettingsRules.Violation v : WeblogSettingsRules.check(bean, context)) {
             String fieldId = "weblog_bean_" + v.field();
             if (v.labelKey() == null) {
@@ -160,8 +161,31 @@ public class WeblogConfigController extends BaseController {
         model.addAttribute("businesses", businesses);
     }
 
+    /**
+     * The published pages the blog may show at its root. As with businesses, a
+     * list that could not load refuses the save and makes the form carry the
+     * current front page in a hidden input: a select offering only "Post list"
+     * would post blank and silently drop the front door. The site space has no
+     * front door, so it is offered nothing.
+     */
+    private void loadFrontPages(Model model, HttpServletRequest request) {
+        List<WeblogPage> pages = new ArrayList<>();
+        Weblog weblog = getActionWeblog(request);
+        if (!weblog.isSiteSpace()) {
+            try {
+                pages = weblogger.getWeblogPageManager().getPublishedPages(weblog);
+            } catch (WebloggerException e) {
+                log.error("Error loading pages", e);
+                addError(model, "weblogSettings.frontDoor.unavailable", request);
+                model.addAttribute("frontPagesUnavailable", Boolean.TRUE);
+            }
+        }
+        model.addAttribute("frontPages", pages);
+    }
+
     private void loadFormData(Model model, HttpServletRequest request) {
         loadBusinesses(model, request);
+        loadFrontPages(model, request);
         model.addAttribute("localesList", com.wikantik.pressroom.ui.controllers.util.UIUtils.getLocales());
         model.addAttribute("timeZonesList", com.wikantik.pressroom.ui.controllers.util.UIUtils.getTimeZones());
         // The same ceiling myValidate() rejects against, so the field's max=

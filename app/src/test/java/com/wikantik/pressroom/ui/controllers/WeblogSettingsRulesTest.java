@@ -26,6 +26,8 @@ import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.pojos.Business;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
+import com.wikantik.pressroom.business.WeblogPageManager;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,13 +40,74 @@ class WeblogSettingsRulesTest {
 
     private BusinessManager businesses;
     private WeblogManager weblogs;
+    private WeblogPageManager pages;
+    private com.wikantik.pressroom.pojos.Weblog own;
     private WeblogSettingsRules.Context context;
 
     @BeforeEach
     void setUp() {
         businesses = mock(BusinessManager.class);
         weblogs = mock(WeblogManager.class);
-        context = new WeblogSettingsRules.Context("myblog", 30, "https://blog.example.com", businesses, weblogs);
+        pages = mock(WeblogPageManager.class);
+        own = new com.wikantik.pressroom.pojos.Weblog();
+        own.setId("own-id");
+        own.setHandle("myblog");
+        context = new WeblogSettingsRules.Context(own, 30, "https://blog.example.com", businesses, weblogs, pages);
+    }
+
+    private WeblogPage page(String id, com.wikantik.pressroom.pojos.Weblog owner, WeblogPage.PubStatus status)
+            throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setId(id);
+        page.setWeblog(owner);
+        page.setStatus(status);
+        when(pages.getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    @Test
+    void aPublishedPageOfThisBlogMayBeTheFrontDoor() throws Exception {
+        page("p1", own, WeblogPage.PubStatus.PUBLISHED);
+        WeblogConfigBean bean = valid();
+        bean.setFrontPageId("p1");
+        assertEquals(List.of(), WeblogSettingsRules.check(bean, context));
+        bean.setFrontPageId("  ");
+        assertEquals(List.of(), WeblogSettingsRules.check(bean, context), "blank is the post list");
+    }
+
+    @Test
+    void aDraftAnotherBlogsPageAnUnknownIdAreRefusedAsUnknown() throws Exception {
+        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        other.setId("other-id");
+        page("draft", own, WeblogPage.PubStatus.DRAFT);
+        page("foreign", other, WeblogPage.PubStatus.PUBLISHED);
+        for (String id : List.of("draft", "foreign", "nope")) {
+            WeblogConfigBean bean = valid();
+            bean.setFrontPageId(id);
+            var found = WeblogSettingsRules.check(bean, context);
+            assertEquals(List.of("frontPageId"), found.stream().map(WeblogSettingsRules.Violation::field).toList(), id);
+            assertEquals("weblogSettings.error.frontDoor", found.get(0).messageKey());
+            assertEquals("frontPage must be the id of a published page of this blog.", found.get(0).detail());
+        }
+    }
+
+    @Test
+    void aLookupThatCannotRunRefusesTheFrontDoor() throws Exception {
+        when(pages.getPage("p1")).thenThrow(new com.wikantik.pressroom.WebloggerException("db down"));
+        WeblogConfigBean bean = valid();
+        bean.setFrontPageId("p1");
+        assertEquals(List.of("frontPageId"), fieldsOf(bean));
+    }
+
+    @Test
+    void theSiteSpaceHasNoFrontDoorSetting() throws Exception {
+        own.setSiteSpace(true);
+        page("p1", own, WeblogPage.PubStatus.PUBLISHED);
+        WeblogConfigBean bean = valid();
+        bean.setFrontPageId("p1");
+        assertEquals(List.of("frontPageId"), fieldsOf(bean));
+        bean.setFrontPageId(null);
+        assertEquals(List.of(), fieldsOf(bean));
     }
 
     private static WeblogConfigBean valid() {

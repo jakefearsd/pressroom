@@ -154,6 +154,23 @@ class WeblogConfigBeanTest {
     }
 
     @Test
+    void frontPageIdCopiesBothWays() {
+        Weblog w = weblog();
+        w.setFrontPageId("p1");
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        assertEquals("p1", b.getFrontPageId());
+
+        b.setFrontPageId(" p2 ");
+        b.copyTo(w);
+        assertEquals("p2", w.getFrontPageId());
+
+        b.setFrontPageId("  ");
+        b.copyTo(w);
+        assertNull(w.getFrontPageId(), "blank is the post list");
+    }
+
+    @Test
     void entryOrderCopiesBothWays() {
         Weblog w = weblog();
         w.setEntryOrder("OLDEST");

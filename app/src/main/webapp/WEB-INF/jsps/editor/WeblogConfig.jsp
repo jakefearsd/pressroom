@@ -167,6 +167,29 @@
         </div>
     </div>
 
+    <c:if test="${not actionWeblog.siteSpace}">
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="weblog_bean_frontPageId"><spring:message code="weblogSettings.frontDoor"/></label>
+        <div class="col-sm-9">
+            <c:choose>
+                <c:when test="${frontPagesUnavailable}">
+                    <%-- No list to choose from: carry the current front page, never post "Post list". --%>
+                    <input type="hidden" name="bean.frontPageId" value="${fn:escapeXml(bean.frontPageId)}"/>
+                </c:when>
+                <c:otherwise>
+                    <select class="form-select" id="weblog_bean_frontPageId" name="bean.frontPageId">
+                        <option value=""><spring:message code="weblogSettings.frontDoor.postList"/></option>
+                        <c:forEach var="p" items="${frontPages}">
+                            <option value="${fn:escapeXml(p.id)}"<c:if test="${bean.frontPageId == p.id}"> selected="selected"</c:if>>${fn:escapeXml(p.title)}</option>
+                        </c:forEach>
+                    </select>
+                </c:otherwise>
+            </c:choose>
+            <div class="form-text"><spring:message code="weblogSettings.frontDoor.help"/></div>
+        </div>
+    </div>
+    </c:if>
+
     <%-- ***** Language/i18n settings ***** --%>
 
     <h2 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h2>

@@ -63,7 +63,7 @@ class FormBodyParityTest {
                                 "pinnedToMain", "The legacy pin to the main page, which the front page "
                                         + "ignores; promotion will be designed separately.")),
                 new Parity("WeblogConfigBean -> WeblogPatch", WeblogConfigBean.class, AdminDtos.WeblogPatch.class,
-                        Map.of(),
+                        Map.of("frontPageId", "frontPage"),
                         Map.of("handle", "The weblog's handle is the route's path variable and never changes.")),
                 new Parity("PageBean -> PageWrite", PageBean.class, PageDtos.PageWrite.class,
                         Map.of("content", "text"),

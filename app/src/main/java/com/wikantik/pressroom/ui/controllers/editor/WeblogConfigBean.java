@@ -55,6 +55,8 @@ public class WeblogConfigBean {
     private String customDomain;
 
     private String businessId;
+    /** The page shown at the blog root; blank is the post list. */
+    private String frontPageId;
     private String placeType;
     private String placeLocality;
     private String placeRegion;
@@ -211,6 +213,14 @@ public class WeblogConfigBean {
         this.customDomain = customDomain;
     }
 
+    public String getFrontPageId() {
+        return frontPageId;
+    }
+
+    public void setFrontPageId(String frontPageId) {
+        this.frontPageId = frontPageId;
+    }
+
     public String getBusinessId() {
         return businessId;
     }
@@ -295,6 +305,7 @@ public class WeblogConfigBean {
         this.customDomain = dataHolder.getCustomDomain();
         setIcon(dataHolder.getIconPath());
         setAbout(dataHolder.getAbout());
+        this.frontPageId = dataHolder.getFrontPageId();
         this.businessId = dataHolder.getBusiness() == null ? null : dataHolder.getBusiness().getId();
         this.placeType = dataHolder.getPlaceType();
         this.placeLocality = dataHolder.getPlaceLocality();
@@ -320,6 +331,7 @@ public class WeblogConfigBean {
         dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
         dataHolder.setShareRowEnabled(this.getShareRowEnabled());
         dataHolder.setEntryOrder(EntryOrder.parse(this.entryOrder).orElse(EntryOrder.NEWEST).name());
+        dataHolder.setFrontPageId(StringUtils.trimToNull(this.frontPageId));
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
         dataHolder.setNewsletterListUuid(StringUtils.trimToNull(this.newsletterListUuid));

@@ -126,6 +126,80 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
         assertTrue(weblog.getLastModified().after(before), "the render cache expires on lastModified");
     }
 
+    private com.wikantik.pressroom.pojos.WeblogPage pageOf(String id, String title,
+            com.wikantik.pressroom.pojos.WeblogPage.PubStatus status) throws Exception {
+        var page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId(id);
+        page.setTitle(title);
+        page.setWeblog(weblog);
+        page.setStatus(status);
+        when(weblogger.getWeblogPageManager().getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    @Test
+    void theFormOffersThePublishedPagesForTheFrontDoor() throws Exception {
+        var published = pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        when(weblogger.getWeblogPageManager().getPublishedPages(weblog)).thenReturn(List.of(published));
+
+        controller.execute(request, model, bean);
+
+        assertEquals(List.of(published), model.getAttribute("frontPages"));
+    }
+
+    @Test
+    void theSiteSpaceIsOfferedNoPages() throws Exception {
+        weblog.setSiteSpace(true);
+
+        controller.execute(request, model, bean);
+
+        assertEquals(List.of(), model.getAttribute("frontPages"));
+        org.mockito.Mockito.verifyNoInteractions(weblogger.getWeblogPageManager());
+    }
+
+    @Test
+    void aPageListThatCannotLoadRefusesTheSaveAndKeepsTheFrontDoor() throws Exception {
+        weblog.setFrontPageId("p1");
+        when(weblogger.getWeblogPageManager().getPublishedPages(weblog))
+                .thenThrow(new WebloggerException("db down"));
+        bean.copyFrom(weblog);
+
+        controller.save(request, model, bean);
+
+        assertEquals(Boolean.TRUE, model.getAttribute("frontPagesUnavailable"));
+        assertEquals("p1", weblog.getFrontPageId());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(weblog);
+    }
+
+    @Test
+    void savingAFrontDoorStoresItAndBumpsLastModified() throws Exception {
+        pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        java.util.Date before = new java.util.Date(0);
+        weblog.setLastModified(before);
+        org.mockito.Mockito.doAnswer(inv -> {
+            ((Weblog) inv.getArgument(0)).touchLastModified();
+            return null;
+        }).when(weblogger.getWeblogManager()).saveWeblog(weblog);
+        bean.setFrontPageId("p1");
+
+        controller.save(request, model, bean);
+
+        assertEquals("p1", weblog.getFrontPageId());
+        assertTrue(weblog.getLastModified().after(before), "the render cache expires on lastModified");
+    }
+
+    @Test
+    void aDraftFrontPageIsRefused() throws Exception {
+        pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT);
+        bean.setFrontPageId("p1");
+
+        controller.save(request, model, bean);
+
+        assertTrue(invalidFields(model).contains("weblog_bean_frontPageId"), invalidFields(model).toString());
+        assertNull(weblog.getFrontPageId());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(weblog);
+    }
+
     @Test
     void anUnknownEntryOrderIsRefused() throws Exception {
         weblog.setEntryOrder("NEWEST");
