@@ -152,6 +152,10 @@ public class IndexManagerTest {
             entry.setWebsite(TestUtils.getManagedWebsite(testWeblog));
             entry.setEntryAttributes(Collections.emptySet());
             entry.setTags(Collections.emptySet());
+            // Instancio fills strandPageId with a random string, which the
+            // V048 foreign key to pressroom_weblogpage refuses.
+            entry.setStrandPageId(null);
+            entry.setStrandPosition(null);
 
             entry.setLocale(testWeblog.getLocale());
 
