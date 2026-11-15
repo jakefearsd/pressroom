@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.apache.commons.text.StringEscapeUtils;
 
 /**
@@ -118,6 +119,33 @@ public class PagesController extends BaseController {
 
         loadPagesList(request, model);
         return ".Pages";
+    }
+
+    /**
+     * Saves the order the Pages screen posted: {@code pageIds}, repeated, in
+     * row order. The manager numbers only this weblog's own pages, skipping
+     * stale, foreign and repeated ids, so a tampered list moves nothing of
+     * another weblog's. A POST naming no ids changes nothing and is not an
+     * error. The permission is the screen's own ({@code POST}); a GET of the
+     * route is a 405.
+     */
+    @PostMapping("/pagesOrder.rol")
+    public String reorder(HttpServletRequest request, RedirectAttributes redirectAttributes,
+                          @RequestParam(name = "pageIds", required = false) List<String> pageIds) {
+        String back = "redirect:/pressroom-ui/authoring/pages.rol?weblog="
+                + getActionWeblog(request).getHandle();
+        if (pageIds == null || pageIds.isEmpty()) {
+            return back;
+        }
+        try {
+            weblogger.getWeblogPageManager().setNavOrder(getActionWeblog(request), pageIds);
+            weblogger.flush();
+            addFlashMessage(redirectAttributes, "weblogPagesForm.orderSaved", request);
+        } catch (Exception ex) {
+            log.error("Error saving the page order of weblog {}", getActionWeblog(request).getHandle(), ex);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+        }
+        return back;
     }
 
     private void loadPagesList(HttpServletRequest request, Model model) {

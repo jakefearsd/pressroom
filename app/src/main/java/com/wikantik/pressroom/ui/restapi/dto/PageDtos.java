@@ -79,8 +79,8 @@ public final class PageDtos {
             String status,
             @Schema(description = "List the page in the blog's navigation.")
             Boolean showInNav,
-            @Schema(description = "Position in the navigation, lowest first; pages with the same number "
-                    + "sort by title.")
+            @Schema(description = "Position in the navigation, lowest first (0 or more; a negative number is "
+                    + "refused); pages with the same number sort by title.")
             Integer navOrder,
             @Schema(description = "The search-result title: replaces the whole <title> and og:title. At most 60 characters, "
                     + "the length a search result shows; write one, not a copy of the title and not the title cut "
@@ -175,7 +175,13 @@ public final class PageDtos {
             page.setShowInNav(write.showInNav());
         }
         if (write.navOrder() != null) {
-            page.setNavOrder(write.navOrder());
+            errors.check("navOrder", () -> {
+                if (write.navOrder() < 0) {
+                    throw ApiException.invalidField("navOrder",
+                            "navOrder must be 0 or more, got " + write.navOrder() + ".");
+                }
+                page.setNavOrder(write.navOrder());
+            });
         }
         if (write.metaTitle() != null) {
             errors.check("metaTitle", () -> page.setMetaTitle(SeoFields.metaTitle(write.metaTitle())));

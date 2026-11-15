@@ -19,8 +19,10 @@ package com.wikantik.pressroom.business.jpa;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
@@ -235,6 +237,43 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
             pages.add(page);
         }
         return true;
+    }
+
+    @Override
+    public void setNavOrder(Weblog weblog, List<String> pageIds) throws WebloggerException {
+        List<WeblogPage> current = getPages(weblog);
+        Map<String, WeblogPage> byId = new LinkedHashMap<>();
+        for (WeblogPage page : current) {
+            byId.put(page.getId(), page);
+        }
+        // Named pages of THIS weblog first, in the order given. A stale id,
+        // another weblog's id (never in byId: it is read from this weblog's
+        // own list) and a repeat are skipped; pages not named follow in the
+        // order they already have.
+        Map<String, WeblogPage> ordered = new LinkedHashMap<>();
+        if (pageIds != null) {
+            for (String id : pageIds) {
+                WeblogPage page = byId.get(id);
+                if (page != null) {
+                    ordered.putIfAbsent(id, page);
+                }
+            }
+        }
+        for (WeblogPage page : current) {
+            ordered.putIfAbsent(page.getId(), page);
+        }
+        int position = 0;
+        for (WeblogPage page : ordered.values()) {
+            if (page.getNavOrder() != position) {
+                page.setNavOrder(position);
+                strategy.store(page);
+            }
+            position++;
+        }
+        // The rendered pages and the remembered published list expire only
+        // through the weblog's stamp (see savePage). Left untouched: the
+        // front door, which a reorder cannot change.
+        pressroom.getWeblogManager().saveWeblog(weblog);
     }
 
     @Override

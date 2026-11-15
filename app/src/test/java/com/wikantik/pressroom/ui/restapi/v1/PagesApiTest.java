@@ -544,6 +544,53 @@ class PagesApiTest {
     }
 
     @Test
+    void patchWithANegativeNavOrderIs400NamingNavOrder() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogPage page = aPage(weblog, "page-1", "about", "About");
+        when(weblogger.getWeblogPageManager().getPage("page-1")).thenReturn(page);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"navOrder\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("navOrder"));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void patchAcceptsANavOrderAndReadsItBack() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogPage page = aPage(weblog, "page-1", "about", "About");
+        when(weblogger.getWeblogPageManager().getPage("page-1")).thenReturn(page);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"navOrder\":2}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(2, new tools.jackson.databind.ObjectMapper().readTree(body).get("navOrder").asInt());
+        assertEquals(2, page.getNavOrder());
+    }
+
+    @Test
+    void postWithANegativeNavOrderIs400NamingNavOrder() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"about\",\"title\":\"About\",\"navOrder\":-3}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("navOrder"));
+    }
+
+    @Test
     void patchWithABlankTitleNamesTheTitleField() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");

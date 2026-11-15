@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ui.Model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -194,6 +195,61 @@ class PagesControllerTest extends EditorControllerTestSupport {
 
         verify(weblogger.getWeblogPageManager()).removePage(strand);
         verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
+    }
+
+    // --- reorder ---
+
+    @Test
+    void reorderingSavesTheOrderAndRedirectsWithTheSavedMessage() throws Exception {
+        registerMessage("weblogPagesForm.orderSaved", "order saved");
+        WeblogPage a = pageOn(weblogA, "a");
+        WeblogPage b = pageOn(weblogA, "b");
+        org.springframework.web.servlet.mvc.support.RedirectAttributes flash = newRedirectAttributes();
+
+        String view = controller.reorder(requestFor(weblogA), flash,
+                List.of(b.getId(), a.getId()));
+
+        assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
+        verify(weblogger.getWeblogPageManager()).setNavOrder(weblogA, List.of(b.getId(), a.getId()));
+        assertEquals(1, weblogger.flushCount());
+        assertEquals(List.of("order saved"), flashMessages(flash));
+    }
+
+    @Test
+    void reorderingWithNoIdsChangesNothingAndIsNotAnError() throws Exception {
+        org.springframework.web.servlet.mvc.support.RedirectAttributes flash = newRedirectAttributes();
+
+        String view = controller.reorder(requestFor(weblogA), flash, null);
+
+        assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
+        verify(weblogger.getWeblogPageManager(), never()).setNavOrder(any(), any());
+        assertTrue(flashErrors(flash).isEmpty(), "got: " + flashErrors(flash));
+    }
+
+    @Test
+    void aFailedReorderIsReportedGenerically() throws Exception {
+        org.mockito.Mockito.doThrow(new WebloggerException("database down"))
+                .when(weblogger.getWeblogPageManager()).setNavOrder(any(), any());
+        org.springframework.web.servlet.mvc.support.RedirectAttributes flash = newRedirectAttributes();
+
+        String view = controller.reorder(requestFor(weblogA), flash, List.of("page-a"));
+
+        assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
+        assertTrue(flashErrors(flash).contains("generic.error.check.logs"), "got: " + flashErrors(flash));
+    }
+
+    @Test
+    void theReorderRouteIsPostOnlyAndNeedsTheListsPermission() throws Exception {
+        java.lang.reflect.Method m = PagesController.class.getMethod("reorder", HttpServletRequest.class,
+                org.springframework.web.servlet.mvc.support.RedirectAttributes.class, List.class);
+        assertTrue(m.isAnnotationPresent(org.springframework.web.bind.annotation.PostMapping.class));
+        assertEquals("/pagesOrder.rol",
+                m.getAnnotation(org.springframework.web.bind.annotation.PostMapping.class).value()[0]);
+        assertFalse(m.isAnnotationPresent(org.springframework.web.bind.annotation.GetMapping.class),
+                "a GET of the route is refused (405), never a write");
+        // The permission is per controller, so it is the Pages screen's own.
+        assertEquals(List.of(com.wikantik.pressroom.pojos.WeblogPermission.POST),
+                controller.requiredWeblogPermissionActions());
     }
 
     // --- fixtures ---

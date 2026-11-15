@@ -35,7 +35,9 @@
 
 <%-- Local draft recovery -- see EntryEdit.jsp. --%>
 <script src="<c:url value='/theme/scripts/pressroom-draft.js'/>"></script>
-<%-- The strand Parts panel: move, remove, add and drag rows. --%>
+<%-- The strand Parts panel: move, remove, add and drag rows. The shared
+     reorder script (also the Pages screen's) loads first. --%>
+<script src="<c:url value='/theme/scripts/pressroom-reorder.js'/>"></script>
 <script src="<c:url value='/theme/scripts/pressroom-strand-parts.js'/>"></script>
 <script>
     // ClipboardJS is loaded globally by head.jsp.

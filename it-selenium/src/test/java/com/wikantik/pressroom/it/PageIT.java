@@ -243,6 +243,50 @@ class PageIT extends PressroomIT {
     }
 
     /**
+     * Reordering on the Pages screen reorders the blog's navigation: three
+     * published pages in the nav (title order to begin with), the last moved
+     * up twice with the buttons, the order saved, and the public nav lists
+     * them the new way round. Buttons only; the drag shortcut is the same
+     * shared script and is not driven here.
+     */
+    @Test
+    void movingAPageUpOnThePagesScreenReordersTheNav() {
+        String handle = createWeblog();
+        for (String title : new String[] {"Alpha", "Bravo", "Charlie"}) {
+            openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+            $("#pageEditForm").should(exist);
+            $("#page_bean_slug").setValue(title.toLowerCase(java.util.Locale.ROOT));
+            $("#page_bean_title").setValue(title);
+            $("#page_bean_status").selectOptionByValue("PUBLISHED");
+            saveOpenPage();
+        }
+
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        $("#pageRemoveForm").should(exist);
+        $("#pagesOrderSave").shouldNotBe(visible);
+        $$("tr.page-row").shouldHave(com.codeborne.selenide.CollectionCondition.size(3));
+
+        // Charlie is last: up twice puts it first.
+        $("tr[data-page-slug='charlie'] .page-order-up").click();
+        $("tr[data-page-slug='charlie'] .page-order-up").click();
+        $("#pagesOrderSave").shouldBe(visible).click();
+        $("#messages").should(exist);
+        BrowserHealth.current().settle();
+
+        // The saved order is what the screen lists now ...
+        $$("tr.page-row").first().shouldHave(com.codeborne.selenide.Condition.attribute(
+                "data-page-slug", "charlie"));
+
+        // ... and what a reader's navigation shows.
+        logout();
+        openPath("/" + handle + "/");
+        $$("li.page-nav-item a").shouldHave(com.codeborne.selenide.CollectionCondition.texts(
+                "Charlie", "Alpha", "Bravo"));
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+    }
+
+    /**
      * Creates a weblog owned by the seeded admin on the {@code portfolio}
      * theme -- see the class comment for why it owns a weblog at all.
      */

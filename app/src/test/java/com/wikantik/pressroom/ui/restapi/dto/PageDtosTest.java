@@ -56,4 +56,40 @@ class PageDtosTest {
         assertEquals(400, thrown.getStatus());
         assertEquals("status", thrown.getFieldErrors().get(0).field());
     }
+
+    @Test
+    void aNegativeNavOrderIsRefusedOnTheNavOrderField() {
+        WeblogPage page = new WeblogPage();
+        PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
+                -1, null, null, null, null, null, null, null);
+
+        ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write, Set.of()));
+
+        assertEquals(400, thrown.getStatus());
+        assertEquals("navOrder", thrown.getFieldErrors().get(0).field());
+        assertEquals(0, page.getNavOrder(), "a refused value is never applied");
+    }
+
+    @Test
+    void aNonNegativeNavOrderIsApplied() {
+        WeblogPage page = new WeblogPage();
+        PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
+                2, null, null, null, null, null, null, null);
+
+        PageDtos.applyWrite(page, write, Set.of());
+
+        assertEquals(2, page.getNavOrder());
+    }
+
+    @Test
+    void zeroIsAValidNavOrder() {
+        WeblogPage page = new WeblogPage();
+        page.setNavOrder(5);
+        PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
+                0, null, null, null, null, null, null, null);
+
+        PageDtos.applyWrite(page, write, Set.of());
+
+        assertEquals(0, page.getNavOrder());
+    }
 }

@@ -408,6 +408,16 @@ and each part shows "Part N of M" with steps to the parts either side.
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on
 purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
+- **Nav order**: `navOrder` is one 0-based sequence per blog (drafts and
+  non-nav pages included). The Pages screen reorders it with up/down buttons
+  and a drag handle (`pressroom-reorder.js`, shared with the strand Parts
+  panel, parameterised by selector), posting repeated `pageIds` to
+  `pagesOrder.rol` -> `WeblogPageManager.setNavOrder`, which numbers only this
+  blog's own named pages (stale, foreign, repeated ids skipped), lets unnamed
+  pages follow in their prior order, and bumps `lastModified`. The ids ride in
+  each row's hidden input with `form="pagesOrderForm"` because the rows sit
+  inside `#pageRemoveForm` (forms do not nest). The API refuses a negative
+  `navOrder` (400 on the field).
 - **Routing**: a published page is served at `/<handle>/<slug>`. **Not
   `/<handle>/page/<slug>`**, the CUSTOM-template route (see Templates); both
   admin screens (editor, `Pages.jsp`) once emitted it, so `PageEditJspTest`

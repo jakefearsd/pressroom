@@ -34,6 +34,18 @@
     <a href="${addUrl}" class="btn btn-primary btn-sm">
         <spring:message code="weblogPagesForm.add"/>
     </a>
+    <%-- The order is its own form: the rows sit inside the remove form below
+         and forms cannot nest, so each row's hidden pageIds names this form
+         with the form attribute. The ids post in row order; the button shows
+         once the rows no longer match the order the screen loaded with. --%>
+    <form id="pagesOrderForm" method="post" class="pages-order-form"
+          action="${pageContext.request.contextPath}/pressroom-ui/authoring/pagesOrder.rol">
+        <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
+        <sec:csrfInput/>
+        <button type="submit" id="pagesOrderSave" class="btn btn-primary btn-sm" hidden>
+            <spring:message code="weblogPagesForm.saveOrder"/>
+        </button>
+    </form>
 </c:if>
 </div>
 
@@ -41,6 +53,8 @@
      remove action is a submit button carrying its own name/value per row,
      rather than a nested form per row (which is not valid HTML). --%>
 <spring:message code="weblogPagesForm.removeConfirm" var="pageDeleteConfirmBase"/>
+<spring:message code="weblogPagesForm.moveUp" var="moveUpLabel"/>
+<spring:message code="weblogPagesForm.moveDown" var="moveDownLabel"/>
 <form id="pageRemoveForm" method="post"
       action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageRemove.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
@@ -52,6 +66,7 @@
     <div class="table-responsive">
     <table class="pressroomtable table table-striped" width="100%">
 
+            <thead>
             <tr>
                 <th scope="col" class="pressroomtable"><spring:message code="weblogPagesForm.slug"/></th>
                 <th scope="col" class="pressroomtable"><spring:message code="weblogEdit.title"/></th>
@@ -60,9 +75,11 @@
                 <th scope="col" class="pressroomtable" width="10%"><spring:message code="weblogPagesForm.navOrder"/></th>
                 <th scope="col" class="pressroomtable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
+            </thead>
 
+            <tbody id="pagesList">
             <c:forEach items="${pages}" var="p">
-                <tr data-page-id="${fn:escapeXml(p.id)}" data-page-slug="${fn:escapeXml(p.slug)}">
+                <tr class="page-row" draggable="true" data-page-id="${fn:escapeXml(p.id)}" data-page-slug="${fn:escapeXml(p.slug)}">
                     <td class="data">
                         <c:choose>
                         <c:when test="${p.status.name() == 'PUBLISHED'}">
@@ -101,6 +118,12 @@
                     <td>${p.showInNav ? '&#10003;' : ''}</td>
                     <td class="data">${p.navOrder}</td>
                     <td class="row-actions">
+                        <input type="hidden" name="pageIds" form="pagesOrderForm" value="${fn:escapeXml(p.id)}"/>
+                        <span class="bi bi-grip-vertical page-order-handle" aria-hidden="true"></span>
+                        <button type="button" class="row-action page-order-up"
+                                aria-label="${fn:escapeXml(moveUpLabel)}: ${fn:escapeXml(p.title)}"><span class="bi bi-arrow-up" aria-hidden="true" title="${fn:escapeXml(moveUpLabel)}"></span></button>
+                        <button type="button" class="row-action page-order-down"
+                                aria-label="${fn:escapeXml(moveDownLabel)}: ${fn:escapeXml(p.title)}"><span class="bi bi-arrow-down" aria-hidden="true" title="${fn:escapeXml(moveDownLabel)}"></span></button>
                         <a href="${editUrl}" class="row-action" aria-label="<spring:message code='generic.edit'/>: ${fn:escapeXml(p.title)}">
                             <span class="bi bi-pencil-square" aria-hidden="true" title="<spring:message code="generic.edit"/>"></span>
                         </a>
@@ -130,9 +153,34 @@
                     </td>
                 </tr>
             </c:forEach>
+            </tbody>
 
     </table>
     </div>
+
+    <script src="<c:url value='/theme/scripts/pressroom-reorder.js'/>"></script>
+    <script>
+        (function () {
+            var list = document.getElementById("pagesList");
+            var save = document.getElementById("pagesOrderSave");
+            if (!list || !save || !window.PressroomReorder) {
+                return;
+            }
+            function order() {
+                return Array.prototype.map.call(
+                    list.querySelectorAll("input[name='pageIds']"),
+                    function (input) { return input.value; }).join(",");
+            }
+            var loaded = order();
+            PressroomReorder.install({
+                list: list,
+                rowSelector: ".page-row",
+                upSelector: ".page-order-up",
+                downSelector: ".page-order-down",
+                onMove: function () { save.hidden = order() === loaded; }
+            });
+        }());
+    </script>
 
     </c:when>
     <c:otherwise>

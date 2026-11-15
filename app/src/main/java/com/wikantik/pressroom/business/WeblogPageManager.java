@@ -66,6 +66,15 @@ public interface WeblogPageManager {
     List<WeblogPage> getPublishedPages(Weblog weblog) throws WebloggerException;
 
     /**
+     * Sets the navigation order of a weblog's pages: the named pages of this
+     * weblog get {@code navOrder} 0..n-1 in the given order (ids of other
+     * weblogs, unknown ids and repeats are skipped); pages not named follow,
+     * keeping their current relative order. Bumps the weblog's last-modified
+     * stamp, so rendered pages expire.
+     */
+    void setNavOrder(Weblog weblog, List<String> pageIds) throws WebloggerException;
+
+    /**
      * Remove all pages belonging to a weblog.
      */
     void removePages(Weblog weblog) throws WebloggerException;

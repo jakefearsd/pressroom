@@ -22,7 +22,8 @@
  * those inputs are posted, validating every id: so all this script does is
  * move rows. Up/down/remove buttons on each row, a picker that appends a row,
  * and native HTML5 drag-and-drop as a shortcut for the buttons, never a
- * replacement for them.
+ * replacement for them. Moving and dragging are pressroom-reorder.js, loaded
+ * first and parameterised here.
  *
  * Every change fires a bubbling "change" on the list, which is what the
  * editor's leave-page warning listens for.
@@ -70,26 +71,23 @@
             picker.appendChild(option);
         }
 
+        // Move and drag are the shared script's; remove is this panel's own.
+        window.PressroomReorder.install({
+            list: list,
+            rowSelector: ".strand-part",
+            upSelector: ".strand-part-up",
+            downSelector: ".strand-part-down",
+            onMove: changed
+        });
+
         list.addEventListener("click", function (event) {
-            var button = event.target.closest("button");
+            var button = event.target.closest("button.strand-part-remove");
             if (!button || !list.contains(button)) {
                 return;
             }
             var row = button.closest(".strand-part");
-            if (button.classList.contains("strand-part-up") && row.previousElementSibling) {
-                list.insertBefore(row, row.previousElementSibling);
-            } else if (button.classList.contains("strand-part-down") && row.nextElementSibling) {
-                list.insertBefore(row.nextElementSibling, row);
-            } else if (button.classList.contains("strand-part-remove")) {
-                offer(row);
-                row.remove();
-                changed();
-                return;
-            } else {
-                return;
-            }
-            // Moving a node can drop focus; keyboard users keep their place.
-            button.focus();
+            offer(row);
+            row.remove();
             changed();
         });
 
@@ -116,46 +114,6 @@
                 changed();
             });
         }
-
-        // Drag-and-drop: the dragged row follows the pointer, inserted before
-        // or after the row under it by which half the pointer is in.
-        var dragging = null;
-        list.addEventListener("dragstart", function (event) {
-            var row = event.target.closest(".strand-part");
-            if (!row) {
-                return;
-            }
-            dragging = row;
-            row.classList.add("is-dragging");
-            event.dataTransfer.effectAllowed = "move";
-            // Firefox starts no drag without data.
-            event.dataTransfer.setData("text/plain", "");
-        });
-        list.addEventListener("dragover", function (event) {
-            if (!dragging) {
-                return;
-            }
-            event.preventDefault();
-            var over = event.target.closest(".strand-part");
-            if (!over || over === dragging) {
-                return;
-            }
-            var box = over.getBoundingClientRect();
-            var after = event.clientY > box.top + box.height / 2;
-            list.insertBefore(dragging, after ? over.nextElementSibling : over);
-        });
-        list.addEventListener("drop", function (event) {
-            if (dragging) {
-                event.preventDefault();
-            }
-        });
-        list.addEventListener("dragend", function () {
-            if (dragging) {
-                dragging.classList.remove("is-dragging");
-                dragging = null;
-                changed();
-            }
-        });
     }
 
     if (document.readyState === "loading") {

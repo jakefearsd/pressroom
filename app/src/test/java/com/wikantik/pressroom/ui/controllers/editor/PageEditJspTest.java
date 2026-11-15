@@ -338,6 +338,8 @@ class PageEditJspTest {
 
     // ------------------------------------------------ strands: switch and Parts panel
 
+    private static final Path REORDER_SCRIPT =
+            Paths.get("src/main/webapp/theme/scripts/pressroom-reorder.js");
     private static final Path STRAND_SCRIPT =
             Paths.get("src/main/webapp/theme/scripts/pressroom-strand-parts.js");
 
@@ -391,11 +393,22 @@ class PageEditJspTest {
 
     @Test
     void theStrandScriptIsLoadedAndOwnsMovingRemovingAddingAndDragging() throws IOException {
-        assertTrue(read(PAGE_EDIT).contains("/theme/scripts/pressroom-strand-parts.js"));
+        String jsp = read(PAGE_EDIT);
+        assertTrue(jsp.contains("/theme/scripts/pressroom-strand-parts.js"));
+        assertTrue(jsp.indexOf("/theme/scripts/pressroom-reorder.js") >= 0
+                && jsp.indexOf("/theme/scripts/pressroom-reorder.js")
+                        < jsp.indexOf("/theme/scripts/pressroom-strand-parts.js"),
+                "the shared reorder script loads before the panel script that parameterises it");
         String js = read(STRAND_SCRIPT);
         for (String hook : new String[] {"strand-part-up", "strand-part-down", "strand-part-remove",
-                "strandAddSelect", "dragstart", "dragover", "drop", "page_bean_strand"}) {
+                "strandAddSelect", "page_bean_strand", "PressroomReorder"}) {
             assertTrue(js.contains(hook), "pressroom-strand-parts.js must handle " + hook);
+        }
+        // Moving and dragging are the shared script's: one copy, parameterised.
+        assertFalse(js.contains("dragstart"), "the drag logic must not be copied into the panel script");
+        String shared = read(REORDER_SCRIPT);
+        for (String hook : new String[] {"dragstart", "dragover", "drop", "dragend"}) {
+            assertTrue(shared.contains(hook), "pressroom-reorder.js must handle " + hook);
         }
     }
 

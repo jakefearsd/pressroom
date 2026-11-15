@@ -1098,6 +1098,27 @@ table.mm_table_actions td {
     opacity: .5;
 }
 
+/* The Pages screen's reorder controls: the grip is the drag affordance, the
+   buttons the keyboard route. The Save order form sits beside "New page" and
+   shows only once the rows differ from the loaded order. */
+.page-row {
+    cursor: grab;
+}
+
+.page-row.is-dragging {
+    opacity: .5;
+}
+
+.page-order-handle {
+    color: var(--ink-soft);
+    margin-right: 4px;
+}
+
+.pages-order-form {
+    display: inline-block;
+    margin: 0 0 0 8px;
+}
+
 /* The SEO card's Google-result preview. These lived in a page-local <style>
    in EntryEdit.jsp until the consistency pass; they are on the scale (16 /
    12 mono / 14.5) rather than the shrunken proportions of a real SERP,

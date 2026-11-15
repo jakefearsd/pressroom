@@ -123,6 +123,115 @@ class WeblogPageManagerTest {
                 pages.stream().map(WeblogPage::getSlug).toList());
     }
 
+    // ------------------------------------------------------------ setNavOrder
+
+    private static List<String> slugsInOrder(Weblog target) throws Exception {
+        return manager().getPages(TestUtils.getManagedWebsite(target)).stream()
+                .map(WeblogPage::getSlug).toList();
+    }
+
+    private void reorder(Weblog target, List<String> ids) throws Exception {
+        manager().setNavOrder(TestUtils.getManagedWebsite(target), ids);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    @Test
+    void setNavOrderNumbersTheNamedPagesInTheGivenOrder() throws Exception {
+        WeblogPage a = save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage b = save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage c = save(weblog, "c", WeblogPage.PubStatus.DRAFT);
+
+        reorder(weblog, List.of(c.getId(), a.getId(), b.getId()));
+
+        assertEquals(List.of("c", "a", "b"), slugsInOrder(weblog));
+        assertEquals(List.of(0, 1, 2), manager().getPages(TestUtils.getManagedWebsite(weblog)).stream()
+                .map(WeblogPage::getNavOrder).toList());
+    }
+
+    @Test
+    void setNavOrderSkipsStaleIdsAndAnotherBlogsPages() throws Exception {
+        WeblogPage a = save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage b = save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage foreign = save(otherWeblog, "z", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage foreign2 = save(otherWeblog, "y", WeblogPage.PubStatus.PUBLISHED);
+
+        reorder(weblog, List.of(foreign2.getId(), "no-such-page", b.getId(), foreign.getId(), a.getId()));
+
+        assertEquals(List.of("b", "a"), slugsInOrder(weblog));
+        assertEquals(List.of(0, 1), manager().getPages(TestUtils.getManagedWebsite(weblog)).stream()
+                .map(WeblogPage::getNavOrder).toList());
+        // The other blog's pages were not renumbered: still title order, both 0.
+        assertEquals(List.of("y", "z"), slugsInOrder(otherWeblog));
+        assertEquals(List.of(0, 0), manager().getPages(TestUtils.getManagedWebsite(otherWeblog)).stream()
+                .map(WeblogPage::getNavOrder).toList());
+    }
+
+    @Test
+    void setNavOrderCountsARepeatedIdOnce() throws Exception {
+        WeblogPage a = save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage b = save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        save(weblog, "c", WeblogPage.PubStatus.PUBLISHED);
+
+        reorder(weblog, List.of(b.getId(), b.getId(), a.getId()));
+
+        assertEquals(List.of("b", "a", "c"), slugsInOrder(weblog));
+        assertEquals(List.of(0, 1, 2), manager().getPages(TestUtils.getManagedWebsite(weblog)).stream()
+                .map(WeblogPage::getNavOrder).toList());
+    }
+
+    @Test
+    void setNavOrderLeavesUnnamedPagesAfterTheNamedOnesInTheirPriorOrder() throws Exception {
+        save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        save(weblog, "c", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage d = save(weblog, "d", WeblogPage.PubStatus.PUBLISHED);
+
+        reorder(weblog, List.of(d.getId()));
+
+        assertEquals(List.of("d", "a", "b", "c"), slugsInOrder(weblog));
+    }
+
+    @Test
+    void setNavOrderWithNoIdsKeepsTheOrder() throws Exception {
+        save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+
+        reorder(weblog, List.of());
+
+        assertEquals(List.of("a", "b"), slugsInOrder(weblog));
+    }
+
+    @Test
+    void setNavOrderBumpsTheWeblogsLastModified() throws Exception {
+        WeblogPage a = save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage b = save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        Date before = freshLastModifiedBaseline();
+        Thread.sleep(5);
+
+        reorder(weblog, List.of(b.getId(), a.getId()));
+
+        Date after = TestUtils.getManagedWebsite(weblog).getLastModified();
+        assertTrue(after.after(before),
+                "a reorder changes what a reader sees, so it must expire the rendered pages");
+    }
+
+    @Test
+    void setNavOrderReachesThePublishedListToo() throws Exception {
+        WeblogPage a = save(weblog, "a", WeblogPage.PubStatus.PUBLISHED);
+        WeblogPage b = save(weblog, "b", WeblogPage.PubStatus.PUBLISHED);
+        // Prime the per-weblog published-page memory before the reorder.
+        assertEquals(List.of("a", "b"), manager().getPublishedPages(TestUtils.getManagedWebsite(weblog))
+                .stream().map(WeblogPage::getSlug).toList());
+        TestUtils.endSession(true);
+        Thread.sleep(5);
+
+        reorder(weblog, List.of(b.getId(), a.getId()));
+
+        assertEquals(List.of("b", "a"), manager().getPublishedPages(TestUtils.getManagedWebsite(weblog))
+                .stream().map(WeblogPage::getSlug).toList());
+    }
+
     @Test
     void aRemovedPageIsGone() throws Exception {
         WeblogPage page = save(weblog, "about", WeblogPage.PubStatus.PUBLISHED);

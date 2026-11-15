@@ -924,7 +924,7 @@ omitted), and create and `PATCH` accept them:
 | Field | Meaning |
 |---|---|
 | `showInNav` | List the page in the blog's navigation. |
-| `navOrder` | Its position there, lowest first; pages with the same number sort by title. |
+| `navOrder` | Its position there, lowest first; pages with the same number sort by title. 0 or more: a negative number is a 400 on `navOrder`. The Pages screen renumbers a blog's pages 0..n-1 when an author reorders them. |
 | `metaTitle` | Replaces the whole `<title>` and `og:title`. Trimmed; at most 255 characters. |
 | `searchDescription` | The meta description search engines and share previews show. Trimmed; at most 255 characters. |
 | `canonicalUrl` | An absolute `http`/`https` URL the page canonicalises to, by the validator the page and entry editors use; anything else is a 400 on `canonicalUrl`. |
