@@ -327,7 +327,11 @@ public class SeoController extends BaseController {
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
                 .append("\" xmlns:image=\"").append(IMAGE_NS).append("\">\n");
         // the weblog home page follows the urlset opening
-        if (frontPage == null || isSubmitted(frontPage, weblogURL)) {
+        // A front door that resolves to no published page falls back to the
+        // listing, whose canonical is /posts: the root is not listed then.
+        boolean listRoot = !weblog.hasFrontDoor()
+                || frontPage != null && isSubmitted(frontPage, weblogURL);
+        if (listRoot) {
             appendWeblogUrl(xml, weblogURL, weblog);
         }
         if (weblog.hasFrontDoor()) {

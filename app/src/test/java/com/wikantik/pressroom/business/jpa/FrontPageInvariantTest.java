@@ -84,7 +84,23 @@ class FrontPageInvariantTest {
 
         Weblog inMemory = managed();
         assertEquals(about.getId(), inMemory.getFrontPageId());
+        Date before = inMemory.getLastModified();
+        pause();
         pages().removePage(pages().getPage(about.getId()));
+
+        assertNull(inMemory.getFrontPageId(), "the in-memory weblog loses the id");
+        TestUtils.endSession(true);
+        assertNull(managed().getFrontPageId(), "and so does the row");
+        assertTrue(managed().getLastModified().after(before), "the stamp moved");
+    }
+
+    @Test
+    void removingEveryPageOfTheWeblogClearsTheFrontPage() throws Exception {
+        WeblogPage about = savePage("about");
+        makeFrontPage(about);
+
+        Weblog inMemory = managed();
+        pages().removePages(inMemory);
 
         assertNull(inMemory.getFrontPageId(), "the in-memory weblog loses the id");
         TestUtils.endSession(true);

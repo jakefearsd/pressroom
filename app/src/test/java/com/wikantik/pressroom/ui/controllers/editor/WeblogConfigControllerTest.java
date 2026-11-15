@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.controllers.editor;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 
 import com.wikantik.pressroom.pojos.Business;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,11 +113,11 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
 
     @Test
     void savingOldestFirstStoresItAndBumpsLastModified() throws Exception {
-        java.util.Date before = new java.util.Date(0);
+        Date before = new Date(0);
         weblog.setLastModified(before);
         // The real saveWeblog (JPAWeblogManagerImpl) stamps lastModified; the manager is a mock here.
         org.mockito.Mockito.doAnswer(inv -> {
-            ((com.wikantik.pressroom.pojos.Weblog) inv.getArgument(0)).touchLastModified();
+            ((Weblog) inv.getArgument(0)).touchLastModified();
             return null;
         }).when(weblogger.getWeblogManager()).saveWeblog(weblog);
         bean.setEntryOrder("OLDEST");
@@ -126,9 +128,9 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
         assertTrue(weblog.getLastModified().after(before), "the render cache expires on lastModified");
     }
 
-    private com.wikantik.pressroom.pojos.WeblogPage pageOf(String id, String title,
-            com.wikantik.pressroom.pojos.WeblogPage.PubStatus status) throws Exception {
-        var page = new com.wikantik.pressroom.pojos.WeblogPage();
+    private WeblogPage pageOf(String id, String title,
+            WeblogPage.PubStatus status) throws Exception {
+        var page = new WeblogPage();
         page.setId(id);
         page.setTitle(title);
         page.setWeblog(weblog);
@@ -139,7 +141,7 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
 
     @Test
     void theFormOffersThePublishedPagesForTheFrontDoor() throws Exception {
-        var published = pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        var published = pageOf("p1", "About", WeblogPage.PubStatus.PUBLISHED);
         when(weblogger.getWeblogPageManager().getPublishedPages(weblog)).thenReturn(List.of(published));
 
         controller.execute(request, model, bean);
@@ -173,8 +175,8 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
 
     @Test
     void savingAFrontDoorStoresItAndBumpsLastModified() throws Exception {
-        pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
-        java.util.Date before = new java.util.Date(0);
+        pageOf("p1", "About", WeblogPage.PubStatus.PUBLISHED);
+        Date before = new Date(0);
         weblog.setLastModified(before);
         org.mockito.Mockito.doAnswer(inv -> {
             ((Weblog) inv.getArgument(0)).touchLastModified();
@@ -190,7 +192,7 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
 
     @Test
     void aDraftFrontPageIsRefused() throws Exception {
-        pageOf("p1", "About", com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT);
+        pageOf("p1", "About", WeblogPage.PubStatus.DRAFT);
         bean.setFrontPageId("p1");
 
         controller.save(request, model, bean);

@@ -50,6 +50,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -265,6 +266,32 @@ class IndexWriteOperationFailureTest {
 
         manager.reindexPage(page);
         assertFalse(indexedDocs().containsKey("locked-page"), "with the lock free, the draft is taken out");
+    }
+
+    /**
+     * A page whose document cannot be built (here its title throws) is logged with its id and
+     * left out of the index, as in a rebuild: nothing escapes the operation after the delete.
+     */
+    @Test
+    void aPageWhoseDocumentCannotBeBuiltIsLoggedAndLeftOut() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage() {
+            @Override
+            public String getTitle() {
+                throw new IllegalStateException("cannot read the title");
+            }
+        };
+        page.setId("broken-page");
+        page.setWeblog(blog);
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        when(pressroom.getWeblogPageManager().getPage("broken-page")).thenReturn(page);
+
+        try (LogLines logs = LogLines.of(ReIndexPageOperation.class)) {
+            assertDoesNotThrow(() -> manager.reindexPage(page));
+
+            assertTrue(logs.at(org.apache.logging.log4j.Level.WARN).stream()
+                    .anyMatch(line -> line.contains("broken-page")), "" + logs.at(org.apache.logging.log4j.Level.WARN));
+        }
+        assertFalse(indexedDocs().containsKey("broken-page"));
     }
 
     // ---------------------------------------------------------------- helpers

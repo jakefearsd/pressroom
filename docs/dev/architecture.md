@@ -193,7 +193,7 @@ templates).
 - **A site-wide rebuild replaces every document** (`writer.deleteAll()`;
   until 2026-11-03 it deleted by a "constant" field no document carried, so
   every entry indexed before it was then indexed twice).
-- **Index schema v2** (`LuceneIndexManager.SCHEMA_VERSION`, stamped as text in
+- **Index schema v3** (`LuceneIndexManager.SCHEMA_VERSION`; v3 added document kinds, so an index at v2 is emptied and rebuilt at the next start by the path below, `LuceneIndexManagerStartupTest`), stamped as text in
   `.index-schema` in the index directory, deleted with the index). The stamp
   certifies a **completed** build: it is written only when a full rebuild
   commits (a site with nothing to index still completes one), never when the
@@ -236,6 +236,46 @@ templates).
   duplicated its documents. `locale` is indexed and queried lowercased. Index
   tests on a mocked tier must stub `Weblogger.getEntryRenderer()`
   (`PassthroughRenderer.install`), or every post indexes with empty content.
+- **Document kinds (schema 3)**: every document carries the keyword `kind`
+  (`entry` or `page`, `FieldConstants.KIND`, indexed not stored). Every
+  existing post query (find, counts, per-blog counts, "similar"/MoreLikeThis,
+  the eligible set) is restricted to `kind:entry`, so post results, ranking
+  and counts are unchanged. A page is indexed when it is PUBLISHED and not
+  `noindex` (`IndexOperation.isIndexable`, the one rule a save and a rebuild
+  share), for blog pages and for site-space pages (which the blog listing
+  leaves out; a rebuild reads them through `getSiteSpace`).
+  **A page's words go in their own fields**, `pagetitle` and `pagecontent`
+  (`FieldConstants.PAGE_TITLE`/`PAGE_CONTENT`), not `title`/`content`:
+  Lucene's ranking statistics (idf, average length) are per field, so pages
+  sharing the post fields would move post scores even behind a `kind`
+  filter. `MoreLikeThis` uses `getDocCount(field)`, already per field, so it
+  is unaffected. A page document mirrors the shared fields exactly (`id`,
+  `handle` with its SORTED doc value): Lucene refuses a document whose field
+  schema differs from the same field already in the index, and in a
+  background write that refusal is only logged. No publish time, site flag,
+  category or locale on a page document.
+  Writes: `ReIndexPageOperation` (delete by `kind`+`id`, then add when
+  indexable; the page is re-read by id on the background thread, and a
+  document that cannot be built is logged with the page id and left out, as
+  in a rebuild) and `RemovePageOperation`, queued from `savePage`/`removePage`
+  after commit, in the background (entry removal runs in the foreground; a
+  page's runs behind the lock so an after-commit callback never waits on the
+  writer). `removeWeblog` takes every document of the handle, pages included,
+  out. A one-weblog or site-wide rebuild restores pages with the posts.
+  Reads: `IndexManager.findPages(SearchSpec, max)` returns ids only, best
+  first: scope BLOG is that blog's pages, SITE the pages of the blogs the
+  site search already covers plus the site space's (fails closed with the
+  blog list), OTHER_BLOGS none; category, locale and window are not read.
+  `SearchResultsModel.getPageHits()` shows **at most 3** (`PAGES_IN_GROUP`)
+  as a "Pages" group above the posts, on the **first results page only**,
+  and **not when the reader narrowed to a category**. Because indexing is
+  asynchronous, each id is **re-checked on the read side** (loaded, dropped
+  if missing, no longer PUBLISHED or `noindex`), as posts are in
+  `convertHitsToEntryList`, so a page unpublished a moment ago never shows;
+  it asks for twice the ids to backfill dropped ones. Any failure yields no
+  pages and the post results still render. Page results never raise the
+  site-wide "N articles" count. Rendering: `themes-and-templates.md`,
+  "Search results".
 - **Index Location**: configurable work directory
 - **Searches never wait for writes** (`LuceneIndexManager`): searches share
   a Lucene `SearcherManager` and take no lock; index writes serialise on

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
@@ -67,8 +68,9 @@ public class ReIndexPageOperation extends WriteToIndexOperation {
             try {
                 if (writer != null) {
                     writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_PAGE, pageId));
-                    if (isIndexable(page)) {
-                        writer.addDocument(getDocument(page));
+                    Document doc = isIndexable(page) ? documentOrNull(page) : null;
+                    if (doc != null) {
+                        writer.addDocument(doc);
                     }
                 }
             } catch (IOException e) {
@@ -78,6 +80,16 @@ public class ReIndexPageOperation extends WriteToIndexOperation {
             }
         } finally {
             pressroom.release();
+        }
+    }
+
+    /** The page's document, or null (logged) when it cannot be built: the page is then left out, as in a rebuild. */
+    private Document documentOrNull(WeblogPage page) {
+        try {
+            return getDocument(page);
+        } catch (RuntimeException e) {
+            log.warn("Could not index page {}; it is left out of the index", pageId, e);
+            return null;
         }
     }
 }

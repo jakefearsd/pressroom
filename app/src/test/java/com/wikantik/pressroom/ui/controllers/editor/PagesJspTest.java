@@ -47,8 +47,7 @@ class PagesJspTest {
     @Test
     void everyRowCarriesUpDownAndADragHandle() throws IOException {
         String jsp = jsp();
-        assertTrue(jsp.contains("class=\"page-row\"") || jsp.contains("class=\"page-row \"")
-                || jsp.contains("page-row"), "each row is a reorderable page-row");
+        assertTrue(jsp.contains("<tr class=\"page-row\" draggable=\"true\""), "each row is a reorderable page-row");
         assertTrue(jsp.contains("draggable=\"true\""), "rows drag as a shortcut for the buttons");
         assertTrue(jsp.contains("page-order-up") && jsp.contains("page-order-down"),
                 "up and down buttons on every row, whatever its status or nav flag");
@@ -87,9 +86,20 @@ class PagesJspTest {
         assertTrue(jsp.contains("${fn:escapeXml(moveUpLabel)}: ${fn:escapeXml(p.title)}"),
                 "the up button's label names the page, escaped");
         assertTrue(jsp.contains("${fn:escapeXml(moveDownLabel)}: ${fn:escapeXml(p.title)}"));
-        assertFalse(Pattern.compile("(?<!escapeXml\\()(?<!value=\")\\$\\{p\\.title\\}").matcher(
-                jsp.replaceAll("<c:out value=\"\\$\\{p\\.title\\}\"/>", "")).find(),
+        assertFalse(jsp.replace("<c:out value=\"${p.title}\"/>", "").contains("${p.title}"),
                 "no bare title expression outside fn:escapeXml and c:out");
+    }
+
+    /**
+     * The visible nav-order number must follow a move, or it shows the old value until
+     * the page reloads: the cell is addressable and the move hook renumbers it from
+     * the new row positions (the numbers Save order will store).
+     */
+    @Test
+    void theNavOrderNumberFollowsAMove() throws IOException {
+        String jsp = jsp();
+        assertTrue(jsp.contains("<td class=\"data page-nav-order\">${p.navOrder}</td>"), "a numbered cell");
+        assertTrue(jsp.contains("querySelectorAll(\".page-nav-order\")"), "onMove renumbers the cells");
     }
 
     @Test

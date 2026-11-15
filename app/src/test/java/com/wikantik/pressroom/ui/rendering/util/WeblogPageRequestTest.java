@@ -650,7 +650,11 @@ class WeblogPageRequestTest {
         assertNull(request.getPageSlug());
     }
 
-    /** An id that is not among the blog's published pages (a draft, deleted, another blog's) lists: never a 404. */
+    /**
+     * An id that is not among the blog's published pages (a draft, deleted, another blog's) lists: never a 404.
+     * A characterisation test of the fallback: it passed before the front door existed, as the root
+     * always listed.
+     */
     @Test
     void anIdThatIsNotAPublishedPageOfTheBlogLists() throws Exception {
         Weblog weblog = frontDoorBlog("gone");

@@ -416,8 +416,26 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   blog's own named pages (stale, foreign, repeated ids skipped), lets unnamed
   pages follow in their prior order, and bumps `lastModified`. The ids ride in
   each row's hidden input with `form="pagesOrderForm"` because the rows sit
-  inside `#pageRemoveForm` (forms do not nest). The API refuses a negative
-  `navOrder` (400 on the field).
+  inside `#pageRemoveForm` (forms do not nest). Every row has the controls
+  whatever its status or nav flag. After a move the visible `navOrder` cells
+  are renumbered by the page script to the rows' positions (what Save order
+  stores), and the Save order button shows only once the order differs from
+  the loaded one. `pagesOrder.rol` is POST-only (GET is a 405), needs the
+  Pages screen's permission, and an empty or missing id list is a no-op with
+  no error. Slug and sibling fields are untouched by a reorder. The API
+  refuses a negative `navOrder` (400 on the field).
+- **Front door**: a blog may make one published page its root
+  (`weblog.front_page_id`, V049; chosen in the blog settings under "Order
+  posts", `WeblogConfig.jsp`, which offers only this blog's published pages,
+  titles through `fn:escapeXml`, never for the site space). Active exactly
+  when set. The page manager keeps it truthful at the write: `savePage` with
+  any status but PUBLISHED, `removePage` and `removePages` clear it in the
+  same save (in the managed weblog too) and bump `lastModified`;
+  **republishing does not restore it**, the author sets it again. Routing,
+  `/posts`, canonical and sitemap rules: `routing.md`, "A blog's front door";
+  the nav gains a "Posts" link (`themes-and-templates.md`); the API field is
+  `frontPage` (`api.md`). Saved pages also enter the search index
+  (`architecture.md`, "Document kinds"): PUBLISHED and not `noindex`.
 - **Routing**: a published page is served at `/<handle>/<slug>`. **Not
   `/<handle>/page/<slug>`**, the CUSTOM-template route (see Templates); both
   admin screens (editor, `Pages.jsp`) once emitted it, so `PageEditJspTest`

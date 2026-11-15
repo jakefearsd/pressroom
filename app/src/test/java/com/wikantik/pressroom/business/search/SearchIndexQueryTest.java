@@ -268,7 +268,10 @@ class SearchIndexQueryTest {
 
     // ---------------------------------------------------------------- helpers
 
-    /** Polls the raw index (no results filter) until the weblog holds this many matching documents. */
+    /**
+     * Polls the raw index (no results filter) until the weblog holds this many matching posts
+     * (a post search: it counts posts only, never pages).
+     */
     private static void awaitIndexedCount(String handle, int expected) throws Exception {
         long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
         int count = -2;

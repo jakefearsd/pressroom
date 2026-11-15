@@ -63,6 +63,21 @@ class WeblogConfigBusinessJspTest {
                 "only the hidden input may post bean.businessId: " + body);
     }
 
+    /**
+     * The front-door select lists page titles an author typed: a title with
+     * {@code <} or {@code "} must come out as text, in the option's value and label.
+     */
+    @Test
+    void theFrontDoorSelectEscapesPageIdsAndTitles() throws IOException {
+        Matcher select = Pattern.compile(
+                "<select[^>]*name=\"bean.frontPageId\".*?</select>", Pattern.DOTALL).matcher(read());
+        assertTrue(select.find(), "the front-door select");
+        String body = select.group();
+        assertTrue(body.contains("<option value=\"${fn:escapeXml(p.id)}\""), body);
+        assertTrue(body.contains(">${fn:escapeXml(p.title)}</option>"), body);
+        assertTrue(!body.contains("${p.title}") && !body.contains("${p.id}"), "no raw EL: " + body);
+    }
+
     @Test
     void localityAndRegionAreLimitedToTheirColumnLength() throws IOException {
         String jsp = read();

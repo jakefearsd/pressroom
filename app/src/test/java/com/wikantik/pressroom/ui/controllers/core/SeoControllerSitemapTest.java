@@ -277,6 +277,21 @@ class SeoControllerSitemapTest {
         assertEquals(1, count(body, "<loc>" + root + "posts</loc>"), body);
     }
 
+    /**
+     * A front door whose id resolves to no published page (a row changed behind
+     * the app's back): the root's canonical is /posts, so only /posts is listed.
+     */
+    @Test
+    void aFrontDoorThatResolvesToNoPublishedPageListsOnlyPosts() throws Exception {
+        String root = ABSOLUTE_CONTEXT + "/" + HANDLE + "/";
+        frontPage(page("start-here", WeblogPage.PubStatus.DRAFT, false));
+
+        String body = sitemap().getBody();
+
+        assertEquals(0, count(body, "<loc>" + root + "</loc>"), body);
+        assertEquals(1, count(body, "<loc>" + root + "posts</loc>"), body);
+    }
+
     /** No front door: one root entry and no /posts, exactly as before. */
     @Test
     void withoutAFrontDoorThereIsNoPostsEntry() throws Exception {

@@ -292,7 +292,11 @@ class PageRoutingTest {
         assertEquals(200, get("/", "date", "202611").getStatus());
     }
 
-    /** A front page id that does not name a published page of this blog lists at the root: never a 404. */
+    /**
+     * A front page id that does not name a published page of this blog lists at the root: never a 404.
+     * A characterisation test of the fallback: it passed before the front door existed, as the root
+     * always listed.
+     */
     @Test
     void aDraftOrForeignFrontPageListsAtTheRoot() throws Exception {
         post("listed-post", "LISTEDTITLE", false);

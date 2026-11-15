@@ -99,6 +99,59 @@ menu used to render with no options, which a browser does not submit, and
 the save refused every other setting with "Property
 site.frontpage.weblog.handle is null".
 
+## A blog's front door and `/posts`
+
+A blog can make one of its own published pages its root (design:
+`docs/superpowers/specs/2026-11-15-ordering-strands-pages-design.md`).
+
+- **State**: `weblog.front_page_id` (V049, `varchar(48)`, FK to
+  `pressroom_weblogpage` `ON DELETE SET NULL`), `Weblog.frontPageId`. A front
+  door is active **exactly when it is set** (`Weblog.hasFrontDoor()`, which is
+  also false for the site space: the site root stays with `FrontDoor`). It is
+  kept truthful at the write, in `JPAWeblogPageManagerImpl`: saving the front
+  page with any status but PUBLISHED, or removing it (`removePage`,
+  `removePages`), clears the id in the same save and bumps `lastModified`.
+  Republishing does not restore it. The set side is checked by
+  `WeblogSettingsRules.checkFrontDoor` (a published page of this blog; a
+  draft, another blog's and an unknown id are one refusal).
+- **The request path never trusts the id**: `WeblogPageRequest.resolveFrontDoor()`
+  (called by `PageServlet` just before `generateKey`, so the root takes the
+  cache key and template branch of `/<handle>/<slug>`) looks the id up among
+  `getPublishedPages(weblog)` and falls back to the post list when it does not
+  resolve (a row changed behind the app's back, a lookup failure). **Never a
+  404 at a blog root.**
+- **Only the plain root renders the page**: no pathInfo, no locale, no view,
+  and no `page` > 0, `cat`, `date` or `entry`. A root carrying a listing
+  parameter still lists, so old paging and category links keep working.
+- **`/<handle>/posts`** always lists posts, front door or not, and takes the
+  root's query parameters (`page`, `cat`, `date`; never `entry`/`anchor`). It
+  is not a new `context`: the request's context stays null, so everything that
+  asks "is this the home listing" (pins, the "All" category, the default
+  template) holds. `posts` is in `ReservedSlugs.RESERVED` and is a
+  `WeblogRequestMapper.FORWARD_TARGETS` key (every reserved word is a key);
+  `/posts/` is a 404 (`slashMisplaced`), `/posts/<x>` is declined.
+- **Canonical URLs**: the listing's canonical is the URL strategy's collection
+  URL (`getWeblogCollectionURL`): the root with no front door, `/posts` with
+  one, paging kept (`/posts?page=N`), so `/` with `?page=2` canonicalises to
+  `/posts?page=2`. The front page's URL (`getWeblogStaticPageURL(weblog, page,
+  true)` overload, which compares against the id because the slug cannot say)
+  is the root while it is the front door; `/<handle>/<slug>` still renders it,
+  with the root as canonical.
+- **Sitemap** (`SeoController`): the root is listed once, only while the front
+  page is indexable and not canonical elsewhere; with a front door `/posts` is
+  listed too; the front page never appears at its slug. When the id resolves
+  to no published page, only `/posts` is listed (the root's canonical is
+  `/posts` then). The site-pages sitemap is unaffected.
+- **Always the listing**: locale roots (`/<handle>/<locale>/`) list posts even
+  with a front door, and the theme preview (`PreviewURLStrategy`,
+  `/preview/<handle>/...`) does not resolve the front door either: its root
+  lists posts, and its collection URL is `/preview/<handle>/posts?theme=...`
+  once a front door is set. Both are deliberate and unchanged behaviour, not
+  gaps.
+- **Virtual hosts and context paths**: nothing assumes `/<handle>/`; the
+  mapper keeps locale and context for `posts` as for other forward targets,
+  and the browser suite (`FrontDoorIT`) is run at both context paths.
+
 ## Redirects (301s for URLs that would otherwise 404)
 
 `pressroom_weblog_redirect` (V028) maps one weblog-relative path to another

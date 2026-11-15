@@ -251,6 +251,24 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   a count that cannot be read throws (500), never passes. A site page refuses `strand: true`, as
   the page editor forces it off.
 
+## Front page and nav order (2026-11-15, release 3)
+
+- **`frontPage` is a weblog field** (`WeblogView.frontPage`, `WeblogPatch.frontPage`; public
+  reference `docs/api/README.md`). It is the page's id, set through the same `WeblogSettingsRules.checkFrontDoor`
+  the settings form uses (published page of this blog; a draft, another blog's page and an unknown id are
+  one refusal, so a token never learns what another blog holds). A refusal is a **400** with an `errors`
+  entry named `frontPage` (the rule's violation field is the bean's `frontPageId`; `WeblogsApi.apiField`
+  maps it, and `FormBodyParityTest` records the rename). A lookup that cannot run, and the site space, fail
+  closed. It is removed with `clear: ["frontPage"]` (`ClearFields`; null is never a value). The view omits
+  it when unset. A save bumps `weblog.lastModified`, so rendered pages expire.
+- **Making the front page a draft or deleting it clears it by itself** in the same save
+  (`JPAWeblogPageManagerImpl`); the API needs no extra call and the next `weblogs get` omits the field.
+- **Page `navOrder` must be >= 0** (`PageDtos.applyWrite`, 400 on `navOrder`). The Pages screen's reorder
+  (`WeblogPageManager.setNavOrder`) renumbers a blog's pages 0..n-1.
+- MCP: the `weblogs update` tool carries `frontPage` and `pages update` carries `navOrder` like any other
+  field; `McpInstructions.TEXT` has one line on both (`McpInstructionsTest` requires the points; the text
+  stays under 3,000 characters).
+
 ## Agent accounts (2026-10-13)
 
 Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.

@@ -87,6 +87,11 @@ blog's search is untouched (its theme's search template, else its default).
 weblog, hidden or not, so a blog on a theme that ships one never serves it
 at `/<handle>/page/site-search`.
 
+Site-wide search also shows a "Pages" group above the posts (at most 3, first
+results page only): published, indexable pages of the blogs the search covers
+plus the site space's own pages (they appear only here, never in a blog's
+search). See `architecture.md`, "Document kinds".
+
 **It is the front page's page.** Both templates share their chrome, and the
 front page renders as before (same markup; the same CSS rules, in a
 different order):

@@ -32,6 +32,7 @@ import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.pojos.CustomTemplateRendition;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
@@ -378,6 +379,9 @@ class ThemeReferenceLeakTest {
             scan(failures, theme + " posts", page(base + "/posts", 200));
         } finally {
             setFrontPage(blog, null);
+            if ("frontpage".equals(theme)) {
+                removePage(blog, PAGE_SLUG); // the class-shared weblog keeps no page behind
+            }
         }
 
         assertTrue(failures.isEmpty(), "unresolved Velocity references leaked into the "
@@ -388,6 +392,13 @@ class ThemeReferenceLeakTest {
         List<String> themes = new ArrayList<>(CONTENT_THEMES);
         themes.add("frontpage");
         return themes;
+    }
+
+    private static void removePage(Weblog weblog, String slug) throws Exception {
+        WeblogPageManager pages = TestUtils.weblogger().getWeblogPageManager();
+        pages.removePage(pages.getPageBySlug(TestUtils.getManagedWebsite(weblog), slug));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
     }
 
     private static void setFrontPage(Weblog weblog, String slug) throws Exception {

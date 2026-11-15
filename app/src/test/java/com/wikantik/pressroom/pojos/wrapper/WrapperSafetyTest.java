@@ -55,7 +55,7 @@ class WrapperSafetyTest {
     private static final List<String> ALLOWED_NON_GETTERS = List.of(
             "wrap", "findEntryAttribute", "displayContent", "formatPubTime", "formatUpdateTime",
             "retrieveWeblogEntries", "isInUse", "isHidden", "isNavbar",
-            "equals", "hashCode", "toString", "url", "webpUrl");
+            "equals", "hashCode", "toString", "url", "webpUrl", "hasFrontDoor");
 
     private static List<Class<?>> wrapperClasses() {
         URL codeSource = WeblogWrapper.class.getProtectionDomain().getCodeSource().getLocation();

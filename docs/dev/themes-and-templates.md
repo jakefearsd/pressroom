@@ -539,6 +539,26 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   the image macro's `$eager`); journal's post page has no hero. Card and
   list pictures stay lazy.
 
+## Blog root, post listing and the nav (front door)
+
+- **`$url.home` is the blog (its root), `$url.posts` the post listing**: with
+  a front door the root renders the page and the listing is at `/posts`
+  (routing.md, "A blog's front door"); without one they are the same string.
+  The category "All" link (both branches in `weblog.vm`) and frontpage's
+  `_header.vm` "Recent posts" use `$url.posts`, as do the pagers
+  (`getHomeLink`, next, prev: the collection URL). The theme masthead and
+  site-name links (`$url.home`) deliberately stay on the root, as do the Atom
+  feed's alternate link and the search "Main" link. `URLModel.home(int)`
+  (paging) and `getPosts()` are the listing; `home(String locale)` is the
+  root in that locale. A new `$url.home` use means deciding which one it is.
+- **The "Posts" nav link**: `showPageLinks` (the page-link macro every theme's
+  nav calls) puts `<li class="page-nav-item"><a href="$url.posts">` with the
+  `weblog.nav.posts` text first, only when `$weblog.hasFrontDoor()`. Nav
+  pages link through `$url.staticPage($navPage)` so the front page links to
+  the root, not its slug. Pages are listed by `navOrder`.
+- **Canonical and SEO** follow the strategy (`PageModel.getCanonicalUrl`):
+  listing canonical = the collection URL, front page canonical = the root.
+
 ## Strands (parts list and strand bar)
 
 What a strand looks like to a reader (model: `docs/dev/entries.md`,
@@ -602,6 +622,21 @@ showSiteMasthead and showSiteFooter macros.
   per section (`SearchResultsModel.isOwnFallback`/`isOtherFallback`); it was
   one line over both until the final review, so it sat over this blog's
   results that matched every word.
+- **The Pages group** (release 3): `$model.pageHits` is the list of
+  `PageHit(page, snippet)` records (at most 3, first results page only, none
+  under a category; the model and its read-side re-check are in
+  architecture.md, "Document kinds"). The group sits first in
+  `section.search-results`: `h2.search-group.search-group-pages` ("Pages",
+  `search.pages`), then `ol.search-list.search-pages`, one `li` per hit
+  from the srPageHit macro (title and snippet through `$utils.escapeHTML`,
+  href escaped via `$model.pageUrl($hit)`, the blog's name in the site view).
+  The snippet is the page's search description, else its opening sentences
+  (`WeblogPageWrapper.getExcerpt()`). The section now renders when *only*
+  pages match (it used to hide on zero post hits); in that case the blog view
+  still prints "Nothing in X matched." and the site view prints no post
+  heading or list (never "0 articles across 0 blogs"). No new CSS and no
+  theme change: the themes and `site-search.vm` call the one macro.
+  `ThemeReferenceLeakTest` renders each theme's search with a Pages group.
 - **Counts**: one and many through `choice` formats ("1 article", "1 article
   across 1 blog", "1 more post from this blog"); Russian keeps its
   number-neutral "Статей: N" form and Japanese, Korean and Chinese have one

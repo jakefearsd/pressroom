@@ -23,11 +23,11 @@ import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.pojos.Business;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
-import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +41,7 @@ class WeblogSettingsRulesTest {
     private BusinessManager businesses;
     private WeblogManager weblogs;
     private WeblogPageManager pages;
-    private com.wikantik.pressroom.pojos.Weblog own;
+    private Weblog own;
     private WeblogSettingsRules.Context context;
 
     @BeforeEach
@@ -49,13 +49,13 @@ class WeblogSettingsRulesTest {
         businesses = mock(BusinessManager.class);
         weblogs = mock(WeblogManager.class);
         pages = mock(WeblogPageManager.class);
-        own = new com.wikantik.pressroom.pojos.Weblog();
+        own = new Weblog();
         own.setId("own-id");
         own.setHandle("myblog");
         context = new WeblogSettingsRules.Context(own, 30, "https://blog.example.com", businesses, weblogs, pages);
     }
 
-    private WeblogPage page(String id, com.wikantik.pressroom.pojos.Weblog owner, WeblogPage.PubStatus status)
+    private WeblogPage page(String id, Weblog owner, WeblogPage.PubStatus status)
             throws Exception {
         WeblogPage page = new WeblogPage();
         page.setId(id);
@@ -77,7 +77,7 @@ class WeblogSettingsRulesTest {
 
     @Test
     void aDraftAnotherBlogsPageAnUnknownIdAreRefusedAsUnknown() throws Exception {
-        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        Weblog other = new Weblog();
         other.setId("other-id");
         page("draft", own, WeblogPage.PubStatus.DRAFT);
         page("foreign", other, WeblogPage.PubStatus.PUBLISHED);
@@ -93,7 +93,7 @@ class WeblogSettingsRulesTest {
 
     @Test
     void aLookupThatCannotRunRefusesTheFrontDoor() throws Exception {
-        when(pages.getPage("p1")).thenThrow(new com.wikantik.pressroom.WebloggerException("db down"));
+        when(pages.getPage("p1")).thenThrow(new WebloggerException("db down"));
         WeblogConfigBean bean = valid();
         bean.setFrontPageId("p1");
         assertEquals(List.of("frontPageId"), fieldsOf(bean));

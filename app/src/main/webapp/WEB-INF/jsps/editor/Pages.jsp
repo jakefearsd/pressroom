@@ -116,7 +116,7 @@
                         <jsp:include page="/WEB-INF/jsps/editor/StatusPill.jsp"/>
                     </td>
                     <td>${p.showInNav ? '&#10003;' : ''}</td>
-                    <td class="data">${p.navOrder}</td>
+                    <td class="data page-nav-order">${p.navOrder}</td>
                     <td class="row-actions">
                         <input type="hidden" name="pageIds" form="pagesOrderForm" value="${fn:escapeXml(p.id)}"/>
                         <span class="bi bi-grip-vertical page-order-handle" aria-hidden="true"></span>
@@ -177,7 +177,12 @@
                 rowSelector: ".page-row",
                 upSelector: ".page-order-up",
                 downSelector: ".page-order-down",
-                onMove: function () { save.hidden = order() === loaded; }
+                onMove: function () {
+                    save.hidden = order() === loaded;
+                    // The numbers Save order will store: the rows' positions.
+                    Array.prototype.forEach.call(list.querySelectorAll(".page-nav-order"),
+                        function (cell, index) { cell.textContent = index; });
+                }
             });
         }());
     </script>

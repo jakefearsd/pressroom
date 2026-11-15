@@ -1674,7 +1674,7 @@ class LuceneIndexManagerSearchTest {
             indexPage(page("unchanged-" + blog.getHandle(), blog, "Kitchen " + WORD + " post", words));
         }
         indexPage(page("unchanged-site", siteSpace(), "Kitchen " + WORD, words));
-        assertTrue(documentsWithId("unchanged-site") == 1, "the pages are in the index");
+        assertEquals(1, documentsWithId("unchanged-site"), "the pages are in the index");
 
         assertEquals(before, postResults());
     }

@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.util.List;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -61,7 +63,7 @@ class WeblogsApiTest {
         WeblogManager weblogManager = mock(WeblogManager.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         when(weblogger.getBusinessManager()).thenReturn(mock(BusinessManager.class));
-        when(weblogger.getWeblogPageManager()).thenReturn(mock(com.wikantik.pressroom.business.WeblogPageManager.class));
+        when(weblogger.getWeblogPageManager()).thenReturn(mock(WeblogPageManager.class));
         return weblogger;
     }
 
@@ -569,9 +571,9 @@ class WeblogsApiTest {
         verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
     }
 
-    private static com.wikantik.pressroom.pojos.WeblogPage pageOf(Weblogger weblogger, String id, Weblog owner,
-            com.wikantik.pressroom.pojos.WeblogPage.PubStatus status) throws Exception {
-        var page = new com.wikantik.pressroom.pojos.WeblogPage();
+    private static WeblogPage pageOf(Weblogger weblogger, String id, Weblog owner,
+            WeblogPage.PubStatus status) throws Exception {
+        var page = new WeblogPage();
         page.setId(id);
         page.setWeblog(owner);
         page.setStatus(status);
@@ -583,7 +585,7 @@ class WeblogsApiTest {
     void frontPageIsShownSetAndCleared() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        pageOf(weblogger, "p1", weblog, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        pageOf(weblogger, "p1", weblog, WeblogPage.PubStatus.PUBLISHED);
         assertNull(AdminDtos.toView(weblog).frontPage());
 
         var result = doPatch(weblogger, weblog, "{\"frontPage\":\"p1\"}").andExpect(status().isOk());
@@ -602,8 +604,8 @@ class WeblogsApiTest {
     void aDraftForeignOrUnknownFrontPageIsA400OnFrontPage() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        pageOf(weblogger, "draft", weblog, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT);
-        pageOf(weblogger, "foreign", aWeblog("other"), com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        pageOf(weblogger, "draft", weblog, WeblogPage.PubStatus.DRAFT);
+        pageOf(weblogger, "foreign", aWeblog("other"), WeblogPage.PubStatus.PUBLISHED);
         for (String id : List.of("draft", "foreign", "nope")) {
             doPatch(weblogger, weblog, "{\"frontPage\":\"" + id + "\"}")
                     .andExpect(status().isBadRequest())
