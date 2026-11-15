@@ -2748,7 +2748,7 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 #macro(showSearchResults $srModel)
 #set($srSiteView = $srModel.siteScope && !$srModel.blogOnly)
 #set($srPaged = $srModel.siteScope || $srModel.blogOnly)
-#if(!$srModel.ownHits.isEmpty() || !$srModel.otherHits.isEmpty())
+#if(!$srModel.ownHits.isEmpty() || !$srModel.otherHits.isEmpty() || !$srModel.pageHits.isEmpty())
 <style>
 .search-results .search-fallback { margin: .625rem 0 0; font-size: .875rem; color: color-mix(in srgb, currentColor 70%, transparent); }
 .search-results .search-group { margin: 1.75rem 0 0; padding: 0 0 .375rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
@@ -2771,7 +2771,15 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 }
 </style>
 <section class="search-results">
-#if($srSiteView)
+#if(!$srModel.pageHits.isEmpty())
+    <h2 class="search-group search-group-pages">$text.get("search.pages")</h2>
+    <ol class="search-list search-pages">
+#foreach($srPageHit in $srModel.pageHits)
+#srPageHit($srModel $srPageHit $srSiteView)
+#end
+    </ol>
+#end
+#if($srSiteView && !$srModel.ownHits.isEmpty())
 #if($srModel.capped)
     <h2 class="search-group">$text.get("search.siteCountCapped", [$srModel.hits, $srModel.blogCount])</h2>
 #else
@@ -2785,7 +2793,7 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 #srHit($srModel $srHit true)
 #end
     </ol>
-#else
+#elseif(!$srSiteView)
 #if(!$srModel.ownHits.isEmpty())
 #if($srModel.capped)
     <h2 class="search-group">$text.get("search.fromBlogCapped", [$srModel.weblog.name, $srModel.ownTotal])</h2>
@@ -2827,6 +2835,25 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 #end
 </section>
 #end
+#end
+
+## One matching page of the Pages group. Its title and excerpt are plain
+## text, so both go through escapeHTML; the link is the page's own static-page
+## address (the blog root while it is the front page). A site-wide hit names
+## its blog.
+#macro(srPageHit $srModel $srPageHit $srSiteView)
+#set($srPage = $srPageHit.page)
+        <li class="search-hit">
+            <div class="search-body">
+            <h3 class="search-title"><a href="$utils.escapeHTML($srModel.pageUrl($srPageHit))">$utils.escapeHTML($srPage.title)</a></h3>
+#if($utils.isNotEmpty($srPageHit.snippet))
+            <p class="search-snippet">$utils.escapeHTML($srPageHit.snippet)</p>
+#end
+#if($srSiteView)
+            <p class="search-meta"><a class="search-blog" href="$utils.escapeHTML($srPage.weblog.absoluteURL)">$srPage.weblog.name</a></p>
+#end
+            </div>
+        </li>
 #end
 
 ## One result. srSiteView is true in the site view, where every hit names

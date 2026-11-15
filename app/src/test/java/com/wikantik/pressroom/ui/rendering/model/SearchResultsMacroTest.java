@@ -41,12 +41,15 @@ import org.mockito.MockedStatic;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.EntryRenderer;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.business.search.SearchHit;
 import com.wikantik.pressroom.business.search.SearchHits;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.wrapper.WeblogCategoryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
@@ -82,6 +85,7 @@ class SearchResultsMacroTest {
     private URLStrategy urls;
     private Weblog blog;
     private MockedStatic<WebloggerRuntimeConfig> config;
+    private WeblogPageManager pageManager;
     private final Timestamp published = new Timestamp(System.currentTimeMillis() - 86_400_000L);
 
     @BeforeEach
@@ -97,6 +101,14 @@ class SearchResultsMacroTest {
                 .thenReturn("https://example.test/search?q=w&scope=blog");
         when(urls.getWeblogURL(any(), any(), anyBoolean()))
                 .thenAnswer(inv -> "https://example.test/" + ((Weblog) inv.getArgument(0)).getHandle() + "/");
+        pageManager = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
+        EntryRenderer renderer = mock(EntryRenderer.class);
+        when(renderer.pageContent(any())).thenReturn("<p>Rooms &amp; <b>rates</b> for Spain.</p>");
+        when(weblogger.getEntryRenderer()).thenReturn(renderer);
+        when(urls.getWeblogStaticPageURL(any(), any(WeblogPage.class), anyBoolean())).thenAnswer(inv ->
+                "https://example.test/" + ((Weblog) inv.getArgument(0)).getHandle() + "/"
+                        + ((WeblogPage) inv.getArgument(1)).getSlug());
         blog = blogNamed("myblog", "Test Blog");
         config = org.mockito.Mockito.mockStatic(WebloggerRuntimeConfig.class);
     }
@@ -316,6 +328,76 @@ class SearchResultsMacroTest {
         assertFalse(html.contains("<b>"), "raw markup from the name: " + html);
         assertFalse(html.contains("&amp;lt;") || html.contains("&amp;quot;") || html.contains("&amp;amp;"),
                 "escaped twice: " + html);
+    }
+
+    // ---------------------------------------------------------------- the Pages group
+
+    private void pagesMatch(Weblog owner, String... titles) throws Exception {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < titles.length; i++) {
+            WeblogPage page = new WeblogPage();
+            page.setId("p" + i);
+            page.setWeblog(owner);
+            page.setSlug("page-" + i);
+            page.setTitle(titles[i]);
+            page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+            page.setNoindex(false);
+            when(pageManager.getPage("p" + i)).thenReturn(page);
+            ids.add("p" + i);
+        }
+        when(index.findPages(any(), anyInt())).thenReturn(ids);
+    }
+
+    @Test
+    void thePagesGroupSitsAboveThePostResults() throws Exception {
+        pagesMatch(blog, "About us");
+        String body = blogView(new SearchHits(List.of(hit("own", blog)), 1, false, Map.of(), Set.of()),
+                SearchHits.NONE);
+
+        assertInOrder(body, "class=\"search-group search-group-pages\">Pages</h2>",
+                "<a href=\"https://example.test/myblog/page-0\">About us</a>",
+                "Rooms &amp; rates for Spain.", "From Test Blog", "Title own");
+    }
+
+    @Test
+    void aQueryMatchingOnlyAPageShowsTheGroupAndTheNoPostsWording() throws Exception {
+        pagesMatch(blog, "About us");
+        String body = blogView(SearchHits.NONE, SearchHits.NONE);
+
+        assertInOrder(body, "<section class=\"search-results\">", ">Pages</h2>", "About us",
+                "Nothing in Test Blog matched.");
+    }
+
+    @Test
+    void aQueryMatchingOnlyAPageInTheSiteViewShowsNoEmptyPostHeading() throws Exception {
+        pagesMatch(blog, "About us");
+        String body = siteView(SearchHits.NONE);
+
+        assertTrue(body.contains(">Pages</h2>"), body);
+        assertFalse(body.contains("articles across"), body);
+        assertEquals(0, count(body, "class=\"search-list\""), "no empty post list: " + body);
+    }
+
+    @Test
+    void aQueryMatchingNoPagePrintsNoGroup() throws Exception {
+        String body = blogView(new SearchHits(List.of(hit("own", blog)), 1, false, Map.of(), Set.of()),
+                SearchHits.NONE);
+
+        assertFalse(body.contains("search-group-pages"), body);
+        assertFalse(body.contains(">Pages<"), body);
+        assertTrue(body.contains("From Test Blog"), body);
+    }
+
+    @Test
+    void aPageTitleAndSnippetAreEscapedOnceAndNameTheBlogSiteWide() throws Exception {
+        pagesMatch(other(), "<i>Fish</i> & \"chips\"");
+        String body = siteView(new SearchHits(List.of(hit("a1", blog)), 1, false, Map.of("myblog", 1), Set.of()));
+
+        assertTrue(body.contains(">&lt;i&gt;Fish&lt;/i&gt; &amp; &quot;chips&quot;</a>"), body);
+        assertFalse(body.contains("<i>"), body);
+        assertFalse(body.contains("&amp;amp;"), body);
+        assertTrue(body.contains("<a class=\"search-blog\" href=\"https://example.test/other/\">Other Blog</a>"), body);
+        assertInOrder(body, ">Pages</h2>", "Fish", "article across");
     }
 
     // ---------------------------------------------------------------- helpers

@@ -32,6 +32,8 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MultiWeblogURLStrategy;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.EntryRenderer;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.business.search.SearchHit;
@@ -39,6 +41,7 @@ import com.wikantik.pressroom.business.search.SearchHits;
 import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
@@ -66,6 +69,7 @@ class SearchResultsModelScopesTest {
     private URLStrategy urls;
     private Weblog blog;
     private MockedStatic<WebloggerRuntimeConfig> config;
+    private WeblogPageManager pages;
     private final Timestamp published = new Timestamp(System.currentTimeMillis() - 60_000L);
 
     @BeforeEach
@@ -73,6 +77,11 @@ class SearchResultsModelScopesTest {
         index = mock(IndexManager.class);
         weblogger = mock(Weblogger.class);
         when(weblogger.getIndexManager()).thenReturn(index);
+        pages = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pages);
+        EntryRenderer renderer = mock(EntryRenderer.class);
+        when(renderer.pageContent(any())).thenReturn("<p>All about Spain.</p>");
+        when(weblogger.getEntryRenderer()).thenReturn(renderer);
         urls = mock(URLStrategy.class);
         blog = new Weblog();
         blog.setHandle("myblog");
@@ -559,5 +568,157 @@ class SearchResultsModelScopesTest {
         when(weblogManager.getSiteSpace()).thenReturn(null);
 
         assertNull(model("myblog", false, false, 0).getSiteSearchUrl());
+    }
+
+    // ---------------------------------------------------------------- the Pages group
+
+    private WeblogPage page(String id, WeblogPage.PubStatus status, boolean noindex) throws WebloggerException {
+        WeblogPage page = new WeblogPage();
+        page.setId(id);
+        page.setWeblog(blog);
+        page.setSlug("slug-" + id);
+        page.setTitle("Page " + id);
+        page.setStatus(status);
+        page.setNoindex(noindex);
+        when(pages.getPage(id)).thenReturn(page);
+        return page;
+    }
+
+    private void indexNames(String... ids) {
+        when(index.findPages(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of(ids));
+    }
+
+    @Test
+    void pageHitsAreAtMostThreePublishedIndexablePagesTheIndexStillNames() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        page("b", WeblogPage.PubStatus.DRAFT, false);      // unpublished since it was indexed
+        page("c", WeblogPage.PubStatus.PUBLISHED, true);   // noindex since it was indexed
+        page("d", WeblogPage.PubStatus.PUBLISHED, false);
+        page("e", WeblogPage.PubStatus.PUBLISHED, false);
+        page("f", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a", "b", "c", "gone", "d", "e", "f");   // "gone" was deleted
+
+        SearchResultsModel m = model("myblog", false, false, 0);
+
+        assertEquals(List.of("a", "d", "e"),
+                m.getPageHits().stream().map(h -> h.page().getId()).toList());
+        assertEquals("All about Spain.", m.getPageHits().get(0).snippet());
+        ArgumentCaptor<SearchSpec> spec = ArgumentCaptor.forClass(SearchSpec.class);
+        verify(index).findPages(spec.capture(), org.mockito.ArgumentMatchers.anyInt());
+        assertEquals(SearchSpec.Scope.BLOG, spec.getValue().scope());
+        assertEquals("myblog", spec.getValue().weblogHandle());
+    }
+
+    @Test
+    void thePagesGroupIsOnlyOnTheFirstResultsPage() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a");
+
+        assertTrue(model("myblog", false, true, 1).getPageHits().isEmpty());
+        assertEquals(1, model("myblog", false, true, 0).getPageHits().size());
+    }
+
+    @Test
+    void theSiteViewAsksForSiteScopedPages() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a");
+
+        SearchResultsModel m = model("home", true, false, 0);
+
+        ArgumentCaptor<SearchSpec> spec = ArgumentCaptor.forClass(SearchSpec.class);
+        verify(index).findPages(spec.capture(), org.mockito.ArgumentMatchers.anyInt());
+        assertEquals(SearchSpec.Scope.SITE, spec.getValue().scope());
+        assertEquals(1, m.getPageHits().size());
+    }
+
+    @Test
+    void aCategoryNarrowedSearchShowsNoPages() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a");
+        config.when(() -> WebloggerRuntimeConfig.isSiteWideWeblog("myblog")).thenReturn(false);
+        WeblogSearchRequest request = new WeblogSearchRequest();
+        request.setWeblog(blog);
+        request.setWeblogHandle("myblog");
+        request.setQuery("spain");
+        request.setLocale("en_US");
+        request.setScopeBlog(true);
+        request.setWeblogCategoryName("Travel");
+        WeblogPageRequest pageRequest = new WeblogPageRequest();
+        pageRequest.setWeblog(blog);
+        Map<String, Object> init = new HashMap<>();
+        init.put("searchRequest", request);
+        init.put("parsedRequest", pageRequest);
+        init.put("weblogger", weblogger);
+        init.put("urlStrategy", urls);
+        SearchResultsModel m = new SearchResultsModel();
+        m.init(init);
+
+        assertTrue(m.getPageHits().isEmpty());
+        verify(index, never()).findPages(any(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void aFailingPageLookupLeavesThePostResultsAlone() throws Exception {
+        SearchHit own = hit("own");
+        when(index.find(any(), any())).thenReturn(hits(1, false, Map.of(), own));
+        indexNames("a");
+        when(pages.getPage("a")).thenThrow(new WebloggerException("db down"));
+
+        SearchResultsModel m = model("myblog", false, true, 0);
+
+        assertTrue(m.getPageHits().isEmpty());
+        assertEquals(List.of(own), m.getOwnHits());
+        assertEquals("", m.getErrorMessage());
+    }
+
+    @Test
+    void aRejectedPageSearchLeavesThePostResultsAlone() throws Exception {
+        SearchHit own = hit("own");
+        when(index.find(any(), any())).thenReturn(hits(1, false, Map.of(), own));
+        when(index.findPages(any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenThrow(new IllegalArgumentException("no handle"));
+
+        SearchResultsModel m = model("myblog", false, true, 0);
+
+        assertTrue(m.getPageHits().isEmpty());
+        assertEquals(List.of(own), m.getOwnHits());
+    }
+
+    @Test
+    void aFailedPostSearchShowsNoPages() throws Exception {
+        when(index.find(any(), any())).thenThrow(new WebloggerException("lucene down"));
+        page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a");
+
+        SearchResultsModel m = model("myblog", false, true, 0);
+
+        assertTrue(m.getPageHits().isEmpty());
+        assertEquals("lucene down", m.getErrorMessage());
+    }
+
+    @Test
+    void aPageHitLinksWithTheStaticPageUrl() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        WeblogPage p = page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        indexNames("a");
+        when(urls.getWeblogStaticPageURL(blog, p, true)).thenReturn("https://example.test/myblog/");
+
+        SearchResultsModel m = model("myblog", false, true, 0);
+
+        assertEquals("https://example.test/myblog/", m.pageUrl(m.getPageHits().get(0)));
+    }
+
+    @Test
+    void aSearchDescriptionIsTheSnippetWhenThePageHasOne() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        WeblogPage p = page("a", WeblogPage.PubStatus.PUBLISHED, false);
+        p.setSearchDescription("Described.");
+        indexNames("a");
+
+        assertEquals("Described.", model("myblog", false, true, 0).getPageHits().get(0).snippet());
     }
 }

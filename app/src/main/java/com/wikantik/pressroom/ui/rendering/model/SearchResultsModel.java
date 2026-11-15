@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.rendering.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -35,6 +36,8 @@ import com.wikantik.pressroom.business.search.SearchHits;
 import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.wrapper.WeblogPageWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogCategoryWrapper;
 import com.wikantik.pressroom.ui.rendering.pagers.SearchResultsPager;
@@ -60,6 +63,8 @@ public class SearchResultsModel extends PageModel {
 	static final int OWN_IN_BLOG_VIEW = 8;
 	/** How many other-blog matches the blog view shows. */
 	static final int OTHERS_IN_BLOG_VIEW = 5;
+	/** How many matching pages the Pages group shows. */
+	static final int PAGES_IN_GROUP = 3;
 
 	// the pager used by the 3.0+ rendering system
 	private SearchResultsPager pager;
@@ -78,6 +83,7 @@ public class SearchResultsModel extends PageModel {
 	// site view: "more from this blog" for each blog's first hit on this page
 	private Map<SearchHit, Integer> moreByHit = Map.of();
 	private int offset;
+	private List<PageHit> pageHits = List.of();
 	private Set<String> categories = new TreeSet<>();
 	private String errorMessage = "";
 
@@ -129,6 +135,10 @@ public class SearchResultsModel extends PageModel {
 			forgetResults();
 		}
 
+		if (errorMessage.isEmpty()) {
+			pageHits = findPageHits(indexMgr, handle);
+		}
+
 		// search completed, setup pager based on results
 		pager = new SearchResultsPager(urlStrategy, searchRequest,
 			paged && ownTotal > offset + RESULTS_PER_PAGE, offset / RESULTS_PER_PAGE);
@@ -173,6 +183,51 @@ public class SearchResultsModel extends PageModel {
 			otherHits = others.hits();
 			otherFallback = others.anyWordFallback();
 		}
+	}
+
+	/**
+	 * The "Pages" group: the first results page only, never when the reader
+	 * narrowed to a category (a page has none), at most three. The index is
+	 * updated in the background, so it can still name a page that has been
+	 * unpublished, set noindex or deleted since: each id is loaded and
+	 * dropped unless the page is still PUBLISHED and indexable. This is a
+	 * display path: a failure here shows no pages and never costs the post
+	 * results.
+	 */
+	private List<PageHit> findPageHits(IndexManager indexMgr, String handle) {
+		String category = searchRequest.getWeblogCategoryName();
+		if (searchRequest.getPageNum() > 0 || (category != null && !category.isBlank())) {
+			return List.of();
+		}
+		SearchSpec.Scope scope = (siteScope && !blogOnly) ? SearchSpec.Scope.SITE : SearchSpec.Scope.BLOG;
+		try {
+			List<String> ids = indexMgr.findPages(spec(scope, handle, 0, PAGES_IN_GROUP), PAGES_IN_GROUP * 2);
+			List<PageHit> found = new ArrayList<>();
+			for (String id : ids) {
+				WeblogPage page = weblogger.getWeblogPageManager().getPage(id);
+				if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED
+						|| Boolean.TRUE.equals(page.getNoindex())) {
+					continue;
+				}
+				found.add(new PageHit(WeblogPageWrapper.wrap(page, urlStrategy, weblogger), snippetOf(page)));
+				if (found.size() == PAGES_IN_GROUP) {
+					break;
+				}
+			}
+			return found;
+		} catch (WebloggerException | IllegalArgumentException | IllegalStateException e) {
+			log.warn("Could not find the pages matching \"{}\"; showing none", searchRequest.getQuery(), e);
+			return List.of();
+		}
+	}
+
+	/** The page's own search description, else the opening sentences of its content; plain text. */
+	private String snippetOf(WeblogPage page) {
+		String description = page.getSearchDescription();
+		if (description != null && !description.isBlank()) {
+			return description;
+		}
+		return WeblogPageWrapper.wrap(page, urlStrategy, weblogger).getExcerpt();
 	}
 
 	/** A search that failed shows no results, only its message. */
@@ -367,6 +422,17 @@ public class SearchResultsModel extends PageModel {
 		}
 		return urlStrategy.getWeblogSearchURL(blog.getPojo(), null, searchRequest.getQuery(),
 				null, 0, true, true);
+	}
+
+	/** The matching pages, at most three, shown above the posts; empty when none apply. */
+	public List<PageHit> getPageHits() {
+		return pageHits;
+	}
+
+	/** A page hit's reader address, absolute (a site-wide hit may belong to another blog). */
+	public String pageUrl(PageHit hit) {
+		WeblogPage page = hit.page().getPojo();
+		return urlStrategy.getWeblogStaticPageURL(page.getWeblog(), page, true);
 	}
 
 	public Set<String> getCategories() {

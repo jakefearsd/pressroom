@@ -218,6 +218,62 @@ class SearchIT extends PressroomIT {
         assertEquals(1, $$("h2.search-group").size(), "one heading on a one-blog page");
     }
 
+    /**
+     * A published page with a distinctive word shows under "Pages" in its
+     * blog's search and in the site-wide search; a page with the same kind of
+     * word set to noindex shows in neither (criterion 24). Indexing is
+     * asynchronous, so the indexable page is awaited first, then the noindex
+     * page is checked after the index has demonstrably caught up.
+     */
+    @Test
+    void aMatchingPageShowsUnderPagesAndANoindexPageDoesNot() {
+        String nonce = nonce();
+        String shown = "okapi" + nonce;
+        String hidden = "bongo" + nonce;
+        String shownTitle = "Visible " + shown;
+        String hiddenTitle = "Hidden " + hidden;
+        String handle = createWeblog("Pages Blog " + nonce);
+        savePage(handle, "shown-" + nonce, shownTitle, "All about " + shown + ".", false);
+        savePage(handle, "hidden-" + nonce, hiddenTitle, "All about " + hidden + ".", true);
+        logout();
+
+        String blogSearch = baseUrl() + "/" + handle + "/search?q=";
+        String siteSearch = baseUrl() + "/search?q=";
+        assertTrue(waitForPage(blogSearch + shown, "search-group-pages", shownTitle),
+                "the page never showed in its blog's search");
+        assertTrue(waitForPage(siteSearch + shown, "search-group-pages", shownTitle),
+                "the page never showed in the site search");
+
+        openPath("/" + handle + "/");
+        $("header form.site-search input[type=search]").shouldBe(visible).setValue(shown).sendKeys(Keys.ENTER);
+        $("h2.search-group-pages").shouldHave(exactText("Pages"));
+        $("h2.search-group-pages ~ ol li.search-hit h3.search-title a").shouldHave(exactText(shownTitle));
+
+        // the indexable page is already in the index, so a noindex page that
+        // slipped in would be there by now: give the index the same chance
+        sleepFor(Duration.ofSeconds(5));
+        assertFalse(getAnonymously(blogSearch + hidden).contains(hiddenTitle),
+                "a noindex page showed in its blog's search");
+        assertFalse(getAnonymously(siteSearch + hidden).contains(hiddenTitle),
+                "a noindex page showed in the site search");
+    }
+
+    private void savePage(String handle, String slug, String title, String body, boolean noindex) {
+        loginAsAdmin();
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        $("#pageEditForm").should(exist);
+        $("#page_bean_slug").setValue(slug);
+        $("#page_bean_title").setValue(title);
+        Editor.setText(body);
+        $("#page_bean_status").selectOptionByValue("PUBLISHED");
+        if (noindex) {
+            $("a[data-bs-target='#collapseSeo']").click();
+            $("#seo_noindex").should(visible).click();
+        }
+        clickAndAwaitNewPage($("#pageSaveButton"));
+        $("#messages").should(exist);
+    }
+
     private String createWeblog(String name) {
         loginAsAdmin();
         String handle = "box" + nonce();

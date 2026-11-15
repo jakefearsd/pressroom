@@ -347,6 +347,8 @@ class ThemeReferenceLeakTest {
         scan(failures, theme + " tag archive", page(base + "/tags/" + TAG, 200));
         scan(failures, theme + " static page", page(base + "/" + PAGE_SLUG, 200));
         scan(failures, theme + " search results", search(base, "leak"));
+        // the Pages group (the page is indexed in the background, so wait for it)
+        scan(failures, theme + " search results with a Pages group", searchWithPagesGroup(base, "leak"));
         scan(failures, theme + " 404", page(base + "/entry/no-such-anchor", 404));
         // error-page.vm: a custom template that fails to parse makes
         // VelocityRenderer fall back to the error page (see its constructor)
@@ -452,6 +454,22 @@ class ThemeReferenceLeakTest {
         assertEquals(200, response.getStatus(), "search must render:\n"
                 + response.getContentAsString());
         return response.getContentAsString();
+    }
+
+    /**
+     * The search until its Pages group shows: the page is indexed in the
+     * background after its save. Failing to show the group fails the test,
+     * so the references inside it are always scanned.
+     */
+    private static String searchWithPagesGroup(String base, String query) throws Exception {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(15).toNanos();
+        String html = search(base, query);
+        while (!html.contains("search-group-pages") && System.nanoTime() < deadline) {
+            Thread.sleep(100);
+            html = search(base, query);
+        }
+        assertTrue(html.contains("search-group-pages"), "the Pages group never appeared:\n" + html);
+        return html;
     }
 
     private static String feed(String pathInfo) throws Exception {
