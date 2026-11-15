@@ -291,6 +291,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         TypedQuery<Integer> q = strategy.getDynamicQuery(
                 "SELECT MAX(e.strandPosition) FROM WeblogEntry e WHERE e.strandPageId = ?1", Integer.class);
         q.setParameter(1, strand.getId());
+        // AUTO, not the dynamic query's COMMIT: a second append in the same
+        // session must see the first one's position before it is flushed.
+        q.setFlushMode(FlushModeType.AUTO);
         Integer max = q.getSingleResult();
         entry.setStrandPageId(strand.getId());
         entry.setStrandPosition(max == null ? 1 : max + 1);
@@ -304,7 +307,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
     @Override
     public void setStrandParts(WeblogPage strand, List<WeblogEntry> parts) throws WebloggerException {
-        java.util.Set<String> keep = new java.util.HashSet<>();
+        Set<String> keep = new HashSet<>();
         for (WeblogEntry part : parts) {
             keep.add(part.getId());
         }

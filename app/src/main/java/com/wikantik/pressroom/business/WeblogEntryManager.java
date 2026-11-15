@@ -263,6 +263,8 @@ public interface WeblogEntryManager {
      * Makes {@code entry} the last part of {@code strand}: position is the
      * highest held by any member, trashed included, plus one. A no-op when it
      * is already a part of that strand. Does not save the entry.
+     * Sees appends not yet flushed in the same session; concurrent appends
+     * from separate requests may tie on a position (order then falls back to id).
      */
     void appendToStrand(WeblogEntry entry, WeblogPage strand) throws WebloggerException;
 
@@ -272,7 +274,8 @@ public interface WeblogEntryManager {
     /**
      * Makes exactly {@code parts} the members of {@code strand}, positions 1..n
      * in list order; former members not listed leave the strand. Bumps the
-     * blog's last-modified stamp.
+     * blog's last-modified stamp. Trusts its input: callers validate with
+     * {@link StrandRules#refusals} first.
      */
     void setStrandParts(WeblogPage strand, List<WeblogEntry> parts) throws WebloggerException;
         

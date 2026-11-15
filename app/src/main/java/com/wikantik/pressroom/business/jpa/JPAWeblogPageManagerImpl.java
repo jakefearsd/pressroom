@@ -153,6 +153,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
     public void removePage(WeblogPage page) throws WebloggerException {
         // Parts are posts; they stay, outside any strand. The FK's SET NULL
         // would clear the page id alone and leave a stale position behind.
+        // Bulk update: entries already loaded in this session are stale afterwards.
         Query detach = strategy.getNamedUpdate("WeblogEntry.clearStrandByPage");
         detach.setParameter(1, page.getId());
         detach.executeUpdate();
@@ -223,6 +224,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     @Override
     public void removePages(Weblog weblog) throws WebloggerException {
+        // Bulk update: entries already loaded in this session are stale afterwards.
         Query detach = strategy.getNamedUpdate("WeblogEntry.clearStrandByWeblog");
         detach.setParameter(1, weblog);
         detach.executeUpdate();

@@ -134,6 +134,22 @@ class StrandMembershipTest {
     }
 
     @Test
+    void twoAppendsInOneSessionGetConsecutivePositions() throws Exception {
+        String s = newStrand("s-two").getId();
+        String a = newPost("a8", PubStatus.PUBLISHED);
+        String b = newPost("b8", PubStatus.PUBLISHED);
+        WeblogPage strand = TestUtils.weblogger().getWeblogPageManager().getPage(s);
+        WeblogEntry ea = load(a);
+        WeblogEntry eb = load(b);
+        entries().appendToStrand(ea, strand);
+        entries().saveWeblogEntry(ea);
+        entries().appendToStrand(eb, strand);
+        entries().saveWeblogEntry(eb);
+        assertEquals(1, ea.getStrandPosition());
+        assertEquals(2, eb.getStrandPosition());
+    }
+
+    @Test
     void appendingToTheStrandItIsAlreadyInChangesNothing() throws Exception {
         String s = newStrand("s-noop").getId();
         String a = newPost("a3", PubStatus.PUBLISHED);
