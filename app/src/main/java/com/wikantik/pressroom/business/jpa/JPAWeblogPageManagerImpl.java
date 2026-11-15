@@ -114,6 +114,14 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         // lazily by comparing itself against weblog.lastModified (see
         // saveTemplate/saveComment for the same pattern) -- so without this
         // a published page never reaches a reader holding a cached copy.
+        // The front door is kept truthful at the write: the front page no
+        // longer PUBLISHED stops being the front page, and republishing does
+        // not restore it. Cleared before the save below so one save carries both.
+        Weblog owner = page.getWeblog();
+        if (owner != null && page.getId() != null && page.getId().equals(owner.getFrontPageId())
+                && page.getStatus() != WeblogPage.PubStatus.PUBLISHED) {
+            owner.setFrontPageId(null);
+        }
         pressroom.getWeblogManager().saveWeblog(page.getWeblog());
     }
 
@@ -158,6 +166,13 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         detach.setParameter(1, page.getId());
         detach.executeUpdate();
         this.strategy.remove(page);
+
+        // The FK's SET NULL clears the row, not the managed weblog: clear it
+        // here so the save below does not write the stale id back.
+        Weblog owner = page.getWeblog();
+        if (owner != null && page.getId() != null && page.getId().equals(owner.getFrontPageId())) {
+            owner.setFrontPageId(null);
+        }
 
         // update weblog last modified date.  date updated by saveWeblog()
         pressroom.getWeblogManager().saveWeblog(page.getWeblog());
@@ -231,6 +246,8 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         Query removePages = strategy.getNamedUpdate("WeblogPage.removeByWeblog");
         removePages.setParameter(1, weblog);
         removePages.executeUpdate();
+        // The FK would null the row; the managed weblog must not write it back.
+        weblog.setFrontPageId(null);
 
         // Moves no stamp. A remembered page that no longer resolves is a miss
         // anyway; and removeWeblog deletes through here, after which the

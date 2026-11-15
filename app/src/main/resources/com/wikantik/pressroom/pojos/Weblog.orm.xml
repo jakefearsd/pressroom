@@ -101,6 +101,9 @@
 			<basic name="entryOrder">
 				<column name="entry_order" insertable="true" updatable="true" unique="false"/>
 			</basic>
+			<basic name="frontPageId">
+				<column name="front_page_id" insertable="true" updatable="true" unique="false"/>
+			</basic>
 			<basic name="creatorUserName">
 				<column name="creator" insertable="true" updatable="true" unique="false"/>
 			</basic>

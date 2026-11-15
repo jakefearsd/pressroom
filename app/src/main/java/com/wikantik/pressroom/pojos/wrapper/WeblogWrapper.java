@@ -261,6 +261,16 @@ public final class WeblogWrapper {
         return this.pojo.entryOrder().name();
     }
 
+    /** The id of the page the blog's root shows instead of its posts, or null. */
+    public String getFrontPageId() {
+        return this.pojo.getFrontPageId();
+    }
+
+    /** Whether the blog has a front door: true exactly when a front page is named. */
+    public boolean hasFrontDoor() {
+        return this.pojo.getFrontPageId() != null;
+    }
+
     /** Whether the blog lists oldest first; themes label their page links from this, never the raw string. */
     public boolean isOldestFirst() {
         return this.pojo.entryOrder() == EntryOrder.OLDEST;

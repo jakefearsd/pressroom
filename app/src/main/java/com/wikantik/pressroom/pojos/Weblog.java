@@ -67,6 +67,7 @@ public class Weblog implements Serializable {
     private Boolean showMoreFromSite = Boolean.TRUE;
     private Boolean shareRowEnabled  = Boolean.TRUE;
     private String  entryOrder       = EntryOrder.NEWEST.name();
+    private String  frontPageId;
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
@@ -300,6 +301,7 @@ public class Weblog implements Serializable {
         this.setShowMoreFromSite(other.getShowMoreFromSite());
         this.setShareRowEnabled(other.getShareRowEnabled());
         this.setEntryOrder(other.getEntryOrder());
+        this.setFrontPageId(other.getFrontPageId());
         this.setLastModified(other.getLastModified());
         this.setWeblogCategories(other.getWeblogCategories());
     }
@@ -405,6 +407,20 @@ public class Weblog implements Serializable {
 
     public void setEntryOrder(String entryOrder) {
         this.entryOrder = entryOrder;
+    }
+
+    /**
+     * The id of the page this blog's root shows instead of the post list, or
+     * null (the root lists posts). A plain id, not a relationship: pojos hold
+     * no business-tier type. The page manager clears it when that page stops
+     * being PUBLISHED or is removed.
+     */
+    public String getFrontPageId() {
+        return frontPageId;
+    }
+
+    public void setFrontPageId(String frontPageId) {
+        this.frontPageId = frontPageId;
     }
 
     /** The listing order to use: the stored value, newest first when null, blank or unknown. */

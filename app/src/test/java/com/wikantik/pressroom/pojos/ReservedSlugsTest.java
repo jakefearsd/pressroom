@@ -61,4 +61,10 @@ class ReservedSlugsTest {
                             + "URL -- it must be in ReservedSlugs.RESERVED");
         }
     }
+
+    @Test
+    void postsIsReservedInAnyCase() {
+        assertTrue(ReservedSlugs.isReserved("posts"));
+        assertTrue(ReservedSlugs.isReserved("Posts"));
+    }
 }

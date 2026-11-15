@@ -190,6 +190,7 @@ class WeblogLogicTest {
         source.setEntryDisplayCount(37);
         source.setActive(Boolean.FALSE);
         source.setLastModified(new Date(1_800_000_000_000L));
+        source.setFrontPageId("page-9");
         source.setWeblogCategories(new java.util.ArrayList<>(List.of(listed)));
 
         weblog.setData(source);
@@ -208,6 +209,7 @@ class WeblogLogicTest {
         assertEquals(37, weblog.getEntryDisplayCount());
         assertEquals(Boolean.FALSE, weblog.getActive());
         assertEquals(new Date(1_800_000_000_000L), weblog.getLastModified());
+        assertEquals("page-9", weblog.getFrontPageId());
         assertEquals(List.of(listed), weblog.getWeblogCategories());
     }
 

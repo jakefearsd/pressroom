@@ -273,4 +273,14 @@ class WeblogWrapperTest {
         assertEquals("NEWEST", wrapper.getEntryOrder(), "a hand-edited value reads as newest first");
         assertFalse(wrapper.isOldestFirst());
     }
+
+    @Test
+    void aFrontDoorIsActiveExactlyWhenTheFrontPageIdIsSet() {
+        assertFalse(wrapper.hasFrontDoor());
+        assertNull(wrapper.getFrontPageId());
+
+        weblog.setFrontPageId("page-1");
+        assertTrue(wrapper.hasFrontDoor());
+        assertEquals("page-1", wrapper.getFrontPageId());
+    }
 }

@@ -34,11 +34,12 @@ public final class ReservedSlugs {
     /**
      * The contexts {@code WeblogPageRequest} parses, plus the servlet paths
      * that never reach it ({@code feed}, {@code search}, {@code resource},
-     * {@code mediaresource}, {@code media}, {@code rsd}).
+     * {@code mediaresource}, {@code media}, {@code rsd}), and {@code posts}, the
+     * post listing's own path under a blog that has a front door.
      */
     public static final Set<String> RESERVED = Set.of(
             "entry", "date", "category", "page", "tags",
-            "feed", "search", "resource", "mediaresource", "media", "rsd");
+            "feed", "search", "resource", "mediaresource", "media", "rsd", "posts");
 
     private ReservedSlugs() {
     }
