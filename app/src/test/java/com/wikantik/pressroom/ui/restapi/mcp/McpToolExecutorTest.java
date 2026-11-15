@@ -74,6 +74,24 @@ class McpToolExecutorTest {
         assertEquals(List.of("PUBLISHED"), sent.query().get("status"));
     }
 
+    /** Spec 2026-11-15 criterion 8: an agent sets a blog's order and pins a post through MCP. */
+    @Test
+    void anAgentSetsTheBlogOrderAndPinsAPost() {
+        CallToolResult order = call("weblogs", Map.of("action", "update", "weblog", "b", "entryOrder", "OLDEST"));
+        CallToolResult pin = call("entries", Map.of("action", "update", "weblog", "b", "id", "e1",
+                "pinned", true));
+
+        assertFalse(order.isError(), text(order));
+        assertFalse(pin.isError(), text(pin));
+        ApiCall weblogCall = dispatched.get(0);
+        assertEquals("PATCH", weblogCall.method());
+        assertEquals("/v1/weblogs/b", weblogCall.path());
+        assertTrue(weblogCall.jsonBody().contains("\"entryOrder\":\"OLDEST\""), weblogCall.jsonBody());
+        ApiCall entryCall = dispatched.get(1);
+        assertEquals("/v1/weblogs/b/entries/e1", entryCall.path());
+        assertTrue(entryCall.jsonBody().contains("\"pinned\":true"), entryCall.jsonBody());
+    }
+
     /**
      * fields (spec 2026-10-24, section 2) is a query array on every entries
      * action that returns entries, whichever variant of get the call selects,

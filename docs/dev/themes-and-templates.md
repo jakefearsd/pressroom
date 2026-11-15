@@ -377,6 +377,17 @@ resolves through the index at the end of `CLAUDE.md`.
   `#showAudienceAssets`/`#showWeblogCategoryLinksList`). Write "the showX
   macro" in a comment, never `#showX` — `ThemeStylesheetTest` scans every
   theme stylesheet for the bare form and fails the build.
+- **Pinned rows and listing order.** The home listing's `getEntries()`
+  excludes the blog's pinned posts; `$pager.pinnedEntries` holds them (absent
+  on the search-results pager, so treat null as empty). The
+  showWeblogEntriesPager macro renders them first with `$pinnedRows` true
+  (reset to false after). A custom template that iterates `getEntries()`
+  itself must render `pinnedEntries` too, and its empty state must test both
+  (`PinnedRowsRenderingTest`, "only post is pinned"). In an oldest-first blog
+  `nextLink` still means the forward position but leads to NEWER posts: label
+  the page links from `$model.weblog.oldestFirst` (never the raw
+  `entryOrder` string), as the three article themes do; newest-first output
+  is unchanged.
 
 ## The colophon (footer)
 

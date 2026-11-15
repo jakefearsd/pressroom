@@ -123,6 +123,59 @@ class PinnedRowsRenderingTest {
         assertEquals(1, body.split(">PINNEDTITLE<", -1).length - 1, "the pinned post is listed once");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"journal", "portfolio", "travel"})
+    void aBlogWhoseOnlyPostIsPinnedStillListsItAndShowsNoEmptyState(String theme) throws Exception {
+        post("only-pinned", "PINNEDTITLE", 3, true);
+        theme(theme);
+
+        String body = home();
+
+        assertEquals(1, body.split(">PINNEDTITLE<", -1).length - 1, "the pinned post is listed once");
+        assertEquals(1, body.split(MARK, -1).length - 1, "with the Pinned mark");
+        assertFalse(body.contains("has been published here yet"), "no empty state:\n" + body);
+    }
+
+    private void twoPages(String theme, String order) throws Exception {
+        post("p-one", "ONETITLE", 3, false);
+        post("p-two", "TWOTITLE", 2, false);
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setEntryDisplayCount(1);
+        managed.setEntryOrder(order);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+        theme(theme);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"journal", "portfolio", "travel"})
+    void anOldestFirstBlogLabelsItsForwardLinkNewer(String theme) throws Exception {
+        twoPages(theme, "OLDEST");
+
+        String body = home();
+
+        assertTrue(body.contains("ONETITLE") && !body.contains("TWOTITLE"), "page one holds the oldest post");
+        int next = body.indexOf("rel=\"next\"");
+        assertTrue(next > 0, "page one links forward");
+        String link = body.substring(next, body.indexOf("</a>", next));
+        assertTrue(link.contains(">Newer<") && link.contains("More recent entries"), link);
+        assertFalse(link.contains("Older") || link.contains("Earlier"), link);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"journal", "portfolio", "travel"})
+    void aNewestFirstBlogKeepsItsForwardLinkOlder(String theme) throws Exception {
+        twoPages(theme, "NEWEST");
+
+        String body = home();
+
+        assertTrue(body.contains("TWOTITLE") && !body.contains("ONETITLE"), "page one holds the newest post");
+        int next = body.indexOf("rel=\"next\"");
+        assertTrue(next > 0, "page one links back");
+        String link = body.substring(next, body.indexOf("</a>", next));
+        assertTrue(link.contains(">Older<") && link.contains("Earlier entries"), link);
+    }
+
     @Test
     void theFeedListsAPinnedPostInItsDatePlace() throws Exception {
         post("old-pinned", "PINNEDTITLE", 30, true);

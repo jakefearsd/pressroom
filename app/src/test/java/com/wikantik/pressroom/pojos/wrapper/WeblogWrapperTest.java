@@ -259,4 +259,18 @@ class WeblogWrapperTest {
     void thePojoEscapeHatchReturnsTheVeryObjectThatWasWrapped() {
         assertSame(weblog, wrapper.getPojo());
     }
+
+    @Test
+    void theListingOrderReadsNormalisedAndOldestFirstFollowsIt() {
+        assertEquals("NEWEST", wrapper.getEntryOrder());
+        assertFalse(wrapper.isOldestFirst());
+
+        weblog.setEntryOrder("OLDEST");
+        assertEquals("OLDEST", wrapper.getEntryOrder());
+        assertTrue(wrapper.isOldestFirst());
+
+        weblog.setEntryOrder("oldest-ish");
+        assertEquals("NEWEST", wrapper.getEntryOrder(), "a hand-edited value reads as newest first");
+        assertFalse(wrapper.isOldestFirst());
+    }
 }

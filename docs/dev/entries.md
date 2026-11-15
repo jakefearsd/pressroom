@@ -331,7 +331,8 @@ the new dimension from spreading.
   `weblogSettings.error.entryOrder`), for the settings form and for
   `PATCH /api/v1/weblogs/{handle}` (400 with a field error; the API has no 422).
   The bean stores `name()`; a stored unknown value reads as newest first
-  (`Weblog.entryOrder()`), and a form that omits the field keeps NEWEST.
+  (`Weblog.entryOrder()`), and a form that omits the field resets the blog to NEWEST (the form binds a
+  fresh bean whose default is NEWEST).
 - **Cache**: saving the settings goes through `saveWeblog`, which stamps
   `lastModified`, so rendered pages expire at once.
 - **Pins** (`weblogentry.pinned`, V047; not `pinnedtomain`, the legacy

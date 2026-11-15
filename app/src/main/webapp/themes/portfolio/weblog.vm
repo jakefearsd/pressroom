@@ -64,6 +64,10 @@
     ## from a stale link. The wording differs per view because "nothing here
     ## yet" means three different things to the reader in those three places.
     #set($pagerDays = $pager.getEntries())
+    ## Pinned posts are not in getEntries(); a blog whose posts are all pinned
+    ## is not empty. The search-results pager has none (null reads as empty).
+    #set($pinnedHere = $pager.pinnedEntries)
+    #set($listEmpty = $pagerDays.isEmpty() && (!$pinnedHere || $pinnedHere.isEmpty()))
     ## The view says what it is on the page as well as in the tab: a reader
     ## who followed a tag chip from a post otherwise lands on a list that
     ## looks exactly like the home page. Tag views reach this template
@@ -89,7 +93,7 @@
     ## writing, which _day.vm opens and switches between as it goes; $pfRun
     ## is the run left open, closed here once the last day is out.
     <div class="pf-entries">
-        #if($pagerDays.isEmpty())
+        #if($listEmpty)
         #if($model.weblogCategory)
         <p class="pf-list-empty">Nothing has been filed under this category yet.</p>
         #elseif($model.tags && !$model.tags.isEmpty())
@@ -120,16 +124,16 @@
     <nav class="pf-pager pf-steps" aria-label="More entries">
         #if($pager.nextLink)
         <a class="pf-step pf-step-back" href="$pager.nextLink" rel="next">
-            <span class="pf-step-label">$text.get("pager.older")</span>
-            <span class="pf-step-title">Earlier entries</span>
+            <span class="pf-step-label">#if($model.weblog.oldestFirst)$text.get("pager.newer")#{else}$text.get("pager.older")#end</span>
+            <span class="pf-step-title">#if($model.weblog.oldestFirst)More recent entries#{else}Earlier entries#end</span>
         </a>
         #else
         <span class="pf-step pf-step-empty"></span>
         #end
         #if($pager.prevLink)
         <a class="pf-step pf-step-fwd" href="$pager.prevLink" rel="prev">
-            <span class="pf-step-label">$text.get("pager.newer")</span>
-            <span class="pf-step-title">More recent entries</span>
+            <span class="pf-step-label">#if($model.weblog.oldestFirst)$text.get("pager.older")#{else}$text.get("pager.newer")#end</span>
+            <span class="pf-step-title">#if($model.weblog.oldestFirst)Earlier entries#{else}More recent entries#end</span>
         </a>
         #end
     </nav>

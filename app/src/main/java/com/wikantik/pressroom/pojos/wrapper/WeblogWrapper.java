@@ -30,6 +30,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -255,9 +256,14 @@ public final class WeblogWrapper {
         return !Boolean.FALSE.equals(this.pojo.getShareRowEnabled());
     }
 
-    /** The stored listing order, NEWEST or OLDEST. */
+    /** The listing order, NEWEST or OLDEST; a stored unknown value reads as NEWEST. */
     public String getEntryOrder() {
-        return this.pojo.getEntryOrder();
+        return this.pojo.entryOrder().name();
+    }
+
+    /** Whether the blog lists oldest first; themes label their page links from this, never the raw string. */
+    public boolean isOldestFirst() {
+        return this.pojo.entryOrder() == EntryOrder.OLDEST;
     }
 
     /** Whether this blog's pages carry the subscribe form. Read by the showSubscribeForm macro. */
