@@ -37,6 +37,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -679,9 +680,19 @@ public class EntryEditController extends BaseController {
                 bean.getFeaturedImageId(), entry.getFeaturedImageId(), request);
         checkPickedImage(model, "weblogEdit.error.ogImageUnusable",
                 bean.getOgImageId(), entry.getOgImageId(), request);
+        boolean mayPin = hasWeblogAction(getActionWeblog(request),
+                getAuthenticatedUser(request), WeblogPermission.POST);
+        if (mayPin) {
+            checkPinLimit(model, entry, bean.getPinned(), request);
+        }
         if (!hasErrors(model)) {
             try {
                 applyForm(request, bean, entry, pubTime);
+                // Only a user with POST sees the checkbox; for anyone else
+                // the absent field keeps the stored pin (Review Focus 3).
+                if (mayPin) {
+                    entry.setPinned(bean.getPinned());
+                }
                 weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
                 afterSave(entry, actionName);
@@ -704,6 +715,29 @@ public class EntryEditController extends BaseController {
             bean.setStatus(null);
         }
         return ".EntryEdit";
+    }
+
+    /**
+     * Refuses a save that would pin one post more than the blog allows
+     * ({@link EntryPins}), as a field error on the checkbox, before anything
+     * is applied. A count that cannot be read refuses the pin too: it cannot
+     * vouch for the limit.
+     */
+    private void checkPinLimit(Model model, WeblogEntry entry, boolean requested, HttpServletRequest request) {
+        if (!requested || entry.getPinned()) {
+            // neither unpinning nor re-saving a pinned post adds a pin
+            return;
+        }
+        try {
+            long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(entry.getWebsite());
+            if (EntryPins.wouldExceed(entry.getPinned(), requested, pinned)) {
+                addFieldError(model, "entry_bean_pinned", "weblogEdit.error.pinLimit",
+                        new Object[] {EntryPins.MAX_PER_WEBLOG}, request);
+            }
+        } catch (WebloggerException e) {
+            log.error("Error counting the pinned posts of weblog {}", entry.getWebsite().getHandle(), e);
+            addError(model, "generic.error.check.logs", request);
+        }
     }
 
     /** Copies the form onto the entry, with the defaults a save fills in. */

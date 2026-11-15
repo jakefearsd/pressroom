@@ -55,6 +55,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import com.wikantik.pressroom.business.AnchorTakenException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
+import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.User;
@@ -244,6 +245,16 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         TypedQuery<Long> q = strategy.getDynamicQuery(
                 "SELECT COUNT(e) FROM WeblogEntry e WHERE e.category = ?1 AND e.status <> ?2", Long.class);
         q.setParameter(1, cat);
+        q.setParameter(2, PubStatus.TRASHED);
+        return q.getSingleResult();
+    }
+
+    @Override
+    public long getPinnedEntryCount(Weblog weblog) throws WebloggerException {
+        TypedQuery<Long> q = strategy.getDynamicQuery(
+                "SELECT COUNT(e) FROM WeblogEntry e WHERE e.website = ?1 AND e.pinned = TRUE AND e.status <> ?2",
+                Long.class);
+        q.setParameter(1, weblog);
         q.setParameter(2, PubStatus.TRASHED);
         return q.getSingleResult();
     }
@@ -557,9 +568,19 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * {@code trashWeblogEntry} already decremented the tag counts on the
      * way in whenever the entry being restored had been published -- there
      * is nothing left here to undo.
+     *
+     * <p>The trash does not count toward the pin limit, so other posts may
+     * have been pinned up to {@link EntryPins#MAX_PER_WEBLOG} meanwhile; a
+     * pinned entry restored then comes back unpinned rather than make one
+     * more. Counted while the entry is still TRASHED, so the count is of the
+     * others alone.
      */
     @Override
     public void restoreWeblogEntry(WeblogEntry entry) throws WebloggerException {
+        // stored false: a trashed pin is not among the counted, so it comes back as a new one
+        if (entry.getPinned() && EntryPins.wouldExceed(false, true, getPinnedEntryCount(entry.getWebsite()))) {
+            entry.setPinned(Boolean.FALSE);
+        }
         entry.setStatus(PubStatus.DRAFT);
         entry.setTrashedAt(null);
         saveWeblogEntry(entry);

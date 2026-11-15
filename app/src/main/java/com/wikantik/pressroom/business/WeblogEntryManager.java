@@ -240,6 +240,13 @@ public interface WeblogEntryManager {
      * TRASHED: a count query, never the entries themselves.
      */
     long getLiveEntryCount(WeblogCategory cat) throws WebloggerException;
+
+    /**
+     * How many of {@code weblog}'s entries are pinned, every status but
+     * TRASHED (drafts and scheduled posts show once published): what
+     * {@link EntryPins#wouldExceed} counts against. A count query.
+     */
+    long getPinnedEntryCount(Weblog weblog) throws WebloggerException;
         
     /**
      * Get category by id.

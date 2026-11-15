@@ -56,6 +56,9 @@ public class EntryBean {
 
     private String pubTimeLocal;
     private boolean pinnedToMain;
+    // Pinned to the top of this blog's home listing. Applied by
+    // EntryEditController, never copyTo: only a user with POST changes it.
+    private boolean pinned;
     private String searchDescription;
 
     // Wave 1 media & SEO foundation -- no editor UI yet, plumbing only
@@ -166,6 +169,14 @@ public class EntryBean {
     // where per-field rules live (EntryBean escapes the title on the way in and
     // unescapes it on the way out -- see CLAUDE.md, Templates), and a generic
     // mapper is exactly where such a rule gets lost.
+    }
+
+    public boolean getPinned() {
+        return this.pinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
     }
 
     public String getSearchDescription() {
@@ -394,7 +405,7 @@ public class EntryBean {
             throw new WebloggerException("No category specified");
         }
 
-        // NOTE: pubtime and pinned to main attributes are set in action
+        // NOTE: pubtime, pinned to main and pinned are set by EntryEditController
     }
     
     
@@ -446,6 +457,7 @@ public class EntryBean {
         }
 
         setPinnedToMain(entry.getPinnedToMain());
+        setPinned(entry.getPinned());
     }
     
     

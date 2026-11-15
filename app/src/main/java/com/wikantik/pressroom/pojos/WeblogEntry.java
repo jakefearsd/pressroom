@@ -262,7 +262,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      *       weblog for collisions;</li>
      *   <li>the publication time and status -- a copy starts as a DRAFT that
      *       has never been published, so it cannot appear on the blog before
-     *       its author has looked at it.</li>
+     *       its author has looked at it;</li>
+     *   <li>the pin to the top of the blog -- drafts count toward the blog's
+     *       pin limit, so a copied pin could make one more than it allows.</li>
      * </ul>
      *
      * <p>Tags are re-added by name rather than shared, so the copy owns its own
@@ -280,6 +282,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         copy.setTitle(newTitle);
         copy.setAnchor(null);
         copy.setStatus(PubStatus.DRAFT);
+        copy.setPinned(Boolean.FALSE);
         copy.setPubTime(null);
         copy.setUpdateTime(new Timestamp(System.currentTimeMillis()));
         copy.setTagsAsString(getTagsAsString());

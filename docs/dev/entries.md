@@ -334,6 +334,29 @@ the new dimension from spreading.
   (`Weblog.entryOrder()`), and a form that omits the field keeps NEWEST.
 - **Cache**: saving the settings goes through `saveWeblog`, which stamps
   `lastModified`, so rendered pages expire at once.
+- **Pins** (`weblogentry.pinned`, V047; not `pinnedtomain`, the legacy
+  site-wide flag, left untouched). `WeblogEntriesLatestPager` puts a blog's
+  pinned PUBLISHED posts (pubTime not after now) above page 1 of the home
+  listing only, in the blog's order, capped at `EntryPins.MAX_PER_WEBLOG`;
+  regular rows leave them out, so page 2+ neither skips nor repeats.
+- **The limit is one rule**: `EntryPins.wouldExceed(stored, requested,
+  getPinnedEntryCount(weblog))` -- only a NEW pin can exceed 3, and the count
+  is every pinned entry not TRASHED (drafts and scheduled count). Checked
+  before anything is applied: the editor as a field error on
+  `entry_bean_pinned` (`weblogEdit.error.pinLimit`), the API in `checkWrite`
+  (400, field `pinned`). A count that cannot be read refuses the pin.
+- **Who may pin**: `WeblogPermission.POST`. The editor renders the checkbox
+  only for `userAnAuthor` and applies `bean.pinned` only for a POST user, so
+  an EDIT_DRAFT author's save (no field) keeps a publisher's pin; never move
+  the pin into `EntryBean.copyTo`. The API needs nothing extra: every entry
+  write declares POST, so a draft-only member is refused (403).
+- **Paths that could make a fourth**: `restoreWeblogEntry` clears the pin when
+  3 others are pinned (counted while the entry is still TRASHED);
+  `copyAsDraft` (Duplicate) never copies the pin.
+- **Cache**: no bump of its own. `saveWeblogEntry` bumps `lastModified` for an
+  entry loaded PUBLISHED, which is the only kind whose pin a reader sees.
+- **Entries list**: a pinned row says "Pinned" (`weblogEntryQuery.pinned`,
+  `.entry-pinned`) in its meta line.
 
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on

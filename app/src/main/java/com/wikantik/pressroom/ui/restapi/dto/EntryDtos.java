@@ -67,7 +67,9 @@ public final class EntryDtos {
             String metaTitle, String searchDescription, String canonicalUrl,
             Boolean noindex, String featuredImageId, String ogImageId,
             String jsonLdType, Double geoLatitude, Double geoLongitude,
-            Instant eventStart, Instant eventEnd, String eventLocation, Boolean commentsClosed) {
+            Instant eventStart, Instant eventEnd, String eventLocation, Boolean commentsClosed,
+            @Schema(description = "True when the entry is pinned to the top of its blog's home listing.")
+            Boolean pinned) {
     }
 
     public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
@@ -134,7 +136,8 @@ public final class EntryDtos {
                 instant(entry.getEventStart()),
                 instant(entry.getEventEnd()),
                 entry.getEventLocation(),
-                entry.getCommentsClosed());
+                entry.getCommentsClosed(),
+                entry.getPinned());
     }
 
     /**
@@ -284,7 +287,10 @@ public final class EntryDtos {
                     + "\"Shorten the intro\". It labels, in the entry's revision list, the revision the update "
                     + "leaves: the content it replaced. An update that changes no title, text or summary leaves no "
                     + "revision, and its note is dropped. Not on create.")
-            String revisionNote) {
+            String revisionNote,
+            @Schema(description = "True to pin this entry to the top of its blog's home listing; at most 3 per "
+                    + "blog. Needs publish rights.")
+            Boolean pinned) {
 
         /**
          * This write with what the import step produced: the featured image it
@@ -309,7 +315,7 @@ public final class EntryDtos {
                     searchDescription, canonicalUrl, noindex, newFeaturedImageId, ogImageId, jsonLdType,
                     geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed, anchor,
                     featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash,
-                    revisionNote);
+                    revisionNote, pinned);
         }
     }
 
@@ -395,6 +401,10 @@ public final class EntryDtos {
         }
         if (write.noindex() != null) {
             entry.setNoindex(write.noindex());
+        }
+        // The pin limit needs a count, so the controller checks it (checkWrite).
+        if (write.pinned() != null) {
+            entry.setPinned(write.pinned());
         }
         if (write.featuredImageId() != null) {
             errors.check("featuredImageId", () -> {

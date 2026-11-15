@@ -948,6 +948,108 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertTrue(captureSavedEntry().getPinnedToMain());
     }
 
+    // --- pinned to the top of the blog ---
+
+    @Test
+    void aPublisherPinsAPost() throws Exception {
+        userMayPost = true;
+        existingEntry(PubStatus.PUBLISHED);
+        bean.setPinned(true);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(captureSavedEntry().getPinned());
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+    }
+
+    /**
+     * Criterion 5. The limit is checked before anything is applied, so the
+     * refused save stores nothing and the three pinned posts stay pinned.
+     */
+    @Test
+    void aFourthPinIsRefused() throws Exception {
+        registerMessage("weblogEdit.error.pinLimit", "already {0} pinned");
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(3L);
+        bean.setPinned(true);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertEquals(java.util.List.of("entry_bean_pinned"), invalidFields(model));
+        assertTrue(errors(model).contains("already 3 pinned"), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        assertFalse(entry.getPinned(), "the refused pin must not reach the entry");
+    }
+
+    /** A count that cannot be read cannot vouch for the limit: the pin is refused, not waved through. */
+    @Test
+    void aPinWhoseCountCannotBeReadIsRefused() throws Exception {
+        userMayPost = true;
+        existingEntry(PubStatus.PUBLISHED);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog))
+                .thenThrow(new WebloggerException("database down"));
+        bean.setPinned(true);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    /** Re-saving one of the three pinned posts is not a fourth pin. */
+    @Test
+    void resavingAPinnedPostWhenThreeArePinnedIsAllowed() throws Exception {
+        userMayPost = true;
+        existingEntry(PubStatus.PUBLISHED).setPinned(Boolean.TRUE);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(3L);
+        bean.setPinned(true);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(captureSavedEntry().getPinned());
+    }
+
+    /**
+     * Review Focus 3. The checkbox is not rendered for an author who may only
+     * edit drafts, so their form never carries it: the absent field must keep
+     * the publisher's pin, not read as "unpinned".
+     */
+    @Test
+    void aDraftOnlyAuthorKeepsAPinTheyCannotSee() throws Exception {
+        // Their own draft, which a publisher pinned: the one kind of entry
+        // they may save (lookupChangeableEntry).
+        userMayPost = false;
+        existingEntry(PubStatus.DRAFT).setPinned(Boolean.TRUE);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(captureSavedEntry().getPinned());
+    }
+
+    /** And the other way: posting the field without POST pins nothing. */
+    @Test
+    void aDraftOnlyAuthorCannotPin() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.DRAFT);
+        bean.setPinned(true);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertFalse(captureSavedEntry().getPinned());
+    }
+
+    /** A publisher's form carries the checkbox, so unchecked (absent) means unpin. */
+    @Test
+    void aPublisherUnpins() throws Exception {
+        userMayPost = true;
+        existingEntry(PubStatus.PUBLISHED).setPinned(Boolean.TRUE);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertFalse(captureSavedEntry().getPinned());
+    }
+
     // --- error handling ---
 
     @Test

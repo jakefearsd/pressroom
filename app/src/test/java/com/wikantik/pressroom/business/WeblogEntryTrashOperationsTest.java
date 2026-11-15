@@ -380,6 +380,52 @@ class WeblogEntryTrashOperationsTest {
                 "nothing may be purged when retention is -1");
     }
 
+    // ------------------------------------------------------------------ pins
+
+    /**
+     * The trash does not count toward the pin limit, so three other posts can
+     * be pinned while a pinned one sits there. Restoring it with its pin
+     * would make four; it comes back unpinned instead (Review Focus 4).
+     */
+    @Test
+    void restoringAPinnedPostWhenThreeArePinnedUnpinsIt() throws Exception {
+        WeblogEntry binned = pinnedEntry("pinned-in-trash", PubStatus.DRAFT);
+        WeblogEntry managed = entries().getWeblogEntry(binned.getId());
+        entries().trashWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        for (int i = 1; i <= EntryPins.MAX_PER_WEBLOG; i++) {
+            pinnedEntry("pinned-" + i, PubStatus.PUBLISHED);
+        }
+
+        entries().restoreWeblogEntry(entries().getWeblogEntry(binned.getId()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        WeblogEntry restored = entries().getWeblogEntry(binned.getId());
+        assertEquals(PubStatus.DRAFT, restored.getStatus());
+        assertFalse(restored.getPinned(), "a fourth pin must not come back from the trash");
+        assertEquals(EntryPins.MAX_PER_WEBLOG, entries().getPinnedEntryCount(TestUtils.getManagedWebsite(blog)));
+    }
+
+    @Test
+    void restoringAPinnedPostUnderTheLimitKeepsItsPin() throws Exception {
+        WeblogEntry binned = pinnedEntry("pinned-and-binned", PubStatus.DRAFT);
+        WeblogEntry managed = entries().getWeblogEntry(binned.getId());
+        entries().trashWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        pinnedEntry("pinned-other-1", PubStatus.PUBLISHED);
+        pinnedEntry("pinned-other-2", PubStatus.PUBLISHED);
+
+        entries().restoreWeblogEntry(entries().getWeblogEntry(binned.getId()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertTrue(entries().getWeblogEntry(binned.getId()).getPinned(),
+                "with two others pinned, the restored post is the third and keeps its pin");
+    }
+
     // -------------------------------------------------------------- revisions
 
     /**
@@ -456,6 +502,17 @@ class WeblogEntryTrashOperationsTest {
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
         return TestUtils.getManagedWebsite(blog).getLastModified();
+    }
+
+    private WeblogEntry pinnedEntry(String anchor, PubStatus status) throws Exception {
+        WeblogEntry created = TestUtils.setupWeblogEntry(anchor, blog, user, status);
+        TestUtils.endSession(true);
+        WeblogEntry managed = entries().getWeblogEntry(created.getId());
+        managed.setPinned(Boolean.TRUE);
+        entries().saveWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        return managed;
     }
 
     private List<PressroomEvent> events() throws Exception {

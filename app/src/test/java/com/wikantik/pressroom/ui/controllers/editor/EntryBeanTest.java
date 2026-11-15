@@ -526,6 +526,7 @@ class EntryBeanTest extends EditorControllerTestSupport {
         entry.setSearchDescription("The search description");
         entry.setTagsAsString("alpha beta");
         entry.setPinnedToMain(Boolean.TRUE);
+        entry.setPinned(Boolean.TRUE);
         entry.setFeaturedImageId("mf-featured-1");
         entry.setMetaTitle("Stored SEO Title");
         entry.setOgImageId("mf-og-1");
@@ -550,6 +551,7 @@ class EntryBeanTest extends EditorControllerTestSupport {
         assertEquals("cat-1", bean.getCategoryId());
         assertEquals("alpha beta", bean.getTagsAsString());
         assertTrue(bean.getPinnedToMain());
+        assertTrue(bean.getPinned());
         assertEquals("mf-featured-1", bean.getFeaturedImageId());
         assertEquals("Stored SEO Title", bean.getMetaTitle());
         assertEquals("mf-og-1", bean.getOgImageId());
@@ -647,6 +649,26 @@ class EntryBeanTest extends EditorControllerTestSupport {
         // true would silently pin every new post to the site front page.
         EntryBean fresh = new EntryBean();
         assertFalse(fresh.getPinnedToMain());
+        assertFalse(fresh.getPinned());
+    }
+
+    /**
+     * The controller applies the pin, because only a user with POST may
+     * change it: an author who may only edit drafts never sees the checkbox,
+     * so the form's absent field must leave a publisher's pin standing. If
+     * copyTo wrote it, every such save would unpin the post.
+     */
+    @Test
+    void copyToDoesNotTouchThePin() throws Exception {
+        WeblogEntry entry = entryInCategory("cat-1");
+        entry.setPinned(Boolean.TRUE);
+        bean.setStatus(PubStatus.DRAFT.name());
+        bean.setCategoryId("cat-1");
+        bean.setPinned(false);
+
+        bean.copyTo(entry, entry.getCategory());
+
+        assertTrue(entry.getPinned(), "copyTo must leave pinned alone");
     }
 
     private WeblogEntry entryInCategory(String categoryId) throws WebloggerException {

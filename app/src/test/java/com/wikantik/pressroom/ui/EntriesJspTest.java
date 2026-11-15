@@ -102,6 +102,17 @@ class EntriesJspTest {
         assertTrue(cell.contains("post.anchor"), "the .entry-meta line does not show the entry's anchor");
     }
 
+    /** A pinned post says so on its row, in words, beside its anchor. */
+    @Test
+    void aPinnedRowIsMarked() throws IOException {
+        String cell = titleCell(read(ENTRIES));
+
+        assertTrue(cell.contains("<c:if test=\"${post.pinned}\">"), "the pin marker is not gated on post.pinned");
+        assertTrue(cell.contains("class=\"entry-pinned\""), "the pin marker has no .entry-pinned class");
+        assertTrue(cell.contains("code=\"weblogEntryQuery.pinned\""), "the pin marker has no label");
+        assertTrue(read(PRESSROOM_CSS).contains(".entry-pinned"), "pressroom.css does not style .entry-pinned");
+    }
+
     /** The pencil column existed only to reach the editor; the title does that now. */
     @Test
     void thePencilColumnIsGone() throws IOException {

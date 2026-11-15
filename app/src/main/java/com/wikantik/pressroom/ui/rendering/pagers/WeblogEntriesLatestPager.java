@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.EntryOrder;
@@ -46,8 +47,11 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
     // the blog's pinned posts, read once, for page one of the home listing
     private List<WeblogEntryWrapper> pinned;
 
-    /** The most pinned posts a blog shows; Task 5's EntryPins.MAX_PER_WEBLOG takes over. */
-    private static final int MAX_PINNED = 3;
+    /**
+     * The most pinned posts a blog shows: {@link EntryPins#MAX_PER_WEBLOG},
+     * the limit pinning enforces, kept as a cap here too.
+     */
+    private static final int MAX_PINNED = EntryPins.MAX_PER_WEBLOG;
 
     // are there more pages?
     private boolean more;

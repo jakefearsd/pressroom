@@ -292,6 +292,15 @@
                         onclick="fullPreviewMode()"><spring:message code="weblogEdit.fullPreviewMode"/></button>
             </c:if>
 
+            <%-- Pin to the top of this blog: publish rights only. For anyone
+                 else the field is absent, and the controller keeps the
+                 stored pin rather than reading that as unpinned. --%>
+            <c:if test="${userAnAuthor}">
+                <div class="form-check editor-quiet-check">
+                    <label class="form-check-label"><input type="checkbox" class="form-check-input" id="entry_bean_pinned" name="bean.pinned" value="true" ${bean.pinned ? 'checked' : ''}/> <spring:message code="weblogEdit.pinned"/></label>
+                </div>
+            </c:if>
+
             <%-- global admin can pin items to front page weblog --%>
             <c:if test="${isGlobalAdmin}">
                 <div class="form-check editor-quiet-check">

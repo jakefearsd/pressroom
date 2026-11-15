@@ -561,6 +561,19 @@ class WeblogEntryLogicTest {
     }
 
     /**
+     * A duplicate is a new draft, and drafts count toward the blog's pin
+     * limit: copying a pinned post's pin would take a blog with three pinned
+     * posts to four without anyone choosing it.
+     */
+    @Test
+    void copyAsDraftLeavesThePinBehind() throws Exception {
+        entry.setTitle("Original");
+        entry.setPinned(Boolean.TRUE);
+
+        assertFalse(entry.copyAsDraft("Copy").getPinned());
+    }
+
+    /**
      * A revision is stamped when the save that displaces the content runs,
      * not when the entry was loaded: the pruner and the rail order by it, and
      * load order is not save order.

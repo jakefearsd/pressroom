@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorTakenException;
+import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -526,6 +527,23 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         checkImageId(errors, weblog, "featuredImageId", body.featuredImageId(), entry.getFeaturedImageId());
         checkImageId(errors, weblog, "ogImageId", body.ogImageId(), entry.getOgImageId());
+        if (Boolean.TRUE.equals(body.pinned()) && !entry.getPinned()) {
+            errors.check("pinned", () -> requirePinRoom(weblog));
+        }
+    }
+
+    /**
+     * A new pin is refused once the blog has {@link EntryPins#MAX_PER_WEBLOG}
+     * (the editor's rule, {@code EntryEditController.checkPinLimit}). Pinning
+     * needs POST, which every write here already requires
+     * ({@link #requiredWeblogPermissionActions}), as publishing does.
+     */
+    private void requirePinRoom(Weblog weblog) throws WebloggerException {
+        long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog);
+        if (EntryPins.wouldExceed(false, true, pinned)) {
+            throw ApiException.invalidField("pinned", "This blog already has " + EntryPins.MAX_PER_WEBLOG
+                    + " pinned posts, the most it allows. Unpin one first.");
+        }
     }
 
     /**

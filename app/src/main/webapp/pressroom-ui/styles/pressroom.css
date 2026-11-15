@@ -1553,6 +1553,11 @@ form + .row-action {
     color: var(--ink-soft);
 }
 
+/* "Pinned" on a pinned post's row: in words, a shade above the line it sits in. */
+.entry-pinned {
+    color: var(--ink);
+}
+
 /* A link that must be reachable without competing with the title above it:
    underlined so it still reads as a link at --ink-soft, which on its own is
    too quiet to announce one. */

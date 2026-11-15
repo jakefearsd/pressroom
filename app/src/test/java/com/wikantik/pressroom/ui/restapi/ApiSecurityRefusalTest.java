@@ -187,6 +187,33 @@ class ApiSecurityRefusalTest {
     }
 
     /**
+     * Pinning a post needs POST, the level publishing needs. The API has no
+     * separate publish check to mirror: every entry write ({@code
+     * EntriesWriteApi}, which carries {@code pinned}) declares POST, so a
+     * member who may only edit drafts is refused any PATCH -- pinned in it or
+     * not -- with this 403, before the handler runs. A characterisation test:
+     * it passes against the existing interceptor, and fails if the write
+     * controller's declared level is ever lowered.
+     */
+    @Test
+    void aDraftOnlyMemberCannotPinBecauseEveryEntryWriteNeedsPost() throws Exception {
+        signInAsAlice();
+        nameWeblogInPath("aliceblog");
+        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
+                .thenAnswer(call -> ((WeblogPermission) call.getArgument(0))
+                        .getActionsAsList().equals(List.of(WeblogPermission.EDIT_DRAFT)));
+        HandlerMethod update = new HandlerMethod(new com.wikantik.pressroom.ui.restapi.v1.EntriesWriteApi(),
+                com.wikantik.pressroom.ui.restapi.v1.EntriesWriteApi.class.getMethod("update",
+                        jakarta.servlet.http.HttpServletRequest.class, String.class,
+                        com.wikantik.pressroom.ui.restapi.dto.EntryDtos.EntryWrite.class, List.class));
+
+        ApiException refusal = assertThrows(ApiException.class,
+                () -> interceptor.preHandle(request, response, update));
+
+        assertEquals(403, refusal.getStatus());
+    }
+
+    /**
      * A token pinned to another weblog cannot act here whatever its owner's
      * role, so to it this weblog is one it may not see: the 404 the README
      * promises for a weblog outside the pin, not a 403 that would reveal the

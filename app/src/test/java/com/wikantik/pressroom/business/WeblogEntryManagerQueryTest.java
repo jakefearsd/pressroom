@@ -399,6 +399,49 @@ class WeblogEntryManagerQueryTest {
     }
 
     /**
+     * The pin limit counts what a blog could show pinned: drafts and
+     * scheduled posts too (they show once published), never the trash. The
+     * two unpinned fixtures are not counted at all.
+     */
+    @Test
+    void thePinnedCountLeavesOutTrashedPosts() throws Exception {
+        pin(TestUtils.setupWeblogEntry("pinned-published", travel, PubStatus.PUBLISHED, blog, user));
+        pin(TestUtils.setupWeblogEntry("pinned-draft", travel, PubStatus.DRAFT, blog, user));
+        WeblogEntry binned = TestUtils.setupWeblogEntry("pinned-binned", travel, PubStatus.PUBLISHED, blog, user);
+        pin(binned);
+        TestUtils.endSession(true);
+        WeblogEntry managed = entries().getWeblogEntry(binned.getId());
+        entries().trashWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertEquals(2, entries().getPinnedEntryCount(TestUtils.getManagedWebsite(blog)));
+    }
+
+    /**
+     * Pinning a published post changes the blog's home page, so the save has
+     * to expire the rendered copy. {@code saveWeblogEntry} already bumps
+     * {@code weblog.lastModified} for an entry loaded as PUBLISHED; this is a
+     * characterisation test of that, written to pass against the existing
+     * save, so the pin needs no bump of its own.
+     */
+    @Test
+    void pinningAPublishedPostBumpsTheWeblogsLastModified() throws Exception {
+        Weblog managedBlog = TestUtils.getManagedWebsite(blog);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managedBlog);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        Date before = TestUtils.getManagedWebsite(blog).getLastModified();
+        Thread.sleep(5);
+
+        pin(popular);
+        TestUtils.endSession(true);
+
+        assertTrue(TestUtils.getManagedWebsite(blog).getLastModified().after(before),
+                "a pin on a published post must expire the cached home page");
+    }
+
+    /**
      * Trashing an entry does not free its anchor. If it did, a new entry
      * could take the same anchor and collide with the trashed one the moment
      * it is restored.
@@ -442,6 +485,13 @@ class WeblogEntryManagerQueryTest {
         entries().saveWeblogEntry(managed);
         TestUtils.weblogger().flush();
         return managed;
+    }
+
+    private static void pin(WeblogEntry entry) throws Exception {
+        WeblogEntry managed = entries().getWeblogEntry(entry.getId());
+        managed.setPinned(Boolean.TRUE);
+        entries().saveWeblogEntry(managed);
+        TestUtils.weblogger().flush();
     }
 
     private void tag(WeblogEntry entry, String tagName) throws Exception {

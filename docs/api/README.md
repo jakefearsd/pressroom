@@ -1037,6 +1037,16 @@ the view always answers in upper case. Any other value is a 400 with an
 page, site-wide lists and search stay newest first. It cannot be cleared. The
 MCP `weblogs` tool's `update` action carries it like any other field.
 
+An entry's `pinned` (default false) puts it at the top of its blog's home
+page, above the regular posts, on the first page only. It is a field of the
+entry view and of entry create and update; `false` unpins. A blog has at most
+3 pinned entries, counting drafts and scheduled entries but not the trash:
+pinning a fourth is a 400 with an `errors` entry on `pinned`, and nothing of
+that write is saved. Unpin one first. Pinning needs publish rights, as every
+entry write does (a member who may only edit drafts gets 403). An entry
+restored from the trash when 3 others are pinned comes back unpinned. It
+cannot be cleared; feeds and the site front page ignore it.
+
 ## Audits
 
 ```

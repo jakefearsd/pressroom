@@ -126,8 +126,9 @@ class ToolSchemasTest {
         }
         // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
         // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
-        // (spec 2026-10-24), 20; revisionNote (Wave B), 21; metaTitle and searchDescription (Bing scan), 23.
-        assertEquals(23, described);
+        // (spec 2026-10-24), 20; revisionNote (Wave B), 21; metaTitle and searchDescription (Bing scan), 23;
+        // pinned (blog pins), 24.
+        assertEquals(24, described);
     }
 
     /**

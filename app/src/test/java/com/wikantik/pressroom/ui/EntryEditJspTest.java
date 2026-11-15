@@ -279,6 +279,28 @@ class EntryEditJspTest {
                 "the newsletter.noList.link message must render inside an <a> element");
     }
 
+    /**
+     * The pin checkbox renders only for a user with POST ({@code userAnAuthor},
+     * the publish-rights flag the rail's buttons read): for anyone else the
+     * field is absent, which the controller reads as "keep the stored pin".
+     * Its id is the one a refused pin marks invalid.
+     */
+    @Test
+    void thePinCheckboxShowsOnlyToPublishers() throws IOException {
+        String jsp = read();
+        int field = jsp.indexOf("name=\"bean.pinned\"");
+        assertTrue(field >= 0, "EntryEdit.jsp has no bean.pinned checkbox");
+        int guard = jsp.lastIndexOf("<c:if test=\"${userAnAuthor}\">", field);
+        assertTrue(guard >= 0, "the pin checkbox is not inside a userAnAuthor guard");
+        assertFalse(jsp.substring(guard, field).contains("</c:if>"),
+                "the userAnAuthor guard closes before the pin checkbox");
+        String input = jsp.substring(jsp.lastIndexOf("<input", field), jsp.indexOf("/>", field));
+        assertTrue(input.contains("type=\"checkbox\""), input);
+        assertTrue(input.contains("id=\"entry_bean_pinned\""), input);
+        assertTrue(input.contains("${bean.pinned ? 'checked' : ''}"), input);
+        assertTrue(jsp.contains("code=\"weblogEdit.pinned\""), "the checkbox has no weblogEdit.pinned label");
+    }
+
     /** The Comments closed checkbox binds the bean beside noindex, and the counts line links to moderation. */
     @Test
     void theEditorOffersCommentsClosedAndTheCountsLine() throws IOException {

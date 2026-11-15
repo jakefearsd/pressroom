@@ -245,7 +245,8 @@
         <a class="entry-title" href="${editUrl}">${fn:escapeXml(entryTitles[post.id])}</a>
         <div class="entry-meta">
             <span class="data">${fn:escapeXml(post.anchor)}</span><c:if test="${post.status.name() == 'PUBLISHED'}"> &#183;
-            <a class="quiet-link" href="${fn:escapeXml(urls.entry(post))}" target="_blank" rel="noopener"><spring:message code="generic.view"/></a></c:if>
+            <a class="quiet-link" href="${fn:escapeXml(urls.entry(post))}" target="_blank" rel="noopener"><spring:message code="generic.view"/></a></c:if><c:if test="${post.pinned}"> &#183;
+            <span class="entry-pinned"><spring:message code="weblogEntryQuery.pinned"/></span></c:if>
         </div>
     </td>
 

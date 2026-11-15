@@ -362,6 +362,128 @@ class EntriesWriteApiControllerTest {
     }
 
     /**
+     * Criterion 8: pinned is writable and shown. The PATCH answer is the
+     * entry view GET returns ({@code EntryDtos.toView}), so it is read back
+     * from both.
+     */
+    @Test
+    void pinnedRoundTrips() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("t");
+        entry.setText("b");
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(2L);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pinned\":true}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(Boolean.TRUE, entry.getPinned());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
+        assertTrue(new tools.jackson.databind.ObjectMapper().readTree(body).get("pinned").asBoolean());
+        assertEquals(Boolean.TRUE, com.wikantik.pressroom.ui.restapi.dto.EntryDtos.toView(entry, null).pinned());
+    }
+
+    /** An unpinned entry reads back pinned false, never absent. */
+    @Test
+    void anUnpinnedEntryShowsPinnedFalse() {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setWebsite(aWeblog("myblog"));
+
+        assertEquals(Boolean.FALSE, com.wikantik.pressroom.ui.restapi.dto.EntryDtos.toView(entry, null).pinned());
+    }
+
+    /**
+     * Criterion 5 through the API: 400 with a field error on pinned, and the
+     * write refused whole -- the text sent beside it is not applied either.
+     */
+    @Test
+    void aFourthPinIs400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("t");
+        entry.setText("b");
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(3L);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pinned\":true,\"text\":\"changed\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("pinned"));
+
+        assertFalse(entry.getPinned());
+        assertEquals("b", entry.getText());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
+    }
+
+    /** A new entry created pinned is a new pin like any other. */
+    @Test
+    void creatingAFourthPinnedEntryIs400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(3L);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"b\",\"pinned\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("pinned"));
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    /** Unpinning, and re-sending true for a post already pinned, never meet the limit. */
+    @Test
+    void unpinningWhenThreeArePinnedIsAllowed() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("t");
+        entry.setText("b");
+        entry.setPinned(Boolean.TRUE);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        when(weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog)).thenReturn(3L);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pinned\":true}"))
+                .andExpect(status().isOk());
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pinned\":false}"))
+                .andExpect(status().isOk());
+
+        assertFalse(entry.getPinned());
+    }
+
+    /**
      * Criterion 11's last step, the import-then-featuredImageId flow: the id
      * POST /media/imports answers with (a MediaFile id, a 36-character UUID)
      * is accepted as an entry's featuredImageId, stored, and read back.
