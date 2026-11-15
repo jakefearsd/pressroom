@@ -22,6 +22,10 @@ package com.wikantik.pressroom.business.search.lucene;
 import java.util.Locale;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 
 /**
  * Class containing helper methods.
@@ -65,6 +69,18 @@ public final class IndexUtil {
      */
     static String handleKey(String handle) {
         return handle == null || handle.isBlank() ? null : handle.strip();
+    }
+
+    /**
+     * The one document of this kind with this id. Entries and pages share the
+     * id field, so every delete or lookup by id names the kind too: neither
+     * kind's write may ever reach the other's document.
+     */
+    static Query document(String kind, String id) {
+        return new BooleanQuery.Builder()
+                .add(new TermQuery(new Term(FieldConstants.ID, id)), BooleanClause.Occur.FILTER)
+                .add(new TermQuery(new Term(FieldConstants.KIND, kind)), BooleanClause.Occur.FILTER)
+                .build();
     }
 
     /** The term for {@link #handleKey}, or null when blank. */

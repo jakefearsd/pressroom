@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.Term;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
@@ -105,8 +104,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
                 // this queued job) or a non-PUBLISHED entry (e.g. trashed
                 // since this job was queued) must not leave a stale document
                 // behind.
-                Term term = new Term(FieldConstants.ID, entryId);
-                writer.deleteDocuments(term);
+                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
 
                 // Add Doc -- only a published entry belongs in the search
                 // index. Every caller already gates on isPublished() before

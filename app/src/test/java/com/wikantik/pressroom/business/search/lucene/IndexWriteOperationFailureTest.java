@@ -241,6 +241,32 @@ class IndexWriteOperationFailureTest {
         assertFalse(indexedDocs().containsKey("locked-1"), "with the lock free, the removal goes through");
     }
 
+    /** As above, for the page writes: a draft's reindex and a removal both leave the page in place. */
+    @Test
+    void aPageWriteThatCannotTakeLucenesLockChangesNothing() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId("locked-page");
+        page.setWeblog(blog);
+        page.setTitle("Locked page");
+        page.setContent("failureword");
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        when(pressroom.getWeblogPageManager().getPage("locked-page")).thenReturn(page);
+        manager.reindexPage(page);
+        assertTrue(indexedDocs().containsKey("locked-page"), "precondition: the page is indexed");
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT);
+
+        try (FSDirectory dir = FSDirectory.open(indexDir);
+             IndexWriter foreign = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
+            manager.reindexPage(page);
+            manager.removePage(page);
+            assertTrue(foreign.isOpen());
+        }
+        assertTrue(indexedDocs().containsKey("locked-page"), "a write without the lock must change nothing");
+
+        manager.reindexPage(page);
+        assertFalse(indexedDocs().containsKey("locked-page"), "with the lock free, the draft is taken out");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private WeblogEntry indexed(String id) throws Exception {

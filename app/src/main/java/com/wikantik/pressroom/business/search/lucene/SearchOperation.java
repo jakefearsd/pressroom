@@ -88,7 +88,18 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         return java.util.Collections.unmodifiableMap(boosts);
     }
 
-    private static final String[] SEARCH_FIELDS = FIELD_BOOSTS.keySet().toArray(new String[0]);
+    /**
+     * The fields a page search reads, weighted as the post fields holding
+     * the same kind of text are: a title word counts four times a body word.
+     */
+    static final Map<String, Float> PAGE_FIELD_BOOSTS = pageFieldBoosts();
+
+    private static Map<String, Float> pageFieldBoosts() {
+        Map<String, Float> boosts = new java.util.LinkedHashMap<>();
+        boosts.put(FieldConstants.PAGE_TITLE, FIELD_BOOSTS.get(FieldConstants.TITLE));
+        boosts.put(FieldConstants.PAGE_CONTENT, FIELD_BOOSTS.get(FieldConstants.CONTENT));
+        return java.util.Collections.unmodifiableMap(boosts);
+    }
 
     private static final TopDocs NO_HITS = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO),
             new org.apache.lucene.search.ScoreDoc[0]);
@@ -136,6 +147,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     // flagged for the site whose blog handle is in it.
     private java.util.Set<String> siteHandles;
     private String excludedHandle;
+    // false: posts (the default every post search relies on); true: pages.
+    // Final: set by the caller's thread, read on the pool thread run() uses.
+    private final boolean pages;
 
     // ~ Constructors
     // ===========================================================
@@ -144,9 +158,27 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * Create a new operation that searches the index.
      */
     public SearchOperation(IndexManager mgr) {
+        this(mgr, FieldConstants.KIND_ENTRY);
+    }
+
+    /**
+     * An operation that searches one kind of document: posts
+     * ({@link FieldConstants#KIND_ENTRY}, what the one-argument constructor
+     * makes) or pages ({@link FieldConstants#KIND_PAGE}): the page fields,
+     * with no publish-time or site-flag filter (a page in the index is
+     * published and not noindex). The scope setters apply to pages as they
+     * do to posts, the handle set of {@link #restrictToSite} included.
+     *
+     * @throws IllegalArgumentException for any other kind
+     */
+    public SearchOperation(IndexManager mgr, String kind) {
         // TODO: finish moving IndexManager to backend, so this cast is not
         // needed
         super((LuceneIndexManager) mgr);
+        if (!FieldConstants.KIND_ENTRY.equals(kind) && !FieldConstants.KIND_PAGE.equals(kind)) {
+            throw new IllegalArgumentException("Unknown document kind: " + kind);
+        }
+        this.pages = FieldConstants.KIND_PAGE.equals(kind);
     }
 
     // ~ Methods
@@ -157,7 +189,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     /**
-     * The reader's query, confined to {@link #SEARCH_FIELDS}. The classic
+     * The reader's query, confined to the fields it searches. The classic
      * parser honours "field:" syntax for any field in the index, so a reader
      * could query fields search is not for ("username:a*" enumerated author
      * logins; code review, 2026-11-03). A field outside the searched ones is
@@ -165,15 +197,16 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      */
     static final class SearchedFieldsOnly extends MultiFieldQueryParser {
 
-        private static final java.util.Set<String> SEARCHED = java.util.Set.of(SEARCH_FIELDS);
+        private final java.util.Set<String> searched;
 
         SearchedFieldsOnly(String[] fields, org.apache.lucene.analysis.Analyzer analyzer,
                 Map<String, Float> boosts) {
             super(fields, analyzer, boosts);
+            this.searched = java.util.Set.of(fields);
         }
 
-        private static String confine(String field) {
-            return field != null && SEARCHED.contains(field) ? field : null;
+        private String confine(String field) {
+            return field != null && searched.contains(field) ? field : null;
         }
 
         @Override
@@ -249,7 +282,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             // (from three words), then any of them. The page says when it fell
             // back, so a reader is never shown partial matches as if they were
             // complete ones.
-            Query phrase = phraseBoost(term, manager.getAnalyzer());
+            Query phrase = pages
+                    ? phraseBoost(term, manager.getAnalyzer(), FieldConstants.PAGE_TITLE, FieldConstants.PAGE_CONTENT)
+                    : phraseBoost(term, manager.getAnalyzer());
             Query all = parse(MultiFieldQueryParser.Operator.AND);
             parsedQuery = all;
             searchresults = run(searcher, all, phrase, nowMillis);
@@ -289,13 +324,21 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     private Query parse(MultiFieldQueryParser.Operator operator) throws ParseException {
-        return parse(term, operator, manager.getAnalyzer());
+        return pages ? parse(term, operator, manager.getAnalyzer(), PAGE_FIELD_BOOSTS)
+                : parse(term, operator, manager.getAnalyzer());
     }
 
     /** The reader's words as the query the index runs, confined to the searched fields and weighted. */
     static Query parse(String words, MultiFieldQueryParser.Operator operator,
             org.apache.lucene.analysis.Analyzer analyzer) throws ParseException {
-        MultiFieldQueryParser parser = new SearchedFieldsOnly(SEARCH_FIELDS, analyzer, FIELD_BOOSTS);
+        return parse(words, operator, analyzer, FIELD_BOOSTS);
+    }
+
+    /** The reader's words over {@code boosts}' fields, with their weights, confined to them. */
+    private static Query parse(String words, MultiFieldQueryParser.Operator operator,
+            org.apache.lucene.analysis.Analyzer analyzer, Map<String, Float> boosts) throws ParseException {
+        MultiFieldQueryParser parser = new SearchedFieldsOnly(boosts.keySet().toArray(new String[0]),
+                analyzer, boosts);
         parser.setDefaultOperator(operator);
         return parser.parse(words);
     }
@@ -336,15 +379,21 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * spaces. Null when the words analyse to fewer than two tokens.
      */
     static Query phraseBoost(String words, org.apache.lucene.analysis.Analyzer analyzer) {
+        return phraseBoost(words, analyzer, FieldConstants.TITLE, FieldConstants.CONTENT);
+    }
+
+    /** {@link #phraseBoost(String, org.apache.lucene.analysis.Analyzer)} over these title and body fields. */
+    private static Query phraseBoost(String words, org.apache.lucene.analysis.Analyzer analyzer,
+            String titleField, String contentField) {
         String plain = NOT_A_WORD.matcher(words).replaceAll(" ").trim();
         org.apache.lucene.util.QueryBuilder builder = new org.apache.lucene.util.QueryBuilder(analyzer);
-        Query title = builder.createPhraseQuery(FieldConstants.TITLE, plain, TITLE_PHRASE_SLOP);
+        Query title = builder.createPhraseQuery(titleField, plain, TITLE_PHRASE_SLOP);
         // one token (or none) is a term query (or null): no phrase to reward.
         // Same analyzer, same text: the body's phrase has the same tokens.
         if (title == null || title instanceof TermQuery) {
             return null;
         }
-        Query content = builder.createPhraseQuery(FieldConstants.CONTENT, plain, CONTENT_PHRASE_SLOP);
+        Query content = builder.createPhraseQuery(contentField, plain, CONTENT_PHRASE_SLOP);
         return new BooleanQuery.Builder()
             .add(new BoostQuery(title, TITLE_PHRASE_BOOST), BooleanClause.Occur.SHOULD)
             .add(new BoostQuery(content, CONTENT_PHRASE_BOOST), BooleanClause.Occur.SHOULD)
@@ -375,30 +424,17 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                     .build();
         BooleanQuery.Builder query = new BooleanQuery.Builder()
             .add(FunctionScoreQuery.boostByValue(ranked, new RecencySource(nowMillis)),
-                    BooleanClause.Occur.MUST);
+                    BooleanClause.Occur.MUST)
+            // posts or pages, never both: a filter, so it changes no score
+            .add(new TermQuery(new Term(FieldConstants.KIND,
+                    pages ? FieldConstants.KIND_PAGE : FieldConstants.KIND_ENTRY)), BooleanClause.Occur.FILTER);
 
         Term handleTerm = IndexUtil.handleTerm(weblogHandle);
         if (handleTerm != null) {
             query.add(new TermQuery(handleTerm), BooleanClause.Occur.FILTER);
         }
-        if (siteHandles != null) {
-            // fail closed: no eligible blog is no hit, never an unfiltered search
-            if (siteHandles.isEmpty()) {
-                return NO_HITS;
-            }
-            query.add(new TermQuery(new Term(FieldConstants.SITE, FieldConstants.SITE_V)),
-                    BooleanClause.Occur.FILTER);
-            java.util.List<BytesRef> handles = new java.util.ArrayList<>();
-            for (String handle : siteHandles) {
-                Term term = IndexUtil.handleTerm(handle);
-                if (term != null) {
-                    handles.add(term.bytes());
-                }
-            }
-            if (handles.isEmpty()) {
-                return NO_HITS;
-            }
-            query.add(new TermInSetQuery(FieldConstants.WEBSITE_HANDLE, handles), BooleanClause.Occur.FILTER);
+        if (siteHandles != null && !narrowToSite(query)) {
+            return NO_HITS;
         }
         Term excludedTerm = IndexUtil.handleTerm(excludedHandle);
         if (excludedTerm != null) {
@@ -417,10 +453,41 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         // page, so it is left out here rather than after the fact: the
         // total a reader is told ("N entries match", whether there is a
         // next page) is the hit count. PUBLISHED holds the pub time as
-        // Timestamp#toString, whose text order is time order.
-        query.add(notFuture(manager.now()), BooleanClause.Occur.FILTER);
+        // Timestamp#toString, whose text order is time order. A page has
+        // no publish time: in the index means published.
+        if (!pages) {
+            query.add(notFuture(manager.now()), BooleanClause.Occur.FILTER);
+        }
 
         return indexSearcher.search(query.build(), DOC_LIMIT);
+    }
+
+    /**
+     * Adds the site's filters: a post flagged for the site, of a blog in
+     * {@link #siteHandles}. False when nothing can match: fail closed, no
+     * eligible blog is no hit, never an unfiltered search.
+     */
+    private boolean narrowToSite(BooleanQuery.Builder query) {
+        if (siteHandles.isEmpty()) {
+            return false;
+        }
+        // the post's half of the discovery rule; a page's is its being in the index
+        if (!pages) {
+            query.add(new TermQuery(new Term(FieldConstants.SITE, FieldConstants.SITE_V)),
+                    BooleanClause.Occur.FILTER);
+        }
+        java.util.List<BytesRef> handles = new java.util.ArrayList<>();
+        for (String handle : siteHandles) {
+            Term term = IndexUtil.handleTerm(handle);
+            if (term != null) {
+                handles.add(term.bytes());
+            }
+        }
+        if (handles.isEmpty()) {
+            return false;
+        }
+        query.add(new TermInSetQuery(FieldConstants.WEBSITE_HANDLE, handles), BooleanClause.Occur.FILTER);
+        return true;
     }
 
     /** Only documents published at or before {@code now}: the filter every reader-facing query carries. */
@@ -580,7 +647,8 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     /**
      * Narrows the search to posts flagged for the site whose blog is one of
      * {@code handles}: the blog half of the discovery rule, decided by the
-     * caller at query time. An empty set finds nothing.
+     * caller at query time. An empty set finds nothing. A page search reads
+     * the handle set only (pages carry no site flag).
      */
     public void restrictToSite(java.util.Set<String> handles) {
         this.siteHandles = java.util.Set.copyOf(handles);

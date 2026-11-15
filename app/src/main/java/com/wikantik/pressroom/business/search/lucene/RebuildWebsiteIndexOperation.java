@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -30,9 +31,12 @@ import org.apache.lucene.index.Term;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 
@@ -140,7 +144,8 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
 
     /**
      * Deletes the weblog's documents (every document, for a site-wide
-     * rebuild) and adds its published entries back, then commits.
+     * rebuild) and adds its published entries and indexable pages back, then
+     * commits.
      *
      * <p>The entries are fetched only once the writer is open -- and so only
      * once WriteToIndexOperation's write lock is held -- so a concurrent
@@ -157,8 +162,10 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         wesc.setWeblog(website);
         wesc.setStatus(PubStatus.PUBLISHED);
         List<WeblogEntry> entries = weblogManager.getWeblogEntries(wesc);
+        // read before the delete as the entries are: a failure rolls back the delete too
+        List<WeblogPage> pages = indexablePages();
 
-        log.debug("Entries to index: {}", entries.size());
+        log.debug("Entries to index: {}, pages: {}", entries.size(), pages.size());
 
         // Delete Doc
         Term tWebsite = website == null ? null : IndexUtil.handleTerm(website.getHandle());
@@ -180,6 +187,12 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                 log.debug("Indexed entry {}: {}", entry.getPubTime(), entry.getAnchor());
             }
         }
+        for (WeblogPage page : pages) {
+            Document doc = documentOrNull(page);
+            if (doc != null) {
+                writer.addDocument(doc);
+            }
+        }
         writer.commit();
         if (website == null) {
             // only now is there a completed build to certify
@@ -187,11 +200,50 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         }
     }
 
+    /**
+     * The published, not noindex pages of the weblog rebuilt, or, for a
+     * site-wide rebuild, of every blog and the site space (which the blog
+     * listing leaves out).
+     */
+    private List<WeblogPage> indexablePages() throws WebloggerException {
+        List<Weblog> blogs = new ArrayList<>();
+        if (website != null) {
+            blogs.add(website);
+        } else {
+            WeblogManager weblogs = pressroom.getWeblogManager();
+            blogs.addAll(weblogs.getWeblogs(null, null, null, null, 0, -1));
+            Weblog siteSpace = weblogs.getSiteSpace();
+            if (siteSpace != null) {
+                blogs.add(siteSpace);
+            }
+        }
+        WeblogPageManager pageManager = pressroom.getWeblogPageManager();
+        List<WeblogPage> pages = new ArrayList<>();
+        for (Weblog blog : blogs) {
+            for (WeblogPage page : pageManager.getPublishedPages(blog)) {
+                if (isIndexable(page)) {
+                    pages.add(page);
+                }
+            }
+        }
+        return pages;
+    }
+
     private static void rollBack(IndexWriter writer) {
         try {
             writer.rollback();
         } catch (IOException ioe) {
             log.error("ERROR rolling back index writer", ioe);
+        }
+    }
+
+    /** The page's document, or null (logged) when it cannot be built. */
+    private Document documentOrNull(WeblogPage page) {
+        try {
+            return getDocument(page);
+        } catch (RuntimeException e) {
+            log.warn("Could not index page {}; it is left out of this rebuild", page.getId(), e);
+            return null;
         }
     }
 

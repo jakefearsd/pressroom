@@ -34,6 +34,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.SiteSlugClashException;
 import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.config.ProtectedPaths;
 import com.wikantik.pressroom.pojos.ReservedSlugs;
 import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
@@ -125,6 +126,14 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
             owner.setFrontPageId(null);
         }
         pressroom.getWeblogManager().saveWeblog(page.getWeblog());
+
+        // Search follows every save, whoever made it (editor, Pages screen,
+        // API, a strand's parts): published and not noindex is indexed,
+        // anything else taken out. Once committed, and queued: the reindex
+        // runs on another thread, re-reads the row, and never holds up or
+        // fails the save.
+        IndexManager index = pressroom.getIndexManager();
+        strategy.runAfterCommit(() -> index.reindexPage(page));
     }
 
     /**
@@ -178,6 +187,10 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
         // update weblog last modified date.  date updated by saveWeblog()
         pressroom.getWeblogManager().saveWeblog(page.getWeblog());
+
+        // Out of search once the delete is durable (see savePage).
+        IndexManager index = pressroom.getIndexManager();
+        strategy.runAfterCommit(() -> index.removePage(page));
     }
 
     @Override
@@ -287,6 +300,10 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         removePages.executeUpdate();
         // The FK would null the row; the managed weblog must not write it back.
         weblog.setFrontPageId(null);
+
+        // No search work here: removeWeblog, the only caller, takes every
+        // document of the weblog's handle (pages included) out of the index
+        // once the delete commits.
 
         // Moves no stamp. A remembered page that no longer resolves is a miss
         // anyway; and removeWeblog deletes through here, after which the

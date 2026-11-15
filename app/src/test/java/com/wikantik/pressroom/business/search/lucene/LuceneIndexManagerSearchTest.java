@@ -33,6 +33,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.SearchHits;
@@ -42,6 +43,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,8 +97,11 @@ class LuceneIndexManagerSearchTest {
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
         when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
         weblogManager = mock(WeblogManager.class);
+        // as the real listing: the site space is hidden from it, and asked for by name
         when(weblogManager.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
-                .thenAnswer(inv -> List.copyOf(knownBlogs));
+                .thenAnswer(inv -> knownBlogs.stream().filter(w -> !w.isSiteSpace()).toList());
+        when(weblogManager.getSiteSpace())
+                .thenAnswer(inv -> knownBlogs.stream().filter(Weblog::isSiteSpace).findFirst().orElse(null));
         when(pressroom.getWeblogManager()).thenReturn(weblogManager);
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
@@ -1188,6 +1193,8 @@ class LuceneIndexManagerSearchTest {
             org.apache.lucene.document.Document bare = new org.apache.lucene.document.Document();
             bare.add(new org.apache.lucene.document.StringField(FieldConstants.ID, "bare",
                     org.apache.lucene.document.Field.Store.YES));
+            bare.add(new org.apache.lucene.document.StringField(FieldConstants.KIND, FieldConstants.KIND_ENTRY,
+                    org.apache.lucene.document.Field.Store.NO));
             bare.add(new org.apache.lucene.document.StringField(FieldConstants.WEBSITE_HANDLE, "mltnull",
                     org.apache.lucene.document.Field.Store.YES));
             bare.add(new org.apache.lucene.document.SortedDocValuesField(FieldConstants.WEBSITE_HANDLE,
@@ -1312,6 +1319,412 @@ class LuceneIndexManagerSearchTest {
         assertEquals(List.of(), manager.moreLikeThis(e, 3), "no index on disk: logged, empty");
         setField(manager, "searchEnabled", false);
         assertEquals(List.of(), manager.moreLikeThis(e, 3));
+    }
+
+    // ------------------------------------------------------- pages
+
+    private static final String PAGE_WORD = "marmoset";
+
+    private WeblogPageManager pageManager() {
+        return pressroom.getWeblogPageManager();
+    }
+
+    private static WeblogPage page(String id, Weblog weblog, String title, String body) {
+        WeblogPage page = new WeblogPage();
+        page.setId(id);
+        page.setWeblog(weblog);
+        page.setSlug(id);
+        page.setTitle(title);
+        page.setContent(body);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        return page;
+    }
+
+    /** Hands the page to the mocked page manager by id (every page operation re-reads it), then reindexes it. */
+    private WeblogPage indexPage(WeblogPage page) throws Exception {
+        when(pageManager().getPage(page.getId())).thenReturn(page);
+        manager.reindexPage(page);
+        return page;
+    }
+
+    private List<String> findPages(String words, SearchSpec.Scope scope, String handle) {
+        return manager.findPages(new SearchSpec(words, scope, handle, null, 0, 10), 10);
+    }
+
+    private Weblog siteSpace() {
+        Weblog space = weblog(Weblog.SITE_SPACE_HANDLE);
+        space.setSiteSpace(true);
+        return space;
+    }
+
+    @Test
+    void aPublishedPageIsFoundByAWordInItsTitleAndByOneInItsBody() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagefind");
+        indexPage(page("pf-about", blog, "About the marmoset", "We keep a lighthouse by the sea."));
+
+        assertEquals(List.of("pf-about"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagefind"));
+        assertEquals(List.of("pf-about"), findPages("lighthouse", SearchSpec.Scope.BLOG, "pagefind"));
+        assertEquals(List.of(), findPages("zzznosuchword", SearchSpec.Scope.BLOG, "pagefind"));
+    }
+
+    @Test
+    void draftAndNoindexPagesAreNotIndexed() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagehidden");
+        WeblogPage draft = page("ph-draft", blog, "Draft marmoset", "body");
+        draft.setStatus(WeblogPage.PubStatus.DRAFT);
+        indexPage(draft);
+        WeblogPage noindex = page("ph-noindex", blog, "Noindex marmoset", "body");
+        noindex.setNoindex(Boolean.TRUE);
+        indexPage(noindex);
+        indexPage(page("ph-live", blog, "Live marmoset", "body"));
+
+        assertEquals(List.of("ph-live"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagehidden"));
+        assertEquals(0, documentsWithId("ph-draft"));
+        assertEquals(0, documentsWithId("ph-noindex"));
+    }
+
+    /** Published, then a draft, then published again, then deleted: the index follows each step. */
+    @Test
+    void aPageFollowsItsStatusAndLeavesWhenDeleted() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagelife");
+        WeblogPage page = indexPage(page("pl-1", blog, "Marmoset care", "body"));
+        assertEquals(List.of("pl-1"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"));
+
+        page.setStatus(WeblogPage.PubStatus.DRAFT);
+        manager.reindexPage(page);
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"), "a draft is taken out");
+
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        manager.reindexPage(page);
+        manager.reindexPage(page);
+        assertEquals(List.of("pl-1"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"));
+        assertEquals(1, documentsWithId("pl-1"), "a reindex replaces the page's document, never adds a second");
+
+        page.setNoindex(Boolean.TRUE);
+        manager.reindexPage(page);
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"), "noindex takes it out");
+        page.setNoindex(Boolean.FALSE);
+        manager.reindexPage(page);
+        assertEquals(List.of("pl-1"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"));
+
+        when(pageManager().getPage("pl-1")).thenReturn(null);
+        manager.removePage(page);
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagelife"));
+        assertEquals(0, documentsWithId("pl-1"));
+    }
+
+    /** A reindex queued for a page deleted before it ran takes the page out, as an entry's does. */
+    @Test
+    void aReindexOfAPageNoLongerInTheDatabaseTakesItOut() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagegone");
+        WeblogPage page = indexPage(page("pg-1", blog, "Marmoset", "body"));
+        when(pageManager().getPage("pg-1")).thenReturn(null);
+
+        manager.reindexPage(page);
+
+        assertEquals(0, documentsWithId("pg-1"));
+    }
+
+    /** A page that cannot be read is left as the index has it: nothing is known about it. */
+    @Test
+    void aReindexThatCannotReadThePageLeavesTheIndexAlone() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pageunread");
+        WeblogPage page = indexPage(page("pu-1", blog, "Marmoset", "body"));
+        when(pageManager().getPage("pu-1")).thenThrow(new WebloggerException("db down"));
+
+        manager.reindexPage(page);
+
+        assertEquals(1, documentsWithId("pu-1"));
+    }
+
+    @Test
+    void blogScopeFindsOnlyThatBlogsPages() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("pagescopea");
+        Weblog b = weblog("pagescopeb");
+        Weblog space = siteSpace();
+        indexPage(page("ps-a", a, "Marmoset of A", "body"));
+        indexPage(page("ps-b", b, "Marmoset of B", "body"));
+        indexPage(page("ps-site", space, "Marmoset of the site", "body"));
+
+        assertEquals(List.of("ps-a"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagescopea"));
+        assertEquals(List.of("ps-b"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagescopeb"));
+    }
+
+    @Test
+    void siteScopeFindsSitePagesAndThePagesOfTheBlogsTheSiteSearchCovers() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("pagesitea");
+        Weblog hidden = weblog("pagesitehidden");
+        Weblog inactive = weblog("pagesiteinactive");
+        Weblog space = siteSpace();
+        indexPage(page("pss-a", a, "Marmoset of A", "body"));
+        indexPage(page("pss-hidden", hidden, "Marmoset hidden", "body"));
+        indexPage(page("pss-inactive", inactive, "Marmoset inactive", "body"));
+        indexPage(page("pss-site", space, "Marmoset of the site", "body"));
+        hidden.setVisible(Boolean.FALSE);
+        inactive.setActive(Boolean.FALSE);
+
+        assertEquals(Set.of("pss-a", "pss-site"), Set.copyOf(findPages(PAGE_WORD, SearchSpec.Scope.SITE, null)));
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.OTHER_BLOGS, "pagesitea"),
+                "a blog's view of the other blogs shows no pages");
+    }
+
+    @Test
+    void pageScopesFailClosed() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("pageclosed");
+        indexPage(page("pc-1", a, "Marmoset", "body"));
+        for (String handle : java.util.Arrays.asList(null, "", "   ")) {
+            assertThrows(IllegalArgumentException.class, () -> findPages(PAGE_WORD, SearchSpec.Scope.BLOG, handle),
+                    "blog scope with handle '" + handle + "'");
+        }
+        assertEquals(List.of(), manager.findPages(
+                new SearchSpec(PAGE_WORD, SearchSpec.Scope.BLOG, "pageclosed", null, 0, 10), 0));
+        assertEquals(List.of(), findPages("!!!", SearchSpec.Scope.BLOG, "pageclosed"), "nothing to search for");
+        assertEquals(List.of(), findPages("title:(", SearchSpec.Scope.BLOG, "pageclosed"), "a query the parser rejects");
+
+        when(weblogManager.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenThrow(new WebloggerException("db down"));
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.SITE, null),
+                "an unreadable blog list finds nothing, never everything");
+
+        setField(manager, "searchEnabled", false);
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pageclosed"));
+    }
+
+    @Test
+    void aSearchOperationIsForPostsOrPagesOnly() {
+        assertThrows(IllegalArgumentException.class, () -> new SearchOperation(manager, "comment"));
+        assertThrows(IllegalArgumentException.class, () -> new SearchOperation(manager, null));
+    }
+
+    /** A page search the thread manager refuses to run is empty (logged), never an exception. */
+    @Test
+    void aPageSearchThatCannotRunIsEmpty() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagerefused");
+        indexPage(page("pref-1", blog, "Marmoset", "body"));
+        ThreadManager threads = pressroom.getThreadManager();
+        org.mockito.Mockito.doThrow(new java.util.concurrent.RejectedExecutionException("pool is full"))
+                .when(threads).executeInForeground(any(Runnable.class));
+
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerefused"));
+    }
+
+    /** No index on disk: a display path, so logged and empty, never an exception. */
+    @Test
+    void findPagesWithNoIndexOnDiskIsEmpty() {
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "nowhere"));
+    }
+
+    @Test
+    void pagesAreRankedTitleFirstAndCutAtTheMaximum() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagerank");
+        indexPage(page("pr-body", blog, "Opening hours", "Ask at the desk about the marmoset."));
+        indexPage(page("pr-title", blog, "The marmoset", "Opening hours are posted."));
+
+        assertEquals(List.of("pr-title", "pr-body"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerank"));
+        assertEquals(List.of("pr-title"), manager.findPages(
+                new SearchSpec(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerank", null, 0, 10), 1));
+    }
+
+    /** Like a post search, all of the words first, then fewer of them. */
+    @Test
+    void aPageSearchFallsBackToAnyWord() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pageany");
+        indexPage(page("pa-1", blog, "The marmoset", "body"));
+
+        assertEquals(List.of("pa-1"), findPages("marmoset zzznosuchword", SearchSpec.Scope.BLOG, "pageany"));
+    }
+
+    /**
+     * Entries and pages draw ids from one generator, so a collision is not
+     * expected; but neither kind's delete or lookup may ever reach the other.
+     */
+    @Test
+    void aPageAndAPostWithTheSameIdAreKeptApart() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagetwin");
+        WeblogEntry post = entry("twin-id", blog, "General", "A marmoset post");
+        index(post);
+        WeblogPage page = indexPage(page("twin-id", blog, "A marmoset page", WORD));
+
+        assertEquals(List.of("twin-id"), idsOf(find(WORD, "pagetwin")));
+        assertEquals(List.of("twin-id"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagetwin"));
+        assertEquals(2, documentsWithId("twin-id"));
+
+        when(pageManager().getPage("twin-id")).thenReturn(null);
+        manager.removePage(page);
+        assertEquals(List.of("twin-id"), idsOf(find(WORD, "pagetwin")), "the post stays");
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagetwin"));
+
+        indexPage(page);
+        manager.addEntryReIndexOperation(post);
+        assertEquals(2, documentsWithId("twin-id"), "a post's reindex replaces the post only");
+        manager.removeEntryIndexOperation(post);
+        assertEquals(List.of("twin-id"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagetwin"), "the page stays");
+        assertEquals(1, documentsWithId("twin-id"));
+    }
+
+    @Test
+    void removingAWeblogsIndexTakesItsPagesToo() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pageremoved");
+        blog.setId("blog-page-removed");
+        when(weblogManager.getWeblog("blog-page-removed")).thenReturn(blog);
+        indexPage(page("pr-page", blog, "Marmoset", "body"));
+
+        manager.removeWeblogIndex(blog);
+
+        assertEquals(0, documentsWithId("pr-page"));
+    }
+
+    @Test
+    void aFullRebuildAndAOneWeblogRebuildRestorePages() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pagerebuild");
+        blog.setId("blog-page-rebuild");
+        Weblog space = siteSpace();
+        space.setId("blog-site-space");
+        WeblogPage live = page("prb-live", blog, "Marmoset live", "body");
+        WeblogPage noindex = page("prb-noindex", blog, "Marmoset noindex", "body");
+        noindex.setNoindex(Boolean.TRUE);
+        WeblogPage sitePage = page("prb-site", space, "Marmoset of the site", "body");
+        when(weblogManager.getWeblog("blog-page-rebuild")).thenReturn(blog);
+        when(pageManager().getPublishedPages(blog)).thenReturn(List.of(live, noindex));
+        when(pageManager().getPublishedPages(space)).thenReturn(List.of(sitePage));
+
+        manager.rebuildWeblogIndex();
+
+        assertEquals(List.of("prb-live"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerebuild"));
+        assertEquals(Set.of("prb-live", "prb-site"), Set.copyOf(findPages(PAGE_WORD, SearchSpec.Scope.SITE, null)));
+        assertEquals(0, documentsWithId("prb-noindex"), "a rebuild indexes what a save would");
+
+        manager.removeWeblogIndex(blog);
+        assertEquals(List.of(), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerebuild"));
+        manager.rebuildWeblogIndex(blog);
+        manager.rebuildWeblogIndex(blog);
+
+        assertEquals(List.of("prb-live"), findPages(PAGE_WORD, SearchSpec.Scope.BLOG, "pagerebuild"));
+        assertEquals(1, documentsWithId("prb-live"));
+        assertEquals(1, documentsWithId("prb-site"), "the one-weblog rebuild left the site's pages alone");
+    }
+
+    /** A page that cannot be made into a document is skipped by a rebuild, never allowed to roll it back. */
+    @Test
+    void aRebuildSkipsAPageItCannotIndexAndKeepsTheRest() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pageskip");
+        WeblogPage broken = page("pskip-broken", blog, "Broken", "body");
+        broken.setWeblog(null);
+        WeblogPage live = page("pskip-live", blog, "Marmoset", "body");
+        when(pageManager().getPublishedPages(blog)).thenReturn(List.of(broken, live));
+
+        manager.rebuildWeblogIndex();
+
+        assertEquals(1, documentsWithId("pskip-live"));
+        assertEquals(0, documentsWithId("pskip-broken"));
+        assertEquals(String.valueOf(LuceneIndexManager.SCHEMA_VERSION), schemaMarker(), "the rebuild still completed");
+    }
+
+    /**
+     * Post searches see exactly what they saw before pages joined the index:
+     * the same hits in the same order with the same scores, totals, per-blog
+     * counts, categories and snippets, and the same "more like this". The
+     * pages hold every word the queries use, on every blog and the site
+     * space. Scores are compared raw, on a fixed clock (the recency factor
+     * reads it): a page sharing a post's text fields would move the
+     * statistics every post score is computed from.
+     */
+    @Test
+    void postSearchesAreUnchangedByPagesInTheIndex() throws Exception {
+        Timestamp instant = new Timestamp(System.currentTimeMillis());
+        manager = new LuceneIndexManager(pressroom) {
+            @Override
+            Timestamp now() {
+                return instant;
+            }
+        };
+        setField(manager, "indexDir", indexDir.toString());
+        setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
+        scopeFixture();
+        Weblog kitchen = weblog("unchangedkitchen");
+        kitchenFixture(kitchen);
+        // tags, a summary and a category name too: every post field a query reads
+        for (String id : List.of("t1", "t2", "t3")) {
+            WeblogEntry tagged = entry(id, kitchen, "Renovation", "Tagged " + id);
+            tagged.setText("Walnut cabinets and a granite sink, entry " + id);
+            tagged.setSummary("A renovation diary");
+            tagged.addTag("renovation");
+            tagged.addTag("walnut");
+            index(tagged);
+        }
+        java.util.Map<String, Object> before = postResults();
+
+        String words = WORD + " kitchen walnut granite cabinets countertop sink lisbon trams post renovation diary";
+        for (Weblog blog : List.copyOf(knownBlogs)) {
+            indexPage(page("unchanged-" + blog.getHandle(), blog, "Kitchen " + WORD + " post", words));
+        }
+        indexPage(page("unchanged-site", siteSpace(), "Kitchen " + WORD, words));
+        assertTrue(documentsWithId("unchanged-site") == 1, "the pages are in the index");
+
+        assertEquals(before, postResults());
+    }
+
+    private java.util.Map<String, Object> postResults() throws Exception {
+        java.util.Map<String, Object> seen = new java.util.LinkedHashMap<>();
+        for (String words : List.of(WORD, "kitchen walnut", "walnut granite marmoset", "lisbon OR kitchen", "post",
+                "renovation diary")) {
+            List<SearchSpec> specs = List.of(
+                    new SearchSpec(words, SearchSpec.Scope.SITE, null, null, 0, 50),
+                    new SearchSpec(words, SearchSpec.Scope.BLOG, "unchangedkitchen", null, 0, 50),
+                    new SearchSpec(words, SearchSpec.Scope.BLOG, "scopeb", null, 0, 50),
+                    new SearchSpec(words, SearchSpec.Scope.OTHER_BLOGS, "scopea", null, 0, 50));
+            for (SearchSpec spec : specs) {
+                SearchHits hits = manager.find(spec, mock(URLStrategy.class));
+                seen.put(spec + " hits", hits.hits().stream()
+                        .map(h -> h.entry().getId() + " " + h.snippetHtml() + " " + h.otherBlog()).toList());
+                seen.put(spec + " total", hits.total());
+                seen.put(spec + " perBlog", hits.perBlog());
+                seen.put(spec + " categories", hits.categories());
+                seen.put(spec + " fallback", hits.anyWordFallback());
+                seen.put(spec + " capped", hits.capped());
+            }
+            seen.put(words + " scores", rawScores(words));
+        }
+        for (String id : List.of("k1", "k2", "k3", "t1")) {
+            WeblogEntry entry = entries.getWeblogEntry(id);
+            seen.put(id + " similar", manager.moreLikeThis(entry, 20));
+            org.apache.lucene.search.IndexSearcher searcher = manager.acquireSearcher();
+            try {
+                seen.put(id + " similar query", String.valueOf(manager.similarQuery(searcher, entry)));
+            } finally {
+                manager.releaseSearcher(searcher);
+            }
+        }
+        return seen;
+    }
+
+    /** Every post hit with its raw score, the query unnarrowed. */
+    private List<String> rawScores(String words) throws Exception {
+        try (SearchOperation op = new SearchOperation(manager)) {
+            op.setTerm(words);
+            op.run();
+            org.apache.lucene.index.StoredFields stored = op.getSearcher().storedFields();
+            List<String> scored = new java.util.ArrayList<>();
+            for (org.apache.lucene.search.ScoreDoc hit : op.getResults().scoreDocs) {
+                scored.add(stored.document(hit.doc).get(FieldConstants.ID) + "=" + hit.score);
+            }
+            return scored;
+        }
     }
 
     private void index(WeblogEntry entry) throws Exception {

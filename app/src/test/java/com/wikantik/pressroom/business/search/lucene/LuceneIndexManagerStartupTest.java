@@ -268,10 +268,22 @@ class LuceneIndexManagerStartupTest {
         assertRebuilt(indexDir);
     }
 
+    /**
+     * Version 2 held posts only, none of them carrying a document kind; every
+     * post query now asks for {@code kind:entry}, so a version 2 index kept
+     * as it is would find nothing until rebuilt.
+     */
+    @Test
+    void indexWithVersionTwoSchemaIsRebuiltAtStartup(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        indexWithSchemaMarker(indexDir, "2");
+        assertRebuilt(indexDir);
+    }
+
     @Test
     void indexWithCurrentSchemaIsLeftAlone(@TempDir Path tmp) throws Exception {
         Path indexDir = tmp.resolve("index");
-        indexWithSchemaMarker(indexDir, "2");
+        indexWithSchemaMarker(indexDir, String.valueOf(LuceneIndexManager.SCHEMA_VERSION));
 
         ThreadManager threads = mock(ThreadManager.class);
         LuceneIndexManager next = managerOver(indexDir, threads);

@@ -22,6 +22,7 @@ import com.wikantik.pressroom.business.InitializationException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 
 /**
  * Interface to Pressroom's full-text search facility.
@@ -86,4 +87,31 @@ public interface IndexManager {
      * index, or anything fails (logged), never an exception.
      */
     java.util.List<String> moreLikeThis(WeblogEntry entry, int max);
+
+    /**
+     * Brings the page's document up to date, in the background: indexed when
+     * the page is PUBLISHED and not {@code noindex}, taken out otherwise
+     * (and when it is no longer in the database). The page is re-read by id
+     * when the work runs, so call it once the save has committed. Cheap, and
+     * never throws: it runs on every page save.
+     */
+    void reindexPage(WeblogPage page);
+
+    /** Takes the page's document out, in the background. Never throws: it runs on every page removal. */
+    void removePage(WeblogPage page);
+
+    /**
+     * The pages a reader's words find, ids best first, at most {@code max}:
+     * the words are read as a post search reads them (all of them first,
+     * then fewer). {@link SearchSpec.Scope#BLOG} finds that blog's pages;
+     * {@link SearchSpec.Scope#SITE} the pages of the blogs a site search
+     * covers plus the site space's; {@link SearchSpec.Scope#OTHER_BLOGS}
+     * none. The spec's category, locale and window are not read (a page has
+     * no category or locale). Ids only: the caller loads the pages and drops
+     * any the database no longer has. A display path: empty when search is
+     * disabled, the words find nothing or cannot be parsed, or anything fails
+     * (logged), never an exception, except that a blog search without a
+     * handle throws {@link IllegalArgumentException}, as {@link #find} does.
+     */
+    java.util.List<String> findPages(SearchSpec spec, int max);
 }

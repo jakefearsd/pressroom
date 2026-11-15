@@ -257,6 +257,52 @@ class LuceneIndexManagerTest {
         manager.shutdown();
     }
 
+    // ------------------------------------------------------- page writes
+
+    private static com.wikantik.pressroom.pojos.WeblogPage page(Weblog blog) {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setWeblog(blog);
+        page.setSlug("about");
+        page.setTitle("About");
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        return page;
+    }
+
+    /** A page save runs after its commit, on the saving thread: the index work it asks for is queued, never waited on. */
+    @Test
+    void pageWritesAreQueuedInTheBackground(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+
+        manager.reindexPage(page(blog));
+        manager.removePage(page(blog));
+
+        assertEquals(2, scheduled.size(), "" + scheduled);
+        assertTrue(scheduled.get(0) instanceof ReIndexPageOperation, "" + scheduled);
+        assertTrue(scheduled.get(1) instanceof RemovePageOperation, "" + scheduled);
+        manager.shutdown();
+    }
+
+    /** The thread manager can refuse work; a page save must not see it, nor a page with nothing to index by. */
+    @Test
+    void aFailingPageReindexNeverFailsTheSave(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+        ThreadManager threads = manager.weblogger().getThreadManager();
+        doThrow(new java.util.concurrent.RejectedExecutionException("pool is full"))
+                .when(threads).executeInBackground(any(Runnable.class));
+
+        assertDoesNotThrow(() -> manager.reindexPage(page(blog)));
+        assertDoesNotThrow(() -> manager.removePage(page(blog)));
+        assertDoesNotThrow(() -> manager.reindexPage(null));
+        assertDoesNotThrow(() -> manager.removePage(null));
+        com.wikantik.pressroom.pojos.WeblogPage noId = page(blog);
+        noId.setId(null);
+        assertDoesNotThrow(() -> manager.reindexPage(noId));
+        assertDoesNotThrow(() -> manager.removePage(noId));
+        manager.shutdown();
+    }
+
     // No test drives initialize()'s createNewFile()-returns-false branch
     // (LuceneIndexManager.java:152) directly: reaching it requires
     // indexConsistencyMarker.exists() to be false at the enclosing check yet

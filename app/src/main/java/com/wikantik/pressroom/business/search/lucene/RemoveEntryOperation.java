@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.Term;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
@@ -83,8 +82,7 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
         IndexWriter writer = beginWriting();
         try {
             if (writer != null) {
-                Term term = new Term(FieldConstants.ID, data.getId());
-                writer.deleteDocuments(term);
+                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, data.getId()));
             }
         } catch (IOException e) {
             log.error("Error deleting doc from index", e);

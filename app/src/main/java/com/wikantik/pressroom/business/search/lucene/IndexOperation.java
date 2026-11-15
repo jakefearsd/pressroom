@@ -45,6 +45,7 @@ import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.util.Utilities;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 
 /**
  * This is the base class for all index operation. These operations include:<br>
@@ -84,6 +85,8 @@ public abstract class IndexOperation implements Runnable {
         // keyword
         doc.add(new StringField(FieldConstants.ID, data.getId(),
                 Field.Store.YES));
+        // every post query filters on it, so pages never reach post results
+        doc.add(new StringField(FieldConstants.KIND, FieldConstants.KIND_ENTRY, Field.Store.NO));
 
         // keyword, case kept (IndexUtil.handleKey: handles are case-sensitive);
         // also a doc value, so the site view counts hits per blog without
@@ -159,6 +162,38 @@ public abstract class IndexOperation implements Runnable {
             doc.add(new TextField(FieldConstants.CATEGORY_TEXT, categorydata.getName(), Field.Store.NO));
         }
 
+        return doc;
+    }
+
+    /**
+     * Whether a page belongs in the index: PUBLISHED and not {@code noindex}.
+     * The one rule a page save and a rebuild both apply.
+     */
+    static boolean isIndexable(WeblogPage page) {
+        return page != null && page.getStatus() == WeblogPage.PubStatus.PUBLISHED
+                && !Boolean.TRUE.equals(page.getNoindex());
+    }
+
+    /**
+     * A page's document: its id and kind, its blog's handle (the scope
+     * filters), and its title and text in the page fields
+     * ({@link FieldConstants#PAGE_TITLE}). No publish time, site flag,
+     * category or locale: the page query reads none of them.
+     */
+    protected Document getDocument(WeblogPage page) {
+        Document doc = new Document();
+        doc.add(new StringField(FieldConstants.ID, page.getId(), Field.Store.YES));
+        doc.add(new StringField(FieldConstants.KIND, FieldConstants.KIND_PAGE, Field.Store.NO));
+        // as a post's handle, doc value included: Lucene refuses a document
+        // whose field differs in kind from the same field already indexed
+        String handle = IndexUtil.handleKey(page.getWeblog().getHandle());
+        doc.add(new StringField(FieldConstants.WEBSITE_HANDLE, handle, Field.Store.YES));
+        doc.add(new SortedDocValuesField(FieldConstants.WEBSITE_HANDLE, new BytesRef(handle)));
+        // page titles are stored raw (entry titles are escaped); a missing
+        // one is no words, never the word "null"
+        doc.add(new TextField(FieldConstants.PAGE_TITLE, Objects.toString(page.getTitle(), ""), Field.Store.YES));
+        doc.add(new TextField(FieldConstants.PAGE_CONTENT,
+                SearchableText.of(page, manager.weblogger().getEntryRenderer()), Field.Store.YES));
         return doc;
     }
 

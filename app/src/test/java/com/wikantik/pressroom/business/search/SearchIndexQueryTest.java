@@ -224,6 +224,48 @@ class SearchIndexQueryTest {
         awaitIndexedCount(doomed.getHandle(), 0);
     }
 
+    /** The one-weblog rebuild (the admin action) puts the blog's pages back with its posts. */
+    @Test
+    void rebuildingAWeblogsIndexRestoresItsPages() throws Exception {
+        String pageId = publishedPage(blog, "tapir", "The tapirword page");
+        IndexManagerTest.awaitPages(TestUtils.weblogger().getIndexManager(), "tapirword", SearchSpec.Scope.BLOG,
+                blog.getHandle(), List.of(pageId));
+
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        index.removeWeblogIndex(TestUtils.getManagedWebsite(blog));
+        IndexManagerTest.awaitPages(index, "tapirword", SearchSpec.Scope.BLOG, blog.getHandle(), List.of());
+
+        index.rebuildWeblogIndex(TestUtils.getManagedWebsite(blog));
+        IndexManagerTest.awaitPages(index, "tapirword", SearchSpec.Scope.BLOG, blog.getHandle(), List.of(pageId));
+    }
+
+    /** Deleting a weblog takes its pages out of the index with its posts. */
+    @Test
+    void deletingAWeblogTakesItsPagesOutOfTheIndex() throws Exception {
+        Weblog doomed = TestUtils.setupWeblog("searchdoomedpages", user);
+        TestUtils.endSession(true);
+        String pageId = publishedPage(doomed, "tapir", "The tapirword page");
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        IndexManagerTest.awaitPages(index, "tapirword", SearchSpec.Scope.BLOG, doomed.getHandle(), List.of(pageId));
+
+        TestUtils.teardownWeblog(doomed.getId());
+        TestUtils.endSession(true);
+
+        IndexManagerTest.awaitPages(index, "tapirword", SearchSpec.Scope.BLOG, doomed.getHandle(), List.of());
+    }
+
+    private static String publishedPage(Weblog weblog, String slug, String title) throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(weblog));
+        page.setSlug(slug);
+        page.setTitle(title);
+        page.setContent("body");
+        page.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.endSession(true);
+        return page.getId();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** Polls the raw index (no results filter) until the weblog holds this many matching documents. */

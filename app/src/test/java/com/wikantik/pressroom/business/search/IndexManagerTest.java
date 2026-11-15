@@ -25,10 +25,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import org.instancio.Instancio;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,6 +100,108 @@ public class IndexManagerTest {
             }
             indexManager.removeWeblogIndex(testWeblog);
         }
+    }
+
+    // ------------------------------------------------------- pages
+
+    private static WeblogPage newPage(Weblog weblog, String slug, String title, String body) throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(weblog));
+        page.setSlug(slug);
+        page.setTitle(title);
+        page.setContent(body);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        return page;
+    }
+
+    /** Re-reads the page, applies the change, saves it through the page manager and commits. */
+    private static void savePage(String id, java.util.function.Consumer<WeblogPage> change) throws Exception {
+        WeblogPageManager pages = TestUtils.weblogger().getWeblogPageManager();
+        WeblogPage page = pages.getPage(id);
+        change.accept(page);
+        pages.savePage(page);
+        TestUtils.endSession(true);
+    }
+
+    /**
+     * The page manager owns "a page changed, so reindex it": a save or a
+     * removal through it reaches the index once it commits, whichever caller
+     * made it (the editor, the Pages screen, the API, a strand's parts).
+     * Each "not found" follows a "found", so none of them passes for want of
+     * a write having landed yet.
+     */
+    @Test
+    public void aPageSavedOrRemovedThroughThePageManagerReachesTheIndex() throws Exception {
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        WeblogPageManager pages = TestUtils.weblogger().getWeblogPageManager();
+        WeblogPage page = newPage(testWeblog, "ocelot", "Visiting the ocelotpage", "Feeding times are by the zebragate.");
+        pages.savePage(page);
+        TestUtils.endSession(true);
+        String id = page.getId();
+        String handle = testWeblog.getHandle();
+
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of(id));
+        awaitPages(index, "zebragate", SearchSpec.Scope.BLOG, handle, List.of(id));
+
+        savePage(id, p -> p.setStatus(WeblogPage.PubStatus.DRAFT));
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());
+
+        savePage(id, p -> p.setStatus(WeblogPage.PubStatus.PUBLISHED));
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of(id));
+
+        savePage(id, p -> p.setNoindex(Boolean.TRUE));
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());
+
+        savePage(id, p -> p.setNoindex(Boolean.FALSE));
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of(id));
+
+        pages.removePage(pages.getPage(id));
+        TestUtils.endSession(true);
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());
+    }
+
+    /** Site-space pages are found by the site-wide search, never by a blog's own. */
+    @Test
+    public void aSitePageIsFoundSiteWideAndNotInABlogsSearch() throws Exception {
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        WeblogPageManager pages = TestUtils.weblogger().getWeblogPageManager();
+        Weblog site = TestUtils.weblogger().getWeblogManager().getOrCreateSiteSpace(
+                TestUtils.weblogger().getUserManager().getUserByUserName(testUser.getUserName()));
+        TestUtils.endSession(true);
+        try {
+            WeblogPage sitePage = newPage(site, "lemurpage-site", "The lemurpage of the site", "body");
+            pages.savePage(sitePage);
+            WeblogPage blogPage = newPage(testWeblog, "lemurpage-blog", "The lemurpage of the blog", "body");
+            pages.savePage(blogPage);
+            TestUtils.endSession(true);
+
+            awaitPages(index, "lemurpage", SearchSpec.Scope.SITE, null, List.of(sitePage.getId(), blogPage.getId()));
+            assertEquals(List.of(blogPage.getId()), index.findPages(new SearchSpec("lemurpage",
+                    SearchSpec.Scope.BLOG, testWeblog.getHandle(), null, 0, RESULTS_PER_PAGE), 10));
+        } finally {
+            com.wikantik.pressroom.business.WeblogManager weblogs = TestUtils.weblogger().getWeblogManager();
+            Weblog space = weblogs.getSiteSpace();
+            if (space != null) {
+                weblogs.removeWeblog(space);
+            }
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** Polls findPages until it returns these ids (in any order), or fails after 10 s. */
+    static void awaitPages(IndexManager index, String words, SearchSpec.Scope scope, String handle,
+            List<String> expected) throws Exception {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        List<String> found;
+        do {
+            found = index.findPages(new SearchSpec(words, scope, handle, null, 0, RESULTS_PER_PAGE), 10);
+            if (java.util.Set.copyOf(found).equals(java.util.Set.copyOf(expected)) && found.size() == expected.size()) {
+                return;
+            }
+            Thread.sleep(50);
+        } while (System.nanoTime() < deadline);
+        throw new AssertionError("'" + words + "' still found pages " + found + ", not " + expected
+                + ", 10 s after the write committed");
     }
 
     /**

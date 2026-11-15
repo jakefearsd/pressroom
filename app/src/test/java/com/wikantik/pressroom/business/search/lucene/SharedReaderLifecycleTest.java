@@ -41,6 +41,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.SearchHits;
@@ -112,6 +113,8 @@ class SharedReaderLifecycleTest {
         entries = mock(WeblogEntryManager.class);
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
         when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
+        // no blogs: a site-wide rebuild asks for them, to index their pages
+        when(pressroom.getWeblogManager()).thenReturn(mock(WeblogManager.class));
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();

@@ -20,7 +20,7 @@ package com.wikantik.pressroom.business.search.lucene;
 
 
 /**
- * Field constants for indexing blog entries.
+ * Field constants for indexing blog entries and pages.
  *
  * @author Mindaugas Idzelis (min@idzelis.com)
  */
@@ -54,4 +54,16 @@ public final class FieldConstants {
     public static final String CONSTANT_V = "v";
     public static final String WEBSITE_HANDLE = "handle";
     public static final String LOCALE = "locale";
+    /** What a document is: {@link #KIND_ENTRY} or {@link #KIND_PAGE}. Keyword, indexed not stored. */
+    public static final String KIND = "kind";
+    public static final String KIND_ENTRY = "entry";
+    public static final String KIND_PAGE = "page";
+    /**
+     * A page's title and text. Fields of their own, not {@link #TITLE} and
+     * {@link #CONTENT}: Lucene scores a word by statistics kept per field
+     * (how many documents hold it, how long the field is on average), so a
+     * page in a post field would move every post's score.
+     */
+    public static final String PAGE_TITLE = "pagetitle";
+    public static final String PAGE_CONTENT = "pagecontent";
 }

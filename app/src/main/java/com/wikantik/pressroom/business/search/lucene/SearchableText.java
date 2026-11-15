@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.util.Utilities;
 
 /**
@@ -87,16 +88,35 @@ final class SearchableText {
      */
     static String of(WeblogEntry entry, EntryRenderer renderer) {
         try {
-            String html = renderer.transformedText(entry);
-            if (html == null) {
-                return "";
-            }
-            String plain = StringEscapeUtils.unescapeHtml4(Utilities.removeHTML(closeUpTags(html), true));
-            return WHITESPACE.matcher(plain).replaceAll(" ").trim();
+            return plain(renderer.transformedText(entry));
         } catch (RuntimeException e) {
             log.warn("Could not render entry {} for the search index; indexing its title only",
                     entry.getId(), e);
             return "";
         }
+    }
+
+    /**
+     * Plain text of the page body, made as a post's is; {@code ""} when there
+     * is no text or it cannot be rendered (the page is then still indexed by
+     * its title). A strand's parts are posts, indexed as themselves, not
+     * here. The page renderer keeps no cache.
+     */
+    static String of(WeblogPage page, EntryRenderer renderer) {
+        try {
+            return plain(renderer.pageContent(page));
+        } catch (RuntimeException e) {
+            log.warn("Could not render page {} for the search index; indexing its title only",
+                    page.getId(), e);
+            return "";
+        }
+    }
+
+    private static String plain(String html) {
+        if (html == null) {
+            return "";
+        }
+        String plain = StringEscapeUtils.unescapeHtml4(Utilities.removeHTML(closeUpTags(html), true));
+        return WHITESPACE.matcher(plain).replaceAll(" ").trim();
     }
 }

@@ -77,6 +77,7 @@ import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 
 /**
@@ -115,7 +116,8 @@ public class LuceneIndexManager implements IndexManager {
     private static final Logger log = LoggerFactory.getLogger(LuceneIndexManager.class);
 
     /** The index layout version; an index stamped with anything else is rebuilt at startup. */
-    static final int SCHEMA_VERSION = 2;
+    // 3: every document carries a kind (entry or page), and pages are indexed
+    static final int SCHEMA_VERSION = 3;
 
     private static final String SCHEMA_MARKER = ".index-schema";
 
@@ -467,15 +469,111 @@ public class LuceneIndexManager implements IndexManager {
         }
     }
 
+    @Override
+    public void reindexPage(WeblogPage page) {
+        // runs after every page save commits: queued, never waited on, and
+        // nothing it does may reach the save
+        if (page == null || page.getId() == null) {
+            return;
+        }
+        try {
+            scheduleIndexOperation(new ReIndexPageOperation(pressroom, this, page.getId()));
+        } catch (RuntimeException e) {
+            log.warn("Could not schedule reindexing page {}", page.getId(), e);
+        }
+    }
+
+    @Override
+    public void removePage(WeblogPage page) {
+        if (page == null || page.getId() == null) {
+            return;
+        }
+        try {
+            scheduleIndexOperation(new RemovePageOperation(this, page.getId()));
+        } catch (RuntimeException e) {
+            log.warn("Could not schedule removing page {} from the index", page.getId(), e);
+        }
+    }
+
+    @Override
+    public List<String> findPages(SearchSpec spec, int max) {
+        if (spec.scope() == SearchSpec.Scope.BLOG
+                && (spec.weblogHandle() == null || spec.weblogHandle().isBlank())) {
+            // never fall through to a search of the whole site
+            throw new IllegalArgumentException("BLOG page search needs a blog handle");
+        }
+        if (!searchEnabled || max <= 0 || spec.scope() == SearchSpec.Scope.OTHER_BLOGS) {
+            return List.of();
+        }
+        Set<String> handles = null;
+        if (spec.scope() == SearchSpec.Scope.SITE) {
+            // the blogs the site's post search covers, and the site's own
+            // pages; fails closed with it: no blog list, no pages
+            handles = new HashSet<>(eligibleHandles());
+            if (handles.isEmpty()) {
+                return List.of();
+            }
+            handles.add(Weblog.SITE_SPACE_HANDLE);
+        }
+        try (SearchOperation search = new SearchOperation(this, FieldConstants.KIND_PAGE)) {
+            search.setTerm(spec.words());
+            if (handles == null) {
+                search.setWeblogHandle(spec.weblogHandle());
+            } else {
+                search.restrictToSite(handles);
+            }
+            executeIndexOperationNow(search);
+            // a query the parser rejects, or an index that could not be
+            // read (the operation logged it): the post search reports it
+            if (search.getResultsCount() <= 0) {
+                return List.of();
+            }
+            ScoreDoc[] hits = search.getResults().scoreDocs;
+            StoredFields stored = search.getSearcher().storedFields();
+            List<String> ids = new ArrayList<>();
+            for (int i = 0; i < Math.min(max, hits.length); i++) {
+                ids.add(stored.document(hits[i].doc).get(FieldConstants.ID));
+            }
+            return ids;
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not search the pages; the results show posts only", e);
+            return List.of();
+        }
+    }
+
     /**
      * Terms are drawn from the entry's stored title and rendered text and from
      * its own tag names (tags are indexed but not stored, and no field keeps
      * term vectors), analysed as the index was.
      */
     private List<String> similar(IndexSearcher searcher, WeblogEntry entry, int max) throws IOException {
-        TopDocs own = searcher.search(new TermQuery(new Term(FieldConstants.ID, entry.getId())), 1);
-        if (own.scoreDocs.length == 0) {
+        Query query = similarQuery(searcher, entry);
+        if (query == null) {
             return List.of();
+        }
+        List<String> ids = new ArrayList<>();
+        StoredFields stored = searcher.storedFields();
+        for (ScoreDoc hit : searcher.search(query, max).scoreDocs) {
+            String id = stored.document(hit.doc).get(FieldConstants.ID);
+            if (id != null && !id.equals(entry.getId())) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * The query {@link #moreLikeThis} runs for {@code entry}, or null when
+     * the entry is not in the index. Posts only, the entry's own document
+     * found by id and kind. MoreLikeThis weighs each term by its rarity among
+     * the documents holding the field ({@code IndexReader.getDocCount}), so
+     * pages, whose text is in fields of their own, leave its choice of terms
+     * and their weights as they were.
+     */
+    Query similarQuery(IndexSearcher searcher, WeblogEntry entry) throws IOException {
+        TopDocs own = searcher.search(IndexUtil.document(FieldConstants.KIND_ENTRY, entry.getId()), 1);
+        if (own.scoreDocs.length == 0) {
+            return null;
         }
         Document doc = searcher.storedFields().document(own.scoreDocs[0].doc);
         Map<String, java.util.Collection<Object>> text = new java.util.LinkedHashMap<>();
@@ -493,20 +591,13 @@ public class LuceneIndexManager implements IndexManager {
         Query similar = like.like(text);
 
         BooleanQuery.Builder query = new BooleanQuery.Builder().add(similar, BooleanClause.Occur.MUST);
+        query.add(new TermQuery(new Term(FieldConstants.KIND, FieldConstants.KIND_ENTRY)),
+                BooleanClause.Occur.FILTER);
         query.add(new TermQuery(IndexUtil.handleTerm(entry.getWebsite().getHandle())),
                 BooleanClause.Occur.FILTER);
         query.add(new TermQuery(new Term(FieldConstants.ID, entry.getId())), BooleanClause.Occur.MUST_NOT);
         query.add(SearchOperation.notFuture(now()), BooleanClause.Occur.FILTER);
-
-        List<String> ids = new ArrayList<>();
-        StoredFields stored = searcher.storedFields();
-        for (ScoreDoc hit : searcher.search(query.build(), max).scoreDocs) {
-            String id = stored.document(hit.doc).get(FieldConstants.ID);
-            if (id != null && !id.equals(entry.getId())) {
-                ids.add(id);
-            }
-        }
-        return ids;
+        return query.build();
     }
 
     /**
