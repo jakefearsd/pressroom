@@ -116,7 +116,7 @@
                              is safe with the same escape.
 
                              A strand with parts adds how many posts leave it
-                             (they stay published): strandPartCounts holds
+                             (the posts are kept): strandPartCounts holds
                              only strands that have parts. --%>
                         <c:if test="${not empty strandPartCounts[p.id]}">
                             <spring:message code="pages.deleteStrandConfirm" arguments="${strandPartCounts[p.id]}" var="strandConfirm"/>

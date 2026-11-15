@@ -51,6 +51,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/v1/weblogs/{handle}/pages")
 public class PagesApi extends BaseApiController implements UISecurityEnforced {
 
+    /** The longest parts list {@code set_parts} accepts. */
+    static final int MAX_PARTS = 500;
+
     @GetMapping("")
     public List<PageDtos.PageView> list(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
@@ -168,6 +171,11 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
         if (!Boolean.TRUE.equals(page.getStrand())) {
             throw ApiException.invalidField("entries", "This page is not a strand; set strand true on it first.");
+        }
+        // One lookup per id follows: a list longer than any strand is refused
+        // whole, before the first.
+        if (ids.size() > MAX_PARTS) {
+            throw ApiException.invalidField("entries", "At most " + MAX_PARTS + " parts.");
         }
         List<WeblogEntry> requested = new ArrayList<>(ids.size());
         for (String entryId : ids) {

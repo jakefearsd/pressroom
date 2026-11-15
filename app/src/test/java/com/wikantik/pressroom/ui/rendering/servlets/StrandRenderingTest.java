@@ -22,9 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -208,13 +210,70 @@ class StrandRenderingTest {
     void aSinglePartIsOneOfOne(String theme) throws Exception {
         page("tale", "The Tale", true, WeblogPage.PubStatus.PUBLISHED);
         post("only", "ONLYPART", 1, PubStatus.PUBLISHED, true);
+        // A neighbour outside the strand, so the blog would have an Older link.
+        post("loose", "LOOSEPOST", 2, PubStatus.PUBLISHED, false);
         theme(theme);
 
         String body = get("/entry/only");
 
         assertTrue(body.contains("Part 1 of 1 in"), body);
         assertFalse(body.contains("Previous part"));
+        assertFalse(body.contains("Next part"), body);
+        assertFalse(body.contains(">Older<") || body.contains(">Newer<"), "no Older/Newer in a strand");
         assertTrue(body.contains("All parts"));
+    }
+
+    /**
+     * "At once" through the render cache: the strand page and a part are
+     * rendered, the parts are reordered, and both are rendered again without
+     * clearing a cache in between. setStrandParts bumps weblog.lastModified,
+     * the only thing that expires a rendered page.
+     *
+     * <p>A proof of existing behaviour, not a test written before its code:
+     * it (and the publishing one below) passed on its first run.
+     */
+    @Test
+    void aReorderShowsAtOnceOnTheStrandPageAndItsParts() throws Exception {
+        threeParts();
+        theme("journal");
+        String before = get("/tale");
+        assertTrue(before.indexOf("FIRSTPART") < before.indexOf("THIRDPART"), before);
+        assertTrue(get("/entry/three").contains("Part 3 of 3 in"));
+
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        mgr.setStrandParts(TestUtils.weblogger().getWeblogPageManager().getPage(strandId), List.of(
+                mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "three"),
+                mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "one"),
+                mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "two")));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        String after = get("/tale");
+        assertTrue(after.indexOf("THIRDPART") < after.indexOf("FIRSTPART"), after);
+        String part = get("/entry/three");
+        assertTrue(part.contains("Part 1 of 3 in"), part);
+    }
+
+    /** The same through the cache when a draft part is published: it is listed and counted at once. */
+    @Test
+    void publishingADraftPartShowsAtOnceOnTheStrandPageAndItsParts() throws Exception {
+        page("tale", "The Tale", true, WeblogPage.PubStatus.PUBLISHED);
+        post("one", "FIRSTPART", 3, PubStatus.PUBLISHED, true);
+        post("two", "DRAFTPART", 2, PubStatus.DRAFT, true);
+        theme("journal");
+        assertFalse(get("/tale").contains("DRAFTPART"));
+        assertTrue(get("/entry/one").contains("Part 1 of 1 in"));
+
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry draft = mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "two");
+        draft.setStatus(PubStatus.PUBLISHED);
+        mgr.saveWeblogEntry(draft);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertTrue(get("/tale").contains("DRAFTPART"));
+        String part = get("/entry/one");
+        assertTrue(part.contains("Part 1 of 2 in"), part);
     }
 
     @ParameterizedTest

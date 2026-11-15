@@ -566,7 +566,11 @@ template (journal, portfolio, travel):
   references are on `ThemeReferenceLeakTest`'s allowlist of nulls a theme
   tests with `#if`; a new theme using it adds its own lines there.
 - **Freshness**: no cache work of its own. Every strand change bumps
-  `weblog.lastModified`, which re-renders the strand page and every part.
+  `weblog.lastModified`, which re-renders the strand page and every part
+  (`StrandRenderingTest` renders, reorders or publishes a part, and renders
+  again with no cache cleared). A scheduled part appears, numbered and
+  linked, when `ScheduledEntriesTask` publishes it: that save bumps the blog,
+  the same as it does for the blog's listings.
 - Styles (`.strand-parts`, `.strand-bar`) are in each theme's
   `*-custom.css`, unlike the after-article macro's inline style.
 

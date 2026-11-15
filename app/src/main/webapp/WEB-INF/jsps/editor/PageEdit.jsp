@@ -274,6 +274,13 @@
 
             <div id="page_strand_parts" class="strand-parts" ${bean.strand ? '' : 'hidden'}>
                 <input type="hidden" name="_partIds" value="on"/>
+                <%-- The members this panel was built with: the save keeps a
+                     part appended elsewhere meanwhile (in neither list) and
+                     drops only the rows the author removed. --%>
+                <input type="hidden" name="_shownPartIds" value="on"/>
+                <c:forEach items="${strandShownIds}" var="shownId">
+                <input type="hidden" name="bean.shownPartIds" value="${fn:escapeXml(shownId)}"/>
+                </c:forEach>
                 <spring:message code="pageEdit.parts.moveUp" var="moveUpLabel"/>
                 <spring:message code="pageEdit.parts.moveDown" var="moveDownLabel"/>
                 <spring:message code="pageEdit.parts.remove" var="removeLabel"/>
@@ -501,7 +508,7 @@
                      bean.status is deliberately NOT excluded here: it is a
                      visible <select> the author sets and PageBean.copyTo
                      writes it straight through, so it is real content. --%>
-                exclude: ['bean.content', 'bean.partIds'],
+                exclude: ['bean.content', 'bean.partIds', 'bean.shownPartIds'],
                 getText: pressroomGetEntryText,
                 setText: pressroomSetEntryText,
                 onEditorChange: function (callback) {

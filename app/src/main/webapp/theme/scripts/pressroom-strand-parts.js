@@ -40,6 +40,9 @@
         var picker = document.getElementById("strandAddSelect");
         var template = document.getElementById("strandPartTemplate");
 
+        // Once now as well: draft recovery can tick the box without a change
+        // event, and the panel must follow the box as it stands.
+        panel.hidden = !toggle.checked;
         toggle.addEventListener("change", function () {
             panel.hidden = !toggle.checked;
         });

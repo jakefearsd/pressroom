@@ -495,6 +495,24 @@ class WeblogEntriesPermalinkPagerTest extends EntriesPagerTestSupport {
         });
     }
 
+    /**
+     * A strand page of another blog never frames this blog's post, whatever
+     * its strand_page_id says: the nav would link a reader across blogs.
+     */
+    @Test
+    void strandNavIsNullWhenTheStrandPageBelongsToAnotherBlog() throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page =
+                strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        com.wikantik.pressroom.pojos.Weblog elsewhere = weblog();
+        elsewhere.setHandle("elsewhere");
+        page.setWeblog(elsewhere);
+        WeblogEntry a = strandPart("e1", "one", "strand-1");
+        when(entryManager.getWeblogEntryByAnchor(any(), eq("one"))).thenReturn(a);
+        when(entryManager.getStrandParts(any(), eq(true))).thenReturn(java.util.List.of(a));
+
+        withRuntimeConfig(() -> assertNull(pager("one").getStrandNav()));
+    }
+
     @Test
     void strandNavIsNullForAPartThatIsNotReaderVisible() throws Exception {
         strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);

@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -403,7 +404,18 @@ class PageEditJspTest {
         // pressroom-draft.js keys a snapshot by field name, so every same-named
         // hidden partIds would be restored to the last one's value: a list of
         // one post repeated, which the save then refuses as duplicates.
-        assertTrue(read(PAGE_EDIT).contains("exclude: ['bean.content', 'bean.partIds']"));
+        assertTrue(read(PAGE_EDIT).contains("exclude: ['bean.content', 'bean.partIds', 'bean.shownPartIds']"));
+    }
+
+    @Test
+    void thePanelPostsTheIdsItWasBuiltWith() throws IOException {
+        // The save tells "the author removed it" (shown, not posted) from
+        // "appended elsewhere while the editor was open" (neither), and keeps
+        // the latter.
+        String box = strandBox();
+        assertTrue(box.contains("items=\"${strandShownIds}\""), "one hidden input per id the panel was built with");
+        assertTrue(box.contains("name=\"bean.shownPartIds\" value=\"${fn:escapeXml(shownId)}\""));
+        assertTrue(box.contains("name=\"_shownPartIds\""), "an empty panel still posts an empty shown list");
     }
 
     @Test
@@ -415,5 +427,22 @@ class PageEditJspTest {
                 "the confirmation text lands in data-confirm escaped");
         assertTrue(read(PAGE_EDIT).contains("pages.deleteStrandConfirm"),
                 "the editor's own delete dialog says it too");
+    }
+
+    /**
+     * The count includes drafts and the trash, so the text promises only that
+     * the posts are kept, and says "1 post", not "1 posts".
+     */
+    @Test
+    void theDeleteConfirmationCountsOnePostAndManyAndPromisesOnlyThatTheyAreKept() throws IOException {
+        java.util.Properties bundle = new java.util.Properties();
+        try (var in = Files.newBufferedReader(Paths.get("src/main/resources/ApplicationResources.properties"),
+                StandardCharsets.UTF_8)) {
+            bundle.load(in);
+        }
+        java.text.MessageFormat format = new java.text.MessageFormat(
+                bundle.getProperty("pages.deleteStrandConfirm"), java.util.Locale.ENGLISH);
+        assertEquals("1 post will leave this strand; the posts are kept.", format.format(new Object[] {1L}));
+        assertEquals("3 posts will leave this strand; the posts are kept.", format.format(new Object[] {3L}));
     }
 }

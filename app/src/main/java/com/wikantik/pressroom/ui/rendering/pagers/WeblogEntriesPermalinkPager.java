@@ -213,8 +213,10 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
             return null;
         }
         WeblogPage page = weblogger.getWeblogPageManager().getPage(currEntry.getStrandPageId());
+        // A strand is of its own blog only: another blog's page never frames
+        // this post, whatever its strand_page_id says.
         if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED
-                || !Boolean.TRUE.equals(page.getStrand())) {
+                || !Boolean.TRUE.equals(page.getStrand()) || !weblog.equals(page.getWeblog())) {
             return null;
         }
         List<WeblogEntry> parts = weblogger.getWeblogEntryManager().getStrandParts(page, true);

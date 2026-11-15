@@ -51,6 +51,7 @@ public class PageBean {
 
     private boolean strand;
     private List<String> partIds;
+    private List<String> shownPartIds;
 
     public String getId() {
         return id;
@@ -167,6 +168,21 @@ public class PageBean {
 
     public void setPartIds(List<String> partIds) {
         this.partIds = partIds;
+    }
+
+    /**
+     * The members the Parts panel was built with when the editor opened (or
+     * last redisplayed), in that order. A member in neither this list nor
+     * {@link #getPartIds()} was appended elsewhere meanwhile, and a save keeps
+     * it; one in this list but not posted is one the author removed. Null
+     * when the form carried none, which keeps every member not posted.
+     */
+    public List<String> getShownPartIds() {
+        return shownPartIds;
+    }
+
+    public void setShownPartIds(List<String> shownPartIds) {
+        this.shownPartIds = shownPartIds;
     }
 
     /**

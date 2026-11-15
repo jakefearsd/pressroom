@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -106,10 +107,9 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         page.setStrand(true);
         WeblogEntry a = postOn(weblogA, "a");
         WeblogEntry c = postOn(weblogA, "c");
-        a.setStrandPageId(page.getId());
-        c.setStrandPageId(page.getId());
+        members(page, a, c);
 
-        controller.save(requestFor(weblogA), model, strandBean(page, "post-c", "post-a"));
+        controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-c", "post-a"), "post-a", "post-c"));
 
         verify(entries).setStrandParts(page, List.of(c, a));
     }
@@ -118,10 +118,67 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
     void anEmptyPartsListRemovesEveryPart() throws Exception {
         WeblogPage page = pageOn(weblogA, "trip");
         page.setStrand(true);
+        members(page, postOn(weblogA, "a"), postOn(weblogA, "c"));
 
-        controller.save(requestFor(weblogA), model, strandBean(page));
+        controller.save(requestFor(weblogA), model, shown(strandBean(page), "post-a", "post-c"));
 
         verify(entries).setStrandParts(page, List.of());
+    }
+
+    // --- parts added elsewhere while the editor was open ---
+
+    @Test
+    void aPartAddedElsewhereSurvivesATextOnlySave() throws Exception {
+        // The panel showed [a]; meanwhile the entry editor or the API appended
+        // x. The author changed only the text, so the parts are left alone.
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        WeblogEntry a = postOn(weblogA, "a");
+        WeblogEntry x = postOn(weblogA, "x");
+        members(page, a, x);
+        PageBean bean = shown(strandBean(page, "post-a"), "post-a");
+        bean.setContent("New text");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(entries, never()).setStrandParts(any(), any());
+    }
+
+    @Test
+    void aPartAddedElsewhereSurvivesASaveThatReordersAndRemovesOthers() throws Exception {
+        // Shown [a, b, c]; the author removed b and put c first; x was
+        // appended elsewhere meanwhile and goes after the posted order.
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        WeblogEntry a = postOn(weblogA, "a");
+        WeblogEntry b = postOn(weblogA, "b");
+        WeblogEntry c = postOn(weblogA, "c");
+        WeblogEntry x = postOn(weblogA, "x");
+        WeblogEntry y = postOn(weblogA, "y");
+        members(page, a, b, x, c, y);
+
+        controller.save(requestFor(weblogA), model,
+                shown(strandBean(page, "post-c", "post-a"), "post-a", "post-b", "post-c"));
+
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        verify(entries).setStrandParts(page, List.of(c, a, x, y));
+    }
+
+    @Test
+    void aFailedMemberLookupRefusesThePartsSaveRatherThanDroppingParts() throws Exception {
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        postOn(weblogA, "a");
+        postOn(weblogA, "c");
+        when(entries.getStrandParts(page, false)).thenThrow(new WebloggerException("database down"));
+
+        controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-c", "post-a"), "post-a", "post-c"));
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(entries, never()).setStrandParts(any(), any());
     }
 
     @Test
@@ -281,6 +338,57 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void untickingWithEveryShownRowRemovedClearsThePartsInTheSameSave() throws Exception {
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        members(page, postOn(weblogA, "a"), postOn(weblogA, "c"));
+        PageBean bean = shown(strandBean(page), "post-a", "post-c");
+        bean.setStrand(false);
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        assertFalse(page.getStrand());
+        var order = inOrder(weblogger.getWeblogPageManager(), entries);
+        order.verify(weblogger.getWeblogPageManager()).savePage(page);
+        order.verify(entries).setStrandParts(page, List.of());
+    }
+
+    @Test
+    void untickingIsStillRefusedWhenAPartWasAddedElsewhere() throws Exception {
+        registerMessage("pageEdit.error.strandHasParts", "This strand has {0} posts.");
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        members(page, postOn(weblogA, "a"), postOn(weblogA, "x"));
+        when(entries.getStrandPartCount(page)).thenReturn(2L);
+        PageBean bean = shown(strandBean(page), "post-a");
+        bean.setStrand(false);
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(List.of("This strand has 2 posts."), errors(model));
+        assertTrue(page.getStrand());
+        assertTrue(bean.getStrand());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(entries, never()).setStrandParts(any(), any());
+    }
+
+    @Test
+    void aFailedMemberLookupRefusesTheUntick() throws Exception {
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        when(entries.getStrandParts(page, false)).thenThrow(new WebloggerException("database down"));
+        PageBean bean = shown(strandBean(page), "post-a");
+        bean.setStrand(false);
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
+        assertTrue(page.getStrand());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
     void aFailedPartCountRefusesTheUntickRatherThanAllowingIt() throws Exception {
         WeblogPage page = pageOn(weblogA, "trip");
         page.setStrand(true);
@@ -317,6 +425,8 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.edit(page.getId(), requestFor(weblogA), model);
 
         assertEquals(List.of(member), model.getAttribute("strandParts"));
+        assertEquals(List.of("post-member"), model.getAttribute("strandShownIds"),
+                "the ids the panel was built with, for the save to tell 'removed' from 'added elsewhere'");
         assertEquals(List.of(free), model.getAttribute("strandCandidates"));
         @SuppressWarnings("unchecked")
         Map<String, String> titles = (Map<String, String>) model.getAttribute("entryTitles");
@@ -373,6 +483,64 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertTrue(((PageBean) model.getAttribute("bean")).getStrand());
     }
 
+    // --- a refused save shows the author's unsaved rows again ---
+
+    @Test
+    void aRefusedSaveOfAStrandReShowsThePostedOrderIncludingANewRow() throws Exception {
+        WeblogPage page = pageOn(weblogA, "trip");
+        page.setStrand(true);
+        WeblogEntry a = postOn(weblogA, "a");
+        a.setStrandPageId(page.getId());
+        WeblogEntry b = postOn(weblogA, "b");
+        WeblogEntry free = postOn(weblogA, "free");
+        members(page, a);
+        when(entries.getWeblogEntries(any(WeblogEntrySearchCriteria.class))).thenReturn(List.of(b, free));
+        doThrow(new WebloggerException("page slug is reserved: feed"))
+                .when(weblogger.getWeblogPageManager()).savePage(any());
+
+        controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-b", "post-a"), "post-a"));
+
+        assertTrue(errors(model).contains("pageEdit.error.slugReserved"), errors(model).toString());
+        assertEquals(List.of(b, a), model.getAttribute("strandParts"));
+        assertEquals(List.of("post-a"), model.getAttribute("strandShownIds"), "the list the panel was built with");
+        assertEquals(List.of(free), model.getAttribute("strandCandidates"), "a row already chosen is not offered");
+    }
+
+    @Test
+    void aRefusedSaveOfANewStrandReShowsTheChosenRows() throws Exception {
+        WeblogEntry b = postOn(weblogA, "b");
+        WeblogEntry c = postOn(weblogA, "c");
+        when(entries.getWeblogEntries(any(WeblogEntrySearchCriteria.class))).thenReturn(List.of(b, c));
+        doThrow(new WebloggerException("page slug is reserved: feed"))
+                .when(weblogger.getWeblogPageManager()).savePage(any());
+        PageBean bean = new PageBean();
+        bean.setSlug("feed");
+        bean.setTitle("Trip");
+        bean.setStrand(true);
+        bean.setPartIds(new ArrayList<>(List.of("post-c", "post-b")));
+        bean.setShownPartIds(new ArrayList<>());
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("pageEdit.error.slugReserved"), errors(model).toString());
+        assertEquals(List.of(c, b), model.getAttribute("strandParts"));
+        assertEquals(List.of(), model.getAttribute("strandShownIds"));
+        assertEquals(List.of(), model.getAttribute("strandCandidates"));
+    }
+
+    @Test
+    void aRefusedPanelReShowsOnlyTheRowsThatCanBeParts() throws Exception {
+        // An unknown id is dropped and a post listed twice is shown once.
+        WeblogPage page = pageOn(weblogA, "trip");
+        WeblogEntry a = postOn(weblogA, "a");
+        WeblogEntry b = postOn(weblogA, "b");
+
+        controller.save(requestFor(weblogA), model, strandBean(page, "post-a", "post-ghost", "post-b", "post-a"));
+
+        assertFalse(errors(model).isEmpty());
+        assertEquals(List.of(a, b), model.getAttribute("strandParts"));
+    }
+
     // --- binding through the real binder, with PageEdit.jsp's field names ---
 
     @Test
@@ -407,6 +575,23 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void theShownPartIdsBindThroughTheirMarker() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/pressroom-ui/authoring/pageEdit!save.rol");
+        request.addParameter("bean.shownPartIds", "post-a");
+        request.addParameter("bean.shownPartIds", "post-b");
+        request.setParameter("_shownPartIds", "on");
+        PageBean bean = new PageBean();
+        bind(bean, request);
+        assertEquals(List.of("post-a", "post-b"), bean.getShownPartIds());
+
+        MockHttpServletRequest empty = new MockHttpServletRequest("POST", "/pressroom-ui/authoring/pageEdit!save.rol");
+        empty.setParameter("_shownPartIds", "on");
+        PageBean none = new PageBean();
+        bind(none, empty);
+        assertEquals(List.of(), none.getShownPartIds());
+    }
+
+    @Test
     void theBeanCarriesTheSwitchBetweenPageAndForm() {
         WeblogPage page = new WeblogPage();
         page.setStrand(true);
@@ -435,6 +620,20 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         bean.setStrand(true);
         bean.setPartIds(new ArrayList<>(List.of(partIds)));
         return bean;
+    }
+
+    /** The ids the panel was built with, as PageEdit.jsp posts them. */
+    private static PageBean shown(PageBean bean, String... ids) {
+        bean.setShownPartIds(new ArrayList<>(List.of(ids)));
+        return bean;
+    }
+
+    /** The strand's stored members, in position order. */
+    private void members(WeblogPage page, WeblogEntry... posts) throws WebloggerException {
+        for (WeblogEntry post : posts) {
+            post.setStrandPageId(page.getId());
+        }
+        when(entries.getStrandParts(page, false)).thenReturn(List.of(posts));
     }
 
     private HttpServletRequest requestFor(Weblog weblog) {

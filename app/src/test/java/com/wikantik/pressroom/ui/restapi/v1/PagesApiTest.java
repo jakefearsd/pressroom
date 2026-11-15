@@ -827,9 +827,33 @@ class PagesApiTest {
         f.strand.setStrand(false);
         f.post("a", f.weblog);
 
-        putParts(f, "strand-1", "{\"entries\":[\"a\"]}", 400);
+        String body = putParts(f, "strand-1", "{\"entries\":[\"a\"]}", 400);
 
+        assertEquals("entries", json(body).get("errors").get(0).get("field").asString(), body);
         verify(f.entryManager, never()).setStrandParts(any(), any());
+    }
+
+    /**
+     * A list longer than any strand is refused whole before a single lookup:
+     * 501 ids cost 501 queries otherwise, and nothing changes.
+     */
+    @Test
+    void setPartsWithMoreThan500IdsIs400OnEntriesAndChangesNothing() throws Exception {
+        StrandFixture f = new StrandFixture();
+        StringBuilder json = new StringBuilder("{\"entries\":[");
+        for (int i = 0; i < 501; i++) {
+            json.append(i == 0 ? "" : ",").append("\"p").append(i).append('"');
+        }
+        json.append("]}");
+
+        String body = putParts(f, "strand-1", json.toString(), 400);
+
+        tools.jackson.databind.JsonNode error = json(body).get("errors").get(0);
+        assertEquals("entries", error.get("field").asString(), body);
+        assertEquals("At most 500 parts.", error.get("message").asString(), body);
+        verify(f.entryManager, never()).getWeblogEntry(any());
+        verify(f.entryManager, never()).setStrandParts(any(), any());
+        verify(f.weblogger, never()).flush();
     }
 
     /** null never means a value: without entries there is nothing to set, so it is a 400, not "no parts". */

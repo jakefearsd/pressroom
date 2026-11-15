@@ -20,10 +20,12 @@ package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -123,7 +125,7 @@ public class PageEditController extends BaseController {
             model.addAttribute("page", page);
         }
 
-        addPageEditModelAttributes(request, model, bean, page);
+        addPageEditModelAttributes(request, model, bean, page, null);
         model.addAttribute("bean", bean);
         return ".PageEdit";
     }
@@ -167,8 +169,8 @@ public class PageEditController extends BaseController {
                 page.getOgImageId(), request);
         // The strand switch and the Parts panel, validated like the fields
         // above: a refused id or a refused untick saves nothing at all.
-        Optional<List<WeblogEntry>> parts = checkedStrandParts(bean, page, model, request);
-        boolean saved = !hasErrors(model) && saved(bean, page, parts, model, request);
+        StrandSave strand = checkedStrandParts(bean, page, model, request);
+        boolean saved = !hasErrors(model) && saved(bean, page, Optional.ofNullable(strand.store), model, request);
         if (saved || !isNew) {
             model.addAttribute("page", page);
         }
@@ -186,49 +188,159 @@ public class PageEditController extends BaseController {
             model.addAttribute("pageTitle", "pageEdit.title.new");
         }
 
-        addPageEditModelAttributes(request, model, bean, StringUtils.isBlank(bean.getId()) ? null : page);
+        // A refused save shows the author's unsaved rows again, not the
+        // stored ones; a saved one shows what is now stored.
+        addPageEditModelAttributes(request, model, bean, StringUtils.isBlank(bean.getId()) ? null : page,
+                saved ? null : strand.rows);
         model.addAttribute("bean", bean);
         return ".PageEdit";
     }
 
+    /** What a save does with a strand's parts, and what a refused save shows again. */
+    private static final class StrandSave {
+        /** The parts to store, in order; null leaves them as they are. */
+        private List<WeblogEntry> store;
+        /** The posted rows that can be parts, for a refused save to redisplay; null shows the stored parts. */
+        private List<WeblogEntry> rows;
+    }
+
     /**
-     * The parts to store for this save, in the posted order, or empty to leave
-     * them as they are (unlike an empty list, which removes every part): the
-     * page is not (or stays not) a strand, or the form carried no Parts
-     * panel. Every refusal is reported on the model before anything is saved.
+     * The parts to store for this save, or null to leave them as they are
+     * (unlike an empty list, which removes every part): the page is not (or
+     * stays not) a strand, the form carried no Parts panel, or the author
+     * left the panel as it was shown. Every refusal is reported on the model
+     * before anything is saved.
+     *
+     * <p>The panel posts its rows ({@code partIds}) and the members it was
+     * built with ({@code shownPartIds}). The parts stored are the posted
+     * rows, then every current member in neither list -- one appended from
+     * the entry editor or the API while this editor was open -- after them
+     * in stored order: only what the author removed leaves the strand.
      *
      * <p>A site page is never a strand. Unticking a strand that still has
      * parts (any status, the trash included) is refused, and the form keeps
-     * showing it as a strand. Each requested id is resolved with the global
-     * lookup rather than the ownership-checked one, so {@link StrandRules}
-     * can tell "another blog's post" from "no such post"; a failed lookup is
-     * an unknown post, never a pass.
+     * showing it as a strand -- unless the author removed every row it showed
+     * and nothing was added elsewhere, which clears the parts in the same
+     * save. Each requested id is resolved with the global lookup rather than
+     * the ownership-checked one, so {@link StrandRules} can tell "another
+     * blog's post" from "no such post"; a failed lookup is an unknown post,
+     * never a pass, and members that cannot be read refuse the save.
      */
-    private Optional<List<WeblogEntry>> checkedStrandParts(PageBean bean, WeblogPage page, Model model,
-                                                           HttpServletRequest request) {
+    private StrandSave checkedStrandParts(PageBean bean, WeblogPage page, Model model,
+                                          HttpServletRequest request) {
+        StrandSave result = new StrandSave();
         if (getActionWeblog(request).isSiteSpace()) {
             bean.setStrand(false);
         }
         if (!bean.getStrand()) {
             if (Boolean.TRUE.equals(page.getStrand())) {
-                checkUntick(bean, page, model, request);
+                result.store = checkedUntick(bean, page, model, request).orElse(null);
+                if (bean.getPartIds() != null && bean.getPartIds().isEmpty()) {
+                    result.rows = List.of();
+                }
             }
-            return Optional.empty();
+            return result;
         }
         List<String> ids = bean.getPartIds();
         if (ids == null) {
-            return Optional.empty();
+            return result;
         }
         List<WeblogEntry> requested = new ArrayList<>(ids.size());
         for (String id : ids) {
             requested.add(postById(id));
         }
         Map<String, String> refused = StrandRules.refusals(page, requested, ids);
+        result.rows = acceptable(requested, refused);
+        List<String> shown = bean.getShownPartIds() == null ? List.of() : bean.getShownPartIds();
+        if (ids.equals(shown)) {
+            return result;
+        }
         // One line per reason: two foreign ids are one thing to fix.
         for (String key : new LinkedHashSet<>(refused.values())) {
             addFieldError(model, "page_strand_parts", key, request);
         }
-        return Optional.of(requested);
+        if (!refused.isEmpty()) {
+            return result;
+        }
+        result.store = members(page, model, request)
+                .map(members -> withPartsAddedElsewhere(requested, ids, shown, members)).orElse(null);
+        return result;
+    }
+
+    /**
+     * The posted parts, then every member that is in neither the posted nor
+     * the shown list (appended elsewhere while the editor was open), in
+     * stored order.
+     */
+    private static List<WeblogEntry> withPartsAddedElsewhere(List<WeblogEntry> posted, List<String> postedIds,
+                                                             List<String> shownIds, List<WeblogEntry> members) {
+        Set<String> known = new HashSet<>(postedIds);
+        known.addAll(shownIds);
+        List<WeblogEntry> parts = new ArrayList<>(posted);
+        for (WeblogEntry member : members) {
+            if (!known.contains(member.getId())) {
+                parts.add(member);
+            }
+        }
+        return parts;
+    }
+
+    /** The posts that can be parts, in posted order: unknown and refused ids dropped, a repeat shown once. */
+    private static List<WeblogEntry> acceptable(List<WeblogEntry> requested, Map<String, String> refused) {
+        List<WeblogEntry> rows = new ArrayList<>(requested.size());
+        Set<String> seen = new HashSet<>();
+        for (WeblogEntry entry : requested) {
+            if (entry == null) {
+                continue;
+            }
+            String reason = refused.get(entry.getId());
+            if ((reason == null || "strand.error.duplicate".equals(reason)) && seen.add(entry.getId())) {
+                rows.add(entry);
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Every current member of a stored strand, by position; none for a page
+     * that is not one yet. Empty, with an error on the model, when they
+     * cannot be read: a decision path, so it fails closed.
+     */
+    private Optional<List<WeblogEntry>> members(WeblogPage page, Model model, HttpServletRequest request) {
+        if (!Boolean.TRUE.equals(page.getStrand())) {
+            return Optional.of(List.of());
+        }
+        try {
+            return Optional.of(weblogger.getWeblogEntryManager().getStrandParts(page, false));
+        } catch (WebloggerException ex) {
+            log.error("Error loading the parts of strand {}", page.getId(), ex);
+            addError(model, "generic.error.check.logs", request);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Unticking a stored strand: allowed, with its parts cleared (an empty
+     * list), when the author removed every row the panel showed and every
+     * current member was among them; otherwise refused while any part is
+     * left (empty, nothing to store).
+     */
+    private Optional<List<WeblogEntry>> checkedUntick(PageBean bean, WeblogPage page, Model model,
+                                                      HttpServletRequest request) {
+        List<String> shown = bean.getShownPartIds();
+        if (bean.getPartIds() != null && bean.getPartIds().isEmpty() && shown != null) {
+            Optional<List<WeblogEntry>> members = members(page, model, request);
+            if (members.isEmpty()) {
+                bean.setStrand(true);
+                return Optional.empty();
+            }
+            List<WeblogEntry> current = members.get();
+            if (!current.isEmpty() && current.stream().allMatch(m -> shown.contains(m.getId()))) {
+                return Optional.of(List.of());
+            }
+        }
+        checkUntick(bean, page, model, request);
+        return Optional.empty();
     }
 
     private void checkUntick(PageBean bean, WeblogPage page, Model model, HttpServletRequest request) {
@@ -361,8 +473,12 @@ public class PageEditController extends BaseController {
                 .body(weblogger.getEntryRenderer().pageContent(scratch));
     }
 
+    /**
+     * @param postedRows the Parts panel rows a refused save redisplays, or
+     *                   null to show the stored parts
+     */
     private void addPageEditModelAttributes(HttpServletRequest request, Model model, PageBean bean,
-                                            WeblogPage page) {
+                                            WeblogPage page, List<WeblogEntry> postedRows) {
         // The editor's insert menu, generated from the shortcode registry
         // itself so it can never advertise a shortcode that does not render,
         // or omit one that does. Pages go through the same shortcode-expanding
@@ -388,34 +504,52 @@ public class PageEditController extends BaseController {
             model.addAttribute("ogImageThumbnailUrl", ogImageThumbnailUrl);
         }
 
-        addStrandModelAttributes(getActionWeblog(request), page, model);
+        addStrandModelAttributes(getActionWeblog(request), page, bean, postedRows, model);
     }
 
     /**
-     * What the Parts panel renders from: every member of a stored strand, any
-     * status, by position; and this blog's posts that are in no strand and
-     * not in the trash, for its add control. A failed lookup here is a
-     * display path (the save validates every id again), so it shows an
-     * empty list rather than failing the editor. Site pages have no panel.
+     * What the Parts panel renders from: its rows (every member of a stored
+     * strand, any status, by position -- or, after a refused save, the rows
+     * the author posted), the ids it was built with ({@code strandShownIds},
+     * posted back for the save to tell a removed row from a part added
+     * elsewhere), and this blog's posts that are in no strand (or were
+     * removed from this one), not in the trash and not already a row, for its
+     * add control. A failed lookup here is a display path (the save
+     * validates every id again), so it shows an empty list rather than
+     * failing the editor. Site pages have no panel.
      */
-    private void addStrandModelAttributes(Weblog weblog, WeblogPage page, Model model) {
+    private void addStrandModelAttributes(Weblog weblog, WeblogPage page, PageBean bean,
+                                          List<WeblogEntry> postedRows, Model model) {
         if (weblog.isSiteSpace()) {
             return;
         }
         List<WeblogEntry> parts = List.of();
-        if (page != null && Boolean.TRUE.equals(page.getStrand())) {
-            try {
-                parts = weblogger.getWeblogEntryManager().getStrandParts(page, false);
-            } catch (WebloggerException ex) {
-                log.error("Error loading the parts of strand {}", page.getId(), ex);
+        List<String> shownIds;
+        if (postedRows != null) {
+            // The list the panel was first built with, kept across the
+            // redisplay so the next save still tells removed from added.
+            parts = postedRows;
+            shownIds = bean.getShownPartIds() == null ? List.of() : bean.getShownPartIds();
+        } else {
+            if (page != null && Boolean.TRUE.equals(page.getStrand())) {
+                try {
+                    parts = weblogger.getWeblogEntryManager().getStrandParts(page, false);
+                } catch (WebloggerException ex) {
+                    log.error("Error loading the parts of strand {}", page.getId(), ex);
+                }
             }
+            shownIds = parts.stream().map(WeblogEntry::getId).toList();
         }
+        Set<String> rowIds = new HashSet<>();
+        parts.forEach(part -> rowIds.add(part.getId()));
+        String strandId = page == null ? null : page.getId();
         List<WeblogEntry> candidates = List.of();
         try {
             WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
             criteria.setWeblog(weblog);
             candidates = weblogger.getWeblogEntryManager().getWeblogEntries(criteria).stream()
-                    .filter(e -> e.getStrandPageId() == null && e.getStatus() != WeblogEntry.PubStatus.TRASHED)
+                    .filter(e -> (e.getStrandPageId() == null || e.getStrandPageId().equals(strandId))
+                            && e.getStatus() != WeblogEntry.PubStatus.TRASHED && !rowIds.contains(e.getId()))
                     .toList();
         } catch (WebloggerException ex) {
             log.error("Error listing posts for the strand panel of weblog {}", weblog.getHandle(), ex);
@@ -423,6 +557,7 @@ public class PageEditController extends BaseController {
         List<WeblogEntry> titled = new ArrayList<>(parts);
         titled.addAll(candidates);
         model.addAttribute("strandParts", parts);
+        model.addAttribute("strandShownIds", shownIds);
         model.addAttribute("strandCandidates", candidates);
         model.addAttribute("entryTitles", EntriesController.plainTitles(titled));
     }

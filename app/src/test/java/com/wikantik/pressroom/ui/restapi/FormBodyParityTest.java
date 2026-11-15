@@ -69,7 +69,10 @@ class FormBodyParityTest {
                         Map.of("content", "text"),
                         Map.of("id", "The page's id is the update route's path variable; create assigns one.",
                                 "partIds", "The Parts panel's ordered list reaches the API as its own route, "
-                                        + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.")));
+                                        + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.",
+                                "shownPartIds", "The rows the Parts panel was built with, so a browser form "
+                                        + "keeps parts appended meanwhile; the API's set_parts states the "
+                                        + "whole list instead.")));
     }
 
     @ParameterizedTest(name = "{0}")
