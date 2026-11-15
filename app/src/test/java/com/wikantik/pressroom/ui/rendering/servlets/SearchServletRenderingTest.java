@@ -42,15 +42,28 @@ import static org.mockito.Mockito.when;
 
 class SearchServletRenderingTest {
 
+    /**
+     * Every blog a test creates gets a handle no earlier test used. The index
+     * removes a deleted blog's documents by HANDLE, on a background thread,
+     * some time after the delete (RemoveWebsiteIndexOperation): with one fixed
+     * handle per class, a test could find the previous test's page still
+     * indexed under "its" handle (and stop waiting too early), or lose its own
+     * new posts to the previous blog's removal running late. Both happened in
+     * full builds; see the final-fix report, "Flake".
+     */
+    private final String suffix = Long.toString(System.nanoTime(), 36);
+
     private User user;
     private Weblog weblog;
+    private String handle;
 
     @BeforeEach
     void setUp() throws Exception {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
         user = TestUtils.setupUser("searchuser");
-        weblog = TestUtils.setupWeblog("searchblog", user);
+        handle = "searchblog" + suffix;
+        weblog = TestUtils.setupWeblog(handle, user);
         TestUtils.endSession(true);
     }
 
@@ -65,7 +78,7 @@ class SearchServletRenderingTest {
     @Test
     void searchPageRendersWithNoResults() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + handle);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -93,7 +106,7 @@ class SearchServletRenderingTest {
     @Test
     void aSearchThatMatchesNothingSaysSo() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + handle);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -155,7 +168,7 @@ class SearchServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + handle);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -176,7 +189,7 @@ class SearchServletRenderingTest {
     @Test
     void theSearchPageIsNoindex() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + handle);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -274,10 +287,12 @@ class SearchServletRenderingTest {
         TestUtils.endSession(true);
     }
 
-    private Weblog newBlog(String handle, String name, String theme) throws Exception {
-        User owner = TestUtils.setupUser(handle + "user");
+    /** A second blog, its handle {@code prefix} made unique to this test (see {@link #suffix}). */
+    private Weblog newBlog(String prefix, String name, String theme) throws Exception {
+        String unique = prefix + suffix;
+        User owner = TestUtils.setupUser(unique + "user");
         extraUsers.add(owner);
-        Weblog blog = TestUtils.setupWeblog(handle, owner);
+        Weblog blog = TestUtils.setupWeblog(unique, owner);
         extraBlogs.add(blog);
         Weblog managed = TestUtils.getManagedWebsite(blog);
         managed.setName(name);
@@ -394,7 +409,7 @@ class SearchServletRenderingTest {
         awaitIndexed(other, "zorbix", 1);
 
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             assertInOrder(body, "Zorbix in the title", "Plain notes",
                     "class=\"search-group search-group-other\"", "Zorbix elsewhere");
             assertTrue(body.contains("class=\"search-results\""), body);
@@ -412,14 +427,14 @@ class SearchServletRenderingTest {
         awaitIndexed(other, "zorbix", 1);
 
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             java.util.regex.Matcher link = java.util.regex.Pattern.compile(
-                    "<h3 class=\"search-title\"><a href=\"(https?://[^\"]*/searchother/entry/other-one)\"")
+                    "<h3 class=\"search-title\"><a href=\"(https?://[^\"]*/" + other.getHandle() + "/entry/other-one)\"")
                     .matcher(body);
             assertTrue(link.find(), "an other-blog hit links the absolute permalink:\n" + body);
             assertTrue(body.contains("<a class=\"search-blog\" href=\"http"), body);
             assertTrue(body.contains(">Harbor &amp; Cove</a>"), body);
-            assertFalse(body.contains("href=\"/searchblog/entry/other-one"), body);
+            assertFalse(body.contains("href=\"/" + handle + "/entry/other-one"), body);
             assertTrue(body.contains("/entry/own-one\""), body);
         });
     }
@@ -430,7 +445,7 @@ class SearchServletRenderingTest {
         awaitIndexed(weblog, "zorbix", 1);
 
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             // markup is stripped before indexing, and what remains is escaped once
             assertTrue(body.contains("Fish &amp; chips <mark>zorbix</mark>"), body);
             assertFalse(body.contains("&amp;amp;"), body);
@@ -444,13 +459,13 @@ class SearchServletRenderingTest {
             post(weblog, "many-" + i, "Many " + i, "zorbix");
         }
         awaitIndexed(weblog, "zorbix", 8);
-        inEveryTheme(theme -> assertFalse(search("searchblog", "zorbix").contains("class=\"search-all\""),
+        inEveryTheme(theme -> assertFalse(search(handle, "zorbix").contains("class=\"search-all\""),
                 theme + ": eight is not more than eight"));
 
         post(weblog, "many-8", "Many 8", "zorbix");
         awaitIndexed(weblog, "zorbix", 9);
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             assertTrue(body.contains("class=\"search-all\""), body);
             assertTrue(body.contains("Show all 9 from this blog"), body);
             assertTrue(body.contains("scope=blog"), body);
@@ -462,7 +477,7 @@ class SearchServletRenderingTest {
         post(weblog, "alone", "Alone", "zorbix");
         awaitIndexed(weblog, "zorbix", 1);
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             assertFalse(body.contains("search-group-other\""), body);
             assertFalse(body.contains("class=\"search-site\""), body);
             assertFalse(body.contains("class=\"search-all\""), body);
@@ -480,7 +495,7 @@ class SearchServletRenderingTest {
         post(other, "only-other", "Only other", "zorbix");
         awaitIndexed(other, "zorbix", 1);
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zorbix");
+            String body = search(handle, "zorbix");
             assertTrue(body.contains("Nothing in Test Weblog matched."), body);
             assertTrue(body.contains("class=\"search-group search-group-other\""), body);
             assertTrue(body.contains("class=\"search-site\""), body);
@@ -493,8 +508,8 @@ class SearchServletRenderingTest {
         post(weblog, "fallback", "Fallback", "zorbix and nothing more");
         awaitIndexed(weblog, "zorbix", 1);
         inEveryTheme(theme -> {
-            assertFalse(search("searchblog", "zorbix").contains("class=\"search-fallback\""));
-            String body = search("searchblog", "zorbix absentword");
+            assertFalse(search(handle, "zorbix").contains("class=\"search-fallback\""));
+            String body = search(handle, "zorbix absentword");
             assertTrue(body.contains("class=\"search-fallback\""), body);
             assertTrue(body.contains("Nothing matched all of those words."), body);
         });
@@ -504,7 +519,7 @@ class SearchServletRenderingTest {
     void resultsPageIsNoindex() throws Exception {
         post(weblog, "indexed", "Indexed", "zorbix");
         awaitIndexed(weblog, "zorbix", 1);
-        inEveryTheme(theme -> assertTrue(search("searchblog", "zorbix")
+        inEveryTheme(theme -> assertTrue(search(handle, "zorbix")
                 .contains("<meta name=\"robots\" content=\"noindex\">")));
     }
 
@@ -512,7 +527,7 @@ class SearchServletRenderingTest {
     void siteViewNamesEachBlogAndShowsMoreFromBlog() throws Exception {
         Weblog site = newBlog("searchsite", "The Site", "frontpage");
         Weblog second = newBlog("searchsecond", "Second Blog", "journal");
-        setProperty(FRONTPAGE_HANDLE_PROP, "searchsite");
+        setProperty(FRONTPAGE_HANDLE_PROP, site.getHandle());
         setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
         post(weblog, "site-a1", "Zorbix A one", "zorbix zorbix zorbix");
         post(weblog, "site-a2", "A two", "zorbix");
@@ -521,7 +536,7 @@ class SearchServletRenderingTest {
         awaitIndexed(second, "zorbix", 1);
         RenderingTestSupport.clearRenderCaches();
 
-        String body = search("searchsite", "zorbix");
+        String body = search(site.getHandle(), "zorbix");
 
         assertTrue(body.contains("3 articles across 2 blogs"), body);
         assertTrue(body.contains(">Test Weblog</a>"), body);
@@ -530,18 +545,17 @@ class SearchServletRenderingTest {
         assertEquals(1, count(body, "class=\"search-more\""), "said once, on the blog's first hit");
         assertTrue(body.contains("class=\"search-results\""), body);
         assertFalse(body.contains("class=\"search-all\""), body);
-        assertTrue(site.getHandle().equals("searchsite"));
-    }
+            }
 
     @Test
     void emptyAndErrorStatesStillRender() throws Exception {
         inEveryTheme(theme -> {
-            String body = search("searchblog", "zzznope");
+            String body = search(handle, "zzznope");
             assertTrue(body.contains(NO_RESULTS_SENTENCE), body);
             assertFalse(body.contains("class=\"search-results\"") && body.contains("search-hit\""), body);
         });
         Weblog site = newBlog("searchsite", "The Site", "frontpage");
-        setProperty(FRONTPAGE_HANDLE_PROP, "searchsite");
+        setProperty(FRONTPAGE_HANDLE_PROP, site.getHandle());
         setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
         RenderingTestSupport.clearRenderCaches();
         assertTrue(search(site.getHandle(), "zzznope").contains("No posts matched that search."));
@@ -549,8 +563,8 @@ class SearchServletRenderingTest {
 
     // ------------------------------------- a search that matches only a page
 
-    /** A published page on {@code blog}; the save queues its indexing in the background. */
-    private static void publishPage(Weblog blog, String slug, String title, String content, boolean noindex)
+    /** A published page on {@code blog}, its id returned; the save queues its indexing in the background. */
+    private static String publishPage(Weblog blog, String slug, String title, String content, boolean noindex)
             throws Exception {
         WeblogPage page = new WeblogPage();
         page.setWeblog(TestUtils.getManagedWebsite(blog));
@@ -562,15 +576,21 @@ class SearchServletRenderingTest {
         TestUtils.weblogger().getWeblogPageManager().savePage(page);
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
+        return page.getId();
     }
 
-    private static void awaitPageIndexed(Weblog blog, String word) throws Exception {
+    /**
+     * Waits until the index finds THIS page for {@code word}: any page found
+     * is not enough, since the index may still hold a deleted page's document
+     * (its removal runs in the background).
+     */
+    private static void awaitPageIndexed(Weblog blog, String word, String pageId) throws Exception {
         IndexManager index = TestUtils.weblogger().getIndexManager();
         SearchSpec spec = new SearchSpec(word, SearchSpec.Scope.BLOG, blog.getHandle(), null, 0, 3, "en_US");
         long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
-        while (index.findPages(spec, 3).isEmpty()) {
+        while (!index.findPages(spec, 3).contains(pageId)) {
             if (System.nanoTime() > deadline) {
-                throw new AssertionError(blog.getHandle() + ": no page indexed for " + word);
+                throw new AssertionError(blog.getHandle() + ": page " + pageId + " not indexed for " + word);
             }
             Thread.sleep(50);
         }
@@ -584,11 +604,11 @@ class SearchServletRenderingTest {
      */
     @Test
     void aSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
-        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
-        awaitPageIndexed(weblog, "quillwort");
+        String quill = publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort", quill);
 
         inEveryTheme(theme -> {
-            String body = search("searchblog", "quillwort");
+            String body = search(handle, "quillwort");
             assertTrue(body.contains("search-group-pages"), body);
             assertFalse(body.contains(NO_RESULTS_SENTENCE), body);
             assertTrue(body.contains("<h2 class=\"search-group\">No posts in Test Weblog matched.</h2>"), body);
@@ -599,10 +619,10 @@ class SearchServletRenderingTest {
     /** The same in frontpage's search branch (the aggregated front-page blog): no "No posts matched" line. */
     @Test
     void aFrontpageSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
-        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
-        awaitPageIndexed(weblog, "quillwort");
+        String quill = publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort", quill);
         Weblog site = newBlog("searchsite", "The Site", "frontpage");
-        setProperty(FRONTPAGE_HANDLE_PROP, "searchsite");
+        setProperty(FRONTPAGE_HANDLE_PROP, site.getHandle());
         setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
         RenderingTestSupport.clearRenderCaches();
         String front = search(site.getHandle(), "quillwort");
@@ -613,8 +633,8 @@ class SearchServletRenderingTest {
     /** The same at the site's search: with a Pages group, no "No posts matched" line above it. */
     @Test
     void theSiteSearchMatchingOnlyAPageNeverSaysNothingMatched() throws Exception {
-        publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
-        awaitPageIndexed(weblog, "quillwort");
+        String quill = publishPage(weblog, "quill", "Quillwort Guide", "All about quillwort.", false);
+        awaitPageIndexed(weblog, "quillwort", quill);
         givenSiteSpace("frontpage");
 
         String body = siteSearchBody("quillwort");
@@ -635,10 +655,10 @@ class SearchServletRenderingTest {
     @Test
     void aNoindexPageIsNeverAResultThoughTheNavStillLinksIt() throws Exception {
         publishPage(weblog, "hidden", "Hidden Bongo", "All about bongofish.", true);
-        publishPage(weblog, "shown", "Visible Okapi", "All about okapifish.", false);
-        awaitPageIndexed(weblog, "okapifish");
+        String shown = publishPage(weblog, "shown", "Visible Okapi", "All about okapifish.", false);
+        awaitPageIndexed(weblog, "okapifish", shown);
 
-        String body = search("searchblog", "bongofish");
+        String body = search(handle, "bongofish");
 
         assertTrue(body.contains(">Hidden Bongo</a>"), "the nav links the page:\n" + body);
         assertFalse(body.contains("search-group-pages"), "but it is no result:\n" + body);
