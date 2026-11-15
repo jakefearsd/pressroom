@@ -125,12 +125,22 @@ templates).
   the named blog) and `SITE`. `BLOG` and `OTHER_BLOGS` without a handle throw
   `IllegalArgumentException`, never a whole-site search.
 - **Ranking**: relevance, not newest-first. Searched fields and weights:
-  `title` 4, `tags` 3, `summary` 2, `blog` 2, `cattext` 1.5, `content` 1
-  (`SearchOperation.FIELD_BOOSTS`); scaled by a recency factor, 1.25 for a
-  post published now falling linearly to 1.0 at 730 days (`RecencyBoost`,
-  applied through `FunctionScoreQuery`). All of the words first (AND); only
-  when that finds nothing, any of them (OR) and `anyWordFallback` is set so
-  the page says so. At most 500 hits are considered.
+  `title` 4, `tags` 3, `summary` 2, `blog` 0.5, `cattext` 1.5, `content` 1
+  (`SearchOperation.FIELD_BOOSTS`; `blog` was 2 until 2026-11-15, which lifted
+  every post of a blog whose name held the word above better matches
+  elsewhere; it stays searched so a post relying on its blog's name is still
+  found). Words found together score more (`phraseBoost`, from two tokens): an
+  optional phrase clause, title slop 2 boost 2, body slop 3 boost 1, beside the
+  required words, so it ranks but never changes what matches. All scaled by a
+  recency factor, 1.25 for a post published now falling linearly to 1.0 at
+  730 days (`RecencyBoost`, applied through `FunctionScoreQuery`). Three
+  stages: all of the words (AND); when that finds nothing, most of them
+  (`mostWords`: 75% rounded down, from three plain words; a query with a
+  reader's `+`/`-` has no such stage, because Lucene 10's parser then nests the
+  plain words in one clause); then any (OR). Either fallback sets
+  `anyWordFallback`, so the page says the results match only some of the
+  words. At most 500 hits are considered. Design and the deferred options
+  (BM25F/DisMax, embeddings): `docs/superpowers/specs/2026-11-15-search-relevance-design.md`.
 - **Eligibility is enforced here, not by the page** (`SITE`, `OTHER_BLOGS`):
   FILTER clauses `site:1` (the entry half, stamped at index time) and
   `handle` in the set of blogs `DiscoveryEligibility.isEligible(Weblog)`

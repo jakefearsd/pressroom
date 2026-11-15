@@ -388,7 +388,7 @@ class LuceneIndexManagerSearchTest {
             }
             boosts.put(assertInstanceOf(org.apache.lucene.search.TermQuery.class, q).getTerm().field(), boost);
         }
-        assertEquals(java.util.Map.of("title", 4.0f, "tags", 3.0f, "summary", 2.0f, "blog", 2.0f,
+        assertEquals(java.util.Map.of("title", 4.0f, "tags", 3.0f, "summary", 2.0f, "blog", 0.5f,
                 "cattext", 1.5f, "content", 1.0f), boosts);
     }
 
@@ -467,6 +467,128 @@ class LuceneIndexManagerSearchTest {
         SearchHits hits = find("kitchen zebra", "allblog");
         assertEquals(1, hits.hits().size());
         assertTrue(!hits.anyWordFallback());
+    }
+
+    // ------------------------------------------------------- relevance (spec 2026-11-15)
+
+    /**
+     * The same words in the same-length body, adjacent in one and far apart in
+     * the other: only proximity can order them. The scattered one is indexed
+     * first, so a tie would put it first. The phrase boost only ranks: both
+     * still match, with the same total and no fallback.
+     */
+    @Test
+    void wordsTogetherOutrankTheSameWordsFarApart() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("nearblog");
+        post("far-1", blog, "Notes", "lake alpha bravo charlie delta echo foxtrot cabin", 10);
+        post("near-1", blog, "Notes", "lake cabin alpha bravo charlie delta echo foxtrot", 10);
+
+        SearchHits hits = find("lake cabin", "nearblog");
+        assertEquals(List.of("near-1", "far-1"), idsOf(hits));
+        assertEquals(2, hits.total());
+        assertTrue(!hits.anyWordFallback());
+    }
+
+    /** The phrase boost on a body never lifts it over a title holding every word. */
+    @Test
+    void everyWordInTheTitleOutranksThePhraseInABody() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("phraseblog");
+        // indexed first, so a tie in score would put it first
+        post("body-phrase", blog, "Notes", "lake cabin alpha bravo charlie delta echo foxtrot", 10);
+        post("title-words", blog, "Lake cabin", "alpha bravo charlie delta echo foxtrot golf hotel", 10);
+
+        assertEquals(List.of("title-words", "body-phrase"), idsOf(find("lake cabin", "phraseblog")));
+    }
+
+    /**
+     * Four words no post has together: the post with three of them is shown and
+     * the one with a single word is not, and the page is told these match only
+     * some of the words.
+     */
+    @Test
+    void whenNoPostHasEveryWordMostOfThemComesBeforeAnyOfThem() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mostblog");
+        post("three-words", blog, "Notes", "lake cabin dock alpha bravo", 5);
+        post("one-word", blog, "Notes", "sauna alpha bravo charlie delta", 5);
+
+        SearchHits hits = find("lake cabin dock sauna", "mostblog");
+        assertEquals(List.of("three-words"), idsOf(hits));
+        assertTrue(hits.anyWordFallback());
+    }
+
+    /** Guard: when no post has most of the words either, any word still finds them (fallback reported). */
+    @Test
+    void whenNoPostHasMostOfTheWordsAnyOfThemStillFinds() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("sparseblog");
+        post("lake-only", blog, "Notes", "lake alpha", 5);
+        post("sauna-only", blog, "Notes", "sauna alpha", 5);
+
+        SearchHits hits = find("lake cabin dock sauna", "sparseblog");
+        assertEquals(2, hits.hits().size());
+        assertTrue(hits.anyWordFallback());
+    }
+
+    /**
+     * Most of the words is floor(3/4) of the optional words, from three words
+     * up; one or two words, and a query with a reader's + or - (whose plain
+     * words the parser nests in a clause of their own), have no such stage.
+     */
+    @Test
+    void mostOfTheWordsIsThreeQuartersOfTheOptionalOnesFromThreeWords() throws Exception {
+        org.apache.lucene.analysis.Analyzer analyzer = manager.getAnalyzer();
+        assertEquals(2, mostWordsMinimum("lake cabin dock", analyzer));
+        assertEquals(3, mostWordsMinimum("lake cabin dock sauna", analyzer));
+        assertEquals(3, mostWordsMinimum("lake cabin dock sauna pier", analyzer));
+        assertEquals(4, mostWordsMinimum("lake cabin dock sauna pier boat", analyzer));
+        assertEquals(-1, mostWordsMinimum("lake cabin", analyzer));
+        assertEquals(-1, mostWordsMinimum("lake", analyzer), "one word's field disjunction is not words");
+        assertEquals(-1, mostWordsMinimum("+tahoe lake cabin dock", analyzer));
+        assertEquals(-1, mostWordsMinimum("lake cabin dock -sauna", analyzer));
+
+        org.apache.lucene.search.Query words = SearchOperation.parse("lake cabin dock",
+                org.apache.lucene.queryparser.classic.MultiFieldQueryParser.Operator.OR, analyzer);
+        org.apache.lucene.search.Query term = new org.apache.lucene.search.TermQuery(
+                new org.apache.lucene.index.Term("title", "lake"));
+        org.junit.jupiter.api.Assertions.assertNull(SearchOperation.mostWords(term, words));
+        org.junit.jupiter.api.Assertions.assertNull(SearchOperation.mostWords(SearchOperation.parse(
+                "lake cabin dock", org.apache.lucene.queryparser.classic.MultiFieldQueryParser.Operator.AND,
+                analyzer), term));
+    }
+
+    private static org.apache.lucene.search.Query mostWords(String words,
+            org.apache.lucene.analysis.Analyzer analyzer) throws Exception {
+        return SearchOperation.mostWords(
+                SearchOperation.parse(words, org.apache.lucene.queryparser.classic.MultiFieldQueryParser.Operator.AND,
+                        analyzer),
+                SearchOperation.parse(words, org.apache.lucene.queryparser.classic.MultiFieldQueryParser.Operator.OR,
+                        analyzer));
+    }
+
+    private static int mostWordsMinimum(String words, org.apache.lucene.analysis.Analyzer analyzer)
+            throws Exception {
+        org.apache.lucene.search.Query most = mostWords(words, analyzer);
+        return most == null ? -1
+                : ((org.apache.lucene.search.BooleanQuery) most).getMinimumNumberShouldMatch();
+    }
+
+    /**
+     * Across the site, a post that mentions the word outranks a post of another
+     * blog that matches it only through its blog's name (indexed first, so a
+     * tie would put it first).
+     */
+    @Test
+    void aMentionOutranksAMatchOnlyThroughTheBlogsName() throws Exception {
+        manager.initialize();
+        Weblog tahoe = weblog("tahoe");
+        Weblog elsewhere = weblog("elsewhere");
+        post("in-tahoe", tahoe, "Notes", "alpha bravo charlie", 10);
+        post("mentions", elsewhere, "Notes", "we drove to tahoe alpha bravo charlie delta echo", 10);
+
+        assertEquals(List.of("mentions", "in-tahoe"), idsOf(findSite("tahoe", 0, 10)));
     }
 
     @Test

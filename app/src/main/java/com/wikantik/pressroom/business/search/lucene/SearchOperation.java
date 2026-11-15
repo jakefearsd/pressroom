@@ -34,6 +34,7 @@ import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -79,7 +80,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         boosts.put(FieldConstants.TITLE, 4.0f);
         boosts.put(FieldConstants.TAGS, 3.0f);
         boosts.put(FieldConstants.SUMMARY, 2.0f);
-        boosts.put(FieldConstants.BLOG, 2.0f);
+        // low: a blog's name is in every one of its posts, so it may find a
+        // post but must not lift a whole blog above better matches elsewhere
+        boosts.put(FieldConstants.BLOG, 0.5f);
         boosts.put(FieldConstants.CATEGORY_TEXT, 1.5f);
         boosts.put(FieldConstants.CONTENT, 1.0f);
         return java.util.Collections.unmodifiableMap(boosts);
@@ -91,6 +94,20 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             new org.apache.lucene.search.ScoreDoc[0]);
 
     private static final int DOC_LIMIT = 500;
+
+    /** Words the reader typed found together, within this many positions in a title, score more. */
+    static final int TITLE_PHRASE_SLOP = 2;
+    static final float TITLE_PHRASE_BOOST = 2.0f;
+    /** ... and within this many in a body. */
+    static final int CONTENT_PHRASE_SLOP = 3;
+    static final float CONTENT_PHRASE_BOOST = 1.0f;
+
+    /** The fallback before any word: this share of the words, rounded down... */
+    static final int MOST_WORDS_PERCENT = 75;
+    /** ... for this many words or more (fewer go straight to any word). */
+    static final int MOST_WORDS_FROM = 3;
+
+    private static final java.util.regex.Pattern NOT_A_WORD = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+");
 
     // ~ Instance fields
     // ========================================================
@@ -228,19 +245,25 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
 
             long nowMillis = manager.now().getTime();
 
-            // All of the words first; when no post has them all, any of them.
-            // The page says which it did, so a reader is never shown partial
-            // matches as if they were complete ones.
+            // All of the words first; when no post has them all, most of them
+            // (from three words), then any of them. The page says when it fell
+            // back, so a reader is never shown partial matches as if they were
+            // complete ones.
+            Query phrase = phraseBoost(term, manager.getAnalyzer());
             Query all = parse(MultiFieldQueryParser.Operator.AND);
             parsedQuery = all;
-            searchresults = run(searcher, all, nowMillis);
+            searchresults = run(searcher, all, phrase, nowMillis);
             if (searchresults.totalHits.value() == 0 && !isEmpty(all)) {
                 Query any = parse(MultiFieldQueryParser.Operator.OR);
-                TopDocs second = run(searcher, any, nowMillis);
-                if (second.totalHits.value() > 0) {
-                    searchresults = second;
-                    parsedQuery = any;
-                    setAnyWordFallback(true);
+                Query most = mostWords(all, any);
+                for (Query fallback : most == null ? java.util.List.of(any) : java.util.List.of(most, any)) {
+                    TopDocs found = run(searcher, fallback, phrase, nowMillis);
+                    if (found.totalHits.value() > 0) {
+                        searchresults = found;
+                        parsedQuery = fallback;
+                        setAnyWordFallback(true);
+                        break;
+                    }
                 }
             }
 
@@ -277,6 +300,57 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         return parser.parse(words);
     }
 
+    /**
+     * The any-word query narrowed to most of its words, or null when there is
+     * no such stage. A query of several plain words parses under AND to one
+     * required clause per word; one word parses to its disjunction across the
+     * fields (optional clauses that are fields, not words), and is left alone.
+     * Only plain words have the stage: a reader's {@code +w} or {@code -w}
+     * makes the parser nest the plain words in a clause of their own, so the
+     * top-level clauses are no longer the words, and such a query goes from
+     * all words straight to any as before. Of plain words,
+     * {@value #MOST_WORDS_PERCENT}% (rounded down) must match, from
+     * {@value #MOST_WORDS_FROM} words.
+     */
+    static Query mostWords(Query all, Query any) {
+        if (!(all instanceof BooleanQuery allWords)
+                || allWords.clauses().stream().anyMatch(c -> c.occur() != BooleanClause.Occur.MUST)
+                || !(any instanceof BooleanQuery anyWord)
+                || anyWord.clauses().stream().anyMatch(c -> c.occur() != BooleanClause.Occur.SHOULD)) {
+            return null;
+        }
+        int optional = anyWord.clauses().size();
+        if (optional < MOST_WORDS_FROM) {
+            return null;
+        }
+        BooleanQuery.Builder most = new BooleanQuery.Builder();
+        anyWord.clauses().forEach(most::add);
+        most.setMinimumNumberShouldMatch(optional * MOST_WORDS_PERCENT / 100);
+        return most.build();
+    }
+
+    /**
+     * A score-only clause rewarding the reader's words found together: as a
+     * phrase within {@link #TITLE_PHRASE_SLOP} positions in the title, or
+     * {@link #CONTENT_PHRASE_SLOP} in the body. Query syntax is read as
+     * spaces. Null when the words analyse to fewer than two tokens.
+     */
+    static Query phraseBoost(String words, org.apache.lucene.analysis.Analyzer analyzer) {
+        String plain = NOT_A_WORD.matcher(words).replaceAll(" ").trim();
+        org.apache.lucene.util.QueryBuilder builder = new org.apache.lucene.util.QueryBuilder(analyzer);
+        Query title = builder.createPhraseQuery(FieldConstants.TITLE, plain, TITLE_PHRASE_SLOP);
+        // one token (or none) is a term query (or null): no phrase to reward.
+        // Same analyzer, same text: the body's phrase has the same tokens.
+        if (title == null || title instanceof TermQuery) {
+            return null;
+        }
+        Query content = builder.createPhraseQuery(FieldConstants.CONTENT, plain, CONTENT_PHRASE_SLOP);
+        return new BooleanQuery.Builder()
+            .add(new BoostQuery(title, TITLE_PHRASE_BOOST), BooleanClause.Occur.SHOULD)
+            .add(new BoostQuery(content, CONTENT_PHRASE_BOOST), BooleanClause.Occur.SHOULD)
+            .build();
+    }
+
     /** Words that analyse to nothing (only stop words, only punctuation) parse to an empty query. */
     private static boolean isEmpty(Query query) {
         return query instanceof BooleanQuery bq && bq.clauses().isEmpty();
@@ -285,14 +359,22 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     /**
      * Ranks the parsed words by relevance, scaled by the recency factor, and
      * narrows them to the scope. The narrowing clauses are filters, so they
-     * add nothing to a score.
+     * add nothing to a score; the phrase clause, when there is one, is
+     * optional beside the required words, so it adds to a score but never
+     * changes what matches.
      */
-    private TopDocs run(IndexSearcher indexSearcher, Query words, long nowMillis) throws IOException {
+    private TopDocs run(IndexSearcher indexSearcher, Query words, Query phrase, long nowMillis)
+            throws IOException {
         if (isEmpty(words)) {
             return NO_HITS;
         }
+        Query ranked = phrase == null ? words
+                : new BooleanQuery.Builder()
+                    .add(words, BooleanClause.Occur.MUST)
+                    .add(phrase, BooleanClause.Occur.SHOULD)
+                    .build();
         BooleanQuery.Builder query = new BooleanQuery.Builder()
-            .add(FunctionScoreQuery.boostByValue(words, new RecencySource(nowMillis)),
+            .add(FunctionScoreQuery.boostByValue(ranked, new RecencySource(nowMillis)),
                     BooleanClause.Occur.MUST);
 
         Term handleTerm = IndexUtil.handleTerm(weblogHandle);
