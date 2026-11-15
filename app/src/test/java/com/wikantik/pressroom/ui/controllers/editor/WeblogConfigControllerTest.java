@@ -110,6 +110,35 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void savingOldestFirstStoresItAndBumpsLastModified() throws Exception {
+        java.util.Date before = new java.util.Date(0);
+        weblog.setLastModified(before);
+        // The real saveWeblog (JPAWeblogManagerImpl) stamps lastModified; the manager is a mock here.
+        org.mockito.Mockito.doAnswer(inv -> {
+            ((com.wikantik.pressroom.pojos.Weblog) inv.getArgument(0)).touchLastModified();
+            return null;
+        }).when(weblogger.getWeblogManager()).saveWeblog(weblog);
+        bean.setEntryOrder("OLDEST");
+
+        controller.save(request, model, bean);
+
+        assertEquals("OLDEST", weblog.getEntryOrder());
+        assertTrue(weblog.getLastModified().after(before), "the render cache expires on lastModified");
+    }
+
+    @Test
+    void anUnknownEntryOrderIsRefused() throws Exception {
+        weblog.setEntryOrder("NEWEST");
+        bean.setEntryOrder("RANDOM");
+
+        controller.save(request, model, bean);
+
+        assertTrue(invalidFields(model).contains("weblog_bean_entryOrder"), invalidFields(model).toString());
+        assertEquals("NEWEST", weblog.getEntryOrder());
+        verify(weblogger.getWeblogManager(), org.mockito.Mockito.never()).saveWeblog(weblog);
+    }
+
+    @Test
     void savingStoresTheCommentSettings() throws Exception {
         bean.setCommentsEnabled(true);
         bean.setCommentNotify(false);

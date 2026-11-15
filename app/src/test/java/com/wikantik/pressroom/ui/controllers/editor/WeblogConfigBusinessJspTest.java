@@ -90,6 +90,17 @@ class WeblogConfigBusinessJspTest {
         assertTrue(jsp.contains("code=\"weblogSettings.showMoreFromSite.help\""));
     }
 
+    @Test
+    void entryOrderSelectOffersNewestAndOldest() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("<select") && jsp.contains("name=\"bean.entryOrder\""), "entryOrder select");
+        assertTrue(jsp.contains("value=\"NEWEST\"") && jsp.contains("value=\"OLDEST\""), "both options");
+        for (String key : new String[] {"weblogSettings.entryOrder", "weblogSettings.entryOrder.newest",
+                "weblogSettings.entryOrder.oldest", "weblogSettings.entryOrder.help"}) {
+            assertTrue(jsp.contains("code=\"" + key + "\""), key);
+        }
+    }
+
     /** 0.9.1 criterion 20. The name never says "share link": that term is the tokened URLs V020 removed. */
     @Test
     void shareRowCheckboxNamedAndLabelled() throws IOException {

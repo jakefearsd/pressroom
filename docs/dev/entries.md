@@ -320,6 +320,21 @@ the new dimension from spreading.
   parse fail SILENTLY**: `getRuntimeConfigDefs()` returns null and surfaces
   as unrelated NPEs elsewhere (it bit the `pom.xml` coverage comments too).
 
+## Order and pins
+- **Blog order** (`weblog.entry_order`, V047, `EntryOrder` NEWEST default |
+  OLDEST). It sets the order of the blog's OWN listings: home, category, tag
+  and archive pages (Task 2 wired the queries). It does not touch feeds, the
+  site front page, site-wide lists, search or sitemaps (all newest first), nor
+  the Older/Newer links on a post, which stay chronological in both orders.
+- **One validation, two surfaces**: `WeblogSettingsRules` refuses anything
+  `EntryOrder.parse` rejects (field `entryOrder`, message
+  `weblogSettings.error.entryOrder`), for the settings form and for
+  `PATCH /api/v1/weblogs/{handle}` (400 with a field error; the API has no 422).
+  The bean stores `name()`; a stored unknown value reads as newest first
+  (`Weblog.entryOrder()`), and a form that omits the field keeps NEWEST.
+- **Cache**: saving the settings goes through `saveWeblog`, which stamps
+  `lastModified`, so rendered pages expire at once.
+
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on
 purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.

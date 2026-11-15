@@ -153,6 +153,24 @@ class WeblogConfigBeanTest {
         org.junit.jupiter.api.Assertions.assertTrue(present.getShowMoreFromSite());
     }
 
+    @Test
+    void entryOrderCopiesBothWays() {
+        Weblog w = weblog();
+        w.setEntryOrder("OLDEST");
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        assertEquals("OLDEST", b.getEntryOrder());
+
+        b.setEntryOrder("newest");
+        b.copyTo(w);
+        assertEquals("NEWEST", w.getEntryOrder(), "stored as the enum name");
+
+        w.setEntryOrder("garbage");
+        b.copyFrom(w);
+        assertEquals("NEWEST", b.getEntryOrder(), "a stored unknown value reads as newest first");
+        assertEquals("NEWEST", new WeblogConfigBean().getEntryOrder(), "a form that omits it keeps the default");
+    }
+
     /** 0.9.1 criteria 19 and 20: null reads as on; an unticked box (nothing posted) saves off. */
     @Test
     void shareRowEnabledRoundTripsNullReadsAsTrueAndUncheckedSavesFalse() {

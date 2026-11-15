@@ -270,6 +270,35 @@ class WeblogsApiTest {
     }
 
     @Test
+    void entryOrderRoundTrips() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        assertEquals("NEWEST", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).entryOrder());
+
+        var result = doPatch(weblogger, weblog, "{\"entryOrder\":\"oldest\"}").andExpect(status().isOk());
+        assertEquals("OLDEST", weblog.getEntryOrder());
+        assertEquals("OLDEST", json(result).get("entryOrder").asString());
+
+        doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
+        assertEquals("OLDEST", weblog.getEntryOrder(), "a patch that omits it leaves it alone");
+    }
+
+    /** The API answers field errors with 400 (ApiException.validation); there is no 422 anywhere in it. */
+    @Test
+    void anUnknownEntryOrderIsAFieldError() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setEntryOrder("OLDEST");
+
+        doPatch(weblogger, weblog, "{\"entryOrder\":\"RANDOM\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("entryOrder"));
+
+        assertEquals("OLDEST", weblog.getEntryOrder());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
     void viewIncludesShowMoreFromSite() throws Exception {
         Weblog weblog = aWeblog("myblog");
         assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
@@ -324,7 +353,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -745,7 +774,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));

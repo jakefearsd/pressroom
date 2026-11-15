@@ -1030,6 +1030,13 @@ reading) are fields of the weblog view and
 `commentsClosed` is a field of the entry view and of entry create and update.
 All five are booleans and cannot be cleared.
 
+A weblog's `entryOrder` (`NEWEST`, the default, or `OLDEST`) is the order of
+that blog's home, category, tag and archive lists. Send it in either case;
+the view always answers in upper case. Any other value is a 400 with an
+`errors` entry on `entryOrder`, and nothing is stored. Feeds, the site front
+page, site-wide lists and search stay newest first. It cannot be cleared. The
+MCP `weblogs` tool's `update` action carries it like any other field.
+
 ## Audits
 
 ```

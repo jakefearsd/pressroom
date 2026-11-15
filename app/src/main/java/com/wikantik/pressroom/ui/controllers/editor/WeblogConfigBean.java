@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.pojos.Business;
+import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
 
 
@@ -46,6 +47,7 @@ public class WeblogConfigBean {
     private boolean commentNotify;
     private boolean showMoreFromSite;
     private boolean shareRowEnabled;
+    private String entryOrder = EntryOrder.NEWEST.name();
     private String icon;
     private String about;
 
@@ -168,6 +170,15 @@ public class WeblogConfigBean {
         this.showMoreFromSite = showMoreFromSite;
     }
 
+    /** NEWEST or OLDEST; a value no rule has judged yet when it comes from a request. */
+    public String getEntryOrder() {
+        return entryOrder;
+    }
+
+    public void setEntryOrder(String entryOrder) {
+        this.entryOrder = entryOrder;
+    }
+
     public boolean getShareRowEnabled() {
         return shareRowEnabled;
     }
@@ -279,6 +290,7 @@ public class WeblogConfigBean {
         setCommentNotify(!Boolean.FALSE.equals(dataHolder.getCommentNotify()));
         setShowMoreFromSite(!Boolean.FALSE.equals(dataHolder.getShowMoreFromSite()));
         setShareRowEnabled(!Boolean.FALSE.equals(dataHolder.getShareRowEnabled()));
+        setEntryOrder(dataHolder.entryOrder().name());
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
         this.customDomain = dataHolder.getCustomDomain();
         setIcon(dataHolder.getIconPath());
@@ -307,6 +319,7 @@ public class WeblogConfigBean {
         dataHolder.setCommentNotify(this.getCommentNotify());
         dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
         dataHolder.setShareRowEnabled(this.getShareRowEnabled());
+        dataHolder.setEntryOrder(EntryOrder.parse(this.entryOrder).orElse(EntryOrder.NEWEST).name());
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
         dataHolder.setNewsletterListUuid(StringUtils.trimToNull(this.newsletterListUuid));

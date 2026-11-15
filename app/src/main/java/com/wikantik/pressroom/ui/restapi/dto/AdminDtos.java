@@ -10,6 +10,7 @@ import java.util.Set;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -68,6 +69,9 @@ public final class AdminDtos {
                               boolean showMoreFromSite,
                               @Schema(description = "Show the share row under this blog's posts. Default true.")
                               boolean shareRowEnabled,
+                              @Schema(description = "NEWEST (the default) or OLDEST: the order of this blog's "
+                                      + "listings. Feeds stay newest first.")
+                              String entryOrder,
                               @Schema(description = "The same value as theme, under its older name.",
                                       deprecated = true)
                               String editorTheme,
@@ -135,6 +139,9 @@ public final class AdminDtos {
                                Boolean showMoreFromSite,
                                @Schema(description = "Show the share row under this blog's posts. Not clearable.")
                                Boolean shareRowEnabled,
+                               @Schema(description = "NEWEST or OLDEST (any case): the order of this blog's listings. "
+                                       + "Feeds stay newest first. Not clearable.")
+                               String entryOrder,
                                @Schema(description = THEME_DESCRIPTION)
                                String theme,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
@@ -162,7 +169,8 @@ public final class AdminDtos {
                 Boolean.TRUE.equals(weblog.getCommentsEnabled()),
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
                 !Boolean.FALSE.equals(weblog.getShowMoreFromSite()),
-                !Boolean.FALSE.equals(weblog.getShareRowEnabled()), weblog.getEditorTheme(),
+                !Boolean.FALSE.equals(weblog.getShareRowEnabled()), weblog.entryOrder().name(),
+                weblog.getEditorTheme(),
                 weblog.getEditorTheme(), weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
@@ -228,6 +236,11 @@ public final class AdminDtos {
         }
         if (patch.shareRowEnabled() != null) {
             bean.setShareRowEnabled(patch.shareRowEnabled());
+        }
+        if (patch.entryOrder() != null) {
+            // Normalised when it parses; kept as given when it does not, so the settings rules refuse it.
+            bean.setEntryOrder(EntryOrder.parse(patch.entryOrder()).map(EntryOrder::name)
+                    .orElse(patch.entryOrder()));
         }
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);

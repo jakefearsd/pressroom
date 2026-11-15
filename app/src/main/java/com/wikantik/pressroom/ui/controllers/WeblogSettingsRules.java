@@ -29,6 +29,7 @@ import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
@@ -110,6 +111,10 @@ public final class WeblogSettingsRules {
         if (zone != null && !UIUtils.getTimeZones().contains(zone)) {
             found.add(simple("timeZone", "websiteSettings.timeZone.invalid",
                     "timeZone must be a time zone id, for example Europe/Berlin."));
+        }
+        if (EntryOrder.parse(bean.getEntryOrder()).isEmpty()) {
+            found.add(simple("entryOrder", "weblogSettings.error.entryOrder",
+                    "entryOrder must be NEWEST or OLDEST."));
         }
         tooLong("copyright", "websiteSettings.copyright", bean.getCopyright(), MAX_TEXT, found);
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);

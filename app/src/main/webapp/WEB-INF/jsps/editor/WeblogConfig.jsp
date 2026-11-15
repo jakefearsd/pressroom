@@ -156,6 +156,17 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="weblog_bean_entryOrder"><spring:message code="weblogSettings.entryOrder"/></label>
+        <div class="col-sm-9">
+            <select class="form-select" id="weblog_bean_entryOrder" name="bean.entryOrder">
+                <option value="NEWEST" ${bean.entryOrder != 'OLDEST' ? 'selected' : ''}><spring:message code="weblogSettings.entryOrder.newest"/></option>
+                <option value="OLDEST" ${bean.entryOrder == 'OLDEST' ? 'selected' : ''}><spring:message code="weblogSettings.entryOrder.oldest"/></option>
+            </select>
+            <div class="form-text"><spring:message code="weblogSettings.entryOrder.help"/></div>
+        </div>
+    </div>
+
     <%-- ***** Language/i18n settings ***** --%>
 
     <h2 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h2>
