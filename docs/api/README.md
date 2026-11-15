@@ -965,7 +965,9 @@ be contiguous). `parts` is empty for a page that is not a strand.
   changes: an id this blog has no post for (another blog's post reads the
   same), a post already in another strand (move it from the entry side), or
   an id listed twice. A page that is not a strand, or a body without
-  `entries`, is a 400 on `entries`; another blog's page is a 404.
+  `entries`, is a 400 on `entries`; another blog's page is a 404. At most
+  500 ids; more is a 400 on `entries` ("At most 500 parts."), and nothing
+  changes.
 - **Put one post in a strand** with the entry's `strand`, a strand page's id,
   on entry create or `PATCH`: the post joins as the last part, and from
   another strand it moves. Sending the strand it is already in changes

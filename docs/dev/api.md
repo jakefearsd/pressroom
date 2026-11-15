@@ -237,7 +237,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **`PUT /v1/weblogs/{handle}/pages/{id}/parts` is the API's only `PUT`**: it replaces the whole
   membership, which is what PUT means, where every other write is a partial `PATCH`.
   `ApiScopeInterceptor.isWrite` treats every method but GET/HEAD as a write, so it needed no change;
-  `bin/pressroom-api` has no command for it yet.
+  `bin/pressroom-api` has no command for it yet. At most 500 ids (`PagesApi.MAX_PARTS`); more is a
+  400 on `entries`, refused before the first lookup, since each id costs one.
 - **Parts ids go through `WeblogOwnership.entry`, not the global lookup the page editor uses.** The
   editor resolves ids globally so `StrandRules` can say "another blog's post"; the API turns another
   blog's post into an unknown one before `StrandRules` sees it, so a refusal never tells a token what
