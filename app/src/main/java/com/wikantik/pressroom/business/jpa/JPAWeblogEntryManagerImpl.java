@@ -799,6 +799,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             queryString.append(" AND e.category.id = ").append(params.bind(cat.getId()));
         }
         queryString.append(statusCondition(params, wesc));
+        if (wesc.getPinned() != null) {
+            queryString.append(" AND e.pinned = ").append(params.bind(wesc.getPinned()));
+        }
         params.andIf(queryString, " AND e.locale like ",
                 wesc.getLocale() == null ? null : wesc.getLocale() + '%');
 

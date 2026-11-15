@@ -761,3 +761,6 @@ body.qj .more-from-site-home a { color: var(--qj-accent); }
  * The strip above the header (the showSiteBar macro, weblog.vm) inherits this
  * theme's ink and font; these two name its menu surface and its rule. */
 body.qj { --site-bar-surface: var(--qj-surface); --site-bar-line: var(--qj-line); }
+
+/* A blog's pinned post, marked in the date column. */
+.qj-date .entry-pinned { color: var(--qj-ink-soft); text-transform: uppercase; letter-spacing: .06em; font-size: .6875rem; }

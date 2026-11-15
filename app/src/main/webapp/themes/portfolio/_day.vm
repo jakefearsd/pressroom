@@ -88,6 +88,9 @@
             #showResponsiveImage($entry.featuredImage $cardAlt "(max-width: 640px) 100vw, 40vw" "pf-card-img")
             <h2 class="pf-card-title">$entry.title</h2>
         </a>
+        #if($pinnedRows)
+        <span class="entry-pinned">$text.get("entryMeta.pinned")</span>
+        #end
         ## Date, category and opening: hidden in a run of pictures, shown by
         ## the stylesheet when the card is the only one in its run, where it
         ## stands between rows of writing and reads as one of them. Outside
@@ -108,7 +111,7 @@
             #end
     <article class="pf-row">
         <h2 class="pf-row-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
-        <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name) &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
+        <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>#if($pinnedRows) &middot; <span class="entry-pinned">$text.get("entryMeta.pinned")</span>#end &middot; $utils.escapeHTML($entry.category.name) &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
         ## The author's summary, else the search description, else the
         ## post's first couple of sentences (WeblogEntryWrapper#getExcerpt).
         ## Plain text, escaped here once.

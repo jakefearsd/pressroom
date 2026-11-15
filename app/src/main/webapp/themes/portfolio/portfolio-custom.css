@@ -904,3 +904,18 @@ body.pf .more-from-site-home a { color: var(--pf-accent); }
  * The strip above the header (the showSiteBar macro, weblog.vm) inherits this
  * theme's ink and font; these two name its menu surface and its rule. */
 body.pf { --site-bar-surface: var(--pf-surface); --site-bar-line: var(--pf-line); }
+
+/* A blog's pinned post: a quiet mark beside the row's date, a small badge on a picture tile. */
+.pf-row-meta .entry-pinned { text-transform: uppercase; letter-spacing: 0.08em; }
+.pf-card > .entry-pinned {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    padding: .1rem .4rem;
+    background: var(--pf-bg);
+    color: var(--pf-fg);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: .6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}

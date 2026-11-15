@@ -1965,6 +1965,18 @@ Shows weblog entries pager via default day template
 *#
 #macro(showWeblogEntriesPager $pager)
     #set($dayPage = $model.weblog.getTemplateByName("_day"))
+    #set($pageId = $dayPage.id+'|standard')
+    ## The blog's pinned posts lead page one of its home listing, as one run of
+    ## rows ahead of the days. The pinnedRows flag tells the day template to
+    ## mark them; Velocity keeps a set value, so it is reset right after.
+    #set($pinnedRows = false)
+    #set($pinnedList = $pager.pinnedEntries)
+    #if($pinnedList && !$pinnedList.isEmpty())
+        #set($entries = $pinnedList)
+        #set($pinnedRows = true)
+        #parse($pageId)
+        #set($pinnedRows = false)
+    #end
     #set($map = $pager.getEntries())
     #foreach($day in $map.keySet())
         #set($entries = $map.get($day))

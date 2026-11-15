@@ -60,7 +60,7 @@
     ## "MMM d", not "MMM dd": the zero-padded form ("Mar 04") is a machine's
     ## way of writing a date. The ISO value a machine actually wants is on the
     ## <time> element, where it belongs.
-    <p class="qj-date"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMM d")<br><span class="y">$utils.formatDate($entry.pubTime, "yyyy")</span></time></p>
+    <p class="qj-date"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMM d")<br><span class="y">$utils.formatDate($entry.pubTime, "yyyy")</span></time>#if($pinnedRows)<br><span class="entry-pinned">$text.get("entryMeta.pinned")</span>#end</p>
     <div>
         <h2 class="qj-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
         ## Every row gets a line of prose -- a row that collapses to a bare

@@ -67,7 +67,7 @@
             <h2 class="tg-card-title">
                 <a href="$url.entry($entry.anchor)">$entry.title</a>
             </h2>
-            <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
+            <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>#if($pinnedRows) &middot; <span class="entry-pinned">$text.get("entryMeta.pinned")</span>#end &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
             ## Every card gets a line of prose, as journal's rows do, or cards
             ## without one are shorter than their neighbours in the same row:
             ## the author's summary, else the search description, else the

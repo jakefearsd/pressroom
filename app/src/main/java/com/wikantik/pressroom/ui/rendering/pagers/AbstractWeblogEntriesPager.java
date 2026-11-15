@@ -249,6 +249,15 @@ public abstract class AbstractWeblogEntriesPager implements WeblogEntriesPager {
     }
 
     /**
+     * The blog's pinned posts that lead this page, ahead of the day map. Only
+     * the home listing has any (see {@link WeblogEntriesLatestPager}); every
+     * other pager answers an empty list.
+     */
+    public List<WeblogEntryWrapper> getPinnedEntries() {
+        return Collections.emptyList();
+    }
+
+    /**
      * An empty day map keyed in the blog's own order: newest day first by
      * default, oldest day first when the blog is set to {@code OLDEST}. The
      * subclasses create their entries map here so the day headings and the

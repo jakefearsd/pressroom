@@ -207,6 +207,37 @@ class WeblogEntryCriteriaTest {
         assertFalse(anchors.contains("recent-food"), "got: " + anchors);
     }
 
+    // --------------------------------------------------------------- pinned
+
+    @Test
+    void thePinnedFilterKeepsOnlyPinnedOrOnlyUnpinned() throws Exception {
+        WeblogEntryManager manager = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry pinned = manager.getWeblogEntry(recentFoodPost.getId());
+        pinned.setPinned(Boolean.TRUE);
+        manager.saveWeblogEntry(pinned);
+        TestUtils.weblogger().flush();
+
+        List<String> only = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setStatus(PubStatus.PUBLISHED);
+            c.setPinned(Boolean.TRUE);
+        }));
+        List<String> rest = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setStatus(PubStatus.PUBLISHED);
+            c.setPinned(Boolean.FALSE);
+        }));
+        List<String> any = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setStatus(PubStatus.PUBLISHED);
+        }));
+
+        assertEquals(List.of("recent-food"), only);
+        assertFalse(rest.contains("recent-food"), "got: " + rest);
+        assertTrue(rest.contains("old-travel"), "got: " + rest);
+        assertTrue(any.contains("recent-food") && any.contains("old-travel"), "null means any: " + any);
+    }
+
     // ------------------------------------------------------------- category
 
     @Test

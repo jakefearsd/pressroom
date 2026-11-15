@@ -93,6 +93,9 @@ public class WeblogEntrySearchCriteria {
     // Order of sort
     private SortOrder sortOrder = SortOrder.DESCENDING;
 
+    // null = any, TRUE = only pinned posts, FALSE = only unpinned ones.
+    private Boolean pinned;
+
     private String locale;
     // Offset into results for paging
     private int offset;
@@ -185,6 +188,14 @@ public class WeblogEntrySearchCriteria {
 
     public void setSortOrder(SortOrder sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Boolean getPinned() {
+        return pinned;
+    }
+
+    public void setPinned(Boolean pinned) {
+        this.pinned = pinned;
     }
 
     public String getLocale() {

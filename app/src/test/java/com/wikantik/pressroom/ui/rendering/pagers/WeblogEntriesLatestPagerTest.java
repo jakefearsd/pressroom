@@ -350,4 +350,171 @@ class WeblogEntriesLatestPagerTest extends EntriesPagerTestSupport {
             assertFalse(second.hasMoreEntries());
         });
     }
+
+    // --------------------------------------------------------------- pinned
+
+    private static WeblogEntry pinnedEntry(String anchor, long pubTime, boolean pinned) {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setAnchor(anchor);
+        entry.setPubTime(new Timestamp(pubTime));
+        entry.setPinned(pinned);
+        entry.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+        return entry;
+    }
+
+    /**
+     * A manager that honours the pinned filter the way the real query does:
+     * the object map and the plain list both read from the same posts,
+     * keeping the ones the criteria's pinned flag allows, newest first (or
+     * oldest first on an ascending sort), then applying offset and maximum.
+     */
+    private void stubManagerWith(WeblogEntry... posts) throws Exception {
+        when(entryManager.getWeblogEntries(any())).thenAnswer(inv -> filtered(inv.getArgument(0), posts));
+        when(entryManager.getWeblogEntryObjectMap(any())).thenAnswer(inv -> {
+            Map<Date, List<WeblogEntry>> map = new LinkedHashMap<>();
+            for (WeblogEntry e : filtered(inv.getArgument(0), posts)) {
+                map.computeIfAbsent(new Date(e.getPubTime().getTime() / 86_400_000L * 86_400_000L),
+                        k -> new ArrayList<>()).add(e);
+            }
+            return map;
+        });
+    }
+
+    private static List<WeblogEntry> filtered(WeblogEntrySearchCriteria wesc, WeblogEntry[] posts) {
+        List<WeblogEntry> out = new ArrayList<>();
+        for (WeblogEntry e : posts) {
+            boolean ok = (wesc.getPinned() == null || wesc.getPinned() == e.getPinned())
+                    && (wesc.getStatus() == null || wesc.getStatus() == e.getStatus())
+                    && (wesc.getEndDate() == null || !e.getPubTime().after(wesc.getEndDate()));
+            if (ok) {
+                out.add(e);
+            }
+        }
+        out.sort(java.util.Comparator.comparing(WeblogEntry::getPubTime));
+        if (wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.DESCENDING) {
+            java.util.Collections.reverse(out);
+        }
+        int from = Math.min(wesc.getOffset(), out.size());
+        int to = wesc.getMaxResults() > 0 ? Math.min(out.size(), from + wesc.getMaxResults()) : out.size();
+        return new ArrayList<>(out.subList(from, to));
+    }
+
+    private static List<String> pinnedAnchors(WeblogEntriesLatestPager pager) {
+        return pager.getPinnedEntries().stream()
+                .map(com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper::getAnchor).toList();
+    }
+
+    private static final long DAY = 86_400_000L;
+
+    @Test
+    void aPinnedPostLeadsPageOneOfTheHomeListing() throws Exception {
+        stubManagerWith(pinnedEntry("A", DAY, true), pinnedEntry("B", 2 * DAY, false),
+                pinnedEntry("C", 3 * DAY, false));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(weblog(), null, null, 0);
+
+            assertEquals(List.of("A"), pinnedAnchors(pager));
+            assertEquals(List.of("C", "B"), anchors(pager.getEntries()));
+        });
+    }
+
+    @Test
+    void homePageTwoShowsNoPinnedPostAndSkipsNone() throws Exception {
+        com.wikantik.pressroom.pojos.Weblog blog = weblog();
+        blog.setEntryDisplayCount(2);
+        stubManagerWith(pinnedEntry("P", 9 * DAY, true), pinnedEntry("u1", DAY, false),
+                pinnedEntry("u2", 2 * DAY, false), pinnedEntry("u3", 3 * DAY, false),
+                pinnedEntry("u4", 4 * DAY, false), pinnedEntry("u5", 5 * DAY, false));
+
+        List<String> seen = new ArrayList<>();
+        withRuntimeConfig(() -> {
+            for (int page = 0; page < 3; page++) {
+                WeblogEntriesLatestPager pager = pagerFor(blog, null, null, page);
+                assertEquals(page == 0 ? List.of("P") : List.of(), pinnedAnchors(pager),
+                        "only page one carries the pinned rows (page " + page + ")");
+                seen.addAll(anchors(pager.getEntries()));
+            }
+        });
+        assertEquals(List.of("u5", "u4", "u3", "u2", "u1"), seen,
+                "each regular post exactly once, none skipped, the pinned one not counted");
+    }
+
+    @Test
+    void aCategoryListingShowsAPinnedPostInItsPlace() throws Exception {
+        stubManagerWith(pinnedEntry("A", DAY, true), pinnedEntry("B", 2 * DAY, false));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(weblog(), "Java", null, 0);
+
+            assertTrue(pager.getPinnedEntries().isEmpty());
+            assertEquals(List.of("B", "A"), anchors(pager.getEntries()));
+        });
+    }
+
+    @Test
+    void aTagListingShowsAPinnedPostInItsPlace() throws Exception {
+        stubManagerWith(pinnedEntry("A", DAY, true), pinnedEntry("B", 2 * DAY, false));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(weblog(), null, List.of("testing"), 0);
+
+            assertTrue(pager.getPinnedEntries().isEmpty());
+            assertEquals(List.of("B", "A"), anchors(pager.getEntries()));
+        });
+    }
+
+    @Test
+    void aPinnedPostScheduledForLaterIsNotShownYet() throws Exception {
+        long tomorrow = System.currentTimeMillis() + DAY;
+        stubManagerWith(pinnedEntry("A", tomorrow, true), pinnedEntry("B", DAY, false));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(weblog(), null, null, 0);
+
+            assertTrue(pager.getPinnedEntries().isEmpty());
+            assertEquals(List.of("B"), anchors(pager.getEntries()));
+        });
+    }
+
+    @Test
+    void aPinnedDraftIsNotShown() throws Exception {
+        WeblogEntry draft = pinnedEntry("A", DAY, true);
+        draft.setStatus(WeblogEntry.PubStatus.DRAFT);
+        stubManagerWith(draft, pinnedEntry("B", 2 * DAY, false));
+
+        withRuntimeConfig(() -> {
+            WeblogEntriesLatestPager pager = pagerFor(weblog(), null, null, 0);
+
+            assertTrue(pager.getPinnedEntries().isEmpty());
+            assertEquals(List.of("B"), anchors(pager.getEntries()));
+        });
+    }
+
+    @Test
+    void pinsFollowTheBlogsOrder() throws Exception {
+        stubManagerWith(pinnedEntry("old", DAY, true), pinnedEntry("new", 2 * DAY, true));
+
+        withRuntimeConfig(() -> {
+            assertEquals(List.of("old", "new"), pinnedAnchors(pagerFor(oldestFirstBlog(), null, null, 0)));
+            assertEquals(List.of("new", "old"), pinnedAnchors(pagerFor(weblog(), null, null, 0)));
+        });
+    }
+
+    @Test
+    void theQueryIsAskedForPinnedPostsPublishedOnlyAndNoMoreThanTheLimit() throws Exception {
+        stubManagerWith(pinnedEntry("A", DAY, true));
+
+        withRuntimeConfig(() -> pagerFor(weblog(), null, null, 0).getPinnedEntries());
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> criteria =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(entryManager).getWeblogEntries(criteria.capture());
+        WeblogEntrySearchCriteria wesc = criteria.getValue();
+        assertEquals(Boolean.TRUE, wesc.getPinned());
+        assertEquals(WeblogEntry.PubStatus.PUBLISHED, wesc.getStatus());
+        assertEquals("en_US", wesc.getLocale());
+        assertNotNull(wesc.getEndDate());
+        assertEquals(3, wesc.getMaxResults());
+    }
 }

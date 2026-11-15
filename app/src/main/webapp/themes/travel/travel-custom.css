@@ -480,3 +480,6 @@ body.tg .more-from-site-home a { color: var(--tg-accent); }
  * The strip above the header (the showSiteBar macro, weblog.vm) inherits this
  * theme's ink and font; these two name its menu surface and its rule. */
 body.tg { --site-bar-surface: var(--tg-paper); --site-bar-line: var(--tg-line); }
+
+/* A blog's pinned post, marked beside the card's date. */
+.tg-card-meta .entry-pinned { text-transform: uppercase; letter-spacing: .06em; font-size: .78125rem; }
