@@ -84,7 +84,7 @@ post's category is its topic; using it for a sequence collides with that.
 - Pins: `weblogentry.pinnedtomain` is Roller's **site-wide** pin, editable
   only by a global admin (`EntryEdit.jsp`), read only by the `frontpage`
   theme via `SiteModel.getPinnedWeblogEntries`. Not per blog.
-- Pages: `WeblogPage` / `roller_weblogpage` (V014), per blog, any number,
+- Pages: `WeblogPage` / `pressroom_weblogpage` (V014), per blog, any number,
   served at `/<handle>/<slug>`, with `show_in_nav` and `nav_order` columns
   already. `ReservedSlugs` guards the slug namespace. Site pages live in the
   hidden `site-space` blog. The site front door (`FrontDoor`) can be a page;
@@ -175,9 +175,9 @@ retirement candidate, not this work).
 ### Schema (one migration)
 
 ```
-roller_weblogpage + is_strand       boolean NOT NULL DEFAULT false
+pressroom_weblogpage + is_strand       boolean NOT NULL DEFAULT false
 weblogentry       + strand_page_id  varchar(48) NULL
-                      REFERENCES roller_weblogpage(id) ON DELETE SET NULL
+                      REFERENCES pressroom_weblogpage(id) ON DELETE SET NULL
                   + strand_position integer NULL
                   index (strand_page_id, strand_position)
 ```
@@ -251,8 +251,9 @@ contained migration.
   unknown, or already in a different strand is a 400 field error (the API's convention for field errors) naming it;
   nothing is changed. (Moving a post between strands is done from the entry
   side, explicitly.)
-- Entry resource gains `strand` (page id or `null`) on get, create, update:
-  setting it appends; `null` removes. A non-strand or other-blog page is a
+- Entry resource gains `strand` (page id) on get, create, update:
+  setting it appends; `clear: ["strand"]` removes (the API never reads null
+  as a value). A non-strand or other-blog page is a
   400 field error.
 - MCP: the `pages` tool gains a `set_parts` action; `entries` accept
   `strand`. Descriptions kept within the instructions budget.
@@ -287,7 +288,7 @@ contained migration.
 
 ```
 weblog + front_page_id varchar(48) NULL
-           REFERENCES roller_weblogpage(id) ON DELETE SET NULL
+           REFERENCES pressroom_weblogpage(id) ON DELETE SET NULL
 ```
 
 `nav_order` already exists.
