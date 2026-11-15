@@ -44,6 +44,9 @@
 
 <main class="qj-main qj-main-entry" id="main">
     #set($pager = $model.getWeblogEntriesPager())
+    ## Set when the post is a reader-visible part of a published strand: the
+    ## strand bar (in _day) and the part steps below replace Older/Newer.
+    #set($strandNav = $pager.strandNav)
     #showWeblogEntriesPager($pager)
 
     ## Share row, Nearby and Keep reading (weblog.vm documents the macro).
@@ -61,6 +64,29 @@
     ## Older on the left, newer on the right, reading order matching time's
     ## direction. Titles are stored HTML-escaped (EntryBean.copyTo), so they
     ## are emitted bare like every other $entry.title in this theme.
+    #if($strandNav)
+    <nav class="qj-pager qj-steps" aria-label="More entries">
+        #if($strandNav.previous)
+        <a class="qj-step qj-step-back" href="$url.entry($strandNav.previous.anchor)" rel="prev">
+            <span class="qj-step-label">$text.get("entryMeta.strandPrevious")</span>
+            <span class="qj-step-title">$strandNav.previous.title</span>
+        </a>
+        #else
+        <span class="qj-step qj-step-empty"></span>
+        #end
+        #if($strandNav.next)
+        <a class="qj-step qj-step-fwd" href="$url.entry($strandNav.next.anchor)" rel="next">
+            <span class="qj-step-label">$text.get("entryMeta.strandNext")</span>
+            <span class="qj-step-title">$strandNav.next.title</span>
+        </a>
+        #else
+        <a class="qj-step qj-step-fwd" href="$url.staticPage($strandNav.strand.slug)">
+            <span class="qj-step-label">$text.get("entryMeta.strandAllParts")</span>
+            <span class="qj-step-title">$utils.escapeHTML($strandNav.strand.title)</span>
+        </a>
+        #end
+    </nav>
+    #else
     #set($older = $pager.prevEntry)
     #set($newer = $pager.nextEntry)
     #if($older || $newer)
@@ -80,6 +106,7 @@
         </a>
         #end
     </nav>
+    #end
     #end
 </main>
 

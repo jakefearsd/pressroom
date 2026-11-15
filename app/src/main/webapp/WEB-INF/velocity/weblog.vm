@@ -2475,6 +2475,46 @@ the unsubscribe link.
 
 
 #**
+Show a strand page's parts as a numbered list beneath its text:
+    #showStrandParts($page)
+
+$page is the WeblogPageWrapper; its parts are the reader-visible posts of the
+strand in order (empty for any page that is not a strand, so nothing prints).
+Entry titles are stored escaped and go out bare; the excerpt is plain text and
+is escaped here.
+*#
+#macro(showStrandParts $spPage)
+#set($spParts = $spPage.parts)
+#if($spParts && !$spParts.isEmpty())
+<ol class="strand-parts">
+#foreach($spPart in $spParts)
+#set($spExcerpt = "")
+#set($spExcerpt = $spPart.excerpt)
+<li class="strand-part"><a class="strand-part-title" href="$url.entry($spPart.anchor)">$spPart.title</a>#if($utils.isNotEmpty($spExcerpt))
+<p class="strand-part-excerpt">$utils.escapeHTML($spExcerpt)</p>#end</li>
+#end
+</ol>
+#end
+#end
+
+
+#**
+Show the strand bar under a post's title and byline:
+    #showStrandBar($strandNav)
+
+"Part N of M in" and the strand page's title, linked. $strandNav is the
+permalink pager's strandNav, null (so nothing prints) when the post is not a
+reader-visible part of a published strand. The page title is raw, so it is
+escaped here.
+*#
+#macro(showStrandBar $sbNav)
+#if($sbNav)
+<p class="strand-bar">$text.get("entryMeta.strandPart", [$sbNav.number, $sbNav.total]) <a href="$url.staticPage($sbNav.strand.slug)">$utils.escapeHTML($sbNav.strand.title)</a></p>
+#end
+#end
+
+
+#**
 The blog line, one quiet line under a post's title: "From <blog> · 42 articles
 · latest 9 Nov 2026 · Subscribe". It tells a reader who arrived from a search
 that the article belongs to a blog still publishing, and how to follow it. The

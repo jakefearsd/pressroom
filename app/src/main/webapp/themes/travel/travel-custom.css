@@ -483,3 +483,11 @@ body.tg { --site-bar-surface: var(--tg-paper); --site-bar-line: var(--tg-line); 
 
 /* A blog's pinned post, marked beside the card's date. */
 .tg-card-meta .entry-pinned { text-transform: uppercase; letter-spacing: .06em; font-size: .78125rem; }
+
+/* A strand: the "Part N of M in" bar under a post's byline, and a strand page's list of parts. */
+.strand-bar { margin: .5rem 0 0; font-size: .875rem; opacity: .85; }
+.strand-bar a { color: inherit; text-underline-offset: .2em; }
+.strand-parts { margin: 2rem 0 0; padding-left: 1.5rem; }
+.strand-part { margin: 0 0 1rem; }
+.strand-part-title { font-size: 1.125rem; }
+.strand-part-excerpt { margin: .25rem 0 0; font-size: .9375rem; opacity: .85; }

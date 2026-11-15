@@ -30,7 +30,10 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.business.StrandPlace;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
+import com.wikantik.pressroom.pojos.wrapper.WeblogPageWrapper;
 import com.wikantik.pressroom.util.Utilities;
 
 
@@ -44,6 +47,8 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
     WeblogEntry currEntry;
     WeblogEntry nextEntry;
     WeblogEntry prevEntry;
+    private StrandNav strandNav;
+    private boolean strandNavResolved;
     
     // collection for the pager
     Map<Date, List<WeblogEntryWrapper>> entries;
@@ -184,4 +189,39 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
         return prevEntry;
     }
     
+    /**
+     * The entry's place in its strand, or null unless it has a strand page
+     * that exists, is PUBLISHED and is a strand, and the entry is one of that
+     * strand's reader-visible parts. A theme shows the strand bar and the
+     * part steps when this is set, and the blog's Older/Newer when it is not.
+     */
+    public StrandNav getStrandNav() {
+        if (!strandNavResolved) {
+            strandNavResolved = true;
+            try {
+                strandNav = resolveStrandNav();
+            } catch (WebloggerException | RuntimeException e) {
+                log.error("ERROR: getting strand navigation", e);
+            }
+        }
+        return strandNav;
+    }
+
+    private StrandNav resolveStrandNav() throws WebloggerException {
+        if (currEntry == null || currEntry.getStatus() != PubStatus.PUBLISHED
+                || currEntry.getStrandPageId() == null) {
+            return null;
+        }
+        WeblogPage page = weblogger.getWeblogPageManager().getPage(currEntry.getStrandPageId());
+        if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED
+                || !Boolean.TRUE.equals(page.getStrand())) {
+            return null;
+        }
+        List<WeblogEntry> parts = weblogger.getWeblogEntryManager().getStrandParts(page, true);
+        return StrandPlace.of(parts, currEntry).map(place -> new StrandNav(
+                WeblogPageWrapper.wrap(page, urlStrategy, weblogger), place.number(), place.total(),
+                WeblogEntryWrapper.wrap(place.previous(), urlStrategy, weblogger),
+                WeblogEntryWrapper.wrap(place.next(), urlStrategy, weblogger))).orElse(null);
+    }
+
 }

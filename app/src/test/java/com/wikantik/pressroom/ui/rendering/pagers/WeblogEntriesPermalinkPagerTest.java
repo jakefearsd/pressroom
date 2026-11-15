@@ -422,4 +422,86 @@ class WeblogEntriesPermalinkPagerTest extends EntriesPagerTestSupport {
             assertNull(pager.getEntries());
         });
     }
+
+    // ------------------------------------------------------------- strand nav
+
+    private WeblogEntry strandPart(String id, String anchor, String strandId) {
+        WeblogEntry e = entry(anchor, anchor, PUBLISHED_AT, WeblogEntry.PubStatus.PUBLISHED);
+        e.setId(id);
+        e.setStrandPageId(strandId);
+        return e;
+    }
+
+    private com.wikantik.pressroom.pojos.WeblogPage strandPage(boolean strand,
+            com.wikantik.pressroom.pojos.WeblogPage.PubStatus status) throws Exception {
+        com.wikantik.pressroom.pojos.WeblogPage page = new com.wikantik.pressroom.pojos.WeblogPage();
+        page.setId("strand-1");
+        page.setSlug("tale");
+        page.setTitle("The Tale");
+        page.setStrand(strand);
+        page.setStatus(status);
+        com.wikantik.pressroom.business.WeblogPageManager pages =
+                org.mockito.Mockito.mock(com.wikantik.pressroom.business.WeblogPageManager.class);
+        when(pages.getPage("strand-1")).thenReturn(page);
+        when(weblogger.getWeblogPageManager()).thenReturn(pages);
+        page.setWeblog(weblog());
+        return page;
+    }
+
+    @Test
+    void strandNavIsNullOutsideAPublishedStrand() throws Exception {
+        // no strand at all
+        when(entryManager.getWeblogEntryByAnchor(any(), eq("loose")))
+                .thenReturn(strandPart("e0", "loose", null));
+        withRuntimeConfig(() -> assertNull(pager("loose").getStrandNav()));
+
+        // a draft strand page, and a page that is not a strand
+        for (com.wikantik.pressroom.pojos.WeblogPage page : new com.wikantik.pressroom.pojos.WeblogPage[] {
+                strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.DRAFT),
+                strandPage(false, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED)}) {
+            when(entryManager.getWeblogEntryByAnchor(any(), eq("one")))
+                    .thenReturn(strandPart("e1", "one", "strand-1"));
+            when(entryManager.getStrandParts(any(), org.mockito.ArgumentMatchers.anyBoolean()))
+                    .thenReturn(java.util.List.of(strandPart("e1", "one", "strand-1")));
+            withRuntimeConfig(() -> assertNull(pager("one").getStrandNav(), page.getStatus().name()));
+        }
+
+        // a vanished strand page, and a lookup that fails
+        strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        when(weblogger.getWeblogPageManager().getPage("strand-1")).thenReturn(null);
+        withRuntimeConfig(() -> assertNull(pager("one").getStrandNav()));
+        when(weblogger.getWeblogPageManager().getPage("strand-1"))
+                .thenThrow(new WebloggerException("database is down"));
+        withRuntimeConfig(() -> assertNull(pager("one").getStrandNav()));
+    }
+
+    @Test
+    void strandNavNamesThePlaceAndNeighboursOfAReaderVisiblePart() throws Exception {
+        strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        WeblogEntry a = strandPart("e1", "one", "strand-1");
+        WeblogEntry b = strandPart("e2", "two", "strand-1");
+        WeblogEntry c = strandPart("e3", "three", "strand-1");
+        when(entryManager.getWeblogEntryByAnchor(any(), eq("two"))).thenReturn(b);
+        when(entryManager.getStrandParts(any(), eq(true))).thenReturn(java.util.List.of(a, b, c));
+
+        withRuntimeConfig(() -> {
+            StrandNav nav = pager("two").getStrandNav();
+            assertNotNull(nav);
+            assertEquals(2, nav.number());
+            assertEquals(3, nav.total());
+            assertEquals("one", nav.previous().getAnchor());
+            assertEquals("three", nav.next().getAnchor());
+            assertEquals("The Tale", nav.strand().getTitle());
+        });
+    }
+
+    @Test
+    void strandNavIsNullForAPartThatIsNotReaderVisible() throws Exception {
+        strandPage(true, com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        WeblogEntry a = strandPart("e1", "one", "strand-1");
+        when(entryManager.getWeblogEntryByAnchor(any(), eq("one"))).thenReturn(a);
+        when(entryManager.getStrandParts(any(), eq(true))).thenReturn(java.util.List.of());
+
+        withRuntimeConfig(() -> assertNull(pager("one").getStrandNav()));
+    }
 }

@@ -49,7 +49,8 @@
             </p>
             ## The blog line, under the title and byline (weblog.vm); the macro
             ## is called on the post page only.
-            #showBlogLine($model.weblog)
+            #showStrandBar($strandNav)
+        #showBlogLine($model.weblog)
             <div class="pf-entry-content">$entry.displayContent</div>
             <p class="pf-entry-meta">
                 <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>

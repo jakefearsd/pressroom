@@ -919,3 +919,11 @@ body.pf { --site-bar-surface: var(--pf-surface); --site-bar-line: var(--pf-line)
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
+
+/* A strand: the "Part N of M in" bar under a post's byline, and a strand page's list of parts. */
+.strand-bar { margin: .5rem 0 0; font-size: .875rem; color: var(--pf-fg); opacity: .75; }
+.strand-bar a { color: inherit; text-underline-offset: .2em; }
+.strand-parts { margin: 2rem 0 0; padding-left: 1.5rem; }
+.strand-part { margin: 0 0 1rem; }
+.strand-part-title { font-size: 1.125rem; }
+.strand-part-excerpt { margin: .25rem 0 0; font-size: .9375rem; opacity: .75; }

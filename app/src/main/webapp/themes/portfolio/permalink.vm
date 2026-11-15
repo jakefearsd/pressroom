@@ -44,6 +44,9 @@
 
 <main class="pf-main pf-main-entry" id="main">
     #set($pager = $model.getWeblogEntriesPager())
+    ## Set when the post is a reader-visible part of a published strand: the
+    ## strand bar (in _day) and the part steps below replace Older/Newer.
+    #set($strandNav = $pager.strandNav)
     #showWeblogEntriesPager($pager)
 
     ## Share row, Nearby and Keep reading (weblog.vm documents the macro).
@@ -55,6 +58,29 @@
     ## real title, where the showNextPrevEntriesControl macro cut it to 15-20
     ## characters. Older on the left, newer on the right. Titles are stored
     ## HTML-escaped (EntryBean.copyTo), so they are emitted bare.
+    #if($strandNav)
+    <nav class="pf-pager pf-steps" aria-label="More entries">
+        #if($strandNav.previous)
+        <a class="pf-step pf-step-back" href="$url.entry($strandNav.previous.anchor)" rel="prev">
+            <span class="pf-step-label">$text.get("entryMeta.strandPrevious")</span>
+            <span class="pf-step-title">$strandNav.previous.title</span>
+        </a>
+        #else
+        <span class="pf-step pf-step-empty"></span>
+        #end
+        #if($strandNav.next)
+        <a class="pf-step pf-step-fwd" href="$url.entry($strandNav.next.anchor)" rel="next">
+            <span class="pf-step-label">$text.get("entryMeta.strandNext")</span>
+            <span class="pf-step-title">$strandNav.next.title</span>
+        </a>
+        #else
+        <a class="pf-step pf-step-fwd" href="$url.staticPage($strandNav.strand.slug)">
+            <span class="pf-step-label">$text.get("entryMeta.strandAllParts")</span>
+            <span class="pf-step-title">$utils.escapeHTML($strandNav.strand.title)</span>
+        </a>
+        #end
+    </nav>
+    #else
     #set($older = $pager.prevEntry)
     #set($newer = $pager.nextEntry)
     #if($older || $newer)
@@ -74,6 +100,7 @@
         </a>
         #end
     </nav>
+    #end
     #end
 </main>
 

@@ -52,6 +52,8 @@
     <article class="tg-entry">
         <h1 class="tg-entry-title">$utils.escapeHTML($model.page.title)</h1>
         <div class="tg-entry-content">$model.page.renderedContent</div>
+        ## A strand page lists its parts beneath its text (weblog.vm).
+        #showStrandParts($model.page)
     </article>
 </main>
 

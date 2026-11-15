@@ -19,9 +19,13 @@
 package com.wikantik.pressroom.pojos.wrapper;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.util.Excerpts;
 
@@ -98,6 +102,25 @@ public final class WeblogPageWrapper {
 
     public Boolean getStrand() {
         return this.pojo.getStrand();
+    }
+
+    /**
+     * The reader-visible parts of this page, in order, when it is a strand
+     * (published, and not scheduled for later); empty for any other page.
+     */
+    public List<WeblogEntryWrapper> getParts() {
+        List<WeblogEntryWrapper> parts = new ArrayList<>();
+        if (!Boolean.TRUE.equals(pojo.getStrand())) {
+            return parts;
+        }
+        try {
+            for (WeblogEntry part : weblogger.getWeblogEntryManager().getStrandParts(pojo, true)) {
+                parts.add(WeblogEntryWrapper.wrap(part, urlStrategy, weblogger));
+            }
+        } catch (WebloggerException e) {
+            throw new IllegalStateException("reading the parts of strand " + pojo.getId(), e);
+        }
+        return parts;
     }
 
     public Boolean getShowInNav() {

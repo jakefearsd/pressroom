@@ -53,6 +53,8 @@
         <div class="pf-entry-body">
             <h1 class="pf-entry-title">$utils.escapeHTML($model.page.title)</h1>
             <div class="pf-entry-content">$model.page.renderedContent</div>
+        ## A strand page lists its parts beneath its text (weblog.vm).
+        #showStrandParts($model.page)
         </div>
     </article>
 </main>

@@ -764,3 +764,11 @@ body.qj { --site-bar-surface: var(--qj-surface); --site-bar-line: var(--qj-line)
 
 /* A blog's pinned post, marked in the date column. */
 .qj-date .entry-pinned { color: var(--qj-ink-soft); text-transform: uppercase; letter-spacing: .06em; font-size: .6875rem; }
+
+/* A strand: the "Part N of M in" bar under a post's byline, and a strand page's list of parts. */
+.strand-bar { margin: .5rem 0 0; font-size: .875rem; color: var(--qj-ink-soft); }
+.strand-bar a { color: inherit; text-decoration-color: var(--qj-line); text-underline-offset: .2em; }
+.strand-parts { margin: 2rem 0 0; padding-left: 1.5rem; }
+.strand-part { margin: 0 0 1rem; }
+.strand-part-title { font-family: var(--qj-serif, inherit); font-size: 1.125rem; }
+.strand-part-excerpt { margin: .25rem 0 0; font-size: .9375rem; color: var(--qj-ink-soft); }

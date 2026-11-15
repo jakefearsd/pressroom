@@ -52,6 +52,8 @@
     <article class="qj-reading">
         <h1 class="qj-h1">$utils.escapeHTML($model.page.title)</h1>
         <div class="qj-prose">$model.page.renderedContent</div>
+        ## A strand page lists its parts beneath its text (weblog.vm).
+        #showStrandParts($model.page)
     </article>
 </main>
 
