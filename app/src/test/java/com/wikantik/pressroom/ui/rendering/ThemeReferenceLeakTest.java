@@ -154,6 +154,18 @@ class ThemeReferenceLeakTest {
             "portfolio:permalink|standard: $pager.prevEntry", // null on the oldest entry; assigned to $older, which is tested with #if
             "portfolio:permalink|standard: newer", // #set of a null value ($pager.nextEntry) on the newest entry
             "portfolio:permalink|standard: older", // #set of a null value ($pager.prevEntry) on the oldest entry
+            "journal:_day|standard: $strandNav", // unset unless the post is a reader-visible part of a strand (permalink.vm sets it); the showStrandBar macro tests it with #if
+            "journal:permalink|standard: $pager.strandNav", // null unless the post is a reader-visible part of a published strand; assigned to $strandNav, which is tested with #if
+            "journal:permalink|standard: $strandNav", // unset outside a strand; tested with #if($strandNav)
+            "journal:permalink|standard: strandNav", // #set of a null value ($pager.strandNav) outside a strand
+            "portfolio:_day|standard: $strandNav", // unset unless the post is a reader-visible part of a strand (permalink.vm sets it); the showStrandBar macro tests it with #if
+            "portfolio:permalink|standard: $pager.strandNav", // null unless the post is a reader-visible part of a published strand; assigned to $strandNav, which is tested with #if
+            "portfolio:permalink|standard: $strandNav", // unset outside a strand; tested with #if($strandNav)
+            "portfolio:permalink|standard: strandNav", // #set of a null value ($pager.strandNav) outside a strand
+            "travel:_day|standard: $strandNav", // unset unless the post is a reader-visible part of a strand (permalink.vm sets it); the showStrandBar macro tests it with #if
+            "travel:permalink|standard: $pager.strandNav", // null unless the post is a reader-visible part of a published strand; assigned to $strandNav, which is tested with #if
+            "travel:permalink|standard: $strandNav", // unset outside a strand; tested with #if($strandNav)
+            "travel:permalink|standard: strandNav", // #set of a null value ($pager.strandNav) outside a strand
             "site-entries-atom.vm|standard: $model.categoryName", // null when the feed is not a category feed; tested with #elseif
             "site-entries-atom.vm|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
             "travel:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
@@ -183,6 +195,7 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
             "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
             "weblog.vm: $responsiveObjectPosition", // null when the image has no focal point; tested with #if
+            "weblog.vm: $sbNav", // the showStrandBar macro argument, null outside a strand; tested with #if
             "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
             "weblog.vm: $seoCanonical", // null when no canonical URL applies; tested with #if
             "weblog.vm: $seoEntry.ogImage", // null when the entry has no OG image; falls back to the featured image under #if(!$seoImage)

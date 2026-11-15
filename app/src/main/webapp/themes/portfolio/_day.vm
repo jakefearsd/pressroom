@@ -47,10 +47,12 @@
                 <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
                 #showEntryUpdated($entry "&middot; ")
             </p>
+            ## A post in a strand: "Part N of M in" the strand (weblog.vm); set by
+            ## permalink.vm, unset elsewhere, where the macro prints nothing.
+            #showStrandBar($strandNav)
             ## The blog line, under the title and byline (weblog.vm); the macro
             ## is called on the post page only.
-            #showStrandBar($strandNav)
-        #showBlogLine($model.weblog)
+            #showBlogLine($model.weblog)
             <div class="pf-entry-content">$entry.displayContent</div>
             <p class="pf-entry-meta">
                 <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
