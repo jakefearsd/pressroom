@@ -255,6 +255,11 @@ public final class WeblogWrapper {
         return !Boolean.FALSE.equals(this.pojo.getShareRowEnabled());
     }
 
+    /** The stored listing order, NEWEST or OLDEST. */
+    public String getEntryOrder() {
+        return this.pojo.getEntryOrder();
+    }
+
     /** Whether this blog's pages carry the subscribe form. Read by the showSubscribeForm macro. */
     public boolean isSubscribeFormShown() {
         return this.pojo.isSubscribeFormShown();

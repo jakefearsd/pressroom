@@ -71,6 +71,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     private Timestamp updateTime;
     private Boolean   rightToLeft   = Boolean.FALSE;
     private Boolean   pinnedToMain  = Boolean.FALSE;
+    private Boolean   pinned        = Boolean.FALSE;
     private PubStatus status        = PubStatus.DRAFT;
     private String    locale;
     private String    creatorUserName;
@@ -175,6 +176,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         this.setStatus(other.getStatus());
         this.setRightToLeft(other.getRightToLeft());
         this.setPinnedToMain(other.getPinnedToMain());
+        this.setPinned(other.getPinned());
         this.setLocale(other.getLocale());
     }
 
@@ -736,6 +738,18 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      */
     public void setPinnedToMain(Boolean pinnedToMain) {
         this.pinnedToMain = pinnedToMain;
+    }
+
+    /**
+     * True if the blog shows this post above its regular listing (at most
+     * three per blog). Not the site-wide {@link #getPinnedToMain()}. Never null.
+     */
+    public Boolean getPinned() {
+        return pinned == null ? Boolean.FALSE : pinned;
+    }
+
+    public void setPinned(Boolean pinned) {
+        this.pinned = pinned == null ? Boolean.FALSE : pinned;
     }
 
     /**

@@ -104,6 +104,8 @@ public class WeblogTest  {
             testWeblog.setTimeZone("America/Los_Angeles");
             testWeblog.setDateCreated(new java.util.Date());
             testWeblog.setCreatorUserName(testUser.getUserName());
+            assertEquals("NEWEST", testWeblog.getEntryOrder(), "a blog starts newest first");
+            testWeblog.setEntryOrder("OLDEST");
 
             // make sure test weblog does not exist
             weblog = mgr.getWeblogByHandle(testWeblog.getHandle());
@@ -119,6 +121,11 @@ public class WeblogTest  {
             weblog = mgr.getWeblog(id);
             assertNotNull(weblog);
             assertEquals(testWeblog, weblog);
+            assertEquals("OLDEST", weblog.getEntryOrder(), "the order is stored");
+            assertEquals(com.wikantik.pressroom.pojos.EntryOrder.OLDEST, weblog.entryOrder());
+            Weblog copy = new Weblog();
+            copy.setData(weblog);
+            assertEquals("OLDEST", copy.getEntryOrder(), "setData keeps the order");
 
             // modify weblog and save
             weblog.setName("testtesttest");

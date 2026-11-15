@@ -98,6 +98,9 @@
 			<basic name="shareRowEnabled">
 				<column name="share_row_enabled" insertable="true" updatable="true" unique="false"/>
 			</basic>
+			<basic name="entryOrder">
+				<column name="entry_order" insertable="true" updatable="true" unique="false"/>
+			</basic>
 			<basic name="creatorUserName">
 				<column name="creator" insertable="true" updatable="true" unique="false"/>
 			</basic>

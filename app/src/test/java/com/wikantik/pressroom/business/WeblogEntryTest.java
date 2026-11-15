@@ -105,6 +105,8 @@ public class WeblogEntryTest  {
 
         WeblogCategory cat = TestUtils.categoryNamed(testWeblog, "General");
         testEntry.setCategory(cat);
+        assertEquals(Boolean.FALSE, testEntry.getPinned(), "an entry starts unpinned");
+        testEntry.setPinned(Boolean.TRUE);
         
         // create a weblog entry
         mgr.saveWeblogEntry(testEntry);
@@ -115,6 +117,13 @@ public class WeblogEntryTest  {
         entry = mgr.getWeblogEntry(id);
         assertNotNull(entry);
         assertEquals(testEntry, entry);
+        assertEquals(Boolean.TRUE, entry.getPinned(), "the pin is stored");
+        assertEquals(Boolean.TRUE, new WeblogEntry(entry).getPinned(), "the copy constructor keeps the pin");
+        entry.setPinned(Boolean.FALSE);
+        mgr.saveWeblogEntry(entry);
+        TestUtils.endSession(true);
+        assertEquals(Boolean.FALSE, mgr.getWeblogEntry(id).getPinned(), "unpinning is stored");
+        entry = mgr.getWeblogEntry(id);
         
         // update a weblog entry
         entry.setTitle("testtest");

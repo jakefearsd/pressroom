@@ -66,6 +66,7 @@ public class Weblog implements Serializable {
     private Boolean commentNotify    = Boolean.TRUE;
     private Boolean showMoreFromSite = Boolean.TRUE;
     private Boolean shareRowEnabled  = Boolean.TRUE;
+    private String  entryOrder       = EntryOrder.NEWEST.name();
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
@@ -298,6 +299,7 @@ public class Weblog implements Serializable {
         this.setCommentNotify(other.getCommentNotify());
         this.setShowMoreFromSite(other.getShowMoreFromSite());
         this.setShareRowEnabled(other.getShareRowEnabled());
+        this.setEntryOrder(other.getEntryOrder());
         this.setLastModified(other.getLastModified());
         this.setWeblogCategories(other.getWeblogCategories());
     }
@@ -394,6 +396,20 @@ public class Weblog implements Serializable {
 
     public void setShareRowEnabled(Boolean shareRowEnabled) {
         this.shareRowEnabled = shareRowEnabled;
+    }
+
+    /** The stored listing order, NEWEST or OLDEST (a hand-edited value reads as NEWEST via {@link #entryOrder()}). */
+    public String getEntryOrder() {
+        return entryOrder;
+    }
+
+    public void setEntryOrder(String entryOrder) {
+        this.entryOrder = entryOrder;
+    }
+
+    /** The listing order to use: the stored value, newest first when null, blank or unknown. */
+    public EntryOrder entryOrder() {
+        return EntryOrder.of(entryOrder);
     }
     
     /**

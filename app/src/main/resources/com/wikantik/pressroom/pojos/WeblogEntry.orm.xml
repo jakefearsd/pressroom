@@ -92,6 +92,9 @@
             <basic name="pinnedToMain">
                 <column name="pinnedtomain" insertable="true" updatable="true" unique="false"/>
             </basic>
+            <basic name="pinned">
+                <column name="pinned" insertable="true" updatable="true" unique="false"/>
+            </basic>
             <basic name="locale">
                 <column name="locale" insertable="true" updatable="true" unique="false"/>
             </basic>
