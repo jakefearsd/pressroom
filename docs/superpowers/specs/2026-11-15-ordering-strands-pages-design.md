@@ -316,7 +316,18 @@ weblog + front_page_id varchar(48) NULL
   points to the blog root while it is the front door (my call: no redirect,
   so links survive a change of front door).
 - If the front-door page becomes a draft or is deleted, the blog root falls
-  back to the post list. Never a 404 at a blog root.
+  back to the post list. Never a 404 at a blog root. (Amended at planning:
+  the setting is cleared at that save, so republishing the page does not
+  restore it; the author chooses it again.)
+- Amended at planning: `/<handle>/posts` lists posts whether or not a front
+  door is set (its canonical is the blog root when none is), and a root
+  request carrying a listing parameter (`?page=2`, `?cat=`, `?date=`) still
+  lists posts, so links made before a front door was chosen keep working.
+  In templates `$url.home` is the blog root and `$url.posts` the listing.
+- Amended at planning: production was checked on 2026-11-15 and has no page
+  slugged `posts`, so the rename-and-redirect step below is not needed. (It
+  could not have worked as written: redirect rules are consulted only on a
+  404, and `/posts` now always answers.)
 - Feeds, site front page, and site-wide lists are unaffected.
 
 ### Nav order
