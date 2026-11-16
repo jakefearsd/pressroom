@@ -75,8 +75,18 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     private Model model;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         controller = prepare(new PageEditController());
+        // The manager's restore is mocked: stand in for what it does to the
+        // page, so what the route answers can be checked. That it never
+        // coalesces is the manager's own test (RevisionRetentionWriteTest).
+        org.mockito.Mockito.doAnswer(call -> {
+            WeblogPage restored = call.getArgument(0);
+            com.wikantik.pressroom.pojos.WeblogPageRevision from = call.getArgument(1);
+            restored.setTitle(from.getTitle());
+            restored.setContent(from.getContent());
+            return null;
+        }).when(weblogger.getWeblogPageManager()).restoreRevision(any(), any(), any());
         model = newModel();
 
         weblogA = weblog;
@@ -400,7 +410,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals("v1", mine.getContent());
         assertEquals("about-us", mine.getSlug());
         assertEquals(WeblogPage.PubStatus.PUBLISHED, mine.getStatus());
-        verify(weblogger.getWeblogPageManager()).savePage(mine, user, null);
+        verify(weblogger.getWeblogPageManager()).restoreRevision(eq(mine), any(), eq(user));
         assertEquals(1, weblogger.flushCount());
         assertEquals(java.util.List.of("restored"), flashMessages(redirect));
         assertEquals("redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + weblogA.getHandle()
@@ -421,6 +431,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals(java.util.List.of("pageEdit.notFound"), flashErrors(redirect));
         assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
         verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
+        verify(weblogger.getWeblogPageManager(), never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -436,6 +447,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals("v3", mine.getContent());
         assertEquals(java.util.List.of("pageEdit.notFound"), flashErrors(redirect));
         verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
+        verify(weblogger.getWeblogPageManager(), never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -443,13 +455,67 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         WeblogPage mine = pageOn(weblogA, "about");
         revisionOf(mine, "r1", "T", "v1");
         doThrow(new WebloggerException("database down"))
-                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
+                .when(weblogger.getWeblogPageManager()).restoreRevision(any(), any(), any());
         var redirect = newRedirectAttributes();
 
         controller.restoreRevision(requestFor(weblogA), mine.getId(), "r1", redirect);
 
         assertEquals(java.util.List.of("generic.error.check.logs"), flashErrors(redirect));
         assertTrue(flashMessages(redirect).isEmpty());
+    }
+
+    // --- keeping a revision (spec 2026-11-15, Part 3) ---
+
+    @Test
+    void keepingAndReleasingARevisionGoThroughTheManagerAndSaySo() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        var revision = revisionOf(mine, "r1", "About", "v1");
+        var redirect = newRedirectAttributes();
+
+        String view = controller.keepRevision(requestFor(weblogA), mine.getId(), "r1", true, redirect);
+
+        verify(weblogger.getWeblogPageManager()).setRevisionKept(revision, true);
+        assertEquals(java.util.List.of("weblogEdit.revisionKept"), flashMessages(redirect));
+        assertEquals("redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + weblogA.getHandle()
+                + "&id=" + mine.getId(), view);
+
+        var second = newRedirectAttributes();
+        controller.keepRevision(requestFor(weblogA), mine.getId(), "r1", false, second);
+
+        verify(weblogger.getWeblogPageManager()).setRevisionKept(revision, false);
+        assertEquals(java.util.List.of("weblogEdit.revisionUnkept"), flashMessages(second));
+    }
+
+    @Test
+    void anEleventhKeptRevisionReportsTheLimit() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        var revision = revisionOf(mine, "r1", "About", "v1");
+        doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+                .when(weblogger.getWeblogPageManager()).setRevisionKept(revision, true);
+        var redirect = newRedirectAttributes();
+
+        controller.keepRevision(requestFor(weblogA), mine.getId(), "r1", true, redirect);
+
+        assertEquals(java.util.List.of("weblogEdit.revisionKeepLimit"), flashErrors(redirect));
+        assertTrue(flashMessages(redirect).isEmpty());
+    }
+
+    @Test
+    void keepingAnotherPagesRevisionOrOnATrashedPageIsNotFound() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        WeblogPage sibling = pageOn(weblogA, "contact");
+        revisionOf(sibling, "theirs", "T", "c");
+        revisionOf(mine, "mine-r", "T", "c");
+        var redirect = newRedirectAttributes();
+
+        String view = controller.keepRevision(requestFor(weblogA), mine.getId(), "theirs", true, redirect);
+
+        assertEquals(java.util.List.of("pageEdit.notFound"), flashErrors(redirect));
+        assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
+        mine.setStatus(WeblogPage.PubStatus.TRASHED);
+        controller.keepRevision(requestFor(weblogA), mine.getId(), "mine-r", true, newRedirectAttributes());
+        verify(weblogger.getWeblogPageManager(), never())
+                .setRevisionKept(any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     // --- opening the editor ---

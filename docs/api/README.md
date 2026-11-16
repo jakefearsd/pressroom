@@ -951,6 +951,46 @@ all, 0 records none).
 - A revision id that belongs to another page is a 404, `against` included.
   On a trashed page the two reads are a 404 and restore is a 409.
 
+### Keeping a revision, and how many are stored
+
+Revisions of posts and pages are bounded by five mechanisms, all site
+settings (`GET`/`PATCH /api/v1/admin/config`):
+
+| Setting | Default | What it does |
+|---|---|---|
+| `revisions.coalesce.minutes` | 10 | Repeated saves by the same user inside this window share one revision. A save with a `revisionNote`, a save by someone else, and a revision restore always leave their own. 0 turns it off. |
+| `entry.revisions.retention` | -1 | Newest n revisions kept per post; -1 all, 0 records none. |
+| `page.revisions.retention` | 50 | The same per page. |
+| `revisions.maxAgeDays` | -1 | The daily sweep removes revisions older than this; -1 off. |
+| `revisions.total.max` | -1 | The most revisions the site keeps, posts and pages together; over it, the sweep removes the oldest; -1 off. |
+
+Two protections outrank the age limit and the site-wide limit: an item's
+newest 5 revisions are never removed by either, and a **kept** revision is
+exempt from every limit.
+
+```
+POST /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep
+POST /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep
+POST /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/keep
+POST /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep
+```
+
+Each answers the revision's summary, which (like the revision view) carries
+`kept`. One item may have at most 10 kept revisions; an eleventh is a 409.
+Releasing a revision removes nothing by itself: the item's next save, or the
+sweep, applies the limits to it. Changing a setting removes nothing either;
+the sweep does, once a day.
+
+A global admin can read the figures and run the sweep:
+`GET /api/v1/admin/revisions` answers the totals for posts and pages, the
+kept count, an approximate size, the oldest revision, the ten items with the
+most, the last sweep, and `nextSweep`: what a sweep would remove now.
+`POST /api/v1/admin/revisions/sweep` answers the same report shape
+(`byCount`, `byAge`, `byCeiling`, `total`, `ceilingUnmeetable`,
+`weblogsFailed`, `ceilingFailed`). **It is a dry run unless the body says
+`{"dryRun": false}`**; with no body it removes nothing. Neither route is
+offered over MCP.
+
 Every page view carries `contentHash`, the SHA-256 of its `text`. Send it
 back as `expectedContentHash` on `PATCH` or in a restore's optional body
 (`{"expectedContentHash": "..."}`): if the page's text is no longer that,
@@ -1315,6 +1355,8 @@ PATCH /api/v1/admin/users/{userName}
 
 GET   /api/v1/admin/config
 PATCH /api/v1/admin/config
+GET   /api/v1/admin/revisions          what the revision store holds
+POST  /api/v1/admin/revisions/sweep    run the sweep, or report what it would remove
 
 GET   /api/v1/weblogs[?offset=&limit=]
 GET   /api/v1/weblogs/{handle}
@@ -1491,10 +1533,10 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 |---|---|
 | `whoami` | |
 | `weblogs` | `list`, `get`, `create`, `update` |
-| `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision` |
+| `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
-| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `set_parts` |
+| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |

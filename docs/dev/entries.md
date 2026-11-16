@@ -467,6 +467,43 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
     diff fragment is `RevisionDiffHtml`, shared with the entry editor.
   - A mock-based test of a page save must verify the three-argument
     `savePage`: `never().savePage(any())` on the old form passes vacuously.
+- **Revision retention, posts and pages** (V052; spec Part 3). Neither
+  manager decides which revisions exist.
+  - **At a write** (`RevisionRetention`, static, called from each manager's
+    `storeRevision` inside the revision's own after-commit transaction):
+    `shouldStore` is coalescing (`revisions.coalesce.minutes`, default 10: no
+    revision when the item's newest one is inside the window and by the same
+    acting user; never for a null user, a note, or a restore), then
+    `pruneAtWrite` is the per-item count over **unkept** rows, removed
+    through the entity manager so the shared cache stays right. A coalesced
+    save prunes nothing.
+  - **Restores** go through `restoreRevision` on the manager, which saves
+    with the restore flag. A caller that sets the fields and calls the plain
+    save would be coalesced and lose the content it replaced.
+  - **The sweep** (`RevisionSweeper`, own EntityManagers, native SQL with
+    `row_number()`): pass 1 per weblog, one transaction each, the count then
+    `revisions.maxAgeDays`; pass 2 once, `revisions.total.max`, oldest first
+    across both tables in batches of 1,000. It runs as the last step of
+    `TrashPurgeTask` and from "Sweep now" on the maintenance screen, and is
+    reached through `WeblogEntryManager.sweepRevisions(dryRun)` /
+    `revisionStats()`. After removing, it evicts both revision classes from
+    the shared cache.
+  - **Protection**: a `kept` revision is exempt from everything and is
+    extra to the count (at most `RevisionRetention.MAX_KEPT` = 10 an item,
+    `RevisionKeepLimitException`); an item's newest `FLOOR` = 5 unkept are
+    never removed by age or the ceiling. A ceiling below what is protected
+    is reported (`ceilingUnmeetable`), never forced.
+  - **Fail closed**: a limit that cannot be read is off; a weblog whose pass
+    throws rolls back whole and is counted in `weblogsFailed`; a ceiling
+    pass that throws removes nothing (`ceilingFailed`).
+  - **Saving a setting deletes nothing.** `GlobalConfigController` runs a
+    dry run after a save that changed a removing limit and adds
+    `configForm.revisionsNextSweep` when it is above zero.
+  - The settings sit in the `revisionSettings` display group ("Revisions
+    and trash") with the two trash retention properties.
+  - A real-database test that saves one item several times as one user sets
+    `revisions.coalesce.minutes` to 0 (`TestUtils.setRuntimeProperty`) unless
+    coalescing is what it tests.
 - **Nav order**: `navOrder` is one 0-based sequence per blog (drafts and
   non-nav pages included). The Pages screen reorders it with up/down buttons
   and a drag handle (`pressroom-reorder.js`, shared with the strand Parts

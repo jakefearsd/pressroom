@@ -270,11 +270,38 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             requireUnchangedUnderLock(page, page.getContent());
         }
 
-        page.setTitle(revision.getTitle());
-        page.setContent(revision.getContent());
-        weblogger.getWeblogPageManager().savePage(page, requireAuthenticatedUser(request), null);
+        // The manager's restore, not a plain save: a restore is never
+        // coalesced, so what it replaces always becomes a revision.
+        weblogger.getWeblogPageManager().restoreRevision(page, revision, requireAuthenticatedUser(request));
         weblogger.flush();
         return view(page);
+    }
+
+    /**
+     * Marks a revision as kept: exempt from the per-page count, the age
+     * limit and the site-wide ceiling until it is released. At most ten per
+     * page; an eleventh is a 409.
+     */
+    @PostMapping("/{id}/revisions/{revisionId}/keep")
+    public RevisionDtos.RevisionSummary keepPageRevision(
+            HttpServletRequest request, @PathVariable("id") String pageId,
+            @PathVariable("revisionId") String revisionId) throws WebloggerException {
+        return markPageRevisionKept(request, pageId, revisionId, true);
+    }
+
+    /** Releases a kept revision to the ordinary retention rules; nothing is removed by the call itself. */
+    @PostMapping("/{id}/revisions/{revisionId}/unkeep")
+    public RevisionDtos.RevisionSummary unkeepPageRevision(
+            HttpServletRequest request, @PathVariable("id") String pageId,
+            @PathVariable("revisionId") String revisionId) throws WebloggerException {
+        return markPageRevisionKept(request, pageId, revisionId, false);
+    }
+
+    private RevisionDtos.RevisionSummary markPageRevisionKept(HttpServletRequest request, String id, String revisionId,
+            boolean kept) throws WebloggerException {
+        WeblogPageRevision pageRevision = requireRevision(requireLivePageForWrite(request, id), revisionId);
+        applyKeep(() -> weblogger.getWeblogPageManager().setRevisionKept(pageRevision, kept));
+        return RevisionDtos.toSummary(pageRevision);
     }
 
     private WeblogPageRevision requireRevision(WeblogPage page, String revisionId) {

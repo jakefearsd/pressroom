@@ -43,11 +43,16 @@ class WeblogPageRevisionTest {
         user = TestUtils.setupUser("pagerevuser");
         weblog = TestUtils.setupWeblog("pagerevblog", user);
         TestUtils.endSession(true);
+        // These cases are about what a save records. One user's quick saves
+        // would otherwise be coalesced into one revision
+        // (RevisionRetentionWriteTest covers that), so it is off here.
+        set("revisions.coalesce.minutes", "0");
     }
 
     @AfterEach
     void tearDown() throws Exception {
         setRetention("50");
+        set("revisions.coalesce.minutes", "10");
         if (!weblogRemoved) {
             TestUtils.teardownWeblog(weblog.getId());
         }
@@ -65,9 +70,13 @@ class WeblogPageRevisionTest {
     }
 
     private void setRetention(String value) throws Exception {
+        set(RETENTION, value);
+    }
+
+    private static void set(String name, String value) throws Exception {
         PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
-        RuntimeConfigProperty property = pmgr.getProperties().get(RETENTION);
-        assertNotNull(property, RETENTION + " is not a declared runtime property");
+        RuntimeConfigProperty property = pmgr.getProperties().get(name);
+        assertNotNull(property, name + " is not a declared runtime property");
         property.setValue(value);
         pmgr.saveProperties(pmgr.getProperties());
         TestUtils.endSession(true);

@@ -534,4 +534,20 @@ public final class TestUtils {
         TestUtils.weblogger().getMediaFileManager()
                 .updateTags(file, Utilities.splitStringAsTags(tags));
     }
+
+    /**
+     * Sets one declared runtime property and commits. A test that changes
+     * one puts the shipped value back in its tear-down: the test database is
+     * shared by every test class.
+     */
+    public static void setRuntimeProperty(String name, String value) throws Exception {
+        PropertiesManager pmgr = weblogger().getPropertiesManager();
+        RuntimeConfigProperty property = pmgr.getProperties().get(name);
+        if (property == null) {
+            throw new IllegalArgumentException(name + " is not a declared runtime property");
+        }
+        property.setValue(value);
+        pmgr.saveProperties(pmgr.getProperties());
+        endSession(true);
+    }
 }

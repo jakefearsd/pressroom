@@ -48,6 +48,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.wikantik.pressroom.business.RevisionSweep;
 
 /**
  * Site-wide user administration and runtime configuration -- {@code
@@ -262,6 +264,34 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     }
 
     // ---------------------------------------------------------- config
+
+    /** The optional body of a revision sweep. */
+    public record RevisionSweepRequest(
+            @Schema(description = "False runs the sweep and removes revisions. True, or no body at all, only "
+                    + "reports what it would remove.")
+            Boolean dryRun) {
+    }
+
+    /**
+     * What the revision store holds, computed now: totals for posts and
+     * pages, kept revisions, the largest items, the last sweep, and what the
+     * next sweep would remove at the current limits.
+     */
+    @GetMapping("/revisions")
+    public RevisionSweep.Stats revisions() throws WebloggerException {
+        return weblogger.getWeblogEntryManager().revisionStats();
+    }
+
+    /**
+     * Runs the revision sweep, or by default only reports what it would
+     * remove: removal is asked for in so many words ({@code "dryRun":
+     * false}), never by leaving the body out.
+     */
+    @PostMapping("/revisions/sweep")
+    public RevisionSweep.Report sweepRevisions(@RequestBody(required = false) RevisionSweepRequest body) {
+        boolean dryRun = body == null || !Boolean.FALSE.equals(body.dryRun());
+        return weblogger.getWeblogEntryManager().sweepRevisions(dryRun);
+    }
 
     /**
      * Every runtime-settable property, current value first, falling back to

@@ -35,7 +35,7 @@ class ToolSchemasTest {
         assertEquals(Boolean.FALSE, schema.get("additionalProperties"));
         Map<String, Object> action = (Map<String, Object>) properties("entries").get("action");
         assertEquals(List.of("list", "get", "create", "update", "trash", "restore", "delete_forever", "preview",
-                "revisions", "revision", "restore_revision"), action.get("enum"));
+                "revisions", "revision", "restore_revision", "keep_revision", "unkeep_revision"), action.get("enum"));
     }
 
     /**
@@ -48,7 +48,7 @@ class ToolSchemasTest {
     void thePagesToolSetsPartsFromAnArrayOfIdsAndCarriesTheStrandFlag() throws Exception {
         Map<String, Object> action = (Map<String, Object>) properties("pages").get("action");
         assertEquals(List.of("list", "get", "create", "update", "delete", "restore", "delete_forever",
-                        "revisions", "revision", "restore_revision", "set_parts"),
+                        "revisions", "revision", "restore_revision", "keep_revision", "unkeep_revision", "set_parts"),
                 action.get("enum"));
         Map<String, Object> entries = (Map<String, Object>) properties("pages").get("entries");
         assertEquals("array", entries.get("type"));

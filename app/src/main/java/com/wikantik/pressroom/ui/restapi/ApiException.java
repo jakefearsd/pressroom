@@ -105,6 +105,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail);
     }
 
+    /** A 409 raised from a business-tier refusal, which is kept as the cause for the log. */
+    public static ApiException conflict(String detail, Throwable cause) {
+        return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail, null, cause);
+    }
+
     /**
      * A 409 for an update whose {@code expectedContentHash} is not the hash of
      * the text now stored: the entry changed after the caller read it. The

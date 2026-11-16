@@ -51,7 +51,7 @@ class PagesApiRevisionsTest {
     private MockMvc mvc;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         weblogger = mock(Weblogger.class);
         pages = mock(WeblogPageManager.class);
         when(weblogger.getWeblogPageManager()).thenReturn(pages);
@@ -63,6 +63,16 @@ class PagesApiRevisionsTest {
         user.setUserName("alice");
         PagesApi controller = new PagesApi();
         controller.weblogger = weblogger;
+        // The manager's restore is mocked: stand in for what it does to the
+        // page, so what the route answers can be checked. That it never
+        // coalesces is the manager's own test (RevisionRetentionWriteTest).
+        org.mockito.Mockito.doAnswer(call -> {
+            WeblogPage restored = call.getArgument(0);
+            com.wikantik.pressroom.pojos.WeblogPageRevision from = call.getArgument(1);
+            restored.setTitle(from.getTitle());
+            restored.setContent(from.getContent());
+            return null;
+        }).when(pages).restoreRevision(any(), any(), any());
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -161,7 +171,9 @@ class PagesApiRevisionsTest {
         assertEquals(hash("v2 by someone else"), problem.get("currentContentHash").asString());
         assertEquals("v2 by someone else", page.getContent());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     /** The content changed between the request's read and its write: caught under the row lock. */
@@ -174,6 +186,7 @@ class PagesApiRevisionsTest {
 
         assertEquals(hash("v1 edited meanwhile"), json(body).get("currentContentHash").asString());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -185,6 +198,7 @@ class PagesApiRevisionsTest {
                 .andExpect(status().isBadRequest()).andExpect(errorFieldIs("expectedContentHash"));
 
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -207,6 +221,7 @@ class PagesApiRevisionsTest {
                 .andExpect(status().isBadRequest()).andExpect(errorFieldIs("revisionNote"));
 
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -221,6 +236,7 @@ class PagesApiRevisionsTest {
                 .andExpect(status().isBadRequest()).andExpect(errorFieldIs("expectedContentHash"));
 
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -304,6 +320,7 @@ class PagesApiRevisionsTest {
         }
         assertEquals("now", page.getContent());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     // -------------------------------------------------------------- restore
@@ -322,7 +339,7 @@ class PagesApiRevisionsTest {
         assertEquals("about-us", page.getSlug(), "a revision holds no settings");
         assertEquals(WeblogPage.PubStatus.PUBLISHED, page.getStatus());
         assertEquals("v1", json(body).get("text").asString());
-        verify(pages).savePage(page, user, null);
+        verify(pages).restoreRevision(eq(page), any(), eq(user));
         verify(weblogger).flush();
     }
 
@@ -339,6 +356,7 @@ class PagesApiRevisionsTest {
         assertEquals(hash("v3"), json(body).get("currentContentHash").asString());
         assertEquals("v3", page.getContent());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
     @Test
@@ -370,5 +388,77 @@ class PagesApiRevisionsTest {
         assertTrue(body.contains("restore it first"), body);
         assertEquals("v3", page.getContent());
         verify(pages, never()).savePage(any(), any(), any());
+        verify(pages, never()).restoreRevision(any(), any(), any());
+    }
+
+    // ----------------------------------------------------------------- kept
+
+    @Test
+    void keepAndUnkeepMarkTheRevisionAndAnswerItsSummary() throws Exception {
+        WeblogPage page = page("p1", "About", "v3");
+        WeblogPageRevision revision = revision("r1", page, "About", "v1");
+        org.mockito.Mockito.doAnswer(call -> {
+            revision.setKept(call.getArgument(1));
+            return null;
+        }).when(pages).setRevisionKept(eq(revision), org.mockito.ArgumentMatchers.anyBoolean());
+
+        String kept = mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/keep", "p1", "r1")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(json(kept).get("kept").asBoolean(), kept);
+        assertEquals("r1", json(kept).get("id").asString());
+        verify(pages).setRevisionKept(revision, true);
+
+        String released = mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/unkeep", "p1", "r1")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(!json(released).get("kept").asBoolean(), released);
+        verify(pages).setRevisionKept(revision, false);
+        verify(weblogger, org.mockito.Mockito.times(2)).flush();
+    }
+
+    @Test
+    void anEleventhKeptRevisionIsA409() throws Exception {
+        WeblogPage page = page("p1", "About", "v3");
+        WeblogPageRevision revision = revision("r1", page, "About", "v1");
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+                .when(pages).setRevisionKept(revision, true);
+
+        String body = mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/keep", "p1", "r1")))
+                .andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains("At most 10 kept revisions"), body);
+    }
+
+    @Test
+    void keepingAnotherPagesRevisionOrOnATrashedPageIsRefused() throws Exception {
+        WeblogPage page = page("p1", "About", "now");
+        WeblogPage sibling = page("p2", "Contact", "c");
+        revision("mine", page, "T", "a");
+        revision("theirs", sibling, "T", "b");
+
+        mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/keep", "p1", "theirs")))
+                .andExpect(status().isNotFound());
+        mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/unkeep", "p1", "nope")))
+                .andExpect(status().isNotFound());
+        page.setStatus(WeblogPage.PubStatus.TRASHED);
+        mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/keep", "p1", "mine")))
+                .andExpect(status().isConflict());
+
+        verify(pages, never()).setRevisionKept(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void theListAndTheViewSayWhichRevisionsAreKept() throws Exception {
+        WeblogPage page = page("p1", "About", "v3");
+        WeblogPageRevision revision = revision("r1", page, "About", "v1");
+        revision.setKept(true);
+        when(pages.getRevisions(page)).thenReturn(List.of(revision));
+
+        String list = mvc.perform(on(get("/v1/weblogs/myblog/pages/{id}/revisions", "p1")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String one = mvc.perform(on(get("/v1/weblogs/myblog/pages/{id}/revisions/{rid}", "p1", "r1")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertTrue(json(list).get(0).get("kept").asBoolean(), list);
+        assertTrue(json(one).get("kept").asBoolean(), one);
     }
 }

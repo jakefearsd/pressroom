@@ -51,6 +51,9 @@ class EntryRevisionsApiTest {
         entry = TestUtils.setupWeblogEntry("rev-api-entry", weblog, user, WeblogEntry.PubStatus.DRAFT);
         other = TestUtils.setupWeblogEntry("rev-api-other", weblog, user, WeblogEntry.PubStatus.DRAFT);
         TestUtils.endSession(true);
+        // About reading revisions: one user's quick saves would otherwise
+        // share a revision (RevisionRetentionWriteTest covers coalescing).
+        TestUtils.setRuntimeProperty("revisions.coalesce.minutes", "0");
 
         EntriesApi reads = new EntriesApi();
         reads.weblogger = TestUtils.weblogger();
@@ -61,6 +64,7 @@ class EntryRevisionsApiTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        TestUtils.setRuntimeProperty("revisions.coalesce.minutes", "10");
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownWeblog(theirs.getId());
         TestUtils.teardownUser(user.getUserName());
@@ -78,7 +82,7 @@ class EntryRevisionsApiTest {
         assertEquals("Second pass", list.get(0).get("note").asString(), "the second update's revision is newest");
         assertEquals("First pass", list.get(1).get("note").asString());
         for (JsonNode item : list) {
-            assertEquals(Set.of("id", "created", "creator", "note", "title"), Set.copyOf(item.propertyNames()),
+            assertEquals(Set.of("id", "created", "creator", "note", "title", "kept"), Set.copyOf(item.propertyNames()),
                     item.toString());
             assertEquals(user.getUserName(), item.get("creator").asString());
         }

@@ -62,6 +62,42 @@ public interface WeblogEntryManager {
      * revision, and the note is dropped with it. Null is no note.
      */
     void saveWeblogEntry(WeblogEntry entry, User editor, String revisionNote) throws WebloggerException;
+
+    /**
+     * Puts a revision's title, text and summary back and saves as
+     * {@code editor}. What it replaces becomes a revision of its own, always:
+     * a restore is never coalesced with a save just before it, or the
+     * content that save wrote would be lost.
+     */
+    void restoreRevision(WeblogEntry entry, WeblogEntryRevision revision, User editor) throws WebloggerException;
+
+    /**
+     * Marks a revision as kept, or releases it. A kept revision is exempt
+     * from the per-item count, the age limit and the site-wide ceiling.
+     * Releasing one removes nothing then: the item's next save, or the
+     * sweep, applies the rules to it. Marking a kept revision kept again, or
+     * releasing one that is not, changes nothing.
+     *
+     * @throws RevisionKeepLimitException when the item already has ten kept
+     */
+    void setRevisionKept(WeblogEntryRevision revision, boolean kept) throws WebloggerException;
+
+    /**
+     * Runs the revision sweep for posts and pages: the per-item counts, the
+     * age limit and the site-wide ceiling. With {@code dryRun} it removes
+     * nothing and reports what it would remove. Never throws; a failure is
+     * in the report. Here, and not on a manager of its own, because the
+     * entry manager is where revisions began; it covers pages too.
+     */
+    RevisionSweep.Report sweepRevisions(boolean dryRun);
+
+    /**
+     * What the revision store holds, computed now: totals, the largest
+     * items, the last sweep and what the next would remove.
+     *
+     * @throws WebloggerException if the figures cannot be read
+     */
+    RevisionSweep.Stats revisionStats() throws WebloggerException;
        
     /**
      * Remove weblog entry permanently -- there is exactly one path to a hard

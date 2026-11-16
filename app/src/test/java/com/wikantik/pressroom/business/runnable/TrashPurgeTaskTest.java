@@ -651,6 +651,35 @@ class TrashPurgeTaskTest {
         verify(entryManager).purgeTrash(blog, 30);
     }
 
+    // ---- the revision sweep (spec 2026-11-15, Part 3) ----
+
+    /** Last, so the purges' own removals (and their cascaded revisions) are already gone. */
+    @Test
+    void theRevisionSweepRunsOnceAfterBothPurges() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        givenRetention(30);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        InOrder order = inOrder(entryManager, pageManager);
+        order.verify(entryManager).purgeTrash(blog, 30);
+        order.verify(pageManager).purgeTrash(blog, 7);
+        order.verify(entryManager).sweepRevisions(false);
+        verify(entryManager, times(1)).sweepRevisions(false);
+    }
+
+    @Test
+    void aRevisionSweepThatThrowsDoesNotEscapeTheTask() throws Exception {
+        givenWeblogs(weblog("onlyblog"));
+        when(entryManager.sweepRevisions(false)).thenThrow(new IllegalStateException("boom"));
+
+        assertDoesNotThrow(() -> task().runTask());
+
+        verify(weblogger, atLeastOnce()).release();
+    }
+
     private static Weblog weblog(String handle) {
         Weblog weblog = new Weblog();
         weblog.setHandle(handle);

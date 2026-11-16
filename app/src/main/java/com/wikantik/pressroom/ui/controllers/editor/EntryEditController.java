@@ -67,6 +67,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.wikantik.pressroom.business.RevisionKeepLimitException;
 
 /**
  * Edit a new or existing entry.
@@ -289,10 +290,9 @@ public class EntryEditController extends BaseController {
         }
 
         try {
-            entry.setTitle(revision.getTitle());
-            entry.setText(revision.getText());
-            entry.setSummary(revision.getSummary());
-            weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
+            // The manager's restore, not a plain save: a restore is never
+            // coalesced, so what it replaces always becomes a revision.
+            weblogger.getWeblogEntryManager().restoreRevision(entry, revision, getAuthenticatedUser(request));
             weblogger.flush();
 
             if (entry.isPublished()) {
@@ -303,6 +303,37 @@ public class EntryEditController extends BaseController {
             addFlashMessage(redirectAttributes, "weblogEdit.revisionRestored", request);
         } catch (Exception e) {
             log.error("Error restoring revision {}", revisionId, e);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+        }
+        return redirectToEntryEdit(request, entry);
+    }
+
+    /**
+     * Marks one of the entry's revisions as kept, or releases it. A kept
+     * revision is exempt from every retention limit; an entry may have ten.
+     */
+    @PostMapping("/entryEdit!keepRevision.rol")
+    public String entryEditKeepRevision(HttpServletRequest request,
+                                        @RequestParam(value = "bean.id", required = false) String id,
+                                        @RequestParam(value = "revisionId", required = false) String revisionId,
+                                        @RequestParam(value = "kept", required = false) boolean kept,
+                                        RedirectAttributes redirectAttributes) {
+        WeblogEntry entry = lookupChangeableEntry(id, request);
+        WeblogEntryRevision revision = lookupRevision(revisionId, entry);
+        if (revision == null) {
+            addFlashError(redirectAttributes, "weblogEntry.notFound", request);
+            return "redirect:/pressroom-ui/authoring/entries.rol?weblog="
+                    + getActionWeblog(request).getHandle();
+        }
+        try {
+            weblogger.getWeblogEntryManager().setRevisionKept(revision, kept);
+            weblogger.flush();
+            addFlashMessage(redirectAttributes, kept ? "weblogEdit.revisionKept" : "weblogEdit.revisionUnkept",
+                    request);
+        } catch (RevisionKeepLimitException e) {
+            addFlashError(redirectAttributes, "weblogEdit.revisionKeepLimit", request);
+        } catch (Exception e) {
+            log.error("Error keeping revision {}", revisionId, e);
             addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
         return redirectToEntryEdit(request, entry);

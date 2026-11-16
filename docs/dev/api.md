@@ -270,6 +270,15 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `TRASHED` on a write (400 on `status`). MCP `pages` gained `restore` and `delete_forever`; the pinned
   surfaces are `ApiRouteTableTest` (route count), `ToolSchemasTest`, `McpToolCatalogTest` and the README
   tool table (`McpDocsTest`).
+- **Revision retention over the API** (2026-11-16; public text in `docs/api/README.md`, "Keeping a
+  revision, and how many are stored"). `keep`/`unkeep` on `EntriesWriteApi` and `PagesApi` call the
+  managers' `setRevisionKept`; `RevisionKeepLimitException` becomes a 409 through `ApiException.conflict(detail,
+  cause)`. `RevisionDtos.RevisionSummary` and `RevisionView` carry `kept` (a pinned field set:
+  `EntryRevisionsApiTest`). Every restore route calls the manager's `restoreRevision`, never a plain save,
+  because a restore must not be coalesced; a mock-based restore test stubs and verifies that method.
+  `AdminApi` serves `RevisionSweep.Stats` and `Report` as they are (`total` is a `@JsonProperty` method);
+  `POST /v1/admin/revisions/sweep` is a dry run unless `dryRun` is literally false. Both admin routes are in
+  `McpToolCatalog.EXCLUDED`. Route count is pinned at 72 (`ApiRouteTableTest`).
 - **Page revisions and the page stale-write guard** (2026-11-16; public text in `docs/api/README.md`,
   "Page revisions and the stale-write guard"). `PagesApi` mirrors the entry routes: `revisions`, `revision`
   (`TextDiff.unified`, optional `against`), `restoreRevision`. Revision ids resolve through

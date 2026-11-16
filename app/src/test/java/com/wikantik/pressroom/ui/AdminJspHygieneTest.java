@@ -760,7 +760,7 @@ class AdminJspHygieneTest {
     void theRepairedPromptsSitOnTheirControlNotTheirForm() {
         List<String> wrong = new ArrayList<>();
         record Screen(String file, int expected) { }
-        for (Screen screen : List.of(new Screen("admin/Maintenance.jsp", 2),
+        for (Screen screen : List.of(new Screen("admin/Maintenance.jsp", 3),
                 new Screen("admin/UserEdit.jsp", 1))) {
             List<String> owners = ownersOf(withoutJspComments(jsp(screen.file())), "data-confirm");
             if (owners.size() != screen.expected()) {

@@ -229,6 +229,7 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
             }
 
             purgePages(wmgr, weblogs);
+            sweepRevisions(wemgr);
 
         } catch (WebloggerException e) {
             log.error("Error running trash purge task", e);
@@ -241,6 +242,21 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
 
         log.debug("task completed");
 
+    }
+
+    /**
+     * The revision sweep, last: the purges' own removals have taken their
+     * revisions with them by then. It rides this task's daily schedule and
+     * lease instead of a task of its own. The sweep reports its failures and
+     * never throws; the catch is for whatever it did not foresee, so that
+     * nothing here can take the task runner down.
+     */
+    private void sweepRevisions(WeblogEntryManager wemgr) {
+        try {
+            wemgr.sweepRevisions(false);
+        } catch (RuntimeException e) {
+            log.error("Unexpected exception sweeping revisions", e);
+        }
     }
 
     /**

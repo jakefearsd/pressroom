@@ -60,6 +60,7 @@ public class WeblogEntryRevision implements Serializable {
     private String text;
     private String summary;
     private String note;
+    private boolean kept;
 
     public WeblogEntryRevision() {
     }
@@ -173,6 +174,19 @@ public class WeblogEntryRevision implements Serializable {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    /**
+     * Whether an author has protected this revision from pruning: a kept
+     * revision is exempt from the per-entry count, the age limit and the
+     * site-wide ceiling until it is released.
+     */
+    public boolean isKept() {
+        return kept;
+    }
+
+    public void setKept(boolean kept) {
+        this.kept = kept;
     }
 
     @Override

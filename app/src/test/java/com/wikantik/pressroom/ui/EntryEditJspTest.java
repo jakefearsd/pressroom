@@ -191,7 +191,7 @@ class EntryEditJspTest {
         String rows = jsp.substring(table, jsp.indexOf("</table>", table));
 
         assertTrue(rows.contains("<c:if test=\"${not empty revision.note}\">"), rows);
-        assertTrue(rows.contains("<td colspan=\"4\" class=\"revision-note\">${fn:escapeXml(revision.note)}</td>"),
+        assertTrue(rows.contains("<td colspan=\"5\" class=\"revision-note\">${fn:escapeXml(revision.note)}</td>"),
                 rows);
         assertTrue(rows.indexOf("revision-restore-button") < rows.indexOf("revision-note"),
                 "the note follows its revision's row");

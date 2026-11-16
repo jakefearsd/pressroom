@@ -445,11 +445,32 @@
                             </button>
                         </form>
                     </td>
+                    <td>
+                        <%-- keep / release: a kept revision is exempt from every
+                             retention limit. Its own form and CSRF token. --%>
+                        <form method="post" style="display:inline"
+                              action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageEdit!keepRevision.rol">
+                            <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
+                            <input type="hidden" name="id" value="${fn:escapeXml(bean.id)}"/>
+                            <input type="hidden" name="revisionId" value="${fn:escapeXml(revision.id)}"/>
+                            <input type="hidden" name="kept" value="${revision.kept ? 'false' : 'true'}"/>
+                            <sec:csrfInput/>
+                            <c:choose>
+                            <c:when test="${revision.kept}">
+                                <span class="status-pill revision-kept-marker"><spring:message code="weblogEdit.revisionKeptLabel"/></span>
+                                <button type="submit" class="btn btn-link btn-sm revision-keep-button"><spring:message code="weblogEdit.revisionRelease"/></button>
+                            </c:when>
+                            <c:otherwise>
+                                <button type="submit" class="btn btn-link btn-sm revision-keep-button"><spring:message code="weblogEdit.revisionKeep"/></button>
+                            </c:otherwise>
+                            </c:choose>
+                        </form>
+                    </td>
                 </tr>
                 <%-- why that save was made, when it said (an API update's revisionNote) --%>
                 <c:if test="${not empty revision.note}">
                     <tr class="revision-note-row">
-                        <td colspan="4" class="revision-note">${fn:escapeXml(revision.note)}</td>
+                        <td colspan="5" class="revision-note">${fn:escapeXml(revision.note)}</td>
                     </tr>
                 </c:if>
             </c:forEach>

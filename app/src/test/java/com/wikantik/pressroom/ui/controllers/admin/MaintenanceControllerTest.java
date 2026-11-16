@@ -481,4 +481,72 @@ class MaintenanceControllerTest {
     private HttpServletRequest request() {
         return ControllerTestFixture.requestFor(new User());
     }
+
+    // --- revisions (spec 2026-11-15, Part 3) ---
+
+    private static com.wikantik.pressroom.business.RevisionSweep.Report sweepReport(boolean dryRun, long byCount,
+            int failed) {
+        return new com.wikantik.pressroom.business.RevisionSweep.Report(
+                java.time.Instant.parse("2026-11-16T04:00:00Z"), dryRun, byCount, 0, 0, false, failed, false);
+    }
+
+    @Test
+    void theScreenShowsTheRevisionFiguresComputedForThisRequest() throws Exception {
+        var stats = new com.wikantik.pressroom.business.RevisionSweep.Stats(120, 30, 4, 2048,
+                java.time.Instant.parse("2025-01-01T00:00:00Z"), java.util.List.of(), null, sweepReport(true, 7, 0));
+        when(weblogger.weblogEntryManager().revisionStats()).thenReturn(stats);
+
+        controller.execute(request(), model, null);
+
+        assertSame(stats, model.getAttribute("revisionStats"));
+        assertEquals(java.util.Date.from(stats.oldest()), model.getAttribute("revisionsOldest"));
+    }
+
+    /** A display path: the figures are left out with an error line and the rest of the screen works. */
+    @Test
+    void revisionFiguresThatCannotBeReadLeaveTheScreenWorking() throws Exception {
+        when(weblogger.weblogEntryManager().revisionStats())
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("database down"));
+
+        String view = controller.execute(request(), model, null);
+
+        assertEquals(".Maintenance", view);
+        assertNull(model.getAttribute("revisionStats"));
+        assertTrue(ControllerTestFixture.errors(model).contains("maintenance.revisions.unreadable"),
+                "got: " + ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void sweepNowRunsARealSweepAndSaysWhatItRemoved() throws Exception {
+        when(weblogger.weblogEntryManager().sweepRevisions(false)).thenReturn(sweepReport(false, 12, 0));
+
+        String view = controller.sweepRevisions(request(), model);
+
+        assertEquals(".Maintenance", view);
+        verify(weblogger.weblogEntryManager()).sweepRevisions(false);
+        assertTrue(ControllerTestFixture.messages(model).contains("maintenance.revisions.swept[12]"),
+                "got: " + ControllerTestFixture.messages(model));
+    }
+
+    /** A sweep that failed for some weblog is reported as such, never as a clean success. */
+    @Test
+    void sweepNowReportsAPartialFailure() throws Exception {
+        when(weblogger.weblogEntryManager().sweepRevisions(false)).thenReturn(sweepReport(false, 3, 2));
+
+        controller.sweepRevisions(request(), model);
+
+        assertTrue(ControllerTestFixture.errors(model).contains("maintenance.revisions.sweepFailed[3]"),
+                "got: " + ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void aNextSweepFigureThatCouldNotBeWorkedOutIsFlagged() throws Exception {
+        var stats = new com.wikantik.pressroom.business.RevisionSweep.Stats(120, 30, 4, 2048, null,
+                java.util.List.of(), null, sweepReport(true, 0, 1));
+        when(weblogger.weblogEntryManager().revisionStats()).thenReturn(stats);
+
+        controller.execute(request(), model, null);
+
+        assertEquals(Boolean.TRUE, model.getAttribute("revisionsNextSweepIncomplete"));
+    }
 }

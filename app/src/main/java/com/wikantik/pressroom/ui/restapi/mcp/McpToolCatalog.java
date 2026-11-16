@@ -58,7 +58,11 @@ public final class McpToolCatalog {
                             "GET " + W + "/entries/{id}/revisions/{revisionId}"),
                     action("restore_revision", "Put a revision's title, summary and text back; what it replaces "
                             + "becomes a revision. expectedContentHash refuses it if the entry changed since it was "
-                            + "read.", "POST " + W + "/entries/{id}/revisions/{revisionId}/restore")),
+                            + "read.", "POST " + W + "/entries/{id}/revisions/{revisionId}/restore"),
+                    action("keep_revision", "Keep a revision: no retention limit removes it. At most 10 an entry.",
+                            "POST " + W + "/entries/{id}/revisions/{revisionId}/keep"),
+                    action("unkeep_revision", "Release a kept revision to the ordinary limits.",
+                            "POST " + W + "/entries/{id}/revisions/{revisionId}/unkeep")),
             tool("categories", "A weblog's categories and tags.", false,
                     action("list", "List categories.", "GET " + W + "/categories"),
                     action("create", "Create a category.", "POST " + W + "/categories"),
@@ -98,6 +102,10 @@ public final class McpToolCatalog {
                     action("restore_revision", "Put a revision's title and text back; what it replaces becomes a "
                             + "revision. expectedContentHash refuses it if the page changed since it was read.",
                             "POST " + W + "/pages/{id}/revisions/{revisionId}/restore"),
+                    action("keep_revision", "Keep a revision: no retention limit removes it. At most 10 a page.",
+                            "POST " + W + "/pages/{id}/revisions/{revisionId}/keep"),
+                    action("unkeep_revision", "Release a kept revision to the ordinary limits.",
+                            "POST " + W + "/pages/{id}/revisions/{revisionId}/unkeep"),
                     action("set_parts", "Make these entries the strand's parts, in order (replaces the list).",
                             "PUT " + W + "/pages/{id}/parts")),
             tool("redirects", "301 rules for weblog paths that would otherwise be not found.", false,
@@ -155,6 +163,9 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),
             new Exclusion("GET /v1/ping", "Unauthenticated liveness check; nothing for an agent."),
+            new Exclusion("GET /v1/admin/revisions", "Operator maintenance: the admin screen and admin API only."),
+            new Exclusion("POST /v1/admin/revisions/sweep",
+                    "Operator maintenance: removes history site-wide; the admin screen and admin API only."),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."));
 

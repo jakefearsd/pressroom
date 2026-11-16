@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.wikantik.pressroom.business.RevisionSweep;
 
 /**
  * Allows a server administrator to perform per-weblog maintenance operations
@@ -119,8 +120,60 @@ public class MaintenanceController extends BaseController {
         model.addAttribute("selectedWeblog", weblog);
         addDiscoveryStatus(model);
         addAnalyticsStatus(model);
+        addRevisionStats(request, model);
 
         return ".Maintenance";
+    }
+
+    /**
+     * Runs the revision sweep now, under the limits as they stand: the same
+     * sweep the daily task runs. A sweep that failed in part says so; it is
+     * never reported as a clean success.
+     */
+    @PostMapping("/maintenance!sweepRevisions.rol")
+    public String sweepRevisions(HttpServletRequest request, Model model) {
+        populateCommonModel(request, model);
+        model.addAttribute("weblogs", loadWeblogs());
+        model.addAttribute("selectedWeblog", null);
+
+        RevisionSweep.Report report = weblogger.getWeblogEntryManager().sweepRevisions(false);
+        if (report == null || report.weblogsFailed() > 0 || report.ceilingFailed()) {
+            addError(model, "maintenance.revisions.sweepFailed",
+                    String.valueOf(report == null ? 0 : report.total()), request);
+        } else {
+            addMessage(model, "maintenance.revisions.swept", String.valueOf(report.total()), request);
+        }
+        addDiscoveryStatus(model);
+        addAnalyticsStatus(model);
+        addRevisionStats(request, model);
+        return ".Maintenance";
+    }
+
+    /**
+     * The revision figures, computed for this request and never cached: what
+     * the store holds and what the next sweep would remove. A display path:
+     * figures that cannot be read are an error line, and the rest of the
+     * screen still works.
+     */
+    private void addRevisionStats(HttpServletRequest request, Model model) {
+        try {
+            RevisionSweep.Stats stats = weblogger.getWeblogEntryManager().revisionStats();
+            if (stats == null) {
+                return;
+            }
+            model.addAttribute("revisionStats", stats);
+            model.addAttribute("revisionsOldest", stats.oldest() == null ? null : Date.from(stats.oldest()));
+            model.addAttribute("revisionsKilobytes", stats.approximateBytes() / 1024);
+            // A next-sweep figure that could not be worked out in full is a
+            // floor, and the screen says so instead of showing it as exact.
+            model.addAttribute("revisionsNextSweepIncomplete",
+                    stats.nextSweep() != null && stats.nextSweep().incomplete());
+            RevisionSweep.Report last = stats.lastSweep();
+            model.addAttribute("revisionsLastSweepAt", last == null ? null : Date.from(last.at()));
+        } catch (WebloggerException e) {
+            log.error("Error reading the revision figures", e);
+            addError(model, "maintenance.revisions.unreadable", request);
+        }
     }
 
     /**

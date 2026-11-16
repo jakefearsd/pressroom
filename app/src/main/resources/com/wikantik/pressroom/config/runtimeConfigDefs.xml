@@ -144,6 +144,19 @@
          <type>integer</type>
          <default-value>30</default-value>
       </property-def>
+      <!-- Promoted from pressroom.properties. Only affects anchors generated
+           after the change; anchors already stored on entries keep whichever
+           separator was in force when they were created. -->
+      <property-def  name="weblogentry.title.useUnderscoreSeparator"  key="configForm.underscoreSeparator">
+         <type>boolean</type>
+         <default-value>false</default-value>
+      </property-def>
+
+   </display-group>
+
+   <!-- Revisions and trash: how much history is kept, and for how long. Saving
+        a limit here removes nothing; the daily sweep applies it. -->
+   <display-group name="revisionSettings" key="configForm.revisionSettings" >
       <!-- How many revisions to keep per entry. -1 keeps everything, which is
            the shipped behaviour: nothing is pruned unless an installation asks
            for it. 0 records no revisions at all. -->
@@ -157,6 +170,27 @@
       <property-def  name="page.revisions.retention"  key="configForm.pageRevisionsRetention">
          <type>integer</type>
          <default-value>50</default-value>
+      </property-def>
+      <!-- Repeated saves by one person inside this many minutes share one
+           revision, for posts and pages alike: the main brake on growth from
+           repeated saving. 0 turns it off. A save with a note, a save by
+           someone else and a revision restore always leave their own. -->
+      <property-def  name="revisions.coalesce.minutes"  key="configForm.revisionsCoalesceMinutes">
+         <type>integer</type>
+         <default-value>10</default-value>
+      </property-def>
+      <!-- The daily sweep removes revisions older than this many days, but
+           never an item's newest five nor a kept one. -1 is off. -->
+      <property-def  name="revisions.maxAgeDays"  key="configForm.revisionsMaxAgeDays">
+         <type>integer</type>
+         <default-value>-1</default-value>
+      </property-def>
+      <!-- The most revisions the site keeps, posts and pages together. Over
+           it, the sweep removes the oldest, under the same two protections.
+           -1 is off. -->
+      <property-def  name="revisions.total.max"  key="configForm.revisionsTotalMax">
+         <type>integer</type>
+         <default-value>-1</default-value>
       </property-def>
       <!-- How many days a trashed entry survives before TrashPurgeTask hard-
            deletes it. -1 keeps trash forever. 0 purges it on the very next
@@ -173,15 +207,8 @@
          <type>integer</type>
          <default-value>7</default-value>
       </property-def>
-      <!-- Promoted from pressroom.properties. Only affects anchors generated
-           after the change; anchors already stored on entries keep whichever
-           separator was in force when they were created. -->
-      <property-def  name="weblogentry.title.useUnderscoreSeparator"  key="configForm.underscoreSeparator">
-         <type>boolean</type>
-         <default-value>false</default-value>
-      </property-def>
+   </display-group >
 
-   </display-group>
 
 
    <!-- File Upload Settings Group -->

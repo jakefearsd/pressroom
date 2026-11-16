@@ -49,6 +49,25 @@ public interface WeblogPageManager {
     void savePage(WeblogPage page, User editor, String revisionNote) throws WebloggerException;
 
     /**
+     * Puts a revision's title and content back and saves as {@code editor}.
+     * What it replaces becomes a revision of its own, always: a restore is
+     * never coalesced with a save just before it. A revision holds no
+     * settings, so nothing else about the page changes.
+     */
+    void restoreRevision(WeblogPage page, WeblogPageRevision revision, User editor) throws WebloggerException;
+
+    /**
+     * Marks a revision as kept, or releases it. A kept revision is exempt
+     * from the per-item count, the age limit and the site-wide ceiling.
+     * Releasing one removes nothing then: the item's next save, or the
+     * sweep, applies the rules to it. Marking a kept revision kept again, or
+     * releasing one that is not, changes nothing.
+     *
+     * @throws RevisionKeepLimitException when the item already has ten kept
+     */
+    void setRevisionKept(WeblogPageRevision revision, boolean kept) throws WebloggerException;
+
+    /**
      * {@link #savePage(WeblogPage, User, String)} for a system caller: a
      * revision it leaves credits nobody and carries no note.
      */

@@ -134,6 +134,11 @@ class MaintenanceJspTest {
                 "The prompt must not be built from a render-time label: it is empty on a first "
                         + "visit (\"for ?\") and goes stale when the admin picks another weblog");
         for (String live : liveConfirms(source)) {
+            // The revision sweep is site-wide: its prompt names no weblog,
+            // so it has nothing to wait for.
+            if (live.contains("revisionsSweepConfirm")) {
+                continue;
+            }
             assertTrue(live.contains("selectedWeblog != null"),
                     "A rendered data-confirm must be conditional on a weblog being selected, or "
                             + "the first visit prompts \"for ?\". Found: " + live);
@@ -180,7 +185,8 @@ class MaintenanceJspTest {
         // marker form until a weblog is chosen) does not disable it.
         assertEquals(1, count(source,
                 "action=\"${pageContext.request.contextPath}/pressroom-ui/admin/maintenance.rol\""));
-        assertEquals(3, count(source, "<sec:csrfInput/>"));
+        // the marker form, discovery, analytics and the revision sweep
+        assertEquals(4, count(source, "<sec:csrfInput/>"));
     }
 
     /** "Refresh now" refreshes; it reuses no other operation's busy label. */

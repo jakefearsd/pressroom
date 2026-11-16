@@ -12,6 +12,7 @@ import tools.jackson.databind.JsonNode;
 import static com.wikantik.pressroom.ui.restapi.v1.EntriesWriteApiFixture.fields;
 import static com.wikantik.pressroom.ui.restapi.v1.EntriesWriteApiFixture.json;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -59,6 +60,17 @@ class EntriesWriteApiRevisionsTest {
         revision.setSummary("Then.");
         revision.setText("The text then.");
         when(fx.entries.getRevision("r1")).thenReturn(revision);
+        // The manager's restore is mocked: stand in for what it does to the
+        // entry, so what the route answers can be checked. That it never
+        // coalesces is the manager's own test (RevisionRetentionWriteTest).
+        org.mockito.Mockito.doAnswer(call -> {
+            WeblogEntry restored = call.getArgument(0);
+            WeblogEntryRevision from = call.getArgument(1);
+            restored.setTitle(from.getTitle());
+            restored.setText(from.getText());
+            restored.setSummary(from.getSummary());
+            return null;
+        }).when(fx.entries).restoreRevision(any(), any(), any());
     }
 
     // ------------------------------------------------------------ revisionNote
@@ -120,7 +132,8 @@ class EntriesWriteApiRevisionsTest {
         assertEquals("Then.", stored.getSummary());
         assertEquals("The text then.", stored.getText());
         assertEquals("The text then.", view.get("text").asString());
-        verify(fx.entries).saveWeblogEntry(eq(stored), argThat((User u) -> "maiia".equals(u.getUserName())));
+        verify(fx.entries).restoreRevision(eq(stored), eq(revision),
+                argThat((User u) -> "maiia".equals(u.getUserName())));
         verify(fx.index).removeEntryIndexOperation(stored);
     }
 
@@ -196,9 +209,49 @@ class EntriesWriteApiRevisionsTest {
         nothingSaved();
     }
 
+    // ------------------------------------------------------------------ kept
+
+    private static final String KEEP = "/v1/weblogs/myblog/entries/e1/revisions/r1/keep";
+    private static final String UNKEEP = "/v1/weblogs/myblog/entries/e1/revisions/r1/unkeep";
+
+    @Test
+    void keepAndUnkeepMarkTheRevisionAndAnswerItsSummary() throws Exception {
+        org.mockito.Mockito.doAnswer(call -> {
+            revision.setKept(call.getArgument(1));
+            return null;
+        }).when(fx.entries).setRevisionKept(eq(revision), org.mockito.ArgumentMatchers.anyBoolean());
+
+        JsonNode kept = json(fx.send(post(KEEP)).andExpect(status().isOk()));
+        assertTrue(kept.get("kept").asBoolean());
+        assertEquals("r1", kept.get("id").asString());
+        verify(fx.entries).setRevisionKept(revision, true);
+
+        JsonNode released = json(fx.send(post(UNKEEP)).andExpect(status().isOk()));
+        assertFalse(released.get("kept").asBoolean());
+        verify(fx.entries).setRevisionKept(revision, false);
+    }
+
+    @Test
+    void anEleventhKeptRevisionIsA409() throws Exception {
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+                .when(fx.entries).setRevisionKept(revision, true);
+
+        fx.send(post(KEEP)).andExpect(status().isConflict());
+    }
+
+    @Test
+    void keepingAnotherEntrysRevisionOrOnATrashedEntryIsRefused() throws Exception {
+        fx.send(post("/v1/weblogs/myblog/entries/e1/revisions/nope/keep")).andExpect(status().isNotFound());
+        stored.setStatus(WeblogEntry.PubStatus.TRASHED);
+        fx.send(post(KEEP)).andExpect(status().isConflict());
+
+        verify(fx.entries, never()).setRevisionKept(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
     private void nothingSaved() throws Exception {
         verify(fx.entries, never()).saveWeblogEntry(any());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
         verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
+        verify(fx.entries, never()).restoreRevision(any(), any(), any());
     }
 }

@@ -12,6 +12,8 @@ import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import com.wikantik.pressroom.business.RevisionKeepLimitException;
+import com.wikantik.pressroom.WebloggerException;
 
 /**
  * Shared plumbing for every {@code /v1/weblogs/{handle}/...} controller.
@@ -128,6 +130,26 @@ public abstract class BaseApiController {
             throw ApiException.conflict("Entry is trashed. Restore it before editing.");
         }
         return entry;
+    }
+
+    /** A keep or a release of one revision, as its manager does it. */
+    @FunctionalInterface
+    protected interface KeepChange {
+        void apply() throws WebloggerException;
+    }
+
+    /**
+     * Applies a keep or release and commits it. The one refusal a caller can
+     * do something about, an item that already has its ten kept revisions,
+     * is a 409 saying so.
+     */
+    protected void applyKeep(KeepChange change) throws WebloggerException {
+        try {
+            change.apply();
+        } catch (RevisionKeepLimitException e) {
+            throw ApiException.conflict("At most 10 kept revisions for one item.", e);
+        }
+        weblogger.flush();
     }
 
     /**

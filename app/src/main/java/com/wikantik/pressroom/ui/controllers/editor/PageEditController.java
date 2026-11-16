@@ -57,6 +57,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.wikantik.pressroom.business.RevisionKeepLimitException;
 
 /**
  * Add or edit a single static page.
@@ -591,6 +592,37 @@ public class PageEditController extends BaseController {
     }
 
     /**
+     * Marks one of the page's revisions as kept, or releases it. A kept
+     * revision is exempt from every retention limit; a page may have ten.
+     */
+    @PostMapping("/pageEdit!keepRevision.rol")
+    public String keepRevision(HttpServletRequest request,
+                               @RequestParam(name = "id", required = false) String id,
+                               @RequestParam(name = "revisionId", required = false) String revisionId,
+                               @RequestParam(name = "kept", required = false) boolean kept,
+                               RedirectAttributes redirectAttributes) {
+        String handle = getActionWeblog(request).getHandle();
+        WeblogPage page = lookupPage(id, request);
+        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
+        if (revision == null) {
+            addFlashError(redirectAttributes, "pageEdit.notFound", request);
+            return "redirect:/pressroom-ui/authoring/pages.rol?weblog=" + handle;
+        }
+        try {
+            weblogger.getWeblogPageManager().setRevisionKept(revision, kept);
+            weblogger.flush();
+            addFlashMessage(redirectAttributes, kept ? "weblogEdit.revisionKept" : "weblogEdit.revisionUnkept",
+                    request);
+        } catch (RevisionKeepLimitException e) {
+            addFlashError(redirectAttributes, "weblogEdit.revisionKeepLimit", request);
+        } catch (Exception ex) {
+            log.error("Error keeping revision {} of page {}", revision.getId(), page.getId(), ex);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+        }
+        return "redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle + "&id=" + page.getId();
+    }
+
+    /**
      * Puts a revision's title and content back, through the ordinary save,
      * so the state it replaces becomes a revision of its own: a restore can
      * be undone. A revision holds no settings, so the slug, status and
@@ -609,9 +641,9 @@ public class PageEditController extends BaseController {
             return "redirect:/pressroom-ui/authoring/pages.rol?weblog=" + handle;
         }
         try {
-            page.setTitle(revision.getTitle());
-            page.setContent(revision.getContent());
-            weblogger.getWeblogPageManager().savePage(page, getAuthenticatedUser(request), null);
+            // The manager's restore, not a plain save: a restore is never
+            // coalesced, so what it replaces always becomes a revision.
+            weblogger.getWeblogPageManager().restoreRevision(page, revision, getAuthenticatedUser(request));
             weblogger.flush();
             addFlashMessage(redirectAttributes, "pageEdit.revisionRestored", request);
         } catch (Exception ex) {

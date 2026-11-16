@@ -1154,4 +1154,84 @@ class GlobalConfigControllerTest {
         when(request.getParameter(anyString())).thenReturn(null);
         return request;
     }
+
+    // --- revision limits: saving one deletes nothing and says what the next sweep will (spec Part 3) ---
+
+    private static com.wikantik.pressroom.business.RevisionSweep.Report dryRun(long byCount) {
+        return new com.wikantik.pressroom.business.RevisionSweep.Report(
+                java.time.Instant.parse("2026-11-16T04:00:00Z"), true, byCount, 0, 0, false, 0, false);
+    }
+
+    @Test
+    void loweringARevisionLimitRemovesNothingAndSaysWhatTheNextSweepWill() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("page.revisions.retention", "50");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        when(weblogger.weblogEntryManager().sweepRevisions(true)).thenReturn(dryRun(42));
+        HttpServletRequest request = request();
+        when(request.getParameter("page.revisions.retention")).thenReturn("5");
+
+        controller.save(request, model);
+
+        assertEquals("5", stored.get("page.revisions.retention").getValue());
+        assertEquals(List.of("generic.changes.saved", "configForm.revisionsNextSweep[42]"),
+                ControllerTestFixture.messages(model));
+        verify(weblogger.weblogEntryManager(), never()).sweepRevisions(false);
+    }
+
+    @Test
+    void aRevisionLimitThatRemovesNothingAddsNoMessage() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("revisions.maxAgeDays", "-1");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        when(weblogger.weblogEntryManager().sweepRevisions(true)).thenReturn(dryRun(0));
+        HttpServletRequest request = request();
+        when(request.getParameter("revisions.maxAgeDays")).thenReturn("3650");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+    }
+
+    @Test
+    void aSaveThatChangesNoRevisionLimitRunsNoDryRun() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.name", "Old Name");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.name")).thenReturn("New Name");
+
+        controller.save(request, model);
+
+        verify(weblogger.weblogEntryManager(), never()).sweepRevisions(org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    /** The prediction is a courtesy: when it cannot be made, the save still stands and says only that. */
+    @Test
+    void aDryRunThatFailsLeavesTheSaveStanding() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("revisions.total.max", "-1");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        when(weblogger.weblogEntryManager().sweepRevisions(true)).thenThrow(new IllegalStateException("boom"));
+        HttpServletRequest request = request();
+        when(request.getParameter("revisions.total.max")).thenReturn("1000");
+
+        controller.save(request, model);
+
+        assertEquals("1000", stored.get("revisions.total.max").getValue());
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+    }
+
+    /** "Could not work it out" is never "nothing will be removed". */
+    @Test
+    void aDryRunThatCouldNotEvaluateEverythingSaysThePredictionIsUnknown() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("revisions.maxAgeDays", "-1");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        when(weblogger.weblogEntryManager().sweepRevisions(true)).thenReturn(
+                new com.wikantik.pressroom.business.RevisionSweep.Report(
+                        java.time.Instant.parse("2026-11-16T04:00:00Z"), true, 0, 0, 0, false, 1, false));
+        HttpServletRequest request = request();
+        when(request.getParameter("revisions.maxAgeDays")).thenReturn("30");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.changes.saved", "configForm.revisionsNextSweepUnknown"),
+                ControllerTestFixture.messages(model));
+    }
 }

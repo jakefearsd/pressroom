@@ -160,6 +160,65 @@
 </form>
 </c:if>
 
+<%-- Revisions: what the store holds and what the next sweep would remove,
+     computed for this request. Its own form, as discovery: the operation is
+     site-wide. --%>
+<c:if test="${not empty revisionStats}">
+<spring:message code="maintenance.revisions.sweepConfirm" var="revisionsSweepConfirm"/>
+<form action="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!sweepRevisions.rol" method="post" class="form-stacked guard-submit">
+<sec:csrfInput/>
+    <div class="maintenance-op maintenance-revisions">
+        <h2 class="section-head"><spring:message code="maintenance.revisions.title"/></h2>
+        <dl>
+            <dt><spring:message code="maintenance.revisions.posts"/></dt>
+            <dd>${fn:escapeXml(revisionStats.entryRevisions)}</dd>
+            <dt><spring:message code="maintenance.revisions.pages"/></dt>
+            <dd>${fn:escapeXml(revisionStats.pageRevisions)}</dd>
+            <dt><spring:message code="maintenance.revisions.kept"/></dt>
+            <dd>${fn:escapeXml(revisionStats.kept)}</dd>
+            <dt><spring:message code="maintenance.revisions.size"/></dt>
+            <dd><spring:message code="maintenance.revisions.sizeValue" arguments="${fn:escapeXml(revisionsKilobytes)}"/></dd>
+            <c:if test="${not empty revisionsOldest}">
+                <dt><spring:message code="maintenance.revisions.oldest"/></dt>
+                <dd><rc:date value="${revisionsOldest}"/></dd>
+            </c:if>
+            <dt><spring:message code="maintenance.revisions.lastSweep"/></dt>
+            <dd>
+                <c:choose>
+                <c:when test="${not empty revisionsLastSweepAt}">
+                    <rc:date value="${revisionsLastSweepAt}"/>,
+                    <spring:message code="maintenance.revisions.lastSweepValue" arguments="${fn:escapeXml(revisionStats.lastSweep.total())}"/>
+                </c:when>
+                <c:otherwise><spring:message code="maintenance.revisions.lastSweepNone"/></c:otherwise>
+                </c:choose>
+            </dd>
+            <dt><spring:message code="maintenance.revisions.nextSweep"/></dt>
+            <dd class="maintenance-revisions-next">${fn:escapeXml(revisionStats.nextSweep.total())}</dd>
+        </dl>
+        <c:if test="${revisionsNextSweepIncomplete}">
+            <p class="pagetip"><spring:message code="maintenance.revisions.nextSweepIncomplete"/></p>
+        </c:if>
+        <c:if test="${revisionStats.nextSweep.ceilingUnmeetable()}">
+            <p class="pagetip"><spring:message code="maintenance.revisions.unmeetable"/></p>
+        </c:if>
+        <c:if test="${not empty revisionStats.largest}">
+            <h3><spring:message code="maintenance.revisions.largest"/></h3>
+            <ul>
+                <c:forEach items="${revisionStats.largest}" var="item">
+                    <%-- A post's title is stored escaped and a page's raw; the
+                         title is shown as text either way, never as markup. --%>
+                    <li>${fn:escapeXml(item.revisions)}: <c:out value="${item.title}"/>
+                        (<c:choose><c:when test="${item.kind == 'PAGE'}"><spring:message code="maintenance.revisions.kind.PAGE"/></c:when><c:otherwise><spring:message code="maintenance.revisions.kind.ENTRY"/></c:otherwise></c:choose>)</li>
+                </c:forEach>
+            </ul>
+        </c:if>
+        <button type="submit" class="btn btn-secondary"
+                data-confirm="${fn:escapeXml(revisionsSweepConfirm)}: ${fn:escapeXml(revisionStats.nextSweep.total())}"
+                data-busy-label="<spring:message code='maintenance.revisions.sweeping'/>"><spring:message code="maintenance.revisions.sweep"/></button>
+    </div>
+</form>
+</c:if>
+
 <%-- Analytics: registration and read status from the manager's memory (the
      page never calls Umami). Its own form for the same reason as discovery. --%>
 <c:if test="${not empty analyticsStatus}">

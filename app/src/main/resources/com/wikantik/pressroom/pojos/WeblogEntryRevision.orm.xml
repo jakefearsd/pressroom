@@ -60,6 +60,9 @@
             <basic name="note">
                 <column name="note" insertable="true" updatable="true" unique="false" nullable="true"/>
             </basic>
+            <basic name="kept">
+                <column name="kept" insertable="true" updatable="true" unique="false" nullable="false"/>
+            </basic>
             <many-to-one name="weblogEntry" target-entity="com.wikantik.pressroom.pojos.WeblogEntry">
                 <join-column name="entryid" insertable="true" updatable="true" nullable="false"/>
             </many-to-one>

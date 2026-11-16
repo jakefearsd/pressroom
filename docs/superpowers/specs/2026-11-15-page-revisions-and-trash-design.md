@@ -466,7 +466,10 @@ Retention:
     never an item's newest 5 unkept, never a kept one; when N is unmeetable
     it removes what it may and the panel and the admin API report it.
 20. A query that throws in pass 1 removes nothing for that weblog and other
-    weblogs are still swept; one that throws in pass 2 removes nothing.
+    weblogs are still swept; one that throws in pass 2 rolls back the batch
+    it was in, and batches already committed stay removed and are in the
+    report. (Amended 2026-11-16: pass 2 commits per batch, so "removes
+    nothing" was only ever true of the failing batch.)
 21. Saving a lower limit in settings removes no row, and the confirmation
     message states the number the next sweep would remove when it is above
     zero.

@@ -230,14 +230,40 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             requireUnchangedUnderLock(entry, entry.getText());
         }
 
-        entry.setTitle(revision.getTitle());
-        entry.setText(revision.getText());
-        entry.setSummary(revision.getSummary());
-        weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request));
+        // The manager's restore, not a plain save: a restore is never
+        // coalesced, so what it replaces always becomes a revision.
+        weblogger.getWeblogEntryManager().restoreRevision(entry, revision, requireAuthenticatedUser(request));
         weblogger.flush();
         reindex(entry);
 
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
+    }
+
+    /**
+     * Marks a revision as kept: exempt from the per-entry count, the age
+     * limit and the site-wide ceiling until it is released. At most ten per
+     * entry; an eleventh is a 409.
+     */
+    @PostMapping("/{id}/revisions/{revisionId}/keep")
+    public RevisionDtos.RevisionSummary keepRevision(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @PathVariable("revisionId") String revisionId) throws WebloggerException {
+        return markKept(request, id, revisionId, true);
+    }
+
+    /** Releases a kept revision to the ordinary retention rules; nothing is removed by the call itself. */
+    @PostMapping("/{id}/revisions/{revisionId}/unkeep")
+    public RevisionDtos.RevisionSummary unkeepRevision(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @PathVariable("revisionId") String revisionId) throws WebloggerException {
+        return markKept(request, id, revisionId, false);
+    }
+
+    private RevisionDtos.RevisionSummary markKept(HttpServletRequest request, String id, String revisionId,
+            boolean kept) throws WebloggerException {
+        WeblogEntryRevision revision = requireRevision(requireLiveEntry(request, id), revisionId);
+        applyKeep(() -> weblogger.getWeblogEntryManager().setRevisionKept(revision, kept));
+        return RevisionDtos.toSummary(revision);
     }
 
     /**

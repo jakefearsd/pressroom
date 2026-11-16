@@ -28,7 +28,10 @@ public final class RevisionDtos {
             @Schema(description = "Why that save was made, when it said: an update's revisionNote.")
             String note,
             @Schema(description = "The entry's title as it was, stored escaped like an entry's title.")
-            String title) {
+            String title,
+            @Schema(description = "True when the revision is kept: exempt from every retention limit until "
+                    + "released with .../unkeep. At most 10 per item.")
+            boolean kept) {
     }
 
     /** One revision with its content, and a diff from it. */
@@ -38,7 +41,9 @@ public final class RevisionDtos {
             @Schema(description = "A unified diff (---/+++ lines, @@ hunks, 3 lines of context) from this "
                     + "revision's text to the entry's current text, or to the revision named by against. Lines "
                     + "starting with + are only in the current text (or that revision). Empty when they are the same.")
-            String diff) {
+            String diff,
+            @Schema(description = "True when the revision is kept: exempt from every retention limit.")
+            boolean kept) {
     }
 
     /** The optional body of a revision restore. */
@@ -49,24 +54,25 @@ public final class RevisionDtos {
 
     public static RevisionSummary toSummary(WeblogEntryRevision revision) {
         return new RevisionSummary(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle());
+                revision.getNote(), revision.getTitle(), revision.isKept());
     }
 
     /** A page revision in a page's list: everything but its content. A page's title is stored raw. */
     public static RevisionSummary toSummary(WeblogPageRevision revision) {
         return new RevisionSummary(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle());
+                revision.getNote(), revision.getTitle(), revision.isKept());
     }
 
     /** A page revision with its content as {@code text}; a page has no summary. */
     public static RevisionView toView(WeblogPageRevision revision, String diff) {
         return new RevisionView(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle(), null, revision.getContent(), diff);
+                revision.getNote(), revision.getTitle(), null, revision.getContent(), diff, revision.isKept());
     }
 
     public static RevisionView toView(WeblogEntryRevision revision, String diff) {
         return new RevisionView(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle(), revision.getSummary(), revision.getText(), diff);
+                revision.getNote(), revision.getTitle(), revision.getSummary(), revision.getText(), diff,
+                revision.isKept());
     }
 
     private static Instant instant(Timestamp ts) {

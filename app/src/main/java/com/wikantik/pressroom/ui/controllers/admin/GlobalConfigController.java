@@ -54,6 +54,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import com.wikantik.pressroom.business.RevisionSweep;
 
 
 /**
@@ -181,6 +182,37 @@ public class GlobalConfigController extends BaseController {
     }
 
     /**
+     * The settings that remove revisions. Saving one deletes nothing: the
+     * daily sweep applies it (and, for a per-item count, that item's next
+     * save). The save says what the next sweep will remove.
+     */
+    private static final List<String> REVISION_LIMITS = List.of("entry.revisions.retention",
+            "page.revisions.retention", "revisions.maxAgeDays", "revisions.total.max");
+
+    /**
+     * After a revision limit changed: how many revisions the next sweep
+     * will remove, when that is any at all. A courtesy on a save that has
+     * already been stored, so a prediction that cannot be made is logged and
+     * adds nothing.
+     */
+    private void sayWhatTheNextSweepRemoves(Model model, HttpServletRequest request) {
+        try {
+            RevisionSweep.Report next = weblogger.getWeblogEntryManager().sweepRevisions(true);
+            if (next == null) {
+                return;
+            }
+            if (next.incomplete()) {
+                // Could not be worked out in full: never shown as "nothing".
+                addMessage(model, "configForm.revisionsNextSweepUnknown", request);
+            } else if (next.total() > 0) {
+                addMessage(model, "configForm.revisionsNextSweep", String.valueOf(next.total()), request);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not predict what the next revision sweep removes", e);
+        }
+    }
+
+    /**
      * Save global properties.
      */
     @PostMapping("/globalConfig!save.rol")
@@ -236,6 +268,8 @@ public class GlobalConfigController extends BaseController {
 
         boolean renderedPageInputChanged = RENDERED_PAGE_INPUTS.stream()
                 .anyMatch(name -> changed(name, accepted, properties));
+        boolean revisionLimitChanged = REVISION_LIMITS.stream()
+                .anyMatch(name -> changed(name, accepted, properties));
         boolean discoveryChanged = accepted.keySet().stream()
                 .anyMatch(name -> name.startsWith(DiscoverySettings.PREFIX) && changed(name, accepted, properties));
         for (Map.Entry<String, String> change : accepted.entrySet()) {
@@ -265,6 +299,9 @@ public class GlobalConfigController extends BaseController {
 
             // notify user of our success
             addMessage(model, "generic.changes.saved", request);
+            if (revisionLimitChanged) {
+                sayWhatTheNextSweepRemoves(model, request);
+            }
 
         } catch (WebloggerException ex) {
             log.error("Error saving pressroom properties", ex);

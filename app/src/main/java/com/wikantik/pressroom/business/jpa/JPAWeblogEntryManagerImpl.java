@@ -56,6 +56,7 @@ import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import com.wikantik.pressroom.business.AnchorTakenException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.EntryPins;
+import com.wikantik.pressroom.business.RevisionSweep;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.User;
@@ -348,6 +349,21 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public void saveWeblogEntry(WeblogEntry entry, User editor, String revisionNote) throws WebloggerException {
+        save(entry, editor, revisionNote, false);
+    }
+
+    @Override
+    public void restoreRevision(WeblogEntry entry, WeblogEntryRevision revision, User editor)
+            throws WebloggerException {
+        entry.setTitle(revision.getTitle());
+        entry.setText(revision.getText());
+        entry.setSummary(revision.getSummary());
+        save(entry, editor, null, true);
+    }
+
+    /** The save; {@code restore} marks one that puts a revision back, which is never coalesced. */
+    private void save(WeblogEntry entry, User editor, String revisionNote, boolean restore)
+            throws WebloggerException {
 
         // Read before the save re-snapshots the loaded status below.
         boolean wasPublished = entry.getLoadedStatus() == PubStatus.PUBLISHED;
@@ -402,7 +418,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         // What the revision RECORDS is the pre-save content, captured when
         // the entry was loaded; it is written once this save has committed.
-        recordRevision(entry, editor, revisionNote);
+        recordRevision(entry, editor, revisionNote, restore);
 
         // First arrival at PUBLISHED is a first-party outcome the analytics
         // tier joins against traffic. Best-effort: an event insert must never
@@ -456,8 +472,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     // The factory is the tier's own, shared and closed at shutdown by the
     // strategy; closing it here would take the whole persistence unit down.
     @SuppressWarnings("PMD.CloseResource")
-    private void recordRevision(WeblogEntry entry, User editor, String revisionNote) {
-        int retention = WebloggerRuntimeConfig.getIntProperty("entry.revisions.retention");
+    private void recordRevision(WeblogEntry entry, User editor, String revisionNote, boolean restore) {
+        int retention = RevisionRetention.Kind.ENTRY.retention();
         if (retention == 0) {
             return;
         }
@@ -472,7 +488,11 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         revision.setNote(revisionNote);
         String entryId = entry.getId();
         EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
-        strategy.runAfterCommit(() -> storeRevision(emf, entryId, revision, retention));
+        // The acting user, null for a save no person made, even where the
+        // revision's creator falls back to the entry's own: coalescing joins
+        // only one person's own repeated saves.
+        String actor = editor != null ? editor.getUserName() : null;
+        strategy.runAfterCommit(() -> storeRevision(emf, entryId, revision, retention, actor, restore));
     }
 
     /**
@@ -482,7 +502,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * failure here must leave it exactly as the save left it.
      */
     private static void storeRevision(EntityManagerFactory emf, String entryId,
-            WeblogEntryRevision revision, int retention) {
+            WeblogEntryRevision revision, int retention, String actor, boolean restore) {
         try (EntityManager em = emf.createEntityManager()) {
             EntityTransaction tx = em.getTransaction();
             tx.begin();
@@ -492,22 +512,15 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     // deleted by the transaction that saved it: nothing to hang off
                     return;
                 }
-                revision.setWeblogEntry(entry);
-
-                // The query does not count the new row, which is stored at the
-                // commit, so keeping retention-1 of the old rows makes the
-                // total exactly retention. Only a positive retention prunes:
-                // a negative one keeps everything.
-                if (retention > 0) {
-                    TypedQuery<WeblogEntryRevision> query = em.createNamedQuery(
-                            "WeblogEntryRevision.getByEntry", WeblogEntryRevision.class);
-                    query.setFlushMode(FlushModeType.COMMIT);
-                    query.setParameter(1, entry);
-                    List<WeblogEntryRevision> existing = query.getResultList();
-                    for (int i = retention - 1; i < existing.size(); i++) {
-                        em.remove(existing.get(i));
-                    }
+                // Which revisions exist is RevisionRetention's decision: a
+                // coalesced save writes none and so pushes none out.
+                if (!RevisionRetention.shouldStore(em, RevisionRetention.Kind.ENTRY, entryId, actor,
+                        revision.getNote(), restore)) {
+                    return;
                 }
+                revision.setWeblogEntry(entry);
+                RevisionRetention.pruneAtWrite(em, RevisionRetention.Kind.ENTRY, WeblogEntryRevision.class,
+                        entryId, retention);
                 em.persist(revision);
                 tx.commit();
             } finally {
@@ -517,6 +530,50 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             }
         } catch (RuntimeException e) {
             log.warn("Could not record a revision for entry {}; the save itself is unaffected", entryId, e);
+        }
+    }
+
+    /** Created on first use: it needs the factory, which the strategy has only once it is running. */
+    private volatile RevisionSweeper revisionSweeper;
+
+    private RevisionSweeper revisionSweeper() {
+        RevisionSweeper sweeper = revisionSweeper;
+        if (sweeper == null) {
+            synchronized (this) {
+                sweeper = revisionSweeper;
+                if (sweeper == null) {
+                    sweeper = new RevisionSweeper(strategy.getEntityManager(false).getEntityManagerFactory());
+                    revisionSweeper = sweeper;
+                }
+            }
+        }
+        return sweeper;
+    }
+
+    @Override
+    public void setRevisionKept(WeblogEntryRevision revision, boolean kept) throws WebloggerException {
+        if (revision.isKept() == kept) {
+            return;
+        }
+        if (kept) {
+            RevisionRetention.requireRoomToKeep(strategy.getEntityManager(true), RevisionRetention.Kind.ENTRY,
+                    revision.getWeblogEntry().getId());
+        }
+        revision.setKept(kept);
+        strategy.store(revision);
+    }
+
+    @Override
+    public RevisionSweep.Report sweepRevisions(boolean dryRun) {
+        return revisionSweeper().sweep(dryRun);
+    }
+
+    @Override
+    public RevisionSweep.Stats revisionStats() throws WebloggerException {
+        try {
+            return revisionSweeper().stats();
+        } catch (RuntimeException e) {
+            throw new WebloggerException("Could not read the revision figures", e);
         }
     }
 

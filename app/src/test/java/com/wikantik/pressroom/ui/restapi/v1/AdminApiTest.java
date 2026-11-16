@@ -1036,4 +1036,60 @@ class AdminApiTest {
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertTrue(json.get("sso").asBoolean());
     }
+
+    // --- revisions (spec 2026-11-15, Part 3) ---
+
+    private static com.wikantik.pressroom.business.RevisionSweep.Report report(boolean dryRun) {
+        return new com.wikantik.pressroom.business.RevisionSweep.Report(
+                java.time.Instant.parse("2026-11-16T04:00:00Z"), dryRun, 5, 2, 1, false, 0, false);
+    }
+
+    private Weblogger revisionsWeblogger() {
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getWeblogEntryManager()).thenReturn(mock(com.wikantik.pressroom.business.WeblogEntryManager.class));
+        return weblogger;
+    }
+
+    @Test
+    void theRevisionFiguresAreServed() throws Exception {
+        Weblogger weblogger = revisionsWeblogger();
+        when(weblogger.getWeblogEntryManager().revisionStats()).thenReturn(
+                new com.wikantik.pressroom.business.RevisionSweep.Stats(120, 30, 4, 2048,
+                        java.time.Instant.parse("2025-01-01T00:00:00Z"),
+                        List.of(new com.wikantik.pressroom.business.RevisionSweep.ItemCount(
+                                com.wikantik.pressroom.business.RevisionSweep.ItemKind.PAGE, "p1", "About", 30)),
+                        null, report(true)));
+
+        String body = mockMvc(controllerFor(weblogger)).perform(get("/v1/admin/revisions"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals(120, json.get("entryRevisions").asLong());
+        assertEquals(30, json.get("pageRevisions").asLong());
+        assertEquals(4, json.get("kept").asLong());
+        assertEquals("PAGE", json.get("largest").get(0).get("kind").asString());
+        assertEquals(8, json.get("nextSweep").get("total").asLong());
+        assertTrue(json.get("nextSweep").get("dryRun").asBoolean());
+    }
+
+    /** A sweep through the API is a dry run unless the caller says otherwise in so many words. */
+    @Test
+    void aSweepIsADryRunUnlessToldOtherwise() throws Exception {
+        Weblogger weblogger = revisionsWeblogger();
+        when(weblogger.getWeblogEntryManager().sweepRevisions(true)).thenReturn(report(true));
+        when(weblogger.getWeblogEntryManager().sweepRevisions(false)).thenReturn(report(false));
+        MockMvc mvc = mockMvc(controllerFor(weblogger));
+
+        mvc.perform(post("/v1/admin/revisions/sweep")).andExpect(status().isOk());
+        mvc.perform(post("/v1/admin/revisions/sweep").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk());
+        verify(weblogger.getWeblogEntryManager(), never()).sweepRevisions(false);
+
+        String body = mvc.perform(post("/v1/admin/revisions/sweep").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dryRun\":false}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        verify(weblogger.getWeblogEntryManager()).sweepRevisions(false);
+        assertEquals(5, new tools.jackson.databind.ObjectMapper().readTree(body).get("byCount").asLong());
+    }
 }
