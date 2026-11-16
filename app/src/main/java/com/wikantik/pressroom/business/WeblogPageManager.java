@@ -21,7 +21,9 @@ import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
 
 /**
  * Interface to static page management.
@@ -32,12 +34,46 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 public interface WeblogPageManager {
 
     /**
-     * Store a page.
+     * Saves a page as {@code editor}'s work. When the save changes the
+     * page's title or content, what it replaced is kept as a revision
+     * credited to {@code editor} and labelled with {@code revisionNote};
+     * a save that changes only settings leaves none. The revision is written
+     * after the save commits and its failure never costs the save.
      *
-     * <p>Refuses a blank slug, a slug containing '/', and any slug in
-     * ReservedSlugs -- a page that cannot be routed to is not a page.
+     * <p>Throws {@link WebloggerException} for a slug that is blank, contains
+     * a slash or is reserved, as before.
+     *
+     * @param editor the acting user, or null for a save no person made
+     * @param revisionNote why the save was made, or null
+     */
+    void savePage(WeblogPage page, User editor, String revisionNote) throws WebloggerException;
+
+    /**
+     * {@link #savePage(WeblogPage, User, String)} for a system caller: a
+     * revision it leaves credits nobody and carries no note.
      */
     void savePage(WeblogPage page) throws WebloggerException;
+
+    /**
+     * The page's revisions, newest first. Each holds the title and content
+     * as they stood BEFORE one save. Empty for a null or unsaved page.
+     */
+    List<WeblogPageRevision> getRevisions(WeblogPage page) throws WebloggerException;
+
+    /**
+     * One revision by id, or null. A global lookup: callers reach it through
+     * {@code WeblogOwnership.pageRevision}, which ties it to a page the
+     * caller may see.
+     */
+    WeblogPageRevision getRevision(String id) throws WebloggerException;
+
+    /**
+     * The content now committed for this page, read under its row lock so it
+     * cannot change before the caller's transaction ends; null when the page
+     * no longer exists. For the stale-write check of an update that sent
+     * {@code expectedContentHash}.
+     */
+    String lockPageContent(WeblogPage page) throws WebloggerException;
 
     /**
      * Remove a page.

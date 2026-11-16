@@ -41,6 +41,10 @@ public final class PageDtos {
                             String status, boolean showInNav, int navOrder,
                             String metaTitle, String searchDescription, String canonicalUrl,
                             boolean noindex, String ogImageId, Instant updateTime,
+                            @Schema(description = "SHA-256 of text, as hex. Send it back as expectedContentHash on "
+                                    + "update or on a revision restore so the change is refused if the page's text "
+                                    + "changed meanwhile.")
+                            String contentHash,
                             @Schema(description = "When the page was moved to the trash; absent for a page that "
                                     + "is not in it. Trashed pages are listed only by GET .../pages?status=TRASHED.")
                             Instant trashedAt,
@@ -106,7 +110,23 @@ public final class PageDtos {
             Boolean strand,
             @Schema(description = "On update, fields to remove: metaTitle, searchDescription, canonicalUrl, "
                     + "ogImageId. Null never removes anything.")
-            List<String> clear) {
+            List<String> clear,
+            @Schema(description = "On update, why the change was made; it labels the revision the update leaves "
+                    + "when it changes the title or text. At most 255 characters.")
+            String revisionNote,
+            @Schema(description = EXPECTED_CONTENT_HASH_DESCRIPTION)
+            String expectedContentHash) {
+    }
+
+    /** {@code expectedContentHash}'s text, one for update and a revision restore. */
+    static final String EXPECTED_CONTENT_HASH_DESCRIPTION = "On update and on a revision restore, the contentHash "
+            + "the page was read with. If the page's text is no longer that, the request is a 409 page-changed "
+            + "whose currentContentHash is the stored text's hash, and nothing is saved. Optional.";
+
+    /** The optional body of a page revision restore. */
+    public record RevisionRestore(
+            @Schema(description = EXPECTED_CONTENT_HASH_DESCRIPTION)
+            String expectedContentHash) {
     }
 
     /**
@@ -129,6 +149,7 @@ public final class PageDtos {
                 Boolean.TRUE.equals(page.getNoindex()),
                 page.getOgImageId(),
                 instant(page.getUpdated()),
+                EntryDtos.contentHash(page.getContent()),
                 instant(page.getTrashedAt()),
                 Boolean.TRUE.equals(page.getStrand()),
                 parts.stream().map(PageDtos::toPartView).toList());

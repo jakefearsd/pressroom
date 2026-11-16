@@ -49,7 +49,7 @@ class PageDtosTest {
     void aWriteWithAnUnknownStatusIsRefusedOnTheStatusField() {
         WeblogPage page = new WeblogPage();
         PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, "bogus", null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
 
         ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write, Set.of()));
 
@@ -61,7 +61,7 @@ class PageDtosTest {
     void aNegativeNavOrderIsRefusedOnTheNavOrderField() {
         WeblogPage page = new WeblogPage();
         PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
-                -1, null, null, null, null, null, null, null);
+                -1, null, null, null, null, null, null, null, null, null);
 
         ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write, Set.of()));
 
@@ -74,7 +74,7 @@ class PageDtosTest {
     void aNonNegativeNavOrderIsApplied() {
         WeblogPage page = new WeblogPage();
         PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
-                2, null, null, null, null, null, null, null);
+                2, null, null, null, null, null, null, null, null, null);
 
         PageDtos.applyWrite(page, write, Set.of());
 
@@ -86,7 +86,7 @@ class PageDtosTest {
         WeblogPage page = new WeblogPage();
         page.setNavOrder(5);
         PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, null, null,
-                0, null, null, null, null, null, null, null);
+                0, null, null, null, null, null, null, null, null, null);
 
         PageDtos.applyWrite(page, write, Set.of());
 

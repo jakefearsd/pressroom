@@ -46,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -128,7 +129,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals(DENIED_VIEW, view);
         assertEquals("their-about", foreign.getSlug(),
                 "a foreign page must come through the request unchanged");
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     // --- the trash: a trashed page answers like an unknown id (spec 2026-11-15, Part 1) ---
@@ -156,7 +157,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(DENIED_VIEW, view);
         assertEquals(WeblogPage.PubStatus.TRASHED, trashed.getStatus(), "a save must not bring it back");
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -214,7 +215,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(".PageEdit", view);
         assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -226,7 +227,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -242,7 +243,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
         assertEquals("contact", mine.getSlug(), "a refused rename leaves the page as it was");
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /** A check that could not run is not one that passed. */
@@ -257,7 +258,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).contains("generic.error.check.logs"), "got: " + errors(model));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /** Saving a page under its own slug is not a clash with anything. */
@@ -273,7 +274,182 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), "got: " + errors(model));
-        verify(weblogger.getWeblogPageManager()).savePage(mine);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(mine), any(), any());
+    }
+
+    // --- revisions (spec 2026-11-15, Part 2) ---
+
+    private com.wikantik.pressroom.pojos.WeblogPageRevision revisionOf(WeblogPage page, String id, String title,
+            String content) throws WebloggerException {
+        com.wikantik.pressroom.pojos.WeblogPageRevision revision = new com.wikantik.pressroom.pojos.WeblogPageRevision();
+        revision.setId(id);
+        revision.setPage(page);
+        revision.setTitle(title);
+        revision.setContent(content);
+        when(weblogger.getWeblogPageManager().getRevision(id)).thenReturn(revision);
+        return revision;
+    }
+
+    /** The revision a save leaves is credited to whoever is signed in. */
+    @Test
+    void savingCreditsTheSignedInUser() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        PageBean bean = new PageBean();
+        bean.setId(mine.getId());
+        bean.setTitle("About");
+        bean.setSlug("about");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        verify(weblogger.getWeblogPageManager()).savePage(mine, user, null);
+    }
+
+    @Test
+    void theEditorListsThePagesRevisions() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        var revision = revisionOf(mine, "r1", "About", "old");
+        when(weblogger.getWeblogPageManager().getRevisions(mine)).thenReturn(java.util.List.of(revision));
+
+        controller.edit(mine.getId(), requestFor(weblogA), model);
+
+        assertEquals(java.util.List.of(revision), model.getAttribute("pageRevisions"));
+    }
+
+    /** A display path: the box is left out and the editor still opens. */
+    @Test
+    void aRevisionListThatCannotBeReadLeavesTheEditorUsable() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        when(weblogger.getWeblogPageManager().getRevisions(mine)).thenThrow(new WebloggerException("database down"));
+
+        String view = controller.edit(mine.getId(), requestFor(weblogA), model);
+
+        assertEquals(".PageEdit", view);
+        assertEquals(java.util.List.of(), model.getAttribute("pageRevisions"));
+    }
+
+    @Test
+    void aNewPageHasNoRevisionsToList() throws Exception {
+        controller.edit(null, requestFor(weblogA), model);
+
+        assertEquals(java.util.List.of(), model.getAttribute("pageRevisions"));
+        verify(weblogger.getWeblogPageManager(), never()).getRevisions(any());
+    }
+
+    @Test
+    void theDiffShowsWhatChangedEscaped() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        mine.setTitle("About us");
+        mine.setContent("line one\n<script>now</script>\n");
+        revisionOf(mine, "r1", "About", "line one\n<b>then</b>\n");
+
+        var response = controller.revisionDiff(requestFor(weblogA), mine.getId(), "r1");
+
+        assertEquals(200, response.getStatusCode().value());
+        String body = response.getBody();
+        assertTrue(body.startsWith("<div class=\"revision-diff\">"), body);
+        assertTrue(body.contains("- About") && body.contains("+ About us"), body);
+        assertTrue(body.contains("&lt;b&gt;then&lt;/b&gt;") && body.contains("&lt;script&gt;now&lt;/script&gt;"), body);
+        assertFalse(body.contains("<script>"), "revision content is shown as source, never rendered");
+    }
+
+    @Test
+    void aRevisionIdenticalToThePageSaysSo() throws Exception {
+        registerMessage("pageEdit.revisionSame", "No difference.");
+        WeblogPage mine = pageOn(weblogA, "about");
+        mine.setTitle("About");
+        mine.setContent("same");
+        revisionOf(mine, "r1", "About", "same");
+
+        String body = controller.revisionDiff(requestFor(weblogA), mine.getId(), "r1").getBody();
+
+        assertTrue(body.contains("No difference."), body);
+    }
+
+    /** Another page's revision, an unknown one, and any revision of a foreign or trashed page: one 404. */
+    @Test
+    void theDiffIsOfThisPagesRevisionOnly() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        WeblogPage sibling = pageOn(weblogA, "contact");
+        WeblogPage foreign = pageOn(weblogB, "their-about");
+        revisionOf(sibling, "sibling-r", "T", "c");
+        revisionOf(foreign, "foreign-r", "T", "c");
+        revisionOf(mine, "mine-r", "T", "c");
+
+        assertEquals(404, controller.revisionDiff(requestFor(weblogA), mine.getId(), "sibling-r").getStatusCode().value());
+        assertEquals(404, controller.revisionDiff(requestFor(weblogA), mine.getId(), "nope").getStatusCode().value());
+        assertEquals(404, controller.revisionDiff(requestFor(weblogA), mine.getId(), null).getStatusCode().value());
+        assertEquals(404,
+                controller.revisionDiff(requestFor(weblogA), foreign.getId(), "foreign-r").getStatusCode().value());
+        mine.setStatus(WeblogPage.PubStatus.TRASHED);
+        assertEquals(404, controller.revisionDiff(requestFor(weblogA), mine.getId(), "mine-r").getStatusCode().value());
+    }
+
+    @Test
+    void restoringPutsTheTitleAndContentBackAndNothingElse() throws Exception {
+        registerMessage("pageEdit.revisionRestored", "restored");
+        WeblogPage mine = pageOn(weblogA, "about-us");
+        mine.setTitle("About us");
+        mine.setContent("v3");
+        mine.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        revisionOf(mine, "r1", "About", "v1");
+        var redirect = newRedirectAttributes();
+
+        String view = controller.restoreRevision(requestFor(weblogA), mine.getId(), "r1", redirect);
+
+        assertEquals("About", mine.getTitle());
+        assertEquals("v1", mine.getContent());
+        assertEquals("about-us", mine.getSlug());
+        assertEquals(WeblogPage.PubStatus.PUBLISHED, mine.getStatus());
+        verify(weblogger.getWeblogPageManager()).savePage(mine, user, null);
+        assertEquals(1, weblogger.flushCount());
+        assertEquals(java.util.List.of("restored"), flashMessages(redirect));
+        assertEquals("redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + weblogA.getHandle()
+                + "&id=" + mine.getId(), view);
+    }
+
+    @Test
+    void restoringAnotherPagesRevisionIsRefusedAndSavesNothing() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        mine.setContent("v3");
+        WeblogPage sibling = pageOn(weblogA, "contact");
+        revisionOf(sibling, "sibling-r", "T", "theirs");
+        var redirect = newRedirectAttributes();
+
+        String view = controller.restoreRevision(requestFor(weblogA), mine.getId(), "sibling-r", redirect);
+
+        assertEquals("v3", mine.getContent());
+        assertEquals(java.util.List.of("pageEdit.notFound"), flashErrors(redirect));
+        assertEquals("redirect:/pressroom-ui/authoring/pages.rol?weblog=" + weblogA.getHandle(), view);
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
+    }
+
+    @Test
+    void restoringOnATrashedPageIsNotFound() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        mine.setContent("v3");
+        revisionOf(mine, "r1", "T", "v1");
+        mine.setStatus(WeblogPage.PubStatus.TRASHED);
+        var redirect = newRedirectAttributes();
+
+        controller.restoreRevision(requestFor(weblogA), mine.getId(), "r1", redirect);
+
+        assertEquals("v3", mine.getContent());
+        assertEquals(java.util.List.of("pageEdit.notFound"), flashErrors(redirect));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
+    }
+
+    @Test
+    void aFailedRestoreIsReportedAndDoesNotClaimSuccess() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        revisionOf(mine, "r1", "T", "v1");
+        doThrow(new WebloggerException("database down"))
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
+        var redirect = newRedirectAttributes();
+
+        controller.restoreRevision(requestFor(weblogA), mine.getId(), "r1", redirect);
+
+        assertEquals(java.util.List.of("generic.error.check.logs"), flashErrors(redirect));
+        assertTrue(flashMessages(redirect).isEmpty());
     }
 
     // --- opening the editor ---
@@ -378,7 +554,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aFailedCreateKeepsTheNewPageTitle() throws Exception {
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("feed");
@@ -419,7 +595,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         org.mockito.ArgumentCaptor<WeblogPage> saved =
                 org.mockito.ArgumentCaptor.forClass(WeblogPage.class);
-        verify(weblogger.getWeblogPageManager()).savePage(saved.capture());
+        verify(weblogger.getWeblogPageManager()).savePage(saved.capture(), any(), any());
         assertEquals("about", saved.getValue().getSlug());
         assertEquals("About", saved.getValue().getTitle());
         assertEquals(WeblogPage.PubStatus.DRAFT, saved.getValue().getStatus());
@@ -445,13 +621,13 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals("New Title", existing.getTitle(),
                 "the edit must be applied to the page that was looked up");
         assertEquals(WeblogPage.PubStatus.PUBLISHED, existing.getStatus());
-        verify(weblogger.getWeblogPageManager()).savePage(existing);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(existing), any(), any());
     }
 
     @Test
     void savingWithAReservedSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("feed");
@@ -469,7 +645,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         registerMessage("pageEdit.error.slugIsWeblog", "Taken by {0}.");
         doThrow(new com.wikantik.pressroom.business.SiteSlugClashException(
                 "pageEdit.error.slugIsWeblog", "<b>travel</b>"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("travel");
@@ -492,7 +668,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     void aSlugClashRedisplaysAnExistingPageButNoNewOne() throws Exception {
         doThrow(new com.wikantik.pressroom.business.SiteSlugClashException(
                 "pageEdit.error.slugIsWeblog", "travel"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
         WeblogPage existing = pageOn(weblogA, "about");
         PageBean edit = new PageBean();
         edit.setId(existing.getId());
@@ -520,7 +696,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         org.mockito.ArgumentCaptor<WeblogPage> saved = org.mockito.ArgumentCaptor.forClass(WeblogPage.class);
-        verify(weblogger.getWeblogPageManager()).savePage(saved.capture());
+        verify(weblogger.getWeblogPageManager()).savePage(saved.capture(), any(), any());
         assertEquals("start-here-please", saved.getValue().getSlug());
     }
 
@@ -542,7 +718,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     @Test
     void savingWithABlankSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug is required"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("");
@@ -558,7 +734,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     @Test
     void savingWithASlashInTheSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug may not contain '/': a/b"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("a/b");
@@ -590,14 +766,14 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         org.mockito.ArgumentCaptor<WeblogPage> saved =
                 org.mockito.ArgumentCaptor.forClass(WeblogPage.class);
-        verify(weblogger.getWeblogPageManager()).savePage(saved.capture());
+        verify(weblogger.getWeblogPageManager()).savePage(saved.capture(), any(), any());
         assertEquals(WeblogPage.PubStatus.DRAFT, saved.getValue().getStatus());
     }
 
     @Test
     void anUnrelatedSaveFailureIsReportedGenerically() throws Exception {
         doThrow(new WebloggerException("database down"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setSlug("about");
@@ -617,7 +793,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         // an edit of an existing page must still show it after a rejected save.
         WeblogPage existing = pageOn(weblogA, "about");
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setId(existing.getId());
@@ -639,7 +815,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         // shape -- nothing here may turn into a 500.
         WeblogPage existing = pageOn(weblogA, "about");
         doThrow(new IllegalStateException("something unrelated broke"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         PageBean bean = new PageBean();
         bean.setId(existing.getId());
@@ -674,7 +850,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals(".PageEdit", view, "a rejected canonical URL must redisplay the form");
         assertTrue(errors(model).contains("entryEdit.canonicalUrlInvalid"),
                 "Expected a canonicalUrlInvalid error, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -687,7 +863,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager()).savePage(any());
+        verify(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
     }
 
     @Test
@@ -700,7 +876,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager()).savePage(any());
+        verify(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
     }
 
     // --- the social image: this weblog's, an image, outside private directories ---
@@ -718,7 +894,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertEquals(".PageEdit", view);
         assertTrue(errors(model).contains("weblogEdit.error.ogImageUnusable"),
                 "Expected the social image to be refused, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -736,7 +912,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertTrue(errors(model).contains("weblogEdit.error.ogImageUnusable"), errors(model).toString());
         assertNull(page.getOgImageId(), "a refused save must leave the page as it was");
         assertEquals(page, model.getAttribute("page"), "the refused form still shows the page it edits");
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -750,7 +926,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager()).savePage(any());
+        verify(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
     }
 
     @Test
@@ -766,7 +942,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
-        verify(weblogger.getWeblogPageManager()).savePage(any());
+        verify(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
     }
 
     /** An image in a (private or public) directory of {@code owner}. */
@@ -1165,7 +1341,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aReservedSlugMarksTheSlugField() throws Exception {
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
         PageBean bean = new PageBean();
         bean.setSlug("feed");
         bean.setTitle("Feed");

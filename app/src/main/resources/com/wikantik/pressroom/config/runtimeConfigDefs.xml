@@ -151,6 +151,13 @@
          <type>integer</type>
          <default-value>-1</default-value>
       </property-def>
+      <!-- How many revisions each page keeps, newest first. -1 keeps all,
+           0 records none. Bounded as shipped, unlike the entries', because
+           page revisions are new and have no history to protect. -->
+      <property-def  name="page.revisions.retention"  key="configForm.pageRevisionsRetention">
+         <type>integer</type>
+         <default-value>50</default-value>
+      </property-def>
       <!-- How many days a trashed entry survives before TrashPurgeTask hard-
            deletes it. -1 keeps trash forever. 0 purges it on the very next
            sweep. Read fresh on every sweep; see TrashPurgeTask. -->

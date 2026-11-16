@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.Query;
@@ -39,6 +44,9 @@ import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.config.ProtectedPaths;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
+import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.ReservedSlugs;
 import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -50,6 +58,12 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogPageManagerImpl.class);
+
+    /** How many revisions each page keeps; read at every save. */
+    static final String REVISIONS_RETENTION_PROPERTY = "page.revisions.retention";
+
+    private static final String LOCK_PAGE_CONTENT =
+            "SELECT content FROM pressroom_weblogpage WHERE id = ?1 FOR UPDATE";
 
     private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
@@ -74,6 +88,11 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     @Override
     public void savePage(WeblogPage page) throws WebloggerException {
+        savePage(page, null, null);
+    }
+
+    @Override
+    public void savePage(WeblogPage page, User editor, String revisionNote) throws WebloggerException {
         String slug = page.getSlug() == null ? null : page.getSlug().trim();
         if (slug == null || slug.isBlank()) {
             throw new WebloggerException("page slug is required");
@@ -93,7 +112,115 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
             checkSiteSlug(slug);
         }
         page.setSlug(slug);
+        // The rename check inside persist reads the loaded slug, and the
+        // revision the loaded content: both before the baseline moves.
         persist(page);
+        recordRevision(page, editor, revisionNote);
+        // What was just stored is what a further save in this session
+        // would be replacing.
+        page.snapshotLoaded();
+    }
+
+    /**
+     * Records what this save displaced, and prunes to
+     * {@code page.revisions.retention} (-1 keeps all, 0 records none, n
+     * keeps the n newest), once the save has committed. Only
+     * {@link #savePage} records: a trash, a restore and a reorder change no
+     * prose.
+     *
+     * <p>As for entries ({@code JPAWeblogEntryManagerImpl.recordRevision}),
+     * and for the reason given there: written in the save's own transaction,
+     * a revision row the database refused would fail the commit and take the
+     * save with it. So it is written after that commit, in a transaction of
+     * its own, where a failure is logged and costs only the revision.
+     */
+    // The factory is the tier's own, shared and closed at shutdown by the
+    // strategy; closing it here would take the whole persistence unit down.
+    @SuppressWarnings("PMD.CloseResource")
+    private void recordRevision(WeblogPage page, User editor, String revisionNote) {
+        int retention = WebloggerRuntimeConfig.getIntProperty(REVISIONS_RETENTION_PROPERTY);
+        if (retention == 0) {
+            return;
+        }
+        WeblogPageRevision revision = page.contentBeingReplaced(editor != null ? editor.getUserName() : null);
+        if (revision == null) {
+            return;
+        }
+        revision.setNote(revisionNote);
+        String pageId = page.getId();
+        EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
+        strategy.runAfterCommit(() -> storeRevision(emf, pageId, revision, retention));
+    }
+
+    /**
+     * Stores {@code revision} for the page and prunes its oldest beyond
+     * {@code retention}, in a transaction of its own on its own
+     * EntityManager: the thread's unit of work has just committed, and a
+     * failure here must leave it exactly as the save left it.
+     */
+    private static void storeRevision(EntityManagerFactory emf, String pageId,
+            WeblogPageRevision revision, int retention) {
+        try (EntityManager em = emf.createEntityManager()) {
+            EntityTransaction tx = em.getTransaction();
+            tx.begin();
+            try {
+                WeblogPage page = em.find(WeblogPage.class, pageId);
+                if (page == null) {
+                    // deleted by the transaction that saved it: nothing to hang off
+                    return;
+                }
+                revision.setPage(page);
+                // The query does not count the new row, stored at the commit:
+                // keeping retention-1 of the old rows makes the total exactly
+                // retention. A negative retention prunes nothing.
+                if (retention > 0) {
+                    TypedQuery<WeblogPageRevision> query = em.createNamedQuery(
+                            "WeblogPageRevision.getByPage", WeblogPageRevision.class);
+                    query.setFlushMode(FlushModeType.COMMIT);
+                    query.setParameter(1, page);
+                    List<WeblogPageRevision> existing = query.getResultList();
+                    for (int i = retention - 1; i < existing.size(); i++) {
+                        em.remove(existing.get(i));
+                    }
+                }
+                em.persist(revision);
+                tx.commit();
+            } finally {
+                if (tx.isActive()) {
+                    tx.rollback();
+                }
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not record a revision for page {}; the save itself is unaffected", pageId, e);
+        }
+    }
+
+    @Override
+    public List<WeblogPageRevision> getRevisions(WeblogPage page) throws WebloggerException {
+        if (page == null || page.getId() == null) {
+            return Collections.emptyList();
+        }
+        TypedQuery<WeblogPageRevision> query = strategy.getNamedQuery(
+                "WeblogPageRevision.getByPage", WeblogPageRevision.class);
+        query.setParameter(1, page);
+        return query.getResultList();
+    }
+
+    @Override
+    public WeblogPageRevision getRevision(String id) throws WebloggerException {
+        if (id == null) {
+            return null;
+        }
+        return (WeblogPageRevision) strategy.load(WeblogPageRevision.class, id);
+    }
+
+    @Override
+    public String lockPageContent(WeblogPage page) throws WebloggerException {
+        Query q = strategy.getNativeQuery(LOCK_PAGE_CONTENT);
+        q.setFlushMode(FlushModeType.COMMIT);
+        q.setParameter(1, page.getId());
+        List<?> rows = q.getResultList();
+        return rows.isEmpty() ? null : (String) rows.get(0);
     }
 
     /**
@@ -260,6 +387,11 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         Query detach = strategy.getNamedUpdate("WeblogEntry.clearStrandByPage");
         detach.setParameter(1, page.getId());
         detach.executeUpdate();
+        // Revisions FK the page, so they go first. The database would cascade
+        // anyway; doing it here keeps the persistence context in step.
+        Query removeRevisions = strategy.getNamedUpdate("WeblogPageRevision.removeByPage");
+        removeRevisions.setParameter(1, page);
+        removeRevisions.executeUpdate();
         this.strategy.remove(page);
 
         // The FK's SET NULL clears the row, not the managed weblog: clear it
@@ -380,6 +512,9 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         Query detach = strategy.getNamedUpdate("WeblogEntry.clearStrandByWeblog");
         detach.setParameter(1, weblog);
         detach.executeUpdate();
+        Query removeRevisions = strategy.getNamedUpdate("WeblogPageRevision.removeByWeblog");
+        removeRevisions.setParameter(1, weblog);
+        removeRevisions.executeUpdate();
         Query removePages = strategy.getNamedUpdate("WeblogPage.removeByWeblog");
         removePages.setParameter(1, weblog);
         removePages.executeUpdate();

@@ -33,6 +33,7 @@ import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.pojos.WeblogRedirect;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 
@@ -260,6 +261,29 @@ public final class WeblogOwnership {
             return revision;
         } catch (WebloggerException ex) {
             log.error("Error looking up a revision for weblog {}", handleOf(entry.getWebsite()), ex);
+        }
+        return null;
+    }
+
+    /**
+     * The page revision with this id, but only when it is a revision of
+     * {@code page} -- a page the caller has already looked up through
+     * {@link #page}, so the revision is as reachable as its page and no
+     * more. Another page's revision reads as absent, even within one weblog.
+     */
+    public static WeblogPageRevision pageRevision(Weblogger weblogger, String id, WeblogPage page) {
+        if (page == null || page.getId() == null || StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            WeblogPageRevision revision = weblogger.getWeblogPageManager().getRevision(id);
+            if (revision == null || revision.getPage() == null
+                    || !page.getId().equals(revision.getPage().getId())) {
+                return null;
+            }
+            return revision;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up a page revision for weblog {}", handleOf(page.getWeblog()), ex);
         }
         return null;
     }

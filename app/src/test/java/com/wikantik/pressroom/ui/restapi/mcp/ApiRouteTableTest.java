@@ -13,7 +13,11 @@ class ApiRouteTableTest {
         // 59 = 49 + the five comment routes (list, get, update, delete, reply) of CommentsApi + entries/by-anchor/{anchor}
         // + audit/seo/entries/{id} + an entry's revisions: list, get and restore + a blog's traffic
         // + a strand page's parts (PUT) + the page trash: restore and delete-forever (2026-11-16).
-        assertEquals(63, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // + a page's revisions: list, get and restore (2026-11-16).
+        assertEquals(66, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        assertTrue(table.find("GET /v1/weblogs/{handle}/pages/{id}/revisions").isPresent());
+        assertTrue(table.find("GET /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}").isPresent());
+        assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/restore").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/restore").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/delete-forever").isPresent());
         assertTrue(table.find("GET /v1/weblogs/{handle}/audit/seo/entries/{id}").isPresent());

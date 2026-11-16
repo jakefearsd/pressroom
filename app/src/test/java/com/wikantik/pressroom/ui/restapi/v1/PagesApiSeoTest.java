@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -85,7 +86,7 @@ class PagesApiSeoTest {
     }
 
     private ResultActions send(MockHttpServletRequestBuilder request, String json) throws Exception {
-        return mvc.perform(request.requestAttr("actionWeblog", weblog)
+        return mvc.perform(request.requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                 .contentType(MediaType.APPLICATION_JSON).content(json));
     }
 
@@ -111,7 +112,7 @@ class PagesApiSeoTest {
         page.setSearchDescription("Described.");
         page.setNoindex(Boolean.TRUE);
 
-        JsonNode view = json(mvc.perform(get("/v1/weblogs/myblog/pages/page-1").requestAttr("actionWeblog", weblog)));
+        JsonNode view = json(mvc.perform(get("/v1/weblogs/myblog/pages/page-1").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())));
 
         assertEquals(2, view.path("navOrder").asInt());
         assertEquals("Described.", view.path("searchDescription").asString());
@@ -126,7 +127,7 @@ class PagesApiSeoTest {
         page.setSearchDescription("Described.");
         when(pages.getPages(weblog)).thenReturn(List.of(page));
 
-        JsonNode list = json(mvc.perform(get("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)));
+        JsonNode list = json(mvc.perform(get("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())));
 
         assertEquals("Described.", list.get(0).path("searchDescription").asString());
     }
@@ -146,7 +147,7 @@ class PagesApiSeoTest {
         assertEquals("https://example.com/a", view.path("canonicalUrl").asString());
         assertTrue(view.path("noindex").asBoolean());
         assertEquals("img", view.path("ogImageId").asString());
-        verify(pages).savePage(any());
+        verify(pages).savePage(any(), any(), any());
     }
 
     @Test
@@ -180,7 +181,7 @@ class PagesApiSeoTest {
         assertEquals("https://example.com/a", page.getCanonicalUrl());
         assertEquals(Boolean.TRUE, page.getNoindex());
         assertEquals("img", page.getOgImageId());
-        verify(pages).savePage(page);
+        verify(pages).savePage(eq(page), any(), any());
     }
 
     @Test
@@ -206,7 +207,7 @@ class PagesApiSeoTest {
 
         assertEquals(400, problem.path("status").asInt());
         assertEquals(List.of("clear"), fields(problem));
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     /** As on an entry create: there is nothing to remove yet. */
@@ -217,7 +218,7 @@ class PagesApiSeoTest {
 
         assertEquals(List.of("clear"), fields(problem));
         assertEquals("clear applies only to updates.", problem.path("errors").get(0).path("message").asString());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -226,7 +227,7 @@ class PagesApiSeoTest {
                 "{\"metaTitle\":\"" + "m".repeat(256) + "\"}"));
 
         assertEquals(List.of("metaTitle"), fields(problem));
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -236,7 +237,7 @@ class PagesApiSeoTest {
 
         assertEquals(List.of("canonicalUrl"), fields(problem));
         assertNull(page.getCanonicalUrl(), "nothing is stored on a refusal");
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -245,7 +246,7 @@ class PagesApiSeoTest {
 
         assertEquals(List.of("ogImageId"), fields(problem));
         assertNull(page.getOgImageId());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -254,7 +255,7 @@ class PagesApiSeoTest {
                 "{\"slug\":\"contact\",\"title\":\"Contact\",\"ogImageId\":\"foreign\"}"));
 
         assertEquals(List.of("ogImageId"), fields(problem));
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     /** The stored id of a file deleted since is not re-checked, as on entries. */
@@ -277,7 +278,7 @@ class PagesApiSeoTest {
         assertEquals(400, problem.path("status").asInt());
         assertEquals(List.of("canonicalUrl", "metaTitle", "ogImageId", "slug", "status", "title"),
                 fields(problem).stream().sorted().toList());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -290,6 +291,6 @@ class PagesApiSeoTest {
                 fields(problem).stream().sorted().toList());
         assertEquals("About", page.getTitle(), "a refused write changes nothing");
         assertEquals("about", page.getSlug());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 }

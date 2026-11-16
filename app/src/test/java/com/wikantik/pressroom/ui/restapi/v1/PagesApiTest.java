@@ -43,7 +43,7 @@ class PagesApiTest {
     void thePageTitleIsStoredRaw() {
         WeblogPage page = new WeblogPage();
         PageDtos.applyWrite(page, new PageDtos.PageWrite(null, "Cats & Dogs", null, null, null,
-                null, null, null, null, null, null, null, null), java.util.Set.of());
+                null, null, null, null, null, null, null, null, null, null), java.util.Set.of());
         assertEquals("Cats & Dogs", page.getTitle());
     }
 
@@ -138,7 +138,7 @@ class PagesApiTest {
         when(weblogger.getWeblogPageManager().getPages(weblog)).thenReturn(List.of(page));
 
         String body = mockMvc(controllerFor(weblogger))
-                .perform(get("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog))
+                .perform(get("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -158,7 +158,7 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(get("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", thisWeblog))
+                        .requestAttr("actionWeblog", thisWeblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
@@ -170,13 +170,13 @@ class PagesApiTest {
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\",\"title\":\"About Us & More\",\"text\":\"Hello\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        verify(weblogger.getWeblogPageManager()).savePage(any());
+        verify(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals("about", json.get("slug").asString());
         // Stored raw: no escaping happened on the way in.
@@ -193,7 +193,7 @@ class PagesApiTest {
         for (String content : List.of("{\"title\":\"Start Here\"}", "{\"slug\":\" \",\"title\":\"Start Here\"}")) {
             String body = mockMvc(controllerFor(weblogger))
                     .perform(post("/v1/weblogs/myblog/pages")
-                            .requestAttr("actionWeblog", weblog)
+                            .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(content))
                     .andExpect(status().isCreated())
@@ -212,22 +212,22 @@ class PagesApiTest {
                 .thenReturn(aPage(weblog, "page-1", "about", "About"));
 
         mockMvc(controllerFor(weblogger))
-                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"About\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(errorFieldIs("slug"));
         mockMvc(controllerFor(weblogger))
-                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Posts\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("slug"));
         mockMvc(controllerFor(weblogger))
-                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"?!\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("slug"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /** pressroom_weblogpage.slug/title are both varchar(255) NOT NULL (V014__weblog_pages.sql). */
@@ -239,13 +239,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"" + tooLong + "\",\"title\":\"About\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -257,13 +257,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\",\"title\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -274,13 +274,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\",\"title\":\"  \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -297,13 +297,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"category\",\"title\":\"Nope\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /**
@@ -321,14 +321,14 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\",\"title\":\"Second About\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(errorFieldIs("slug"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /**
@@ -343,13 +343,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"foo/bar\",\"title\":\"Nope\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -361,7 +361,7 @@ class PagesApiTest {
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"New Title\"}"))
                 .andExpect(status().isOk())
@@ -372,7 +372,7 @@ class PagesApiTest {
         // The slug was never present on the request, so it must not have
         // been re-validated or re-looked-up: absent means absent.
         verify(weblogger.getWeblogPageManager(), never()).getPageBySlug(any(), any());
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         verify(weblogger).flush();
     }
 
@@ -386,13 +386,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", thisWeblog)
+                        .requestAttr("actionWeblog", thisWeblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Hijacked\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -406,14 +406,14 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"contact\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(errorFieldIs("slug"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         assertEquals("about", page.getSlug(), "the in-memory page must be untouched on refusal");
     }
 
@@ -433,12 +433,12 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\"}"))
                 .andExpect(status().isOk());
 
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
     }
 
     @Test
@@ -450,13 +450,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"foo/bar\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         assertEquals("about", page.getSlug(), "the in-memory page must be untouched on refusal");
     }
 
@@ -469,13 +469,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"   \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -487,7 +487,7 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(delete("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog))
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isNoContent());
 
         // DELETE trashes; only delete-forever removes (PagesApiTrashTest).
@@ -506,7 +506,7 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(delete("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", thisWeblog))
+                        .requestAttr("actionWeblog", thisWeblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
@@ -525,13 +525,13 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     /**
@@ -600,12 +600,12 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"navOrder\":-1}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("navOrder"));
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -617,7 +617,7 @@ class PagesApiTest {
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"navOrder\":2}"))
                 .andExpect(status().isOk())
@@ -647,7 +647,7 @@ class PagesApiTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
-                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"   \"}"))
                 .andExpect(status().isBadRequest())
@@ -716,7 +716,7 @@ class PagesApiTest {
     private String putParts(StrandFixture f, String page, String json, int expectedStatus) throws Exception {
         org.springframework.mock.web.MockHttpServletResponse response = mockMvc(f.controller())
                 .perform(put("/v1/weblogs/myblog/pages/{id}/parts", page)
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andReturn().getResponse();
@@ -736,7 +736,7 @@ class PagesApiTest {
         f.members.addAll(List.of(first, draft));
 
         tools.jackson.databind.JsonNode view = json(mockMvc(f.controller())
-                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog))
+                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
 
@@ -759,7 +759,7 @@ class PagesApiTest {
         f.strand.setStrand(false);
 
         tools.jackson.databind.JsonNode view = json(mockMvc(f.controller())
-                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog))
+                .perform(get("/v1/weblogs/myblog/pages/{id}", "strand-1").requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
 
@@ -775,7 +775,7 @@ class PagesApiTest {
 
         String created = mockMvc(f.controller())
                 .perform(post("/v1/weblogs/myblog/pages")
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"walks\",\"title\":\"Walks\",\"strand\":true}"))
                 .andExpect(status().isCreated())
@@ -784,12 +784,12 @@ class PagesApiTest {
 
         mockMvc(f.controller())
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"strand\":true}"))
                 .andExpect(status().isOk());
         assertTrue(f.strand.getStrand());
-        verify(f.pageManager).savePage(f.strand);
+        verify(f.pageManager).savePage(eq(f.strand), any(), any());
     }
 
     /** Unticking a strand that has parts is refused, on strand, and nothing is saved. */
@@ -802,7 +802,7 @@ class PagesApiTest {
 
         mockMvc(f.controller())
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"strand\":false,\"title\":\"Renamed\"}"))
                 .andExpect(status().isBadRequest())
@@ -810,7 +810,7 @@ class PagesApiTest {
 
         assertTrue(f.strand.getStrand());
         assertEquals("The Series", f.strand.getTitle());
-        verify(f.pageManager, never()).savePage(any());
+        verify(f.pageManager, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -819,7 +819,7 @@ class PagesApiTest {
 
         mockMvc(f.controller())
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"strand\":false}"))
                 .andExpect(status().isOk());
@@ -836,14 +836,14 @@ class PagesApiTest {
 
         mockMvc(f.controller())
                 .perform(patch("/v1/weblogs/myblog/pages/{id}", "strand-1")
-                        .requestAttr("actionWeblog", f.weblog)
+                        .requestAttr("actionWeblog", f.weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"strand\":true}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("strand"));
 
         assertFalse(f.strand.getStrand());
-        verify(f.pageManager, never()).savePage(any());
+        verify(f.pageManager, never()).savePage(any(), any(), any());
     }
 
     /** Criterion 10/16 happy path: [C, A] become parts 1 and 2, in that order, and the view says so. */

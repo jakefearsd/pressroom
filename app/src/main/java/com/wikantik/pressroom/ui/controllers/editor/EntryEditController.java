@@ -30,7 +30,6 @@ import java.util.TimeZone;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,8 +54,6 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
-import com.wikantik.pressroom.util.HTMLSanitizer;
-import com.wikantik.pressroom.util.TextDiff;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.util.MailUtil;
 import org.springframework.stereotype.Controller;
@@ -257,72 +254,19 @@ public class EntryEditController extends BaseController {
             return ResponseEntity.notFound().build();
         }
 
-        StringBuilder html = new StringBuilder("<div class=\"revision-diff\">");
-        int empty = html.length();
-        appendDiff(html, getText("weblogEdit.title", request),
-                revision.getTitle(), entry.getTitle());
-        appendDiff(html, getText("weblogEdit.summary", request),
-                revision.getSummary(), entry.getSummary());
-        appendDiff(html, getText("weblogEdit.content", request),
-                revision.getText(), entry.getText());
         // Right after a Restore the newest revision often matches the entry
-        // exactly; with every section omitted the modal would open blank.
-        if (html.length() == empty) {
-            appendNoChanges(html, getText("weblogEdit.revisionSame", request));
-        }
-        html.append("</div>");
+        // exactly; the fragment then says so instead of opening blank.
+        String html = RevisionDiffHtml.of(getText("weblogEdit.revisionSame", request),
+                new RevisionDiffHtml.Section(getText("weblogEdit.title", request),
+                        revision.getTitle(), entry.getTitle()),
+                new RevisionDiffHtml.Section(getText("weblogEdit.summary", request),
+                        revision.getSummary(), entry.getSummary()),
+                new RevisionDiffHtml.Section(getText("weblogEdit.content", request),
+                        revision.getText(), entry.getText()));
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf("text/html;charset=UTF-8"))
-                .body(html.toString());
-    }
-
-    /** The empty state: a revision identical to the entry as it stands. */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "The message comes from the bundle and goes through HTMLSanitizer.htmlEncodeTag "
-                    + "into element content: with < and > encoded no tag can open there.")
-    private static void appendNoChanges(StringBuilder html, String message) {
-        html.append("<p class=\"revision-diff-same\">").append(HTMLSanitizer.htmlEncodeTag(message)).append("</p>");
-    }
-
-    /**
-     * Appends one labelled section of the diff, or nothing at all when that
-     * field did not change -- three "no changes" headings would bury the one
-     * section the author opened the modal to read.
-     */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "The label and every diff line go through HTMLSanitizer.htmlEncodeTag into "
-                    + "element content (p, span inside pre): with < and > encoded no tag can open there. "
-                    + "The diff is shown only to the entry's editors.")
-    private void appendDiff(StringBuilder html, String label, String before, String after) {
-        List<TextDiff.Line> lines = TextDiff.diff(before, after);
-        if (lines.isEmpty()) {
-            return;
-        }
-        // A caps label, not a heading: the modal's own title is a <p>, so an
-        // <h5> here would be a heading with nothing above it.
-        html.append("<p class=\"rail-group-label\">").append(HTMLSanitizer.htmlEncodeTag(label))
-                .append("</p><pre>");
-        for (TextDiff.Line line : lines) {
-            String cssClass = switch (line.kind()) {
-                case ADDED -> "diff-added";
-                case REMOVED -> "diff-removed";
-                case SAME -> "diff-same";
-            };
-            String marker = switch (line.kind()) {
-                case ADDED -> "+ ";
-                case REMOVED -> "- ";
-                case SAME -> "  ";
-            };
-            // The revision holds the author's raw Markdown, which may contain
-            // any amount of HTML. It is being shown as source, so every
-            // character of it is escaped rather than rendered.
-            html.append("<span class=\"").append(cssClass).append("\">").append(marker)
-                    .append(HTMLSanitizer.htmlEncodeTag(line.text())).append("</span>\n");
-        }
-        html.append("</pre>");
+                .body(html);
     }
 
     /**

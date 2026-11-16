@@ -45,6 +45,7 @@ public class WeblogPage implements ShortcodeContext, Serializable {
     private Weblog weblog;
     private String slug;
     private transient String loadedSlug;
+    private transient WeblogPageRevision loadedContent;
     private String title;
     private String content;
     private PubStatus status = PubStatus.DRAFT;
@@ -115,9 +116,41 @@ public class WeblogPage implements ShortcodeContext, Serializable {
         return loadedSlug;
     }
 
-    /** JPA post-load callback; not for application code. */
-    public void snapshotLoadedSlug() {
+    /**
+     * JPA post-load callback; also called by {@code savePage} once a save is
+     * stored, so a further save in the same session measures from it. Takes
+     * the slug (see {@link #getLoadedSlug}) and the title and content, the
+     * baseline a save's revision is cut from.
+     */
+    public void snapshotLoaded() {
         this.loadedSlug = slug;
+        // Built without an id: most loaded pages are never saved, and every
+        // load would otherwise draw a UUID. contentBeingReplaced assigns one
+        // when the snapshot is going to be stored.
+        this.loadedContent = EntityIds.materialise(() -> WeblogPageRevision.of(this, null));
+    }
+
+    /**
+     * The title and content this page held before the caller's pending
+     * changes, as an unsaved revision; null when there is nothing to record:
+     * a new page that was never loaded, or a save that leaves both exactly
+     * as they were (a change of slug, status, navigation or SEO fields).
+     *
+     * @param creator username to credit, or null for a save no person made
+     */
+    public WeblogPageRevision contentBeingReplaced(String creator) {
+        if (loadedContent == null || !loadedContent.differsFrom(this)) {
+            return null;
+        }
+        if (loadedContent.getId() == null) {
+            loadedContent.setId(EntityIds.newId());
+        }
+        // Now, not when the snapshot was built at load: a prune keeps the
+        // newest by this time, and two sessions can load in one order and
+        // save in the other.
+        loadedContent.setCreated(Timestamp.from(java.time.Instant.now()));
+        loadedContent.setCreator(creator);
+        return loadedContent;
     }
 
     /**

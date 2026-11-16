@@ -904,6 +904,9 @@ POST   /api/v1/weblogs/{handle}/pages/{id}/restore         restore (always to DR
 POST   /api/v1/weblogs/{handle}/pages/{id}/delete-forever  permanent delete
 PUT    /api/v1/weblogs/{handle}/pages/{id}/parts
 GET    /api/v1/weblogs/{handle}/pages?status=TRASHED       the page trash
+GET    /api/v1/weblogs/{handle}/pages/{id}/revisions                       a page's revisions
+GET    /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}          one revision, with a diff
+POST   /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/restore  put a revision back
 ```
 
 > **Changed in 0.13.0: `DELETE` on a page no longer deletes it permanently.**
@@ -928,7 +931,36 @@ setting; default 7, -1 keeps it until deleted by hand).
 | `POST .../pages/{id}/restore` | 409, `Page is not trashed.` | 200, the page as a `DRAFT` |
 | `POST .../pages/{id}/delete-forever` | 409, `Page is not trashed; trash it first.` | 204 |
 
-Restore always yields a `DRAFT` and never makes the page the front page
+### Page revisions and the stale-write guard
+
+Every update that changes a page's `title` or `text` keeps the version it
+replaced as a revision; an update that changes only settings (slug, status,
+navigation, SEO fields) leaves none. Each page keeps its newest
+`page.revisions.retention` revisions (a site setting; default 50, -1 keeps
+all, 0 records none).
+
+- `GET .../pages/{id}/revisions` lists them newest first: `id`, `created`,
+  `creator`, `note` and `title`, without the text.
+- `GET .../pages/{id}/revisions/{revisionId}` adds `text` and `diff`, a
+  unified diff from the revision to the page's current text;
+  `?against={otherRevisionId}` diffs to another revision of the same page.
+- `POST .../pages/{id}/revisions/{revisionId}/restore` puts the revision's
+  title and text back and answers the page. What it replaces becomes a
+  revision, so a restore can be undone. A revision holds no settings: slug,
+  status and navigation are left as they are.
+- A revision id that belongs to another page is a 404, `against` included.
+  On a trashed page the two reads are a 404 and restore is a 409.
+
+Every page view carries `contentHash`, the SHA-256 of its `text`. Send it
+back as `expectedContentHash` on `PATCH` or in a restore's optional body
+(`{"expectedContentHash": "..."}`): if the page's text is no longer that,
+the answer is a 409 of type `page-changed` whose `currentContentHash` is the
+stored text's hash, and nothing is saved. It is optional; a write without it
+is not checked. A value that is not 64 hex digits is a 400. `PATCH` also
+accepts `revisionNote` (at most 255 characters), which labels the revision
+that update leaves. Both fields are refused on create.
+
+Restore (from the trash) always yields a `DRAFT` and never makes the page the front page
 again: publish it, then set `frontPage` on the weblog. A create or rename
 onto a slug that a trashed page holds is a 409 on `slug` that says so;
 restore that page or delete it forever first. A body carrying
@@ -1462,7 +1494,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
-| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `set_parts` |
+| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |

@@ -28,6 +28,7 @@
     <mapping-file>com/wikantik/pressroom/pojos/MediaFileTag.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/MediaFileDirectory.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/WeblogEntryRevision.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogPageRevision.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/CustomTemplateRendition.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/WeblogPage.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/WeblogRedirect.orm.xml</mapping-file>

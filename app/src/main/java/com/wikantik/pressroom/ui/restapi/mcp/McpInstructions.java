@@ -19,7 +19,8 @@ public final class McpInstructions {
             in `clear`.
             - To revise text: `update` with `edits` ([{find, replace}]) and expectedContentHash, the contentHash \
             `get` returned; on 409 entry-changed, get again and redo. `revisionNote` says why; \
-            `entries revisions` and restore_revision undo.
+            `entries revisions` and restore_revision undo. Pages have the same guard (409 page-changed), \
+            revisionNote and `pages revisions`; `pages delete` is a trash, undone by restore.
             - `anchor` on create fixes the URL slug, so a retried create answers 409, not a second entry. \
             A refused write lists every bad field in `errors`.
             - Write entry text as Markdown: callouts as GitHub alerts (> [!NOTE], [!TIP], [!WARNING]), code \

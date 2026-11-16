@@ -164,6 +164,44 @@ class PageIT extends PressroomIT {
     }
 
     /**
+     * Page revisions, end to end (spec 2026-11-15, Part 2): a save that
+     * changes the content keeps what it replaced; the editor lists it, shows
+     * the difference, and puts it back, keeping what the restore replaced.
+     */
+    @Test
+    void aChangedPageKeepsARevisionTheEditorCanCompareAndRestore() {
+        String handle = createWeblog();
+
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        $("#pageEditForm").should(exist);
+        $("#page_bean_slug").setValue("history");
+        $("#page_bean_title").setValue("History");
+        Editor.setText("The first version.");
+        saveOpenPage();
+        $$("#pageRevisionsCard").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
+
+        Editor.setText("The second version.");
+        saveOpenPage();
+        $$("#pageRevisionsTable .revision-restore-button")
+                .shouldHave(com.codeborne.selenide.CollectionCondition.size(1));
+
+        $(".revision-diff-button").click();
+        $("#revisionDiffBody").shouldHave(text("The first version."), RENDER);
+        $("#revisionDiffBody").shouldHave(text("The second version."));
+        $("#revision-diff-modal .btn-close").click();
+        $("#revision-diff-modal").shouldNotBe(visible);
+
+        clickAndAwaitNewPage($(".revision-restore-button"));
+        $("#messages").should(exist);
+        assertTrue(Editor.getText().contains("The first version."),
+                "the editor must show the restored content, got: " + Editor.getText());
+        $$("#pageRevisionsTable .revision-restore-button")
+                .shouldHave(com.codeborne.selenide.CollectionCondition.size(2));
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+    }
+
+    /**
      * The page trash, end to end (spec 2026-11-15, Part 1): deleting a
      * published page takes it off the site but keeps it; it comes back as a
      * draft; and only deleting it forever frees its address.

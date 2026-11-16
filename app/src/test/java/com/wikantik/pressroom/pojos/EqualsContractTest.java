@@ -212,6 +212,9 @@ class EqualsContractTest {
                 new Specimen("WeblogPage (keyed on id)",
                         page("page-a"), page("page-a"), page("page-b")),
 
+                new Specimen("WeblogPageRevision (keyed on id)",
+                        pageRevision("revision-a"), pageRevision("revision-a"), pageRevision("revision-b")),
+
                 new Specimen("WeblogRedirect (keyed on id)",
                         redirect("redirect-a"), redirect("redirect-a"), redirect("redirect-b")),
 
@@ -293,6 +296,12 @@ class EqualsContractTest {
      */
     private static WeblogEntryRevision revision(String id) {
         WeblogEntryRevision revision = new WeblogEntryRevision();
+        revision.setId(id);
+        return revision;
+    }
+
+    private static WeblogPageRevision pageRevision(String id) {
+        WeblogPageRevision revision = new WeblogPageRevision();
         revision.setId(id);
         return revision;
     }

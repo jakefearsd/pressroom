@@ -26,9 +26,10 @@
         </named-query>
         <!-- Remembers the slug this page was loaded with, so savePage can
              tell a rename from any other edit and mint the redirect that
-             keeps the old URL alive (same mechanism as WeblogEntry's
-             revision snapshot). -->
-        <post-load method-name="snapshotLoadedSlug"/>
+             keeps the old URL alive, and the title and content it was loaded
+             with, which are what a content-changing save leaves as a
+             revision (same mechanism as WeblogEntry's revision snapshot). -->
+        <post-load method-name="snapshotLoaded"/>
         <attributes>
             <id name="id">
                 <column name="id"/>

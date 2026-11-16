@@ -119,6 +119,18 @@ public class ApiException extends RuntimeException {
     }
 
     /**
+     * {@link #entryChanged}'s counterpart for a page: an update or a revision
+     * restore whose {@code expectedContentHash} is not the hash of the
+     * content now stored. {@code currentContentHash} carries the stored
+     * content's hash.
+     */
+    public static ApiException pageChanged(String currentContentHash) {
+        return new ApiException(409, TYPE_BASE + "page-changed", "Page changed",
+                "The page's text changed after it was read; get the page again and redo the change.",
+                null, currentContentHash);
+    }
+
+    /**
      * The opaque 500: fixed text, because an unexpected exception's message
      * routinely carries schema names, file paths and connection strings. The
      * cause belongs in the log, never in the body.

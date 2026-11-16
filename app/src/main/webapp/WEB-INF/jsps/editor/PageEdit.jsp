@@ -415,7 +415,98 @@
     <sec:csrfInput/>
 </form>
 
+<%-- page revisions: every save that changed the title or content left one.
+     Outside the main form: restore is its own POST with its own CSRF token,
+     and forms must not nest. --%>
+<c:if test="${not empty bean.id && not empty pageRevisions}">
+    <div id="pageRevisionsCard" class="editor-box editor-rail-extra">
+        <p class="rail-group-label"><spring:message code="pageEdit.revisions"/></p>
+        <p class="pagetip"><spring:message code="pageEdit.revisionsTip"/></p>
+        <table class="table table-sm" id="pageRevisionsTable">
+            <c:forEach items="${pageRevisions}" var="revision">
+                <tr>
+                    <td><rc:date value="${revision.created}"/></td>
+                    <td><c:out value="${revision.creator}"/></td>
+                    <td>
+                        <button type="button" class="btn btn-link btn-sm revision-diff-button"
+                                data-revision-id="${fn:escapeXml(revision.id)}">
+                            <spring:message code="weblogEdit.revisionCompare"/>
+                        </button>
+                    </td>
+                    <td>
+                        <form method="post" style="display:inline"
+                              action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageEdit!restoreRevision.rol">
+                            <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
+                            <input type="hidden" name="id" value="${fn:escapeXml(bean.id)}"/>
+                            <input type="hidden" name="revisionId" value="${fn:escapeXml(revision.id)}"/>
+                            <sec:csrfInput/>
+                            <button type="submit" class="btn btn-outline-secondary btn-sm revision-restore-button">
+                                <spring:message code="weblogEdit.revisionRestore"/>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <%-- why that save was made, when it said (an API update's revisionNote) --%>
+                <c:if test="${not empty revision.note}">
+                    <tr class="revision-note-row">
+                        <td colspan="4" class="revision-note">${fn:escapeXml(revision.note)}</td>
+                    </tr>
+                </c:if>
+            </c:forEach>
+        </table>
+    </div>
+</c:if>
+
 </div><%-- /editor-grid --%>
+
+<%-- revision diff modal + script (the card is in the rail above) --%>
+<c:if test="${not empty bean.id && not empty pageRevisions}">
+    <div id="revision-diff-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="revision-diff-modal-title">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <p id="revision-diff-modal-title" class="modal-title"><spring:message code="weblogEdit.revisionCompare"/></p>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<spring:message code='generic.close'/>"></button>
+                </div>
+                <div class="modal-body" id="revisionDiffBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        #revisionDiffBody pre { white-space: pre-wrap; }
+        #revisionDiffBody .diff-added { background-color: color-mix(in srgb, var(--good) 15%, var(--surface)); display: block; }
+        #revisionDiffBody .diff-removed { background-color: color-mix(in srgb, var(--bad) 15%, var(--surface)); display: block; }
+        #revisionDiffBody .diff-same { color: var(--ink-soft); display: block; }
+        #revisionDiffBody .revision-diff-same { margin: 0; color: var(--ink-soft); }
+    </style>
+
+    <script>
+        <%-- The diff is computed on the SERVER against the page as saved, so
+             it shows what is stored, not what is unsaved in the editor. --%>
+        $(function () {
+            $(".revision-diff-button").on('click', function () {
+                var revisionId = this.dataset.revisionId;
+                $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewLoading" javaScriptEscape="true"/>');
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('revision-diff-modal')).show();
+                $.ajax({
+                    type: 'POST',
+                    url: '<c:url value="/pressroom-ui/authoring/pageEdit!revisionDiff.rol"/>',
+                    data: {
+                        id: '${fn:escapeXml(bean.id)}',
+                        revisionId: revisionId,
+                        weblog: '${actionWeblog.handle}',
+                        '${_csrf.parameterName}': '${_csrf.token}'
+                    },
+                    success: function (html) { $("#revisionDiffBody").html(html); },
+                    error: function () {
+                        $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewFailed" javaScriptEscape="true"/>');
+                    }
+                });
+            });
+        });
+    </script>
+</c:if>
 
 <%-- ====================================================================== --%>
 <%-- Delete confirmation. Outside the edit form: it is its own POST with its

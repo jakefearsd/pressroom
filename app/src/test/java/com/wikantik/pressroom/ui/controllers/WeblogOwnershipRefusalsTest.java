@@ -175,6 +175,39 @@ class WeblogOwnershipRefusalsTest {
         assertNull(WeblogOwnership.page(mock.weblogger(), "p1", theirs));
     }
 
+    /** A revision is as reachable as its page and no more: another page's reads as absent, even in one weblog. */
+    @Test
+    void aPageRevisionIsFoundOnlyForItsOwnPage() throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setId("p1");
+        page.setWeblog(mine);
+        WeblogPage sibling = new WeblogPage();
+        sibling.setId("p2");
+        sibling.setWeblog(mine);
+        com.wikantik.pressroom.pojos.WeblogPageRevision revision = new com.wikantik.pressroom.pojos.WeblogPageRevision();
+        revision.setPage(page);
+        when(mock.weblogPageManager().getRevision("r1")).thenReturn(revision);
+        when(mock.weblogPageManager().getRevision("orphan"))
+                .thenReturn(new com.wikantik.pressroom.pojos.WeblogPageRevision());
+        when(mock.weblogPageManager().getRevision("boom"))
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("boom"));
+
+        assertSame(revision, WeblogOwnership.pageRevision(mock.weblogger(), "r1", page));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "r1", sibling));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "r1", null));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "r1", new WeblogPage() {
+            @Override
+            public String getId() {
+                return null;
+            }
+        }));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "orphan", page));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "nope", page));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), " ", page));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), null, page));
+        assertNull(WeblogOwnership.pageRevision(mock.weblogger(), "boom", page));
+    }
+
     /** A trashed page answers like an unknown id on every route that edits or reads one. */
     @Test
     void pageRefusesATrashedPage() throws Exception {

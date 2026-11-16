@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
 import java.time.Instant;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
 
 /**
  * Views of an entry's revisions for the automation API (spec 2026-10-24,
@@ -49,6 +50,18 @@ public final class RevisionDtos {
     public static RevisionSummary toSummary(WeblogEntryRevision revision) {
         return new RevisionSummary(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
                 revision.getNote(), revision.getTitle());
+    }
+
+    /** A page revision in a page's list: everything but its content. A page's title is stored raw. */
+    public static RevisionSummary toSummary(WeblogPageRevision revision) {
+        return new RevisionSummary(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
+                revision.getNote(), revision.getTitle());
+    }
+
+    /** A page revision with its content as {@code text}; a page has no summary. */
+    public static RevisionView toView(WeblogPageRevision revision, String diff) {
+        return new RevisionView(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
+                revision.getNote(), revision.getTitle(), null, revision.getContent(), diff);
     }
 
     public static RevisionView toView(WeblogEntryRevision revision, String diff) {

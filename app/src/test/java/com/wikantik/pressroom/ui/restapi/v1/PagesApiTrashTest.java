@@ -82,7 +82,7 @@ class PagesApiTrashTest {
     }
 
     private MockHttpServletRequestBuilder on(MockHttpServletRequestBuilder request) {
-        return request.requestAttr("actionWeblog", weblog);
+        return request.requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User());
     }
 
     private static tools.jackson.databind.JsonNode json(String body) {
@@ -175,7 +175,7 @@ class PagesApiTrashTest {
         assertTrue(body.contains("restore it first"), body);
         assertEquals("Title of about", trashed.getTitle());
         assertEquals(WeblogPage.PubStatus.TRASHED, trashed.getStatus());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -202,7 +202,7 @@ class PagesApiTrashTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"trashed\"}"))
                 .andExpect(status().isBadRequest()).andExpect(errorFieldIs("status"));
 
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -216,7 +216,7 @@ class PagesApiTrashTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertTrue(body.contains("in the trash"), body);
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 
     // --------------------------------------------------------------- restore
@@ -298,6 +298,6 @@ class PagesApiTrashTest {
         verify(pages, never()).trashPage(any());
         verify(pages, never()).restorePage(any());
         verify(pages, never()).removePage(any());
-        verify(pages, never()).savePage(any());
+        verify(pages, never()).savePage(any(), any(), any());
     }
 }

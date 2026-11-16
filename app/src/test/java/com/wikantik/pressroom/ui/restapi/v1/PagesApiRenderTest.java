@@ -51,6 +51,7 @@ class PagesApiRenderTest {
         api.weblogger = TestUtils.weblogger();
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/" + HANDLE + "/pages");
         request.setAttribute("actionWeblog", TestUtils.getManagedWebsite(weblog));
+        request.setAttribute("authenticatedUser", TestUtils.getManagedUser(user));
         PageDtos.PageWrite body = new ObjectMapper().readValue(
                 "{\"slug\":\"services\",\"title\":\"Services\",\"text\":\"What we do.\",\"status\":\"PUBLISHED\","
                         + "\"searchDescription\":\"Guided walks on the coast.\"}",

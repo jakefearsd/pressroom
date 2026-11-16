@@ -81,12 +81,23 @@ public final class McpToolCatalog {
                     action("list", "List pages.", "GET " + W + "/pages"),
                     action("get", "One page.", "GET " + W + "/pages/{id}"),
                     action("create", "Create a page.", "POST " + W + "/pages"),
-                    action("update", "Change the fields given.", "PATCH " + W + "/pages/{id}"),
+                    action("update", "Change the fields given; others are left alone. expectedContentHash refuses "
+                            + "the update if the page's text changed since it was read; revisionNote labels the "
+                            + "revision it leaves.", "PATCH " + W + "/pages/{id}"),
                     action("delete", "Move a page to the trash.", "DELETE " + W + "/pages/{id}"),
                     action("restore", "Bring a page back from the trash, as a DRAFT.",
                             "POST " + W + "/pages/{id}/restore"),
                     action("delete_forever", "Permanently delete a page that is already in the trash.",
                             "POST " + W + "/pages/{id}/delete-forever"),
+                    action("revisions", "A page's revisions, newest first: each is the title and text one save "
+                            + "replaced, with who saved, when and its note; no text.",
+                            "GET " + W + "/pages/{id}/revisions"),
+                    action("revision", "One revision's title and text, and diff: a unified diff from it to the "
+                            + "page's current text, or to the revision against names.",
+                            "GET " + W + "/pages/{id}/revisions/{revisionId}"),
+                    action("restore_revision", "Put a revision's title and text back; what it replaces becomes a "
+                            + "revision. expectedContentHash refuses it if the page changed since it was read.",
+                            "POST " + W + "/pages/{id}/revisions/{revisionId}/restore"),
                     action("set_parts", "Make these entries the strand's parts, in order (replaces the list).",
                             "PUT " + W + "/pages/{id}/parts")),
             tool("redirects", "301 rules for weblog paths that would otherwise be not found.", false,

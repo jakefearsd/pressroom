@@ -442,6 +442,31 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
     can choose it.
   - Browser tests that reuse a slug must clear the trash too
     (`PressroomIT.deletePageForeverFromTrash`).
+- **Page revisions** (V051, `pressroom_weblogpage_revision`,
+  `WeblogPageRevision`; spec Part 2). The entry mechanism, repeated:
+  - A revision holds the **title and content** a save replaced, never a
+    setting, so a restore cannot republish a page or move its URL.
+  - `WeblogPage.snapshotLoaded` (JPA post-load) takes the baseline;
+    `savePage(page, editor, note)` records `contentBeingReplaced` **after
+    the commit, in its own transaction** (`storeRevision`), where a failure
+    is a WARN and costs only the revision. `savePage(page)` is the system
+    form (null creator). Only `savePage` records: `trashPage`,
+    `restorePage` and `setNavOrder` go through `persist` and leave none.
+    After recording, the baseline is re-taken, so two saves in one session
+    chain.
+  - Retention is `page.revisions.retention` (default **50**, 0 none,
+    negative all), pruned inline at the write. Part 3 of the spec replaces
+    this prune and the entries' with one `RevisionRetention`; the `kept`
+    column exists for it and nothing sets it yet.
+  - `removePage` removes the page's revisions before the row and
+    `removePages(weblog)` by weblog; the FK cascade is the backstop.
+  - Revision ids resolve through `WeblogOwnership.pageRevision(id, page)`,
+    with the page already found by `lookupPage` (which refuses trash).
+  - Editor: the rail's Revisions box and diff modal on `PageEdit.jsp`,
+    `pageEdit!revisionDiff.rol` and `pageEdit!restoreRevision.rol`. The
+    diff fragment is `RevisionDiffHtml`, shared with the entry editor.
+  - A mock-based test of a page save must verify the three-argument
+    `savePage`: `never().savePage(any())` on the old form passes vacuously.
 - **Nav order**: `navOrder` is one 0-based sequence per blog (drafts and
   non-nav pages included). The Pages screen reorders it with up/down buttons
   and a drag handle (`pressroom-reorder.js`, shared with the strand Parts

@@ -270,6 +270,16 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `TRASHED` on a write (400 on `status`). MCP `pages` gained `restore` and `delete_forever`; the pinned
   surfaces are `ApiRouteTableTest` (route count), `ToolSchemasTest`, `McpToolCatalogTest` and the README
   tool table (`McpDocsTest`).
+- **Page revisions and the page stale-write guard** (2026-11-16; public text in `docs/api/README.md`,
+  "Page revisions and the stale-write guard"). `PagesApi` mirrors the entry routes: `revisions`, `revision`
+  (`TextDiff.unified`, optional `against`), `restoreRevision`. Revision ids resolve through
+  `WeblogOwnership.pageRevision`, so another page's is a 404. `PageView.contentHash` is
+  `EntryDtos.contentHash(page.getContent())`; `requireUnchanged` checks `expectedContentHash` before any
+  field, `requireUnchangedUnderLock` again under `WeblogPageManager.lockPageContent` just before the write;
+  a mismatch is `ApiException.pageChanged` (409 `page-changed`, `currentContentHash`). Every page write
+  passes `requireAuthenticatedUser` to `savePage(page, user, note)`: a test of a page write must set the
+  `authenticatedUser` request attribute, and must verify the three-argument `savePage` (a `never()` on the
+  one-argument form passes vacuously). `RevisionDtos.RevisionView.summary` is null for a page.
 - **Making the front page a draft or deleting it clears it by itself** in the same save
   (`JPAWeblogPageManagerImpl`); the API needs no extra call and the next `weblogs get` omits the field.
 - **Page `navOrder` must be >= 0** (`PageDtos.applyWrite`, 400 on `navOrder`). The Pages screen's reorder

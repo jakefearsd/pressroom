@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -93,7 +94,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertTrue(errors(model).isEmpty(), "no refusal expected: " + errors(model));
         assertTrue(page.getStrand(), "the switch is stored on the page");
         var order = inOrder(weblogger.getWeblogPageManager(), entries);
-        order.verify(weblogger.getWeblogPageManager()).savePage(page);
+        order.verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         order.verify(entries).setStrandParts(page, List.of(c, a));
         assertEquals(1, weblogger.flushCount());
     }
@@ -142,7 +143,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertTrue(errors(model).isEmpty(), errors(model).toString());
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -177,7 +178,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-c", "post-a"), "post-a", "post-c"));
 
         assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -190,7 +191,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
 
         controller.save(requestFor(weblogA), model, bean);
 
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -209,7 +210,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         var saved = org.mockito.ArgumentCaptor.forClass(WeblogPage.class);
-        verify(weblogger.getWeblogPageManager()).savePage(saved.capture());
+        verify(weblogger.getWeblogPageManager()).savePage(saved.capture(), any(), any());
         assertTrue(saved.getValue().getStrand());
         verify(entries).setStrandParts(saved.getValue(), List.of(a));
         assertEquals(2, weblogger.flushCount());
@@ -223,7 +224,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
 
         controller.save(requestFor(weblogA), model, bean);
 
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         verify(entries, never()).getWeblogEntry(any());
         verify(entries, never()).setStrandParts(any(), any());
     }
@@ -261,7 +262,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, strandBean(page, "post-nowhere"));
 
         assertTrue(errors(model).contains("strand.error.unknownPost"), errors(model).toString());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -272,7 +273,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, strandBean(page, "post-a"));
 
         assertTrue(errors(model).contains("strand.error.unknownPost"), errors(model).toString());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -298,7 +299,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertEquals(List.of("page_strand_parts"), invalidFields(model));
         assertEquals("Old title", page.getTitle(), "a refused save changes nothing, page fields included");
         assertFalse(page.getStrand());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -319,7 +320,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertEquals(List.of("page_bean_strand"), invalidFields(model));
         assertTrue(page.getStrand(), "still a strand");
         assertTrue(bean.getStrand(), "the redisplayed form shows what is stored");
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -333,7 +334,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         controller.save(requestFor(weblogA), model, bean);
 
         assertFalse(page.getStrand());
-        verify(weblogger.getWeblogPageManager()).savePage(page);
+        verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -350,7 +351,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertTrue(errors(model).isEmpty(), errors(model).toString());
         assertFalse(page.getStrand());
         var order = inOrder(weblogger.getWeblogPageManager(), entries);
-        order.verify(weblogger.getWeblogPageManager()).savePage(page);
+        order.verify(weblogger.getWeblogPageManager()).savePage(eq(page), any(), any());
         order.verify(entries).setStrandParts(page, List.of());
     }
 
@@ -369,7 +370,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         assertEquals(List.of("This strand has 2 posts."), errors(model));
         assertTrue(page.getStrand());
         assertTrue(bean.getStrand());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
         verify(entries, never()).setStrandParts(any(), any());
     }
 
@@ -385,7 +386,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
 
         assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
         assertTrue(page.getStrand());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     @Test
@@ -400,7 +401,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
 
         assertTrue(errors(model).contains("generic.error.check.logs"), errors(model).toString());
         assertTrue(page.getStrand());
-        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any(), any(), any());
     }
 
     // --- what the panel renders from ---
@@ -496,7 +497,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         members(page, a);
         when(entries.getWeblogEntries(any(WeblogEntrySearchCriteria.class))).thenReturn(List.of(b, free));
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-b", "post-a"), "post-a"));
 
@@ -512,7 +513,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         WeblogEntry c = postOn(weblogA, "c");
         when(entries.getWeblogEntries(any(WeblogEntrySearchCriteria.class))).thenReturn(List.of(b, c));
         doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any());
+                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
         PageBean bean = new PageBean();
         bean.setSlug("feed");
         bean.setTitle("Trip");

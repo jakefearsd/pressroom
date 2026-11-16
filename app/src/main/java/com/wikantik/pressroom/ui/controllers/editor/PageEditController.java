@@ -54,6 +54,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
+import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Add or edit a single static page.
@@ -420,7 +423,8 @@ public class PageEditController extends BaseController {
                 // an existing page's emptied slug stays a mistake to report.
                 page.setSlug(WeblogPage.slugFromTitle(page.getTitle()));
             }
-            weblogger.getWeblogPageManager().savePage(page);
+            // As the signed-in user: a revision this save leaves is theirs.
+            weblogger.getWeblogPageManager().savePage(page, getAuthenticatedUser(request), null);
             if (parts.isPresent()) {
                 // The parts' strand_page_id references the page row through a
                 // plain id column, not a mapped relationship, so nothing
@@ -540,6 +544,81 @@ public class PageEditController extends BaseController {
         }
 
         addStrandModelAttributes(getActionWeblog(request), page, bean, postedRows, model);
+        model.addAttribute("pageRevisions", revisionsOf(page));
+    }
+
+    /**
+     * The saved page's revisions, newest first, for the rail's Revisions
+     * box. A display path: a list that cannot be read leaves the box out and
+     * the editor usable.
+     */
+    private List<WeblogPageRevision> revisionsOf(WeblogPage page) {
+        if (page == null) {
+            return List.of();
+        }
+        try {
+            return weblogger.getWeblogPageManager().getRevisions(page);
+        } catch (WebloggerException ex) {
+            log.error("Error loading revisions for page {}", page.getId(), ex);
+            return List.of();
+        }
+    }
+
+    /**
+     * The diff between one revision and the page as it stands now, as a
+     * fragment for the editor's revision modal. The page is found by the
+     * usual ownership lookup (which refuses trash) and the revision only as
+     * a revision of that page: any other id is a 404.
+     */
+    @PostMapping("/pageEdit!revisionDiff.rol")
+    @ResponseBody
+    public ResponseEntity<String> revisionDiff(HttpServletRequest request,
+                                               @RequestParam(name = "id", required = false) String id,
+                                               @RequestParam(name = "revisionId", required = false) String revisionId) {
+        WeblogPage page = lookupPage(id, request);
+        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
+        if (revision == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String html = RevisionDiffHtml.of(getText("pageEdit.revisionSame", request),
+                new RevisionDiffHtml.Section(getText("weblogEdit.title", request),
+                        revision.getTitle(), page.getTitle()),
+                new RevisionDiffHtml.Section(getText("weblogEdit.content", request),
+                        revision.getContent(), page.getContent()));
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("text/html;charset=UTF-8"))
+                .body(html);
+    }
+
+    /**
+     * Puts a revision's title and content back, through the ordinary save,
+     * so the state it replaces becomes a revision of its own: a restore can
+     * be undone. A revision holds no settings, so the slug, status and
+     * navigation stay as they are.
+     */
+    @PostMapping("/pageEdit!restoreRevision.rol")
+    public String restoreRevision(HttpServletRequest request,
+                                  @RequestParam(name = "id", required = false) String id,
+                                  @RequestParam(name = "revisionId", required = false) String revisionId,
+                                  RedirectAttributes redirectAttributes) {
+        String handle = getActionWeblog(request).getHandle();
+        WeblogPage page = lookupPage(id, request);
+        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
+        if (revision == null) {
+            addFlashError(redirectAttributes, "pageEdit.notFound", request);
+            return "redirect:/pressroom-ui/authoring/pages.rol?weblog=" + handle;
+        }
+        try {
+            page.setTitle(revision.getTitle());
+            page.setContent(revision.getContent());
+            weblogger.getWeblogPageManager().savePage(page, getAuthenticatedUser(request), null);
+            weblogger.flush();
+            addFlashMessage(redirectAttributes, "pageEdit.revisionRestored", request);
+        } catch (Exception ex) {
+            log.error("Error restoring revision {} of page {}", revision.getId(), page.getId(), ex);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+        }
+        return "redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle + "&id=" + page.getId();
     }
 
     /**
