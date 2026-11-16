@@ -433,8 +433,10 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   same save (in the managed weblog too) and bump `lastModified`;
   **republishing does not restore it**, the author sets it again. Routing,
   `/posts`, canonical and sitemap rules: `routing.md`, "A blog's front door";
-  the nav gains a "Posts" link (`themes-and-templates.md`); the API field is
-  `frontPage` (`api.md`). **Every link to the front page is the blog root**,
+  the nav's leading "All" reads "Posts" and the front page is not a nav item
+  (`themes-and-templates.md`); the API field is `frontPage` (`api.md`). The
+  Pages screen marks the front page ("Home page" beside its title) and its
+  delete prompt says the post list returns to the root. **Every link to the front page is the blog root**,
   not its slug: the nav, a strand's bar and "All parts" step (a strand page
   may be the front door: one address for a tutorial's "start here"), the
   Pages screen's view link and the privacy link (`themes-and-templates.md`,
@@ -444,6 +446,15 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   Removing the whole weblog clears the id with its pages
   (`FrontPageInvariantTest`). Saved pages also enter the search index
   (`architecture.md`, "Document kinds"): PUBLISHED and not `noindex`.
+- **A new page with no slug takes it from its title** (0.12.1,
+  `WeblogPage.slugFromTitle`: runs of letters and digits, lower-cased, joined
+  by hyphens), in the editor and on an API create alike; the derived slug
+  meets the rules a typed one does. An existing page's emptied slug is still
+  an error, never a silent rename.
+- **`Pages.jsp` has a real `<thead>`** (its body rows reorder), so the
+  caps-label header rule in `pressroom.css` styles `thead` there and the
+  first body row only in tables with no `thead` (`:not(:has(> thead))`).
+  0.12.0 shipped the first page styled as a header (`PagesJspTest`).
 - **Routing**: a published page is served at `/<handle>/<slug>`. **Not
   `/<handle>/page/<slug>`**, the CUSTOM-template route (see Templates); both
   admin screens (editor, `Pages.jsp`) once emitted it, so `PageEditJspTest`

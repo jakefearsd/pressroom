@@ -352,10 +352,13 @@ public class PageModel implements Model {
      * fail to match and render nothing.
      */
     public List<WeblogPage> getNavPages(WeblogWrapper navWeblog) {
+        // The front page is the blog's root, which the blog's name links.
+        String frontPageId = navWeblog.getFrontPageId();
         try {
             return weblogger.getWeblogPageManager()
                     .getPublishedPages(navWeblog.getPojo()).stream()
                     .filter(page -> Boolean.TRUE.equals(page.getShowInNav()))
+                    .filter(page -> frontPageId == null || !frontPageId.equals(page.getId()))
                     .collect(Collectors.toList());
         } catch (WebloggerException ex) {
             log.error("Error getting nav pages for weblog - {}", navWeblog, ex);

@@ -271,6 +271,28 @@ public class WeblogPage implements ShortcodeContext, Serializable {
         this.ogImageId = ogImageId;
     }
 
+    /**
+     * The slug a page takes from its title when its author names none: the
+     * title's runs of letters and digits, lower-cased and joined by hyphens.
+     * Empty when the title holds neither, which the slug rules then refuse
+     * as they refuse any blank slug.
+     */
+    public static String slugFromTitle(String title) {
+        if (title == null) {
+            return "";
+        }
+        StringBuilder slug = new StringBuilder(title.length());
+        for (char c : title.toLowerCase(java.util.Locale.ROOT).toCharArray()) {
+            if (Character.isLetterOrDigit(c)) {
+                slug.append(c);
+            } else if (slug.length() > 0 && slug.charAt(slug.length() - 1) != '-') {
+                slug.append('-');
+            }
+        }
+        int end = slug.length();
+        return end > 0 && slug.charAt(end - 1) == '-' ? slug.substring(0, end - 1) : slug.toString();
+    }
+
     // ------------------------------------------------------- Good citizenship
 
     @Override

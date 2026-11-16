@@ -273,8 +273,27 @@ class PageRoutingTest {
 
         assertTrue(posts.contains("LISTEDTITLE"), "/posts is the listing:\n" + posts);
         assertTrue(canonical(posts).endsWith("/routeblog/posts"), canonical(posts));
-        assertTrue(posts.contains("/routeblog/posts\">Posts</a>"), "the nav links the listing:\n" + posts);
-        assertTrue(get("/").getContentAsString().contains(POSTS_LINK), "on the front page too");
+        assertTrue(posts.contains("/routeblog/posts\" aria-current=\"page\">Posts</a>"),
+                "the nav links the listing, as the current view:\n" + posts);
+        String front = get("/").getContentAsString();
+        assertTrue(front.contains("/routeblog/posts\">Posts</a>"), "on the front page too:\n" + front);
+    }
+
+    /**
+     * One link to the listing, not two: with a front door the category row's leading item reads "Posts"
+     * in place of "All", and the front page itself is the blog's name, not a nav item of its own.
+     */
+    @Test
+    void withAFrontPageTheNavHasOnePostsLinkAndNoLinkForTheFrontPageItself() throws Exception {
+        frontPage(pageId("about"));
+
+        for (String path : java.util.List.of("/", "/posts")) {
+            String body = get(path).getContentAsString();
+            assertEquals(1, body.split(POSTS_LINK, -1).length - 1, path + " has one Posts link:\n" + body);
+            assertFalse(body.contains(">All</a>"), path + " has no All beside it:\n" + body);
+            assertFalse(body.contains("page-nav-item\"><a href=\"/pressroom/routeblog/\""),
+                    path + " does not list the front page in the nav:\n" + body);
+        }
     }
 
     /** Old listing links keep listing on a blog that gained a front door; their canonical is the /posts form. */

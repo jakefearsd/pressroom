@@ -1488,11 +1488,14 @@ table.pressroomtable {
    inconsistently across these tables -- sometimes on the header <th>s
    (Entries/Pages/Submissions/Members), sometimes on body <td>s
    (Members.jsp's data cells) -- so trusting the class would caps-label
-   real data. None of these tables declare a <thead>, so the header row is
-   always the first <tr> of the table's own (implicit) <tbody>; targeting
-   that structurally is correct everywhere the class is not. */
-table.pressroomtable > tbody > tr:first-child > th,
-table.pressroomtable > tbody > tr:first-child > td {
+   real data. Most of these tables declare no <thead>, so their header row
+   is the first <tr> of the table's own (implicit) <tbody>; targeting that
+   structurally is correct everywhere the class is not. A table that does
+   declare one (Pages.jsp, whose body rows reorder) is styled through it,
+   and its first body row is a row of data like the rest. */
+table.pressroomtable > thead > tr > th,
+table.pressroomtable:not(:has(> thead)) > tbody > tr:first-child > th,
+table.pressroomtable:not(:has(> thead)) > tbody > tr:first-child > td {
     font-family: var(--font-ui);
     font-size: 12px;
     font-weight: 600;
@@ -2063,3 +2066,7 @@ span.button {
 .traffic-empty { color: var(--ink-soft); }
 .traffic-fresh { font-size: 12px; color: var(--ink-soft); margin-top: 12px; }
 .traffic-fresh .quiet-link { margin-left: 8px; }
+
+/* Pages.jsp: the quiet "Home page" marker beside the title of the page a
+   blog shows at its root. */
+.page-home-marker { margin-left: 8px; }

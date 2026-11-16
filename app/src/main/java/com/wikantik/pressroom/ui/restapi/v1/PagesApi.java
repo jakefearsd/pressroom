@@ -90,7 +90,10 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             errors.add("clear", "clear applies only to updates.");
         }
         String[] slug = new String[1];
-        errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(body.slug()));
+        // No slug named: the title's, held to the rules a typed one is.
+        String wanted = body.slug() == null || body.slug().isBlank()
+                ? WeblogPage.slugFromTitle(body.title()) : body.slug();
+        errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(wanted));
         checkWrite(errors, weblog, body, Set.of(), null);
         checkStrand(errors, weblog, null, body.strand());
         errors.throwIfAny();

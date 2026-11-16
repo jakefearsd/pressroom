@@ -2034,14 +2034,13 @@ Emits <li> items and nothing else -- no <ul>, no wrapper -- so each theme
 supplies its own container and keeps its own CSS. That is why this is a
 separate macro from #showPageMenu rather than an extension of it.
 
-A blog with a front door shows a page at its root, so its post listing
-($url.posts, /posts) leads the list as "Posts". Each page is linked through
-$url.staticPage($navPage), which answers the root for the front page.
+The front page of a blog with a front door is not in the list (the model's
+nav pages leave it out): the blog's name links the root it is served at. The
+link to that blog's post listing is the category list's leading item, which
+reads "Posts" there; a template that shows no category list links $url.posts
+itself, as the fallback page template does.
 *#
 #macro(showPageLinks $weblog)
-#if($weblog.hasFrontDoor())
-    <li class="page-nav-item"><a href="$url.posts">$text.get("weblog.nav.posts")</a></li>
-#end
 #foreach($navPage in $model.getNavPages($weblog))
     <li class="page-nav-item"><a href="$url.staticPage($navPage)">$utils.escapeHTML($navPage.title)</a></li>
 #end
@@ -2063,10 +2062,17 @@ emitting the raw one are both bugs; they just look identical in the source.
     ## category, tag, date archive, permalink or static page, each of which
     ## shows less than all ($model.weblogDate is the archive's yyyyMM[dd]).
     #set($catsAllCurrent = !$model.weblogCategory && !$model.permalink && !$model.page && !($model.tags && !$model.tags.isEmpty()) && !$model.weblogDate)
-    #if ($catsAllCurrent)
-        <li class="selected"><a href="$url.posts" aria-current="page">$text.get("generic.all")</a></li>
+    ## With a front door the root is a page, so this item is the one link to
+    ## the post listing and says so: "Posts", not "All".
+    #if ($model.weblog.hasFrontDoor())
+        #set($catsAllLabel = $text.get("weblog.nav.posts"))
     #else
-        <li><a href="$url.posts">$text.get("generic.all")</a></li>
+        #set($catsAllLabel = $text.get("generic.all"))
+    #end
+    #if ($catsAllCurrent)
+        <li class="selected"><a href="$url.posts" aria-current="page">$catsAllLabel</a></li>
+    #else
+        <li><a href="$url.posts">$catsAllLabel</a></li>
     #end
     #set($cats = $model.weblog.getWeblogCategories())
     #foreach($cat in $cats)
@@ -2111,6 +2117,12 @@ emitting the raw one are both bugs; they just look identical in the source.
         <li class="rNavItem">
             <a href="$url.home"><span>Weblog</span></a>
         </li>
+        ## A blog whose root is a page links its post listing here.
+        #if ($weblog.hasFrontDoor())
+        <li class="rNavItem">
+            <a href="$url.posts"><span>$text.get("weblog.nav.posts")</span></a>
+        </li>
+        #end
         ## #showPageLinks below is the whole nav-page list. A second loop used
         ## to follow it, over $weblog.pages -- a property WeblogWrapper has
         ## never had, so the body never ran once; Velocity's lenient mode

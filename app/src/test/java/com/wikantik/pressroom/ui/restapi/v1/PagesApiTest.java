@@ -184,6 +184,52 @@ class PagesApiTest {
         verify(weblogger).flush();
     }
 
+    /** A create that names no slug takes it from the title, as an entry's anchor is. */
+    @Test
+    void postWithoutASlugTakesItFromTheTitle() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        for (String content : List.of("{\"title\":\"Start Here\"}", "{\"slug\":\" \",\"title\":\"Start Here\"}")) {
+            String body = mockMvc(controllerFor(weblogger))
+                    .perform(post("/v1/weblogs/myblog/pages")
+                            .requestAttr("actionWeblog", weblog)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(content))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertEquals("start-here", new tools.jackson.databind.ObjectMapper().readTree(body).get("slug").asString());
+        }
+    }
+
+    /** The derived slug meets the same rules as a typed one: a duplicate is a 409, a reserved name a 400. */
+    @Test
+    void aSlugTakenFromTheTitleIsCheckedLikeATypedOne() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        when(weblogger.getWeblogPageManager().getPageBySlug(weblog, "about"))
+                .thenReturn(aPage(weblog, "page-1", "about", "About"));
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"About\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("slug"));
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Posts\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("slug"));
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/pages").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"?!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("slug"));
+
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
     /** pressroom_weblogpage.slug/title are both varchar(255) NOT NULL (V014__weblog_pages.sql). */
     @Test
     void postWithASlugLongerThanTheColumnIsBadRequest() throws Exception {

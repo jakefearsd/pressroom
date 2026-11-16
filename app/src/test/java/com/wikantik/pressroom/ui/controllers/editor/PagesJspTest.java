@@ -109,4 +109,34 @@ class PagesJspTest {
         assertTrue(jsp.contains("PressroomReorder.install"));
         assertTrue(jsp.contains("rowSelector") && jsp.contains("upSelector") && jsp.contains("downSelector"));
     }
+
+    /** The Pages screen says which page is the blog's home page, and so does that page's delete prompt. */
+    @Test
+    void theHomePageIsMarkedAndItsDeletePromptSaysSo() throws IOException {
+        String jsp = jsp();
+        assertTrue(jsp.contains("<c:if test=\"${actionWeblog.frontPageId == p.id}\">"
+                        + "<span class=\"status-pill page-home-marker\"><spring:message code=\"weblogPagesForm.homePage\"/></span></c:if>"),
+                "a quiet marker beside the home page's title");
+        assertTrue(jsp.contains("<spring:message code=\"pages.deleteHomeConfirm\" var=\"homeConfirm\"/>"));
+        assertTrue(jsp.contains("<c:if test=\"${actionWeblog.frontPageId == p.id}\"> ${fn:escapeXml(homeConfirm)}</c:if>\""),
+                "the delete prompt of the home page ends with what deleting it does");
+    }
+
+    /**
+     * The table has a real header section, so the caps-label header style belongs to it. The older
+     * rule (the first row of the body, for the tables with no header section) styled the first page
+     * as a header: 0.12.0 shipped that.
+     */
+    @Test
+    void theHeaderStyleGoesToTheHeaderSectionNotTheFirstPage() throws IOException {
+        String css = Files.readString(Paths.get("src/main/webapp/pressroom-ui/styles/pressroom.css"),
+                StandardCharsets.UTF_8);
+        assertTrue(jsp().contains("<thead>"), "Pages.jsp declares its header section");
+        assertTrue(css.contains("table.pressroomtable > thead > tr > th,"), "the header section is styled");
+        assertTrue(css.contains("table.pressroomtable:not(:has(> thead)) > tbody > tr:first-child > th,")
+                        && css.contains("table.pressroomtable:not(:has(> thead)) > tbody > tr:first-child > td {"),
+                "the first-row rule applies only where there is no header section");
+        assertFalse(css.contains("table.pressroomtable > tbody > tr:first-child"),
+                "no first-row header rule that ignores the header section");
+    }
 }

@@ -615,6 +615,29 @@ class PageModelTest {
                         + "order the manager already returned them.");
     }
 
+    /** The front page is the blog's root, which the blog's name already links: it is not a nav item too. */
+    @Test
+    void getNavPagesLeavesOutTheFrontPage() throws Exception {
+        WeblogPageManager pageManager = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
+
+        WeblogPage front = new WeblogPage();
+        front.setId("front-id");
+        front.setTitle("Start Here");
+        WeblogPage other = new WeblogPage();
+        other.setId("other-id");
+        other.setTitle("About");
+        when(pageManager.getPublishedPages(weblog)).thenReturn(List.of(front, other));
+        weblog.setFrontPageId("front-id");
+        try {
+            PageModel model = modelFor(pageRequest());
+
+            assertEquals(List.of(other), model.getNavPages(model.getWeblog()));
+        } finally {
+            weblog.setFrontPageId(null);
+        }
+    }
+
     @Test
     void getNavPagesDegradesToAnEmptyListWhenTheManagerFails() throws Exception {
         // A page lookup failure must not take the whole rendered page down --

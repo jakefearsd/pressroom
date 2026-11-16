@@ -53,6 +53,7 @@
      remove action is a submit button carrying its own name/value per row,
      rather than a nested form per row (which is not valid HTML). --%>
 <spring:message code="weblogPagesForm.removeConfirm" var="pageDeleteConfirmBase"/>
+<spring:message code="pages.deleteHomeConfirm" var="homeConfirm"/>
 <spring:message code="weblogPagesForm.moveUp" var="moveUpLabel"/>
 <spring:message code="weblogPagesForm.moveDown" var="moveDownLabel"/>
 <form id="pageRemoveForm" method="post"
@@ -110,6 +111,9 @@
                             <c:param name="id" value="${p.id}"/>
                         </c:url>
                         <a href="${editUrl}"><c:out value="${p.title}"/></a>
+                        <%-- The page this blog shows at its root (Settings,
+                             Home page). --%>
+                        <c:if test="${actionWeblog.frontPageId == p.id}"><span class="status-pill page-home-marker"><spring:message code="weblogPagesForm.homePage"/></span></c:if>
                     </td>
                     <td>
                         <c:set var="pillStatus" value="${p.status.name()}" scope="request"/>
@@ -139,6 +143,9 @@
                              HTML attribute has no second parser, so data-confirm
                              is safe with the same escape.
 
+                             The home page's prompt ends with what deleting
+                             it does to the blog's root.
+
                              A strand with parts adds how many posts leave it
                              (the posts are kept): strandPartCounts holds
                              only strands that have parts. --%>
@@ -147,7 +154,7 @@
                         </c:if>
                         <button type="submit" class="row-action row-action-danger page-delete-btn"
                                 name="removeId" value="${p.id}"
-                                data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?<c:if test="${not empty strandPartCounts[p.id]}"> ${fn:escapeXml(strandConfirm)}</c:if>"
+                                data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?<c:if test="${not empty strandPartCounts[p.id]}"> ${fn:escapeXml(strandConfirm)}</c:if><c:if test="${actionWeblog.frontPageId == p.id}"> ${fn:escapeXml(homeConfirm)}</c:if>"
                                 aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(p.title)}">
                             <span class="bi bi-trash" aria-hidden="true" title="<spring:message code="generic.delete"/>"></span>
                         </button>

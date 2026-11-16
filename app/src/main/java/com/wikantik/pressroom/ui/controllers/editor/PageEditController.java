@@ -385,6 +385,11 @@ public class PageEditController extends BaseController {
         try {
             bean.copyTo(page);
             boolean isNew = StringUtils.isBlank(bean.getId());
+            if (isNew && StringUtils.isBlank(page.getSlug())) {
+                // A new page left without a slug is addressed by its title;
+                // an existing page's emptied slug stays a mistake to report.
+                page.setSlug(WeblogPage.slugFromTitle(page.getTitle()));
+            }
             weblogger.getWeblogPageManager().savePage(page);
             if (parts.isPresent()) {
                 // The parts' strand_page_id references the page row through a

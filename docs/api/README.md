@@ -906,7 +906,9 @@ PUT    /api/v1/weblogs/{handle}/pages/{id}/parts
 `POST`-role required. `status` is one of `DRAFT`/`PUBLISHED` only — pages
 have no trash, no PENDING/SCHEDULED states, and no scheduling story at all
 (see [docs/dev/entries.md, "Pages"](../dev/entries.md#pages) for why pages are
-a separate entity from entries and deliberately excluded from the trash design). `slug`
+a separate entity from entries and deliberately excluded from the trash design). A
+create that names no `slug` takes it from the title (lower-cased words joined
+by hyphens: "Start Here" becomes `start-here`). `slug`
 is validated against the same reserved-word list (`ReservedSlugs`) the
 renderer's own URL parser uses, and checked for a duplicate against the
 weblog, before either ever reaches the database — both are 400/409 here

@@ -551,11 +551,15 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   feed's alternate link and the search "Main" link. `URLModel.home(int)`
   (paging) and `getPosts()` are the listing; `home(String locale)` is the
   root in that locale. A new `$url.home` use means deciding which one it is.
-- **The "Posts" nav link**: `showPageLinks` (the page-link macro every theme's
-  nav calls) puts `<li class="page-nav-item"><a href="$url.posts">` with the
-  `weblog.nav.posts` text first, only when `$weblog.hasFrontDoor()`. Nav
-  pages link through `$url.staticPage($navPage)` so the front page links to
-  the root, not its slug. Pages are listed by `navOrder`.
+- **The "Posts" nav link** (0.12.1): with a front door the category list's
+  leading item (`showWeblogCategoryLinksList`) reads `weblog.nav.posts`
+  ("Posts") in place of `generic.all` ("All"); it already linked
+  `$url.posts`. 0.12.0 added a second "Posts" item in `showPageLinks`, so
+  every bundled theme showed "All" and "Posts" side by side, both to
+  `/posts`. A template with no category list links `$url.posts` itself: the
+  fallback `templates/weblog/page.vm` and `showPageMenu` do. The front page
+  is not a nav item (`PageModel.getNavPages` leaves it out): the blog's name
+  links the root it is served at. Pages are listed by `navOrder`.
 - **Every link to a front page is the blog root**: `$url.staticPage` takes
   the page (`WeblogPage`) or its wrapper (`WeblogPageWrapper`, e.g.
   `$strandNav.strand`), never `.slug`, wherever a template links a page it

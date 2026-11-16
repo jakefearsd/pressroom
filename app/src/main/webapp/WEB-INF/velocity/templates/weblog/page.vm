@@ -49,7 +49,9 @@ markup so a page does not look foreign inside any of them.
 <header>
     <p><a href="$url.home">$model.weblog.name</a></p>
     ## the page-links macro emits bare list items, so the list is ours
-    <nav><ul class="page-nav">#showPageLinks($model.weblog)</ul></nav>
+    ## and with no category list here, neither is the link to the posts of a
+    ## blog whose root is a page
+    <nav><ul class="page-nav">#if($model.weblog.hasFrontDoor())<li class="page-nav-item"><a href="$url.posts">$text.get("weblog.nav.posts")</a></li>#end#showPageLinks($model.weblog)</ul></nav>
 </header>
 <main>
     <article class="pressroom-content">

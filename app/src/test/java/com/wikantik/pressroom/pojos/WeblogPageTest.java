@@ -53,4 +53,18 @@ class WeblogPageTest {
         page.setStrand(null);
         assertEquals(Boolean.FALSE, page.getStrand(), "null reads as not a strand");
     }
+
+    @Test
+    void aSlugFromATitleIsItsLowerCasedWordsJoinedByHyphens() {
+        assertEquals("validation-alpha", WeblogPage.slugFromTitle("Validation Alpha"));
+        assertEquals("maiia-s-bio", WeblogPage.slugFromTitle("  Maiia's   Bio! "));
+        assertEquals("über-uns-2026", WeblogPage.slugFromTitle("Über uns (2026)"));
+    }
+
+    @Test
+    void aTitleWithNoLetterOrDigitGivesNoSlug() {
+        assertEquals("", WeblogPage.slugFromTitle(null));
+        assertEquals("", WeblogPage.slugFromTitle("   "));
+        assertEquals("", WeblogPage.slugFromTitle("?!/ --"));
+    }
 }

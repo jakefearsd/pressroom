@@ -365,6 +365,35 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertNull(fresh.getAttribute("page"));
     }
 
+    /** A new page left without a slug is addressed by its title, as a post is. */
+    @Test
+    void aNewPageWithABlankSlugTakesItsSlugFromTheTitle() throws Exception {
+        PageBean bean = new PageBean();
+        bean.setSlug("  ");
+        bean.setTitle("Start Here, Please");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        org.mockito.ArgumentCaptor<WeblogPage> saved = org.mockito.ArgumentCaptor.forClass(WeblogPage.class);
+        verify(weblogger.getWeblogPageManager()).savePage(saved.capture());
+        assertEquals("start-here-please", saved.getValue().getSlug());
+    }
+
+    /** Emptying an existing page's slug is a mistake to report, never a silent rename. */
+    @Test
+    void anExistingPageWithABlankSlugIsNotRenamedFromItsTitle() throws Exception {
+        WeblogPage existing = pageOn(weblogA, "about");
+
+        PageBean bean = new PageBean();
+        bean.setId(existing.getId());
+        bean.setSlug("");
+        bean.setTitle("About Us");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals("", existing.getSlug(), "the blank slug reaches the manager, which refuses it");
+    }
+
     @Test
     void savingWithABlankSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug is required"))
@@ -372,7 +401,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         PageBean bean = new PageBean();
         bean.setSlug("");
-        bean.setTitle("No Slug");
+        bean.setTitle("?!");
 
         String view = controller.save(requestFor(weblogA), model, bean);
 
