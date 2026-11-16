@@ -29,6 +29,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.bind.annotation.RequestParam;
+import io.swagger.v3.oas.annotations.Parameter;
+import java.util.Locale;
 
 /**
  * Static page CRUD. {@code UISecurityEnforced} declares
@@ -54,14 +57,38 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     /** The longest parts list {@code set_parts} accepts. */
     static final int MAX_PARTS = 500;
 
+    /**
+     * The weblog's pages, without the trash; {@code status=TRASHED} lists
+     * the trash instead, and is the only way to read a trashed page (each
+     * view is complete, {@code trashedAt} included). No other status filters
+     * the list, so any other value is refused, not ignored.
+     */
     @GetMapping("")
-    public List<PageDtos.PageView> list(HttpServletRequest request) throws WebloggerException {
+    public List<PageDtos.PageView> list(
+            HttpServletRequest request,
+            @Parameter(description = "TRASHED lists the page trash; omit it for the pages themselves.")
+            @RequestParam(value = "status", required = false) String status) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
+        boolean trash = status != null;
+        if (trash && !namesTheTrash(status)) {
+            throw ApiException.invalidField("status", "status accepts only TRASHED, which lists the page trash.");
+        }
+        List<WeblogPage> pages = trash ? weblogger.getWeblogPageManager().getTrashedPages(weblog)
+                : weblogger.getWeblogPageManager().getPages(weblog);
         List<PageDtos.PageView> views = new ArrayList<>();
-        for (WeblogPage page : weblogger.getWeblogPageManager().getPages(weblog)) {
+        for (WeblogPage page : pages) {
             views.add(view(page));
         }
         return views;
+    }
+
+    /** Whether a {@code status} filter is TRASHED, in any case; parsed as the write's status is. */
+    private static boolean namesTheTrash(String status) {
+        try {
+            return WeblogPage.PubStatus.valueOf(status.trim().toUpperCase(Locale.ROOT)) == WeblogPage.PubStatus.TRASHED;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     @GetMapping("/{id}")
@@ -120,7 +147,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     public PageDtos.PageView update(
             HttpServletRequest request, @PathVariable("id") String id,
             @RequestBody PageDtos.PageWrite body) throws WebloggerException {
-        WeblogPage page = requirePage(request, id);
+        WeblogPage page = requireLivePageForWrite(request, id);
 
         FieldErrors errors = new FieldErrors();
         if (body.title() != null && body.title().isBlank()) {
@@ -166,7 +193,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     public PageDtos.PageView replaceParts(
             HttpServletRequest request, @PathVariable("id") String id,
             @RequestBody PageDtos.PartsWrite body) throws WebloggerException {
-        WeblogPage page = requirePage(request, id);
+        WeblogPage page = requireLivePageForWrite(request, id);
         List<String> ids = body.entries();
         if (ids == null) {
             throw ApiException.invalidField("entries", "entries is required: the strand's post ids in reading "
@@ -250,10 +277,46 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         checkImageId(errors, weblog, "ogImageId", body.ogImageId(), storedOgImageId);
     }
 
+    /**
+     * Moves the page to the trash, where it stays restorable for
+     * {@code page.trash.retention.days}. It stops being served and stops
+     * being the front door; it keeps its slug and, for a strand, its parts.
+     * Deleting for good is {@code delete-forever}, from the trash only. A
+     * page already in the trash is a 409, so a retried DELETE does not move
+     * the purge clock.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
-        WeblogPage page = requirePage(request, id);
+        WeblogPage page = requirePage(request, id, "Page is already in the trash.");
+        weblogger.getWeblogPageManager().trashPage(page);
+        weblogger.flush();
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Brings a trashed page back, always as a DRAFT: restoring republishes
+     * nothing, and a page that was the front door is not made the front door
+     * again. A page that is not trashed is a 409.
+     */
+    @PostMapping("/{id}/restore")
+    public PageDtos.PageView restore(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        WeblogPage page = requireTrashedPage(request, id, "Page is not trashed.");
+        weblogger.getWeblogPageManager().restorePage(page);
+        weblogger.flush();
+        return view(page);
+    }
+
+    /**
+     * Permanently deletes an already-trashed page; a strand's parts stay
+     * published, outside any strand. A second, deliberate step after
+     * trashing, never a way around it: a live page's id is a 409.
+     */
+    @PostMapping("/{id}/delete-forever")
+    public ResponseEntity<Void> deleteForever(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        WeblogPage page = requireTrashedPage(request, id, "Page is not trashed; trash it first.");
         weblogger.getWeblogPageManager().removePage(page);
         weblogger.flush();
         return ResponseEntity.noContent().build();
@@ -261,9 +324,10 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
 
     /**
      * The page with this id, but only when it belongs to the action weblog
-     * -- delegates to {@link WeblogOwnership#page}, this codebase's one IDOR
-     * defense for by-id page lookups, the fourth family member alongside
-     * entry/category/template.
+     * and is not in the trash -- delegates to {@link WeblogOwnership#page},
+     * this codebase's one IDOR defense for by-id page lookups, the fourth
+     * family member alongside entry/category/template. A trashed page is a
+     * 404 here, as an unknown one is: it is read from the trash list.
      */
     private WeblogPage requirePage(HttpServletRequest request, String id) {
         WeblogPage page = WeblogOwnership.page(weblogger, id, requireActionWeblog(request));
@@ -271,6 +335,40 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             throw ApiException.notFound("No such page.");
         }
         return page;
+    }
+
+    /** A write's lookup: as {@link #requirePage}, but a page of this weblog that is in the trash is a 409 saying so. */
+    private WeblogPage requireLivePageForWrite(HttpServletRequest request, String id) {
+        return requirePage(request, id, "Page is in the trash; restore it first.");
+    }
+
+    private WeblogPage requirePage(HttpServletRequest request, String id, String whenTrashed) {
+        Weblog weblog = requireActionWeblog(request);
+        WeblogPage page = WeblogOwnership.page(weblogger, id, weblog);
+        if (page != null) {
+            return page;
+        }
+        if (WeblogOwnership.trashedPage(weblogger, id, weblog) != null) {
+            throw ApiException.conflict(whenTrashed);
+        }
+        throw ApiException.notFound("No such page.");
+    }
+
+    /**
+     * The trash's lookup ({@link WeblogOwnership#trashedPage}): a page of
+     * this weblog that is not trashed is a 409 with {@code whenLive}; another
+     * weblog's page and an unknown id are one 404.
+     */
+    private WeblogPage requireTrashedPage(HttpServletRequest request, String id, String whenLive) {
+        Weblog weblog = requireActionWeblog(request);
+        WeblogPage page = WeblogOwnership.trashedPage(weblogger, id, weblog);
+        if (page != null) {
+            return page;
+        }
+        if (WeblogOwnership.page(weblogger, id, weblog) != null) {
+            throw ApiException.conflict(whenLive);
+        }
+        throw ApiException.notFound("No such page.");
     }
 
     /**
@@ -285,7 +383,11 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     private void requireSlugAvailable(Weblog weblog, String slug, String excludingId) throws WebloggerException {
         WeblogPage existing = weblogger.getWeblogPageManager().getPageBySlug(weblog, slug);
         if (existing != null && !existing.getId().equals(excludingId)) {
-            throw ApiException.conflictOnField("slug", "A page with slug '" + slug + "' already exists.");
+            // A trashed page keeps its address until it is restored or
+            // deleted for good; say so, since the pages list will not show it.
+            throw ApiException.conflictOnField("slug", existing.getStatus() == WeblogPage.PubStatus.TRASHED
+                    ? "A page in the trash holds slug '" + slug + "'. Restore it or delete it forever first."
+                    : "A page with slug '" + slug + "' already exists.");
         }
     }
 

@@ -443,11 +443,13 @@ class PageEditJspTest {
     }
 
     /**
-     * The count includes drafts and the trash, so the text promises only that
-     * the posts are kept, and says "1 post", not "1 posts".
+     * The page goes to the trash and its parts stay attached (spec
+     * 2026-11-15, Part 1), so the text promises that and what readers lose
+     * meanwhile, and says "1 post stays", not "1 posts stay". The count
+     * includes drafts and trashed posts.
      */
     @Test
-    void theDeleteConfirmationCountsOnePostAndManyAndPromisesOnlyThatTheyAreKept() throws IOException {
+    void theTrashConfirmationCountsOnePostAndManyAndSaysTheyStayAttached() throws IOException {
         java.util.Properties bundle = new java.util.Properties();
         try (var in = Files.newBufferedReader(Paths.get("src/main/resources/ApplicationResources.properties"),
                 StandardCharsets.UTF_8)) {
@@ -455,7 +457,9 @@ class PageEditJspTest {
         }
         java.text.MessageFormat format = new java.text.MessageFormat(
                 bundle.getProperty("pages.deleteStrandConfirm"), java.util.Locale.ENGLISH);
-        assertEquals("1 post will leave this strand; the posts are kept.", format.format(new Object[] {1L}));
-        assertEquals("3 posts will leave this strand; the posts are kept.", format.format(new Object[] {3L}));
+        assertEquals("1 post stays attached. The strand bar disappears until the page is restored and published.",
+                format.format(new Object[] {1L}));
+        assertEquals("3 posts stay attached. The strand bar disappears until the page is restored and published.",
+                format.format(new Object[] {3L}));
     }
 }

@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.business.runnable;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
@@ -54,6 +55,13 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
 
     /** The runtime property read fresh on every sweep -- see {@link #runTask()}. */
     public static final String RETENTION_PROPERTY = "entry.trash.retention.days";
+
+    /**
+     * The page trash's own retention, read fresh on every sweep like the
+     * entries'. A page is the more damaging thing to lose and the easier to
+     * notice gone, so it ships shorter (7 days against 30).
+     */
+    public static final String PAGE_RETENTION_PROPERTY = "page.trash.retention.days";
 
 
     // a unique id for this specific task instance
@@ -220,6 +228,8 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
                 }
             }
 
+            purgePages(wmgr, weblogs);
+
         } catch (WebloggerException e) {
             log.error("Error running trash purge task", e);
         } catch (Exception e) {
@@ -231,6 +241,45 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
 
         log.debug("task completed");
 
+    }
+
+    /**
+     * The page pass: every weblog's page trash past
+     * {@code page.trash.retention.days}, the site space's included (site
+     * pages are pages; it has no entries, which is why the entry pass never
+     * sees it). Run after every entry purge is committed, with the entry
+     * pass's discipline: one transaction per weblog, so one weblog's failure
+     * costs that weblog's page purge for this sweep and nothing else.
+     */
+    private void purgePages(WeblogManager wmgr, List<Weblog> blogs) {
+        // -1 when missing or not a number, which the page manager reads as
+        // "keep forever": a limit that cannot be read removes nothing.
+        int retentionDays = WebloggerRuntimeConfig.getIntProperty(PAGE_RETENTION_PROPERTY);
+        List<Weblog> weblogs = new ArrayList<>(blogs);
+        try {
+            Weblog site = wmgr.getSiteSpace();
+            if (site != null && !weblogs.contains(site)) {
+                weblogs.add(site);
+            }
+        } catch (WebloggerException e) {
+            log.error("Error reading the site space; its page trash is not purged this sweep", e);
+        }
+        for (Weblog weblog : weblogs) {
+            try {
+                int purged = weblogger().getWeblogPageManager().purgeTrash(weblog, retentionDays);
+                weblogger().flush();
+                if (purged > 0) {
+                    log.info("purged {} trashed pages from weblog {}", purged, weblog.getHandle());
+                }
+            } catch (WebloggerException e) {
+                log.error("Error purging the page trash of weblog {}", weblog.getHandle(), e);
+            } catch (Exception e) {
+                log.error("Unexpected exception purging the page trash of weblog {}",
+                        weblog.getHandle(), e);
+            } finally {
+                weblogger().release();
+            }
+        }
     }
 
 

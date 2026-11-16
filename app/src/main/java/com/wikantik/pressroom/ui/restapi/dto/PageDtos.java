@@ -41,6 +41,9 @@ public final class PageDtos {
                             String status, boolean showInNav, int navOrder,
                             String metaTitle, String searchDescription, String canonicalUrl,
                             boolean noindex, String ogImageId, Instant updateTime,
+                            @Schema(description = "When the page was moved to the trash; absent for a page that "
+                                    + "is not in it. Trashed pages are listed only by GET .../pages?status=TRASHED.")
+                            Instant trashedAt,
                             @Schema(description = "True when the page is a strand: an ordered series of this "
                                     + "blog's posts.")
                             boolean strand,
@@ -126,6 +129,7 @@ public final class PageDtos {
                 Boolean.TRUE.equals(page.getNoindex()),
                 page.getOgImageId(),
                 instant(page.getUpdated()),
+                instant(page.getTrashedAt()),
                 Boolean.TRUE.equals(page.getStrand()),
                 parts.stream().map(PageDtos::toPartView).toList());
     }
@@ -220,12 +224,23 @@ public final class PageDtos {
         }
     }
 
+    /**
+     * A status a write may set. TRASHED is not one: trashing and restoring
+     * have their own endpoints, which are also what clear the front door and
+     * keep search and the purge clock right.
+     */
     static WeblogPage.PubStatus parseStatus(String raw) {
+        WeblogPage.PubStatus status;
         try {
-            return WeblogPage.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            status = WeblogPage.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw ApiException.invalidField("status", "Unknown status '" + raw + "'.", e);
         }
+        if (status == WeblogPage.PubStatus.TRASHED) {
+            throw ApiException.invalidField("status",
+                    "Use DELETE to trash a page and POST .../restore to bring it back.");
+        }
+        return status;
     }
 
     /**

@@ -721,4 +721,25 @@ public abstract class PressroomIT {
             throw new IllegalStateException("Could not GET " + url + " anonymously", e);
         }
     }
+
+    /**
+     * Deletes for good the page with this slug from the weblog's page trash,
+     * if it is there. Deleting a page on the Pages screen only trashes it,
+     * and a trashed page keeps its slug: a test that reuses a slug (the site
+     * space outlives every test) must clear the trash as well, before and
+     * after.
+     */
+    protected void deletePageForeverFromTrash(String handle, String slug) {
+        openPath("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + handle);
+        $("#pages-trash-list-marker").should(com.codeborne.selenide.Condition.exist);
+        String row = "tr.trashed-page-row[data-page-slug='" + slug + "']";
+        if (com.codeborne.selenide.Selenide.$$(row).isEmpty()) {
+            return;
+        }
+        awaitNewPageAfter(() -> {
+            $(row + " button.page-delete-forever-btn").click();
+            Selenide.confirm();
+        });
+        com.codeborne.selenide.Selenide.$$(row).shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
+    }
 }

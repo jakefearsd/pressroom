@@ -159,9 +159,28 @@ public final class WeblogOwnership {
     }
 
     /**
-     * The page with this id, but only when it belongs to {@code weblog}.
+     * The page with this id, but only when it belongs to {@code weblog} and
+     * is not in the trash. A trashed page answers like an unknown id, so every
+     * route that reads or edits a page by id is closed to it at once;
+     * {@link #trashedPage} is the trash's own way in.
      */
     public static WeblogPage page(Weblogger weblogger, String id, Weblog weblog) {
+        WeblogPage page = ownedPage(weblogger, id, weblog);
+        return page != null && page.getStatus() != WeblogPage.PubStatus.TRASHED ? page : null;
+    }
+
+    /**
+     * The page with this id, but only when it belongs to {@code weblog} and
+     * is in the trash. The counterpart of {@link #page}, for the three routes
+     * that work on trash: its list, restore and delete forever. A live page
+     * is absent here exactly as a trashed one is absent there.
+     */
+    public static WeblogPage trashedPage(Weblogger weblogger, String id, Weblog weblog) {
+        WeblogPage page = ownedPage(weblogger, id, weblog);
+        return page != null && page.getStatus() == WeblogPage.PubStatus.TRASHED ? page : null;
+    }
+
+    private static WeblogPage ownedPage(Weblogger weblogger, String id, Weblog weblog) {
         if (StringUtils.isBlank(id)) {
             return null;
         }

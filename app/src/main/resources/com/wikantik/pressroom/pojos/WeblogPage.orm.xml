@@ -12,7 +12,11 @@
         <!-- Nav order first, then title, so two pages sharing an order do not
              swap places between reads. -->
         <named-query name="WeblogPage.getByWeblog">
-            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 ORDER BY p.navOrder ASC, p.title ASC</query>
+            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.status &lt;&gt; ?2 ORDER BY p.navOrder ASC, p.title ASC</query>
+        </named-query>
+        <!-- The trash, most recently trashed first. -->
+        <named-query name="WeblogPage.getTrashedByWeblog">
+            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.status = ?2 ORDER BY p.trashedAt DESC, p.title ASC</query>
         </named-query>
         <named-query name="WeblogPage.getByWeblogAndStatus">
             <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.status = ?2 ORDER BY p.navOrder ASC, p.title ASC</query>
@@ -41,6 +45,9 @@
             <basic name="status">
                 <column name="status" insertable="true" updatable="true" nullable="false"/>
                 <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="trashedAt">
+                <column name="trashed_at" insertable="true" updatable="true" nullable="true"/>
             </basic>
             <basic name="showInNav">
                 <column name="show_in_nav" insertable="true" updatable="true" nullable="false"/>

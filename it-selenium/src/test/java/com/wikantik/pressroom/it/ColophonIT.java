@@ -199,6 +199,8 @@ class ColophonIT extends PressroomIT {
         });
         $("#messages").should(exist);
         $$("tr[data-page-slug='privacy']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
+        // Trashed, which still holds the slug: out of the trash too.
+        deletePageForeverFromTrash(handle, "privacy");
     }
 
     private String createWeblog(String nonce) {

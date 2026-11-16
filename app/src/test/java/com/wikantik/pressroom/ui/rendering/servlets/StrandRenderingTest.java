@@ -323,6 +323,39 @@ class StrandRenderingTest {
         assertTrue(body.contains(">Newer<") && body.contains("SECONDPART"), body);
     }
 
+    /**
+     * A trashed strand keeps its parts: no bar while it is in the trash, and
+     * the same "Part N of M" once it is restored and published again.
+     */
+    @Test
+    void aTrashedStrandShowsNoBarUntilRestoredAndPublished() throws Exception {
+        page("tale", "The Tale", true, WeblogPage.PubStatus.PUBLISHED);
+        post("one", "FIRSTPART", 3, PubStatus.PUBLISHED, true);
+        post("two", "SECONDPART", 2, PubStatus.PUBLISHED, true);
+        theme("journal");
+        assertTrue(get("/entry/one").contains("Part 1 of 2 in"));
+        var pages = TestUtils.weblogger().getWeblogPageManager();
+
+        pages.trashPage(pages.getPage(strandId));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        String trashed = get("/entry/one");
+        assertFalse(trashed.contains("Part 1 of"), trashed);
+        assertFalse(trashed.contains("/tale"), "no link to a trashed page");
+
+        pages.restorePage(pages.getPage(strandId));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        assertFalse(get("/entry/one").contains("Part 1 of"), "restored as a draft: still no bar");
+
+        WeblogPage restored = pages.getPage(strandId);
+        restored.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        pages.savePage(restored);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        assertTrue(get("/entry/one").contains("Part 1 of 2 in"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"journal", "portfolio", "travel"})
     void aPartScheduledForLaterIsNotListed(String theme) throws Exception {

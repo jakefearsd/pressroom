@@ -26,6 +26,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.RuntimeConfigAttachment;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +71,7 @@ class TrashPurgeTaskTest {
     private Weblogger weblogger;
     private WeblogManager weblogManager;
     private WeblogEntryManager entryManager;
+    private WeblogPageManager pageManager;
     private PropertiesManager propertiesManager;
     private RuntimeConfigAttachment runtimeConfig;
 
@@ -81,6 +84,8 @@ class TrashPurgeTaskTest {
 
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
+        pageManager = mock(WeblogPageManager.class);
+        when(weblogger.getWeblogPageManager()).thenReturn(pageManager);
 
         // The task works against the Weblogger handed to init(weblogger, name)
         // above. runTask() reads entry.trash.retention.days through
@@ -491,6 +496,159 @@ class TrashPurgeTaskTest {
             config.setProperty(name, value);
         }
         return previous;
+    }
+
+    // ---- the page pass (spec 2026-11-15, Part 1) ----
+
+    private void givenPageRetention(int days) throws WebloggerException {
+        when(propertiesManager.getProperty(TrashPurgeTask.PAGE_RETENTION_PROPERTY))
+                .thenReturn(new RuntimeConfigProperty(
+                        TrashPurgeTask.PAGE_RETENTION_PROPERTY, Integer.toString(days)));
+    }
+
+    @Test
+    void thePagePassUsesItsOwnProperty() throws Exception {
+        assertEquals("page.trash.retention.days", TrashPurgeTask.PAGE_RETENTION_PROPERTY);
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        givenRetention(30);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        verify(entryManager).purgeTrash(blog, 30);
+        verify(pageManager).purgeTrash(blog, 7);
+    }
+
+    @Test
+    void thePagePropertyIsReReadOnEverySweep() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        givenRetention(30);
+        TrashPurgeTask task = task();
+
+        givenPageRetention(7);
+        task.runTask();
+        verify(pageManager).purgeTrash(blog, 7);
+
+        givenPageRetention(3);
+        task.runTask();
+        verify(pageManager).purgeTrash(blog, 3);
+    }
+
+    /** Site pages are pages: the site space has no entries to purge, but it has a page trash. */
+    @Test
+    void thePagePassIncludesTheSiteSpace() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE);
+        givenWeblogs(blog);
+        when(weblogManager.getSiteSpace()).thenReturn(site);
+        givenRetention(30);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        verify(pageManager).purgeTrash(blog, 7);
+        verify(pageManager).purgeTrash(site, 7);
+        verify(entryManager, never()).purgeTrash(eq(site), anyInt());
+    }
+
+    @Test
+    void theSiteSpaceIsNotSweptTwice() throws Exception {
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE);
+        givenWeblogs(site);
+        when(weblogManager.getSiteSpace()).thenReturn(site);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        verify(pageManager, times(1)).purgeTrash(site, 7);
+    }
+
+    /** No site space yet, or one that cannot be read: the blogs are still swept. */
+    @Test
+    void aSiteSpaceThatCannotBeReadDoesNotStopTheBlogs() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        when(weblogManager.getSiteSpace()).thenThrow(new WebloggerException("no site"));
+        givenPageRetention(7);
+
+        task().runTask();
+
+        verify(pageManager).purgeTrash(blog, 7);
+    }
+
+    @Test
+    void onePagePurgeThrowingDoesNotStopTheOthers() throws Exception {
+        Weblog failing = weblog("failingblog");
+        Weblog checked = weblog("checkedblog");
+        Weblog other = weblog("otherblog");
+        givenWeblogs(failing, checked, other);
+        givenPageRetention(7);
+        doThrow(new WebloggerException("boom")).when(pageManager).purgeTrash(eq(failing), anyInt());
+        doThrow(new RuntimeException("kaboom")).when(pageManager).purgeTrash(eq(checked), anyInt());
+
+        task().runTask();
+
+        verify(pageManager).purgeTrash(other, 7);
+    }
+
+    /**
+     * Entries first, each weblog committed, and only then pages: a page purge
+     * that fails can undo no entry purge, its own weblog's included.
+     */
+    @Test
+    void thePagePassRunsAfterEveryEntryPurgeIsCommitted() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        givenRetention(30);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        InOrder order = inOrder(entryManager, pageManager, weblogger);
+        order.verify(entryManager).purgeTrash(blog, 30);
+        order.verify(weblogger).flush();
+        order.verify(weblogger).release();
+        order.verify(pageManager).purgeTrash(blog, 7);
+        order.verify(weblogger).flush();
+        order.verify(weblogger, atLeastOnce()).release();
+    }
+
+    @Test
+    void eachWeblogsPagePurgeIsCommittedOnItsOwn() throws Exception {
+        Weblog first = weblog("firstblog");
+        Weblog second = weblog("secondblog");
+        givenWeblogs(first, second);
+        givenPageRetention(7);
+
+        task().runTask();
+
+        InOrder order = inOrder(pageManager, weblogger);
+        order.verify(pageManager).purgeTrash(first, 7);
+        order.verify(weblogger).flush();
+        order.verify(weblogger).release();
+        order.verify(pageManager).purgeTrash(second, 7);
+        order.verify(weblogger).flush();
+        order.verify(weblogger, atLeastOnce()).release();
+    }
+
+    /**
+     * A page retention that is missing or not a number reads as -1, which
+     * the page manager keeps forever: an unreadable limit removes nothing.
+     */
+    @Test
+    void aPageRetentionThatCannotBeReadPurgesNothing() throws Exception {
+        Weblog blog = weblog("onlyblog");
+        givenWeblogs(blog);
+        givenRetention(30);
+        when(propertiesManager.getProperty(TrashPurgeTask.PAGE_RETENTION_PROPERTY))
+                .thenReturn(new RuntimeConfigProperty(TrashPurgeTask.PAGE_RETENTION_PROPERTY, "a week"));
+
+        task().runTask();
+
+        verify(pageManager).purgeTrash(blog, -1);
+        verify(entryManager).purgeTrash(blog, 30);
     }
 
     private static Weblog weblog(String handle) {

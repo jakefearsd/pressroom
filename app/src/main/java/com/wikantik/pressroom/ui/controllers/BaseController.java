@@ -516,6 +516,15 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     }
 
     /**
+     * The trashed page named by {@code id}, when it belongs to the weblog
+     * this action is scoped to. {@link #lookupPage} refuses trash; this
+     * refuses everything else, and serves only the page trash's own routes.
+     */
+    public WeblogPage lookupTrashedPage(String id, HttpServletRequest request) {
+        return WeblogOwnership.trashedPage(weblogger, id, getActionWeblog(request));
+    }
+
+    /**
      * Refuses a picked featured or social image that is not an image readers
      * of the action weblog can load ({@link WeblogOwnership#publicImage}),
      * adding {@code errorKey} so the caller's {@code hasErrors} gate blocks

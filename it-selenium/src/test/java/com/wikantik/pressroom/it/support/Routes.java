@@ -311,6 +311,10 @@ public final class Routes {
             // it is emitted unconditionally, same reasoning as entries.rol.
             new Route("/pressroom-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
 
+            // The page trash: empty with nothing trashed, but its wrapper is
+            // emitted in both states, as trash.rol's is.
+            new Route("/pressroom-ui/authoring/pagesTrash.rol", Role.EDITOR, WEBLOG, "#pages-trash-list-marker"),
+
             // "New page" mode (no id parameter): the edit form always renders.
             new Route("/pressroom-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
 

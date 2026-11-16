@@ -21,6 +21,7 @@ package com.wikantik.pressroom.ui.controllers.editor;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -827,15 +828,27 @@ public class EntryEditController extends BaseController {
     }
 
     /**
-     * This blog's strand pages, drafts included, for the select. A display
+     * This blog's strand pages, drafts included, for the select, and the
+     * post's current strand even when that is in the trash. A display
      * path (the save validates the chosen id again), so a failed read shows
      * an empty list rather than failing the editor.
      */
-    private List<WeblogPage> strandPages(Weblog weblog) {
+    private List<WeblogPage> strandPages(Weblog weblog, WeblogEntry entry) {
         try {
-            return weblogger.getWeblogPageManager().getPages(weblog).stream()
+            List<WeblogPage> strands = new ArrayList<>(weblogger.getWeblogPageManager().getPages(weblog).stream()
                     .filter(p -> Boolean.TRUE.equals(p.getStrand()))
-                    .toList();
+                    .toList());
+            // The post's own strand, when it is in the trash: the page list
+            // no longer holds it, and without it the select would read "no
+            // strand" for a post that is still a part. Shown as in the trash;
+            // re-sending it keeps the membership, and no other post can
+            // choose it.
+            WeblogPage current = entry == null ? null
+                    : WeblogOwnership.trashedPage(weblogger, entry.getStrandPageId(), weblog);
+            if (current != null) {
+                strands.add(current);
+            }
+            return strands;
         } catch (WebloggerException ex) {
             log.error("Error listing the strand pages of weblog {}", weblog.getHandle(), ex);
             return List.of();
@@ -906,7 +919,7 @@ public class EntryEditController extends BaseController {
         }
 
         model.addAttribute("categories", getCategories(request));
-        model.addAttribute("strandPages", strandPages(getActionWeblog(request)));
+        model.addAttribute("strandPages", strandPages(getActionWeblog(request), entry));
         // The SEO drawer's character counts read the same limits the audits use.
         model.addAttribute("seoTitleMax", SeoLimits.TITLE_MAX);
         model.addAttribute("seoDescriptionMax", SeoLimits.DESCRIPTION_MAX);

@@ -261,6 +261,15 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   maps it, and `FormBodyParityTest` records the rename). A lookup that cannot run, and the site space, fail
   closed. It is removed with `clear: ["frontPage"]` (`ClearFields`; null is never a value). The view omits
   it when unset. A save bumps `weblog.lastModified`, so rendered pages expire.
+- **Page trash over the API** (0.13.0; public table in `docs/api/README.md`, "Page trash"). `DELETE
+  .../pages/{id}` trashes; `POST .../restore` and `POST .../delete-forever` work on trash only. `PagesApi`
+  has three lookups: `requirePage(request, id)` for a read (a trashed page is a 404, read it from
+  `GET .../pages?status=TRASHED`); `requireLivePageForWrite` for PATCH, parts and DELETE (a trashed page of
+  this weblog is a 409 that names the trash); `requireTrashedPage` for the two trash routes (a live page of
+  this weblog is a 409). Another weblog's id is a 404 through all three. `PageDtos.parseStatus` refuses
+  `TRASHED` on a write (400 on `status`). MCP `pages` gained `restore` and `delete_forever`; the pinned
+  surfaces are `ApiRouteTableTest` (route count), `ToolSchemasTest`, `McpToolCatalogTest` and the README
+  tool table (`McpDocsTest`).
 - **Making the front page a draft or deleting it clears it by itself** in the same save
   (`JPAWeblogPageManagerImpl`); the API needs no extra call and the next `weblogs get` omits the field.
 - **Page `navOrder` must be >= 0** (`PageDtos.applyWrite`, 400 on `navOrder`). The Pages screen's reorder

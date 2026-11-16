@@ -1503,6 +1503,79 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogEntryManager(), never()).leaveStrand(any());
     }
 
+    // --- a post whose strand is in the trash (spec 2026-11-15, Part 1) ---
+
+    /** getPages no longer returns trash, so the post's own strand is read by id and shown. */
+    @Test
+    void thePostsCurrentStrandIsListedEvenWhenItIsInTheTrash() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setStrandPageId("binned");
+        com.wikantik.pressroom.pojos.WeblogPage live = strandPage("s1", true, weblog);
+        com.wikantik.pressroom.pojos.WeblogPage binned = strandPage("binned", true, weblog);
+        binned.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.TRASHED);
+        when(weblogger.getWeblogPageManager().getPages(weblog)).thenReturn(java.util.List.of(live));
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertEquals(java.util.List.of(live, binned), model.getAttribute("strandPages"));
+    }
+
+    /** Another blog's page id stored on the entry is never listed, trashed or not. */
+    @Test
+    void aStoredStrandOfAnotherBlogIsNotListed() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setStrandPageId("foreign");
+        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        other.setId("weblog-2");
+        other.setHandle("someoneelse");
+        strandPage("foreign", true, other)
+                .setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.TRASHED);
+        when(weblogger.getWeblogPageManager().getPages(weblog)).thenReturn(java.util.List.of());
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertEquals(java.util.List.of(), model.getAttribute("strandPages"));
+    }
+
+    /** Re-sending the strand the post is already in changes nothing, trashed or not. */
+    @Test
+    void savingAPostWithItsTrashedStrandReSentChangesNothing() throws Exception {
+        userMayPost = true;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setStrandPageId("binned");
+        entry.setStrandPosition(2);
+        strandPage("binned", true, weblog)
+                .setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.TRASHED);
+        bean.setStrandPageId("binned");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        WeblogEntry saved = captureSavedEntry();
+        assertEquals("binned", saved.getStrandPageId());
+        assertEquals(2, saved.getStrandPosition());
+        verify(weblogger.getWeblogEntryManager(), never()).leaveStrand(any());
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+    }
+
+    /** A post that is not in it cannot join a trashed strand: it reads as no strand at all. */
+    @Test
+    void choosingATrashedStrandAfreshIsRefused() throws Exception {
+        userMayPost = true;
+        registerMessage("weblogEdit.error.notAStrand", "Choose one of this blog's strands.");
+        existingEntry(PubStatus.PUBLISHED);
+        strandPage("binned", true, weblog)
+                .setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.TRASHED);
+        bean.setStrandPageId("binned");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).contains("Choose one of this blog's strands."), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).appendToStrand(any(), any());
+    }
+
     @Test
     void theEditorListsThisBlogsStrandPagesDraftsIncluded() throws Exception {
         userMayPost = true;

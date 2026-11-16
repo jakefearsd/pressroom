@@ -189,6 +189,8 @@ class SitePagesIT extends PressroomIT {
     /** Deletes the page with this class's slug from the open site Pages list, if present. */
     private void removeSitePage() {
         if ($$("tr[data-page-slug='" + SLUG + "']").isEmpty()) {
+            // Not listed, but an aborted run may have left it in the trash.
+            deletePageForeverFromTrash("site-space", SLUG);
             return;
         }
         awaitNewPageAfter(() -> {
@@ -197,6 +199,8 @@ class SitePagesIT extends PressroomIT {
         });
         $("#messages").should(exist);
         $$("tr[data-page-slug='" + SLUG + "']").shouldHave(CollectionCondition.size(0));
+        // Trashed, which still holds the slug: out of the trash too.
+        deletePageForeverFromTrash("site-space", SLUG);
     }
 
     private record Fetched(int status, String finalUri, String body) { }

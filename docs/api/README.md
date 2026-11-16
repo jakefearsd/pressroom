@@ -899,14 +899,47 @@ GET    /api/v1/weblogs/{handle}/pages
 GET    /api/v1/weblogs/{handle}/pages/{id}
 POST   /api/v1/weblogs/{handle}/pages
 PATCH  /api/v1/weblogs/{handle}/pages/{id}
-DELETE /api/v1/weblogs/{handle}/pages/{id}
+DELETE /api/v1/weblogs/{handle}/pages/{id}                 move to the trash
+POST   /api/v1/weblogs/{handle}/pages/{id}/restore         restore (always to DRAFT)
+POST   /api/v1/weblogs/{handle}/pages/{id}/delete-forever  permanent delete
 PUT    /api/v1/weblogs/{handle}/pages/{id}/parts
+GET    /api/v1/weblogs/{handle}/pages?status=TRASHED       the page trash
 ```
 
-`POST`-role required. `status` is one of `DRAFT`/`PUBLISHED` only — pages
-have no trash, no PENDING/SCHEDULED states, and no scheduling story at all
+> **Changed in 0.13.0: `DELETE` on a page no longer deletes it permanently.**
+> It moves the page to the trash, as `DELETE` on an entry does. To remove a
+> page for good, trash it and then call `delete-forever`.
+
+### Page trash
+
+A trashed page is not served, is out of navigation, the sitemap and search,
+and stops being the blog's front page. It keeps its slug, its `navOrder` and,
+for a strand, its parts (their strand bar disappears until the page is back
+and published). It is purged after `page.trash.retention.days` (a site
+setting; default 7, -1 keeps it until deleted by hand).
+
+| Request | On a page that is not trashed | On a trashed page |
+|---|---|---|
+| `GET .../pages` | listed | not listed |
+| `GET .../pages?status=TRASHED` | not listed | listed, with `trashedAt`; any other `status` value is a 400 on `status` |
+| `GET .../pages/{id}` | 200 | 404: read it from the trash list |
+| `PATCH .../pages/{id}`, `PUT .../pages/{id}/parts` | as documented below | 409, `Page is in the trash; restore it first.` |
+| `DELETE .../pages/{id}` | 204, trashed | 409, `Page is already in the trash.` |
+| `POST .../pages/{id}/restore` | 409, `Page is not trashed.` | 200, the page as a `DRAFT` |
+| `POST .../pages/{id}/delete-forever` | 409, `Page is not trashed; trash it first.` | 204 |
+
+Restore always yields a `DRAFT` and never makes the page the front page
+again: publish it, then set `frontPage` on the weblog. A create or rename
+onto a slug that a trashed page holds is a 409 on `slug` that says so;
+restore that page or delete it forever first. A body carrying
+`"status": "TRASHED"` is a 400 on `status`. Deleting a strand forever leaves
+its posts published, outside any strand. Another weblog's page id is a 404 on
+every route.
+
+`POST`-role required. A write's `status` is one of `DRAFT`/`PUBLISHED` only — pages
+have no PENDING/SCHEDULED states and no scheduling story at all
 (see [docs/dev/entries.md, "Pages"](../dev/entries.md#pages) for why pages are
-a separate entity from entries and deliberately excluded from the trash design). A
+a separate entity from entries); `TRASHED` is reached only through `DELETE`. A
 create that names no `slug` takes it from the title (lower-cased words joined
 by hyphens: "Start Here" becomes `start-here`). `slug`
 is validated against the same reserved-word list (`ReservedSlugs`) the
@@ -1429,7 +1462,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
-| `pages` | `list`, `get`, `create`, `update`, `delete`, `set_parts` |
+| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |

@@ -155,6 +155,16 @@ public class IndexManagerTest {
         savePage(id, p -> p.setNoindex(Boolean.FALSE));
         awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of(id));
 
+        // The trash: out of search at once, and still out when restored (a draft).
+        pages.trashPage(pages.getPage(id));
+        TestUtils.endSession(true);
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());
+        pages.restorePage(pages.getPage(id));
+        TestUtils.endSession(true);
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());
+        savePage(id, p -> p.setStatus(WeblogPage.PubStatus.PUBLISHED));
+        awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of(id));
+
         pages.removePage(pages.getPage(id));
         TestUtils.endSession(true);
         awaitPages(index, "ocelotpage", SearchSpec.Scope.BLOG, handle, List.of());

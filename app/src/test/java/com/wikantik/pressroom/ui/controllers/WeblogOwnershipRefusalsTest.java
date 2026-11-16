@@ -175,6 +175,42 @@ class WeblogOwnershipRefusalsTest {
         assertNull(WeblogOwnership.page(mock.weblogger(), "p1", theirs));
     }
 
+    /** A trashed page answers like an unknown id on every route that edits or reads one. */
+    @Test
+    void pageRefusesATrashedPage() throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setWeblog(mine);
+        page.setStatus(WeblogPage.PubStatus.TRASHED);
+        when(mock.weblogPageManager().getPage("t1")).thenReturn(page);
+
+        assertNull(WeblogOwnership.page(mock.weblogger(), "t1", mine));
+    }
+
+    /** The trash's own lookup: only this weblog's pages, and only trashed ones. */
+    @Test
+    void trashedPageReturnsOnlyOwnedTrash() throws Exception {
+        WeblogPage trashed = new WeblogPage();
+        trashed.setWeblog(mine);
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+        WeblogPage live = new WeblogPage();
+        live.setWeblog(mine);
+        live.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        when(mock.weblogPageManager().getPage("t1")).thenReturn(trashed);
+        when(mock.weblogPageManager().getPage("live")).thenReturn(live);
+        when(mock.weblogPageManager().getPage("orphan")).thenReturn(new WeblogPage());
+        when(mock.weblogPageManager().getPage("boom"))
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("boom"));
+
+        assertSame(trashed, WeblogOwnership.trashedPage(mock.weblogger(), "t1", mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), "t1", theirs));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), "live", mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), "orphan", mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), "nope", mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), " ", mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), null, mine));
+        assertNull(WeblogOwnership.trashedPage(mock.weblogger(), "boom", mine));
+    }
+
     @Test
     void aPageWithNoWeblogUnknownBlankOrUnreadableIsAbsent() throws Exception {
         when(mock.weblogPageManager().getPage("orphan")).thenReturn(new WeblogPage());

@@ -169,6 +169,7 @@ public class PageEditController extends BaseController {
                 page.getOgImageId(), request);
         // The strand switch and the Parts panel, validated like the fields
         // above: a refused id or a refused untick saves nothing at all.
+        checkSlugNotInTrash(bean, page, isNew, model, request);
         StrandSave strand = checkedStrandParts(bean, page, model, request);
         boolean saved = !hasErrors(model) && saved(bean, page, Optional.ofNullable(strand.store), model, request);
         if (saved || !isNew) {
@@ -194,6 +195,35 @@ public class PageEditController extends BaseController {
                 saved ? null : strand.rows);
         model.addAttribute("bean", bean);
         return ".PageEdit";
+    }
+
+    /**
+     * A trashed page keeps its address for as long as it can be restored, so
+     * a new page or a rename may not take it: a field error that names the
+     * trash, where the database's unique index would only have said "error".
+     * The slug checked is the one the save would store (a new page left
+     * without one takes its title's). A check that cannot run refuses the
+     * save.
+     */
+    private void checkSlugNotInTrash(PageBean bean, WeblogPage page, boolean isNew, Model model,
+                                     HttpServletRequest request) {
+        String wanted = StringUtils.trimToNull(bean.getSlug());
+        if (wanted == null && isNew) {
+            wanted = StringUtils.trimToNull(WeblogPage.slugFromTitle(bean.getTitle()));
+        }
+        if (wanted == null) {
+            return;
+        }
+        try {
+            WeblogPage holder = weblogger.getWeblogPageManager().getPageBySlug(page.getWeblog(), wanted);
+            if (holder != null && holder.getStatus() == WeblogPage.PubStatus.TRASHED
+                    && !holder.getId().equals(page.getId())) {
+                addFieldError(model, "page_bean_slug", "pageEdit.error.slugInTrash", request);
+            }
+        } catch (WebloggerException ex) {
+            log.error("Error checking slug {} against the page trash", wanted, ex);
+            addError(model, "generic.error.check.logs", request);
+        }
     }
 
     /** What a save does with a strand's parts, and what a refused save shows again. */

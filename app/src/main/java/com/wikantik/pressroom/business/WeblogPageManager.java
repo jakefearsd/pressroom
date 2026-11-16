@@ -75,6 +75,38 @@ public interface WeblogPageManager {
     void setNavOrder(Weblog weblog, List<String> pageIds) throws WebloggerException;
 
     /**
+     * Moves the page to the trash: status {@code TRASHED}, stamped now. It
+     * stops being served, listed and searched, and stops being the front
+     * door; it keeps its slug, its nav order and, for a strand, its parts.
+     *
+     * @throws WebloggerException if the page is already in the trash
+     */
+    void trashPage(WeblogPage page) throws WebloggerException;
+
+    /**
+     * Brings a trashed page back as a {@code DRAFT}. Never published, and
+     * never the front door again without the author choosing it.
+     *
+     * @throws WebloggerException if the page is not in the trash
+     */
+    void restorePage(WeblogPage page) throws WebloggerException;
+
+    /**
+     * The weblog's trashed pages, most recently trashed first.
+     */
+    List<WeblogPage> getTrashedPages(Weblog weblog) throws WebloggerException;
+
+    /**
+     * Permanently removes ({@link #removePage}) the weblog's pages trashed
+     * more than {@code retentionDays} days ago. Any negative value keeps
+     * trash forever and removes nothing; 0 removes everything trashed. A
+     * trashed page with no stamp is never removed.
+     *
+     * @return how many pages were removed
+     */
+    int purgeTrash(Weblog weblog, int retentionDays) throws WebloggerException;
+
+    /**
      * Remove all pages belonging to a weblog.
      */
     void removePages(Weblog weblog) throws WebloggerException;

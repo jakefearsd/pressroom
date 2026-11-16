@@ -131,6 +131,151 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogPageManager(), never()).savePage(any());
     }
 
+    // --- the trash: a trashed page answers like an unknown id (spec 2026-11-15, Part 1) ---
+
+    @Test
+    void editingATrashedPageIsNotFound() throws Exception {
+        WeblogPage trashed = pageOn(weblogA, "about");
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+
+        assertEquals(DENIED_VIEW, controller.edit(trashed.getId(), requestFor(weblogA), model));
+    }
+
+    /** A page trashed after the editor was opened: the save writes nothing. */
+    @Test
+    void savingATrashedPageIsRefusedAndWritesNothing() throws Exception {
+        WeblogPage trashed = pageOn(weblogA, "about");
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+        PageBean bean = new PageBean();
+        bean.setId(trashed.getId());
+        bean.setTitle("Edited in another tab");
+        bean.setSlug("about");
+        bean.setStatus("PUBLISHED");
+
+        String view = controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(DENIED_VIEW, view);
+        assertEquals(WeblogPage.PubStatus.TRASHED, trashed.getStatus(), "a save must not bring it back");
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void previewOfATrashedPageIsNotFound() throws Exception {
+        WeblogPage trashed = pageOn(weblogA, "about");
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+
+        var response = controller.pageEditPreview(requestFor(weblogA), trashed.getId(), "anything");
+
+        assertEquals(404, response.getStatusCode().value());
+    }
+
+    /**
+     * The form offers DRAFT and PUBLISHED. A crafted POST naming TRASHED must
+     * not trash a page past trashPage: it would carry no stamp, so the purge
+     * would never take it and the trash screen would show no date. It reads
+     * as any other unrecognized status does: a draft.
+     */
+    @Test
+    void aCraftedTrashedStatusOnTheFormIsNotAWayIntoTheTrash() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        mine.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        PageBean bean = new PageBean();
+        bean.setId(mine.getId());
+        bean.setTitle("About");
+        bean.setSlug("about");
+        bean.setStatus("TRASHED");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(WeblogPage.PubStatus.DRAFT, mine.getStatus());
+        verify(weblogger.getWeblogPageManager(), never()).trashPage(any());
+    }
+
+    /** The slug a trashed page holds, as getPageBySlug answers it for this weblog. */
+    private WeblogPage trashedHolder(String slug) throws WebloggerException {
+        WeblogPage holder = new WeblogPage();
+        holder.setId("trashed-" + slug);
+        holder.setWeblog(weblogA);
+        holder.setSlug(slug);
+        holder.setStatus(WeblogPage.PubStatus.TRASHED);
+        when(weblogger.getWeblogPageManager().getPageBySlug(weblogA, slug)).thenReturn(holder);
+        return holder;
+    }
+
+    /** A trashed page keeps its address for as long as it can be restored. */
+    @Test
+    void aNewPageOnASlugHeldByTheTrashIsAFieldErrorNamingTheTrash() throws Exception {
+        trashedHolder("about");
+        PageBean bean = new PageBean();
+        bean.setTitle("About");
+        bean.setSlug("about");
+
+        String view = controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(".PageEdit", view);
+        assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void aSlugTakenFromTheTitleIsCheckedAgainstTheTrashToo() throws Exception {
+        trashedHolder("about-us");
+        PageBean bean = new PageBean();
+        bean.setTitle("About Us");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void renamingOntoASlugHeldByTheTrashIsRefused() throws Exception {
+        trashedHolder("about");
+        WeblogPage mine = pageOn(weblogA, "contact");
+        PageBean bean = new PageBean();
+        bean.setId(mine.getId());
+        bean.setTitle("Contact");
+        bean.setSlug("about");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("pageEdit.error.slugInTrash"), "got: " + errors(model));
+        assertEquals("contact", mine.getSlug(), "a refused rename leaves the page as it was");
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    /** A check that could not run is not one that passed. */
+    @Test
+    void aTrashCheckThatCannotRunRefusesTheSave() throws Exception {
+        when(weblogger.getWeblogPageManager().getPageBySlug(weblogA, "about"))
+                .thenThrow(new WebloggerException("database down"));
+        PageBean bean = new PageBean();
+        bean.setTitle("About");
+        bean.setSlug("about");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), "got: " + errors(model));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    /** Saving a page under its own slug is not a clash with anything. */
+    @Test
+    void aLivePageHoldingItsOwnSlugSavesAsBefore() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        when(weblogger.getWeblogPageManager().getPageBySlug(weblogA, "about")).thenReturn(mine);
+        PageBean bean = new PageBean();
+        bean.setId(mine.getId());
+        bean.setTitle("About");
+        bean.setSlug("about");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).isEmpty(), "got: " + errors(model));
+        verify(weblogger.getWeblogPageManager()).savePage(mine);
+    }
+
     // --- opening the editor ---
 
     @Test

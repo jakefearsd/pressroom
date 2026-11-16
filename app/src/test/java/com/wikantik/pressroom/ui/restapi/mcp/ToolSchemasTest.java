@@ -47,7 +47,8 @@ class ToolSchemasTest {
     @SuppressWarnings("unchecked")
     void thePagesToolSetsPartsFromAnArrayOfIdsAndCarriesTheStrandFlag() throws Exception {
         Map<String, Object> action = (Map<String, Object>) properties("pages").get("action");
-        assertEquals(List.of("list", "get", "create", "update", "delete", "set_parts"), action.get("enum"));
+        assertEquals(List.of("list", "get", "create", "update", "delete", "restore", "delete_forever", "set_parts"),
+                action.get("enum"));
         Map<String, Object> entries = (Map<String, Object>) properties("pages").get("entries");
         assertEquals("array", entries.get("type"));
         assertEquals(Map.of("type", "string"), entries.get("items"));

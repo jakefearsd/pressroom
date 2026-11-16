@@ -84,6 +84,23 @@ class PageRoutingTest {
                 "an unpublished page must not be readable");
     }
 
+    /**
+     * Characterisation: passed as soon as TRASHED existed, because the
+     * request path serves only PUBLISHED. Pinned because a trashed page that
+     * is still served is the trash's worst failure.
+     */
+    @Test
+    void aTrashedPageIs404AndItsBlogStillRenders() throws Exception {
+        assertEquals(200, get("/about").getStatus());
+        var pages = TestUtils.weblogger().getWeblogPageManager();
+        pages.trashPage(pages.getPageBySlug(TestUtils.getManagedWebsite(weblog), "about"));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertEquals(404, get("/about").getStatus(), "a trashed page must not be readable");
+        assertEquals(200, get("").getStatus());
+    }
+
     @Test
     void anUnknownSlugIs404() throws Exception {
         assertEquals(404, get("/no-such-page").getStatus());

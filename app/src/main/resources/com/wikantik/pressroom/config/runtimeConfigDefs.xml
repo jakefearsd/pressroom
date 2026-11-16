@@ -158,6 +158,14 @@
          <type>integer</type>
          <default-value>30</default-value>
       </property-def>
+      <!-- How many days a trashed page survives before TrashPurgeTask
+           deletes it for good. -1 keeps it until deleted by hand. 0 purges
+           it on the very next sweep. Read fresh on every sweep. Shorter than
+           the entries' because a missing page is noticed sooner. -->
+      <property-def  name="page.trash.retention.days"  key="configForm.pageTrashRetentionDays">
+         <type>integer</type>
+         <default-value>7</default-value>
+      </property-def>
       <!-- Promoted from pressroom.properties. Only affects anchors generated
            after the change; anchors already stored on entries keep whichever
            separator was in force when they were created. -->

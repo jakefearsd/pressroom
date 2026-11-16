@@ -398,7 +398,7 @@
         </div>
 
         <c:if test="${not empty bean.id}">
-            <%-- delete: a quiet text link, not a red button. id/title ride in
+            <%-- delete (to the trash): a quiet text link, not a red button. id/title ride in
                  data-* attributes rather than an interpolated onclick string --
                  fn:escapeXml renders an apostrophe as &#039;, which the HTML
                  parser decodes back to ' BEFORE the onclick attribute compiles
@@ -407,7 +407,7 @@
                  below (same convention as MediaFileView.jsp:493). --%>
             <button type="button" id="deletePageButton" class="delete-link"
                     data-page-id="${fn:escapeXml(bean.id)}" data-page-title="${fn:escapeXml(bean.title)}"
-                    aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(bean.title)}"><spring:message code="generic.delete"/></button>
+                    aria-label="<spring:message code='pages.trash.move'/>: ${fn:escapeXml(bean.title)}"><spring:message code="pages.trash.move"/></button>
         </c:if>
 
     </div>
@@ -428,9 +428,10 @@
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="" id="page-delete-id"/>
                 <div class="modal-header">
-                    <p id="delete-page-modal-title" class="modal-title"><spring:message code="generic.delete"/>: <span id="page-delete-title"></span></p>
+                    <p id="delete-page-modal-title" class="modal-title"><spring:message code="pages.trash.move"/>: <span id="page-delete-title"></span></p>
                 </div>
-                <%-- Deleting a strand detaches its parts; say how many. --%>
+                <%-- The page goes to the trash (pageRemove.rol trashes). A trashed
+                     strand keeps its parts; say how many lose their strand bar. --%>
                 <c:if test="${not empty strandParts}">
                 <div class="modal-body">
                     <p><spring:message code="pages.deleteStrandConfirm" arguments="${fn:length(strandParts)}"/></p>
@@ -441,7 +442,7 @@
                      order IS the markup order (task B7). --%>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><spring:message code="generic.cancel"/></button>
-                    <button type="submit" class="btn btn-danger"><spring:message code="generic.delete"/></button>
+                    <button type="submit" class="btn btn-danger"><spring:message code="pages.trash.move"/></button>
                 </div>
                 <sec:csrfInput/>
             </form>

@@ -1301,6 +1301,8 @@ class JspConsistencyTest {
             "newImage.width", "newImage.height", "newImage.length", "newFile.length",
             "p.navOrder", "row.weblogCount", "perms.entryCount", "perms.pendingCommentCount",
             "userCount", "blogCount", "maxEntriesPerPage", "maxSameAs", "trashRetentionDays",
+            // The page trash's ints: a list size and the retention setting, both from the controller.
+            "trashedPageCount", "pageTrashRetentionDays",
             "commentsPublished", "commentsPending",
             // Booleans.
             "true", "categoryInUse", "mediaFile.isImageFile()", "card.usesMediaChooser",

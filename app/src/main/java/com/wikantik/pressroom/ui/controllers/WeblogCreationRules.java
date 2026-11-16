@@ -154,7 +154,11 @@ public final class WeblogCreationRules {
         if (site == null) {
             return false;
         }
-        for (WeblogPage page : context.pages().getPages(site)) {
+        // The trash too: a trashed site page keeps its address until it is
+        // restored or deleted for good.
+        List<WeblogPage> held = new ArrayList<>(context.pages().getPages(site));
+        held.addAll(context.pages().getTrashedPages(site));
+        for (WeblogPage page : held) {
             if (page.getSlug() != null
                     && page.getSlug().toLowerCase(Locale.ROOT).equals(handle.toLowerCase(Locale.ROOT))) {
                 return true;

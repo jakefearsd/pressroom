@@ -309,7 +309,8 @@
                 <select name="bean.strandPageId" id="entry_bean_strandPageId" class="form-select">
                     <option value="" ${empty bean.strandPageId ? 'selected' : ''}><spring:message code="weblogEdit.strand.none"/></option>
                     <c:forEach items="${strandPages}" var="opt">
-                        <option value="${opt.id}" ${opt.id == bean.strandPageId ? 'selected' : ''}>${fn:escapeXml(opt.title)}</option>
+                        <%-- The post's current strand may be in the trash; it is listed so the membership shows, and says so. The title is never a message argument: a comma in it would split one. --%>
+                        <option value="${opt.id}" ${opt.id == bean.strandPageId ? 'selected' : ''}>${fn:escapeXml(opt.title)}<c:if test="${opt.status.name() == 'TRASHED'}"> <spring:message code="strand.inTrash"/></c:if></option>
                     </c:forEach>
                 </select>
             </c:if>

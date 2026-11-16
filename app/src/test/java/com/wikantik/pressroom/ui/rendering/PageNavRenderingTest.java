@@ -123,6 +123,12 @@ class PageNavRenderingTest {
         savePage("first-page", "First & Best", WeblogPage.PubStatus.PUBLISHED, true, 10);
         savePage("hidden-page", "Hidden Page", WeblogPage.PubStatus.PUBLISHED, false, 0);
         savePage("draft-page", "Draft Page", WeblogPage.PubStatus.DRAFT, true, 0);
+        // Published and in the nav, then trashed: gone from the nav.
+        savePage("binned-page", "Binned Page", WeblogPage.PubStatus.PUBLISHED, true, 5);
+        var pages = TestUtils.weblogger().getWeblogPageManager();
+        pages.trashPage(pages.getPageBySlug(TestUtils.getManagedWebsite(weblog), "binned-page"));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
 
         List<String> failures = new ArrayList<>();
         for (String theme : THEMES) {
@@ -153,6 +159,8 @@ class PageNavRenderingTest {
                 theme + ": a page with showInNav=false must not appear:\n" + body);
         assertFalse(body.contains("Draft Page"),
                 theme + ": a DRAFT page must not appear:\n" + body);
+        assertFalse(body.contains("Binned Page"),
+                theme + ": a trashed page must not appear:\n" + body);
 
         int firstIndex = body.indexOf(firstHref);
         int secondIndex = body.indexOf(secondHref);

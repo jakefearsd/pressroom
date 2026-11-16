@@ -438,6 +438,13 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                         "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
                 ));
 
+        addExtendedDefinition(".PagesTrash", ".tiles-tabbedpage",
+                Map.of(
+                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
+                        "content", "/WEB-INF/jsps/editor/PagesTrash.jsp",
+                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
+                ));
+
         addExtendedDefinition(".PageEdit", ".tiles-tabbedpage",
                 Map.of(
                         "head",    "/WEB-INF/jsps/tiles/head.jsp",

@@ -47,6 +47,15 @@
         </button>
     </form>
 </c:if>
+<%-- The trash is reached from here whether or not any live page is left. --%>
+<c:if test="${trashedPageCount gt 0}">
+    <c:url var="pagesTrashUrl" value="/pressroom-ui/authoring/pagesTrash.rol">
+        <c:param name="weblog" value="${actionWeblog.handle}"/>
+    </c:url>
+    <a href="${pagesTrashUrl}" class="btn btn-outline-secondary btn-sm pages-trash-link">
+        <spring:message code="pages.trash.link" arguments="${trashedPageCount}"/>
+    </a>
+</c:if>
 </div>
 
 <%-- One form around the whole table, following Entries.jsp's pattern: the
@@ -146,17 +155,19 @@
                              The home page's prompt ends with what deleting
                              it does to the blog's root.
 
-                             A strand with parts adds how many posts leave it
-                             (the posts are kept): strandPartCounts holds
-                             only strands that have parts. --%>
+                             The page goes to the trash, not out of the
+                             database. A strand with parts adds how many posts
+                             stay attached without their strand bar:
+                             strandPartCounts holds only strands that have
+                             parts. --%>
                         <c:if test="${not empty strandPartCounts[p.id]}">
                             <spring:message code="pages.deleteStrandConfirm" arguments="${strandPartCounts[p.id]}" var="strandConfirm"/>
                         </c:if>
                         <button type="submit" class="row-action row-action-danger page-delete-btn"
                                 name="removeId" value="${p.id}"
                                 data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?<c:if test="${not empty strandPartCounts[p.id]}"> ${fn:escapeXml(strandConfirm)}</c:if><c:if test="${actionWeblog.frontPageId == p.id}"> ${fn:escapeXml(homeConfirm)}</c:if>"
-                                aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(p.title)}">
-                            <span class="bi bi-trash" aria-hidden="true" title="<spring:message code="generic.delete"/>"></span>
+                                aria-label="<spring:message code='pages.trash.move'/>: ${fn:escapeXml(p.title)}">
+                            <span class="bi bi-trash" aria-hidden="true" title="<spring:message code="pages.trash.move"/>"></span>
                         </button>
                     </td>
                 </tr>

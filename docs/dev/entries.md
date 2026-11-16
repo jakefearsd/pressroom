@@ -311,11 +311,11 @@ the new dimension from spreading.
   skips the site space (which has no entries screens); whether a hidden
   weblog's schedule and trash should keep running is an open product
   question.
-- **Pages and media files are deliberately NOT in the trash**: a soft-deleted
+- **Media files are deliberately NOT in the trash**: a soft-deleted
   media file still occupies disk, counts against `uploads.dir.maxsize`, keeps
   its renditions and stays reachable at its media URL unless every such path
-  learns about trash — the spreading this design avoids. Pages are few and
-  deliberate.
+  learns about trash — the spreading this design avoids. Pages have their own
+  trash since 0.13.0: see "Page trash" below.
 - **A bare `--` inside an XML comment in `runtimeConfigDefs.xml` makes the
   parse fail SILENTLY**: `getRuntimeConfigDefs()` returns null and surfaces
   as unrelated NPEs elsewhere (it bit the `pom.xml` coverage comments too).
@@ -408,6 +408,40 @@ and each part shows "Part N of M" with steps to the parts either side.
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on
 purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
+- **Page trash** (V050; spec `2026-11-15-page-revisions-and-trash-design.md`,
+  Part 1). Deleting a page sets `PubStatus.TRASHED` and `trashed_at`; nothing
+  but the trash's own "delete forever" and the purge calls `removePage`.
+  - `trashPage`/`restorePage` go through `persist`, the tail of `savePage`,
+    so the front door is cleared, `weblog.lastModified` moves and the page
+    leaves search by the same code a save uses. They run **no slug check**:
+    a slug saved before a rule existed must still trash and restore.
+  - A trashed page **keeps** its slug (the unique index is unchanged; the
+    editor says `pageEdit.error.slugInTrash`, the API a 409 on `slug`), its
+    `nav_order` and a strand's parts. Parts are detached only by
+    `removePage`. No redirect is minted.
+  - Restore is always `DRAFT` and never re-establishes the front door.
+  - **`getPages` excludes trash; `getTrashedPages` is only trash.**
+    `getPage(id)` and `getPageBySlug` still see it, so every serving caller
+    names `PUBLISHED` (`WeblogPageRequest`, `PageReference`, the strand bar,
+    search results, `IndexOperation.isIndexable`). `WeblogCreationRules`
+    reads both lists, so a trashed site page still blocks a blog handle.
+  - **Two ownership lookups.** `WeblogOwnership.page` (`lookupPage`) answers
+    null for a trashed page, which closes the editor, preview, strand parts
+    and the API's read and writes at once. `WeblogOwnership.trashedPage`
+    (`lookupTrashedPage`) answers only trash and serves three callers: the
+    trash view (`PagesTrashController`, `pagesTrash.rol`), restore and
+    delete forever. A new by-id page route uses the first unless it is one
+    of those three.
+  - **Purge**: `TrashPurgeTask` runs a page pass after the entry pass, one
+    transaction per weblog, the site space included, reading
+    `page.trash.retention.days` (default 7; any negative keeps forever)
+    every sweep. `WeblogPageManager.purgeTrash` calls `removePage` per page
+    and skips a trashed row with no stamp.
+  - The entry editor's Strand select adds the post's own strand when that is
+    trashed (one by-id read), so the membership still shows; no other post
+    can choose it.
+  - Browser tests that reuse a slug must clear the trash too
+    (`PressroomIT.deletePageForeverFromTrash`).
 - **Nav order**: `navOrder` is one 0-based sequence per blog (drafts and
   non-nav pages included). The Pages screen reorders it with up/down buttons
   and a drag handle (`pressroom-reorder.js`, shared with the strand Parts

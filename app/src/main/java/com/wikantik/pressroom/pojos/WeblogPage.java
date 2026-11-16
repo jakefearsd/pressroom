@@ -36,7 +36,9 @@ public class WeblogPage implements ShortcodeContext, Serializable {
 
     /** A page's publication state. */
     public enum PubStatus {
-        DRAFT, PUBLISHED
+        DRAFT, PUBLISHED,
+        /** In the trash: served nowhere, listed only in the trash, restorable as a DRAFT. */
+        TRASHED
     }
 
     private String id = EntityIds.newId();
@@ -46,6 +48,7 @@ public class WeblogPage implements ShortcodeContext, Serializable {
     private String title;
     private String content;
     private PubStatus status = PubStatus.DRAFT;
+    private Timestamp trashedAt;
     private Boolean showInNav = Boolean.TRUE;
     private int navOrder;
     private Timestamp created;
@@ -158,6 +161,18 @@ public class WeblogPage implements ShortcodeContext, Serializable {
 
     public void setStatus(PubStatus status) {
         this.status = status;
+    }
+
+    /**
+     * When the page was moved to the trash; null for a page that is not in
+     * it. The purge counts its retention from here.
+     */
+    public Timestamp getTrashedAt() {
+        return trashedAt;
+    }
+
+    public void setTrashedAt(Timestamp trashedAt) {
+        this.trashedAt = trashedAt;
     }
 
     /**

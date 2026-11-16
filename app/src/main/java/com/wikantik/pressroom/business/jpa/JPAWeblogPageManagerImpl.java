@@ -23,7 +23,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 
@@ -90,7 +93,17 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
             checkSiteSlug(slug);
         }
         page.setSlug(slug);
+        persist(page);
+    }
 
+    /**
+     * The write itself, and everything that must follow any write of a page.
+     * Runs no slug check: {@link #trashPage} and {@link #restorePage} change
+     * no address, and a slug saved before a rule existed must not strand its
+     * page outside the trash or inside it.
+     */
+    private void persist(WeblogPage page) throws WebloggerException {
+        String slug = page.getSlug();
         Timestamp now = new Timestamp(System.currentTimeMillis());
         if (page.getCreated() == null) {
             page.setCreated(now);
@@ -169,6 +182,77 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
     }
 
     @Override
+    public void trashPage(WeblogPage page) throws WebloggerException {
+        if (page.getStatus() == WeblogPage.PubStatus.TRASHED) {
+            throw new WebloggerException("page is already in the trash: " + page.getId());
+        }
+        page.setStatus(WeblogPage.PubStatus.TRASHED);
+        page.setTrashedAt(new Timestamp(System.currentTimeMillis()));
+        // No longer PUBLISHED: persist clears the front door, moves the
+        // stamp and takes the page out of search. Strand parts stay.
+        persist(page);
+    }
+
+    @Override
+    public void restorePage(WeblogPage page) throws WebloggerException {
+        if (page.getStatus() != WeblogPage.PubStatus.TRASHED) {
+            throw new WebloggerException("page is not in the trash: " + page.getId());
+        }
+        page.setStatus(WeblogPage.PubStatus.DRAFT);
+        page.setTrashedAt(null);
+        persist(page);
+    }
+
+    @Override
+    public List<WeblogPage> getTrashedPages(Weblog weblog) throws WebloggerException {
+        TypedQuery<WeblogPage> query = strategy.getNamedQuery(
+                "WeblogPage.getTrashedByWeblog", WeblogPage.class);
+        query.setParameter(1, weblog);
+        query.setParameter(2, WeblogPage.PubStatus.TRASHED);
+        return query.getResultList();
+    }
+
+    @Override
+    public int purgeTrash(Weblog weblog, int retentionDays) throws WebloggerException {
+        if (retentionDays < 0) {
+            return 0;
+        }
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(retentionDays);
+        int purged = 0;
+        // One removePage per page, never a bulk delete: each takes its
+        // strand's parts out, its search document and a stale front-door id.
+        for (WeblogPage page : new ArrayList<>(getTrashedPages(weblog))) {
+            Timestamp trashedAt = page.getTrashedAt();
+            if (trashedAt != null && trashedAt.getTime() <= cutoff && removeIfStillTrashed(page)) {
+                purged++;
+            }
+        }
+        return purged;
+    }
+
+    /**
+     * Removes a purge candidate, but only if its row is still trash now. The
+     * sweep holds the page as it was when listed, and an author's restore
+     * can commit before the delete: the row is read again under a write
+     * lock, so a restore either is seen here or waits until this is done. A
+     * page that left the trash, or is already gone, is left alone.
+     *
+     * @return whether the page was removed
+     */
+    boolean removeIfStillTrashed(WeblogPage page) throws WebloggerException {
+        try {
+            strategy.getEntityManager(true).refresh(page, LockModeType.PESSIMISTIC_WRITE);
+        } catch (EntityNotFoundException gone) {
+            return false;
+        }
+        if (page.getStatus() != WeblogPage.PubStatus.TRASHED) {
+            return false;
+        }
+        removePage(page);
+        return true;
+    }
+
+    @Override
     public void removePage(WeblogPage page) throws WebloggerException {
         // Parts are posts; they stay, outside any strand. The FK's SET NULL
         // would clear the page id alone and leave a stale position behind.
@@ -213,6 +297,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         TypedQuery<WeblogPage> query = strategy.getNamedQuery(
                 "WeblogPage.getByWeblog", WeblogPage.class);
         query.setParameter(1, weblog);
+        query.setParameter(2, WeblogPage.PubStatus.TRASHED);
         return query.getResultList();
     }
 

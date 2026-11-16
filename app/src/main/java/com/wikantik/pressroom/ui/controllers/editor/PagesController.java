@@ -88,7 +88,8 @@ public class PagesController extends BaseController {
     }
 
     /**
-     * Removes one page and reloads the list.
+     * Moves one page to the trash and reloads the list. A page already in
+     * the trash answers as not found ({@link #lookupPage} refuses trash).
      *
      * <p>Ownership-checked through {@link #lookupPage}: {@code removeId} is
      * client input and {@code getPage} is a global by-id lookup, so without
@@ -107,9 +108,11 @@ public class PagesController extends BaseController {
             addError(model, "pageEdit.notFound", request);
         } else {
             try {
-                weblogger.getWeblogPageManager().removePage(page);
+                // To the trash: recoverable for page.trash.retention.days.
+                // Deleting for good is the trash screen's second step.
+                weblogger.getWeblogPageManager().trashPage(page);
                 weblogger.flush();
-                addMessage(model, "pageEdit.removed",
+                addMessage(model, "pages.trash.moved",
                         StringEscapeUtils.escapeHtml4(page.getSlug()), request);
             } catch (Exception ex) {
                 log.error("Error removing page {}", removeId, ex);
@@ -157,14 +160,28 @@ public class PagesController extends BaseController {
             log.error("Error getting pages for weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "generic.error.check.logs", request);
         }
+        model.addAttribute("trashedPageCount", trashedPageCount(request));
+    }
+
+    /**
+     * How many pages are in the trash, for the link to it. A display path: a
+     * count that cannot be read leaves the link out and the list alone.
+     */
+    private int trashedPageCount(HttpServletRequest request) {
+        try {
+            return weblogger.getWeblogPageManager().getTrashedPages(getActionWeblog(request)).size();
+        } catch (WebloggerException ex) {
+            log.error("Error counting trashed pages of weblog {}", getActionWeblog(request).getHandle(), ex);
+            return 0;
+        }
     }
 
     /**
      * How many posts each strand with parts holds, by page id, for that row's
-     * delete confirmation: deleting a strand detaches its parts (they stay
-     * published), and the confirmation says how many. A count that cannot be
-     * read leaves the row with the plain confirmation; the delete itself
-     * detaches the parts either way.
+     * trash confirmation: a trashed strand keeps its parts, which lose their
+     * strand bar until it is restored and published, and the confirmation
+     * says how many. A count that cannot be read leaves the row with the
+     * plain confirmation.
      */
     private Map<String, Long> strandPartCounts(List<WeblogPage> pages) {
         Map<String, Long> counts = new HashMap<>();

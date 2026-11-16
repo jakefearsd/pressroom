@@ -240,4 +240,19 @@ class WeblogCreationRulesTest {
         sitePage("about", WeblogPage.PubStatus.PUBLISHED);
         assertFalse(keys(bean("contact")).contains("createWeblog.error.handleIsSitePage"));
     }
+
+    /** A trashed site page still holds its address for the week it can be restored. */
+    @Test
+    void aTrashedSitePageStillBlocksTheHandle() throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        when(weblogs.getSiteSpace()).thenReturn(site);
+        WeblogPage page = new WeblogPage();
+        page.setSlug("travel");
+        page.setStatus(WeblogPage.PubStatus.TRASHED);
+        when(pages.getPages(site)).thenReturn(List.of());
+        when(pages.getTrashedPages(site)).thenReturn(List.of(page));
+
+        assertTrue(keys(bean("travel")).contains("createWeblog.error.handleIsSitePage"));
+    }
 }

@@ -159,4 +159,23 @@ class PageReferenceTest {
     void absoluteUrlIsEmptyWhenTheBlogIsGone() throws Exception {
         assertEquals(Optional.empty(), PageReference.parse("ghost/privacy").orElseThrow().absoluteUrl(weblogger));
     }
+
+    /** A link to a page readers cannot open is no link: trashed and draft pages have no URL here. */
+    @Test
+    void absoluteUrlOfATrashedOrDraftPageIsEmpty() throws Exception {
+        Weblog blog = weblog("wikantik");
+        page(blog, "privacy", WeblogPage.PubStatus.TRASHED);
+        page(blog, "terms", WeblogPage.PubStatus.DRAFT);
+
+        assertTrue(PageReference.parse("wikantik/privacy").orElseThrow().absoluteUrl(weblogger).isEmpty());
+        assertTrue(PageReference.parse("wikantik/terms").orElseThrow().absoluteUrl(weblogger).isEmpty());
+    }
+
+    /** Characterisation: passed before the trash existed, since resolvePublished names PUBLISHED. */
+    @Test
+    void resolvePublishedIgnoresTrash() throws Exception {
+        page(weblog("wikantik"), "privacy", WeblogPage.PubStatus.TRASHED);
+
+        assertTrue(PageReference.parse("wikantik/privacy").orElseThrow().resolvePublished(weblogger).isEmpty());
+    }
 }

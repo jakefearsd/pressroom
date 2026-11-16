@@ -479,7 +479,7 @@ class PagesApiTest {
     }
 
     @Test
-    void deleteRemovesAPageFoundThroughOwnership() throws Exception {
+    void deleteTrashesAPageFoundThroughOwnership() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogPage page = aPage(weblog, "page-1", "about", "About");
@@ -490,7 +490,9 @@ class PagesApiTest {
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isNoContent());
 
-        verify(weblogger.getWeblogPageManager()).removePage(page);
+        // DELETE trashes; only delete-forever removes (PagesApiTrashTest).
+        verify(weblogger.getWeblogPageManager()).trashPage(page);
+        verify(weblogger.getWeblogPageManager(), never()).removePage(any());
         verify(weblogger).flush();
     }
 

@@ -86,7 +86,9 @@ class PagesControllerTest extends EditorControllerTestSupport {
         String view = controller.remove(requestFor(weblogA), model, mine.getId());
 
         assertEquals(".Pages", view);
-        verify(weblogger.getWeblogPageManager()).removePage(mine);
+        // To the trash, never straight out of the database (spec 2026-11-15, Part 1).
+        verify(weblogger.getWeblogPageManager()).trashPage(mine);
+        verify(weblogger.getWeblogPageManager(), never()).removePage(any());
         assertEquals(1, weblogger.flushCount());
     }
 
@@ -94,7 +96,7 @@ class PagesControllerTest extends EditorControllerTestSupport {
     void theRemovalNoticeEscapesTheSlugItNames() throws Exception {
         // A slug is author-typed on the page editor and lands in
         // messages.jsp's deliberately-raw sink.
-        registerMessage("pageEdit.removed", "removed:{0}");
+        registerMessage("pages.trash.moved", "removed:{0}");
         WeblogPage mine = pageOn(weblogA, "<b>about</b>");
         when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
 
@@ -113,6 +115,7 @@ class PagesControllerTest extends EditorControllerTestSupport {
 
         assertEquals(".Pages", view);
         verify(weblogger.getWeblogPageManager(), never()).removePage(any());
+        verify(weblogger.getWeblogPageManager(), never()).trashPage(any());
         assertTrue(errors(model).contains("pageEdit.notFound"),
                 "Expected a not-found error, got: " + errors(model));
     }
@@ -131,7 +134,7 @@ class PagesControllerTest extends EditorControllerTestSupport {
     void aFailedRemovalIsReportedGenericallyRatherThanThrowing() throws Exception {
         WeblogPage mine = pageOn(weblogA, "about");
         org.mockito.Mockito.doThrow(new WebloggerException("database down"))
-                .when(weblogger.getWeblogPageManager()).removePage(mine);
+                .when(weblogger.getWeblogPageManager()).trashPage(mine);
         when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
 
         String view = controller.remove(requestFor(weblogA), model, mine.getId());
@@ -184,16 +187,16 @@ class PagesControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void deletingAStrandRemovesOnlyThePageItsPostsStay() throws Exception {
-        // removePage clears the parts' strand fields (StrandMembershipTest);
-        // the controller must not take the posts with it.
+    void trashingAStrandMovesOnlyThePageItsPostsStay() throws Exception {
+        // trashPage keeps the parts attached (WeblogPageTrashTest); the
+        // controller must not take the posts with it.
         WeblogPage strand = pageOn(weblogA, "trip");
         strand.setStrand(true);
         when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
 
         controller.remove(requestFor(weblogA), model, strand.getId());
 
-        verify(weblogger.getWeblogPageManager()).removePage(strand);
+        verify(weblogger.getWeblogPageManager()).trashPage(strand);
         verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
     }
 
@@ -253,6 +256,49 @@ class PagesControllerTest extends EditorControllerTestSupport {
     }
 
     // --- fixtures ---
+
+    // --- the trash (spec 2026-11-15, Part 1) ---
+
+    /** A double submit, or a stale tab: the page is already in the trash, and stays as it is. */
+    @Test
+    void removingATrashedIdIsNotFound() throws Exception {
+        WeblogPage trashed = pageOn(weblogA, "about");
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
+
+        controller.remove(requestFor(weblogA), model, trashed.getId());
+
+        verify(weblogger.getWeblogPageManager(), never()).trashPage(any());
+        verify(weblogger.getWeblogPageManager(), never()).removePage(any());
+        assertTrue(errors(model).contains("pageEdit.notFound"), "got: " + errors(model));
+    }
+
+    @Test
+    void theListCarriesHowManyPagesAreInTheTrash() throws Exception {
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of());
+        when(weblogger.getWeblogPageManager().getTrashedPages(weblogA))
+                .thenReturn(List.of(new WeblogPage(), new WeblogPage()));
+
+        controller.execute(requestFor(weblogA), model);
+
+        assertEquals(2, model.getAttribute("trashedPageCount"));
+    }
+
+    /** A display path: the trash link is left out, the list still renders, no error is shown. */
+    @Test
+    void aTrashCountThatCannotBeReadLeavesTheListAlone() throws Exception {
+        WeblogPage mine = pageOn(weblogA, "about");
+        when(weblogger.getWeblogPageManager().getPages(weblogA)).thenReturn(List.of(mine));
+        when(weblogger.getWeblogPageManager().getTrashedPages(weblogA))
+                .thenThrow(new WebloggerException("database down"));
+
+        String view = controller.execute(requestFor(weblogA), model);
+
+        assertEquals(".Pages", view);
+        assertEquals(List.of(mine), model.getAttribute("pages"));
+        assertEquals(0, model.getAttribute("trashedPageCount"));
+        assertTrue(errors(model).isEmpty(), "got: " + errors(model));
+    }
 
     private HttpServletRequest requestFor(Weblog weblog) {
         HttpServletRequest req = mock(HttpServletRequest.class);

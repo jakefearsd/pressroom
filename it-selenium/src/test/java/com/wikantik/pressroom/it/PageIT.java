@@ -164,6 +164,73 @@ class PageIT extends PressroomIT {
     }
 
     /**
+     * The page trash, end to end (spec 2026-11-15, Part 1): deleting a
+     * published page takes it off the site but keeps it; it comes back as a
+     * draft; and only deleting it forever frees its address.
+     */
+    @Test
+    void aDeletedPageWaitsInTheTrashAndComesBackAsADraft() {
+        String handle = createWeblog();
+        String pageUrl = baseUrl() + "/" + handle + "/terms";
+        String row = "tr.trashed-page-row[data-page-slug='terms']";
+
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        $("#pageEditForm").should(exist);
+        $("#page_bean_slug").setValue("terms");
+        $("#page_bean_title").setValue("Terms of Use");
+        Editor.setText("The terms.");
+        $("#page_bean_status").selectOptionByValue("PUBLISHED");
+        saveOpenPage();
+        assertEquals(200, statusOf(pageUrl), "the published page must resolve before it is trashed");
+
+        // Move to the trash from the Pages screen.
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        awaitNewPageAfter(() -> {
+            $("tr[data-page-slug='terms'] button[data-confirm]").click();
+            com.codeborne.selenide.Selenide.confirm();
+        });
+        $("#messages").should(exist);
+        $$("tr[data-page-slug='terms']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
+        assertEquals(404, statusOf(pageUrl), "a trashed page must not be served");
+
+        // Its address is held: a new page may not take it, and the editor says why.
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        $("#page_bean_slug").setValue("terms");
+        $("#page_bean_title").setValue("Terms again");
+        Editor.setText("Other terms.");
+        $("#pageSaveButton").click();
+        $("#errors").shouldHave(text("trash"));
+        BrowserHealth.current().settle();
+
+        // Restore: back on the Pages list, as a draft, still not served.
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        clickAndAwaitNewPage($("a.pages-trash-link").should(exist));
+        $("#pages-trash-list-marker").should(exist);
+        clickAndAwaitNewPage($(row + " button.page-restore-btn").should(exist));
+        $("#messages").shouldHave(text("draft"));
+        $$(row).shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        $("tr[data-page-slug='terms']").should(exist);
+        assertEquals(404, statusOf(pageUrl), "a restored page is a draft, never republished");
+
+        // Trash it again and delete it forever: the address is free.
+        awaitNewPageAfter(() -> {
+            $("tr[data-page-slug='terms'] button[data-confirm]").click();
+            com.codeborne.selenide.Selenide.confirm();
+        });
+        deletePageForeverFromTrash(handle, "terms");
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        $("#page_bean_slug").setValue("terms");
+        $("#page_bean_title").setValue("Terms, rewritten");
+        Editor.setText("New terms.");
+        saveOpenPage();
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        $("tr[data-page-slug='terms']").should(exist);
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+    }
+
+    /**
      * The page editor previews the way the entry editor does: an iframe onto
      * the weblog's own theme, fed over postMessage as the author types.
      *

@@ -218,7 +218,12 @@ public class PageBean {
     private static WeblogPage.PubStatus parseStatus(String value) {
         if (!StringUtils.isBlank(value)) {
             try {
-                return WeblogPage.PubStatus.valueOf(value);
+                WeblogPage.PubStatus status = WeblogPage.PubStatus.valueOf(value);
+                // TRASHED is not a status the form may set: trashing goes
+                // through trashPage, which stamps the page for the purge.
+                if (status != WeblogPage.PubStatus.TRASHED) {
+                    return status;
+                }
             } catch (IllegalArgumentException ignored) {
                 // falls through to the DRAFT default below
             }

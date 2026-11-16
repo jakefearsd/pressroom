@@ -66,8 +66,9 @@ public record PageReference(String handle, String slug) {
     }
 
     /**
-     * The page's absolute URL; empty when the blog it names does not exist. A
-     * page that exists is linked through the strategy's page form, so a blog's
+     * The page's absolute URL; empty when the blog it names does not exist or
+     * the page exists but is not published. A
+     * published page is linked through the strategy's page form, so a blog's
      * front page links the blog root it is served at; a slug that names no
      * page (yet) keeps its slug address.
      */
@@ -78,8 +79,13 @@ public record PageReference(String handle, String slug) {
         }
         URLStrategy urls = weblogger.getUrlStrategy();
         WeblogPage page = weblogger.getWeblogPageManager().getPageBySlug(blog, slug);
-        return Optional.of(page == null ? urls.getWeblogStaticPageURL(blog, slug, true)
-                : urls.getWeblogStaticPageURL(blog, page, true));
+        if (page == null) {
+            return Optional.of(urls.getWeblogStaticPageURL(blog, slug, true));
+        }
+        // A page readers cannot open (a draft, or one in the trash) has no
+        // address to link.
+        return page.getStatus() == WeblogPage.PubStatus.PUBLISHED
+                ? Optional.of(urls.getWeblogStaticPageURL(blog, page, true)) : Optional.empty();
     }
 
     /**

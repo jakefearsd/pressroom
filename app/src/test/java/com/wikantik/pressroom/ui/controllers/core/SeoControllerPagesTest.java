@@ -166,4 +166,20 @@ class SeoControllerPagesTest {
         }
         throw new IllegalStateException("No field '" + name + "' on " + target.getClass());
     }
+
+    /** Characterisation: the sitemap lists PUBLISHED pages only, so trash never reaches it. */
+    @Test
+    void aTrashedPageLeavesTheSitemap() throws Exception {
+        WeblogPage page = savePage("retired", WeblogPage.PubStatus.PUBLISHED, false);
+        assertTrue(controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest())
+                .getBody().contains("retired"));
+
+        pageManager().trashPage(pageManager().getPage(page.getId()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        String body = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest()).getBody();
+        assertNotNull(body);
+        assertFalse(body.contains("retired"), "A trashed page must not be in the sitemap:\n" + body);
+    }
 }
