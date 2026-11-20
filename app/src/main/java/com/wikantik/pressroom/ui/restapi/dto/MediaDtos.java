@@ -17,11 +17,13 @@ import com.wikantik.pressroom.util.PressroomMessages;
  */
 public final class MediaDtos {
 
-    /** The fields {@code clear} may name on a media file. */
-    public static final List<String> MEDIA_CLEARABLE = List.of("altText", "focalX", "focalY");
-
-    /** Fields that are cleared together or not at all. */
-    public static final List<List<String>> MEDIA_PAIRS = List.of(List.of("focalX", "focalY"));
+    /** What {@code clear} may name on a media file, and how each is cleared. */
+    public static final ClearPolicy<MediaFile> MEDIA_CLEAR = ClearPolicy.<MediaFile>builder()
+            .field("altText", f -> f.setAltText(null))
+            .field("focalX", f -> f.setFocalX(null))
+            .field("focalY", f -> f.setFocalY(null))
+            .pair("focalX", "focalY")
+            .build();
 
     private MediaDtos() {
     }
@@ -226,13 +228,6 @@ public final class MediaDtos {
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
             file.setName(name);
         }
-        for (String name : cleared) {
-            switch (name) {
-                case "altText" -> file.setAltText(null);
-                case "focalX" -> file.setFocalX(null);
-                case "focalY" -> file.setFocalY(null);
-                default -> throw new IllegalArgumentException("Not clearable: " + name);
-            }
-        }
+        MEDIA_CLEAR.apply(file, cleared);
     }
 }

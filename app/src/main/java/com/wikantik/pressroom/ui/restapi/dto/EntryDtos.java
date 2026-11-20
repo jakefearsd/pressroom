@@ -30,13 +30,30 @@ public final class EntryDtos {
     private static final double MAX_LATITUDE = 90;
     private static final double MAX_LONGITUDE = 180;
 
-    /** The fields {@code clear} may name on an entry. */
-    public static final List<String> ENTRY_CLEARABLE = List.of("summary", "metaTitle", "searchDescription",
-            "canonicalUrl", "featuredImageId", "ogImageId", "jsonLdType", "geoLatitude", "geoLongitude",
-            "eventStart", "eventEnd", "eventLocation", "strand");
+    /** What {@code clear} may name on an entry, and how each is cleared. */
+    public static final ClearPolicy<WeblogEntry> ENTRY_CLEAR = ClearPolicy.<WeblogEntry>builder()
+            .field("summary", e -> e.setSummary(null))
+            .field("metaTitle", e -> e.setMetaTitle(null))
+            .field("searchDescription", e -> e.setSearchDescription(null))
+            .field("canonicalUrl", e -> e.setCanonicalUrl(null))
+            .field("featuredImageId", e -> e.setFeaturedImageId(null))
+            .field("ogImageId", e -> e.setOgImageId(null))
+            .field("jsonLdType", e -> e.setJsonLdType(JsonLdType.BLOG_POSTING))
+            .field("geoLatitude", e -> e.setGeoLatitude(null))
+            .field("geoLongitude", e -> e.setGeoLongitude(null))
+            .field("eventStart", e -> e.setEventStart(null))
+            .field("eventEnd", e -> e.setEventEnd(null))
+            .field("eventLocation", e -> e.setEventLocation(null))
+            // Both fields, as WeblogEntryManager.leaveStrand clears them.
+            .field("strand", e -> {
+                e.setStrandPageId(null);
+                e.setStrandPosition(null);
+            })
+            .pair("geoLatitude", "geoLongitude")
+            .build();
 
-    /** Fields that are cleared together or not at all. */
-    public static final List<List<String>> ENTRY_PAIRS = List.of(List.of("geoLatitude", "geoLongitude"));
+    /** The fields {@code clear} may name on an entry. */
+    public static final List<String> ENTRY_CLEARABLE = ENTRY_CLEAR.names();
 
     /** {@code edits}' text, one for update and preview, since one MCP property serves both. */
     static final String EDITS_DESCRIPTION = "Find/replace pairs applied to the entry's stored text, in order, "
@@ -348,9 +365,7 @@ public final class EntryDtos {
         applyPresentation(entry, write, errors);
         applyLocation(entry, write, errors);
         boolean[] timeOk = applyEvent(entry, write, weblog, errors);
-        for (String name : cleared) {
-            clearField(entry, name);
-        }
+        ENTRY_CLEAR.apply(entry, cleared);
         if (timeOk[0] && timeOk[1] && EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
             errors.add("eventEnd", "eventEnd must not be before eventStart.");
         }
@@ -504,29 +519,6 @@ public final class EntryDtos {
         scratch.setEventStart(entry.getEventStart());
         scratch.setEventEnd(entry.getEventEnd());
         return scratch;
-    }
-
-    private static void clearField(WeblogEntry entry, String name) {
-        switch (name) {
-            case "summary" -> entry.setSummary(null);
-            case "metaTitle" -> entry.setMetaTitle(null);
-            case "searchDescription" -> entry.setSearchDescription(null);
-            case "canonicalUrl" -> entry.setCanonicalUrl(null);
-            case "featuredImageId" -> entry.setFeaturedImageId(null);
-            case "ogImageId" -> entry.setOgImageId(null);
-            case "jsonLdType" -> entry.setJsonLdType(JsonLdType.BLOG_POSTING);
-            case "geoLatitude" -> entry.setGeoLatitude(null);
-            case "geoLongitude" -> entry.setGeoLongitude(null);
-            case "eventStart" -> entry.setEventStart(null);
-            case "eventEnd" -> entry.setEventEnd(null);
-            case "eventLocation" -> entry.setEventLocation(null);
-            // Both fields, as WeblogEntryManager.leaveStrand clears them.
-            case "strand" -> {
-                entry.setStrandPageId(null);
-                entry.setStrandPosition(null);
-            }
-            default -> throw new IllegalArgumentException("Not clearable: " + name);
-        }
     }
 
     /** A blank value is refused, not read as "remove": removing is clear's job. */

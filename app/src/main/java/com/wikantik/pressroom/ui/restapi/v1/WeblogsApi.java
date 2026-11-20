@@ -94,8 +94,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
     public AdminDtos.WeblogView update(HttpServletRequest request, @RequestBody AdminDtos.WeblogPatch body)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        Set<String> cleared = ClearFields.validate(body.clear(), body,
-                AdminDtos.WEBLOG_CLEARABLE, AdminDtos.WEBLOG_PAIRS);
+        Set<String> cleared = AdminDtos.WEBLOG_CLEAR.validate(body.clear(), body);
         if (body.theme() != null) {
             requireOfferedTheme(weblog, body.theme());
         }

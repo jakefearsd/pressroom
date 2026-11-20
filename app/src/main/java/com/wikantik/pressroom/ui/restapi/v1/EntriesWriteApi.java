@@ -174,8 +174,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
                 ? sent.withText(EntryEdits.resolve(errors, sent.text(), sent.edits(), entry.getText()))
                 : sent;
         Set<String> cleared = new HashSet<>();
-        errors.check("clear", () -> cleared.addAll(ClearFields.validate(body.clear(), body,
-                EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS)));
+        errors.check("clear", () -> cleared.addAll(EntryDtos.ENTRY_CLEAR.validate(body.clear(), body)));
         if (body.anchor() != null && !body.anchor().equals(entry.getAnchor())) {
             errors.add("anchor", "anchor is set when an entry is created and cannot change.");
         }

@@ -172,7 +172,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
         Set<String> cleared = new HashSet<>();
         errors.check("clear", () -> cleared.addAll(
-                ClearFields.validate(body.clear(), body, PageDtos.PAGE_CLEARABLE, List.of())));
+                PageDtos.PAGE_CLEAR.validate(body.clear(), body)));
         checkWrite(errors, page.getWeblog(), body, cleared, page.getOgImageId());
         checkStrand(errors, page.getWeblog(), page, body.strand());
         errors.throwIfAny();

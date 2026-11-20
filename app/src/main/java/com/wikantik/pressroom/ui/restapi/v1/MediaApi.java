@@ -259,8 +259,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             @RequestBody MediaDtos.MediaPatch body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         MediaFile file = requireMedia(request, id);
-        Set<String> cleared = ClearFields.validate(body.clear(), body,
-                MediaDtos.MEDIA_CLEARABLE, MediaDtos.MEDIA_PAIRS);
+        Set<String> cleared = MediaDtos.MEDIA_CLEAR.validate(body.clear(), body);
         MediaFileDirectory target = body.directoryId() == null ? null : requireDirectory(request, body.directoryId());
 
         MediaDtos.applyPatch(file, body, cleared);

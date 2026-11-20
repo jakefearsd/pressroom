@@ -29,9 +29,13 @@ import com.wikantik.pressroom.ui.restapi.FieldErrors;
  */
 public final class PageDtos {
 
-    /** The fields {@code clear} may name on a page. */
-    public static final List<String> PAGE_CLEARABLE = List.of("metaTitle", "searchDescription", "canonicalUrl",
-            "ogImageId");
+    /** What {@code clear} may name on a page, and how each is cleared. */
+    public static final ClearPolicy<WeblogPage> PAGE_CLEAR = ClearPolicy.<WeblogPage>builder()
+            .field("metaTitle", p -> p.setMetaTitle(null))
+            .field("searchDescription", p -> p.setSearchDescription(null))
+            .field("canonicalUrl", p -> p.setCanonicalUrl(null))
+            .field("ogImageId", p -> p.setOgImageId(null))
+            .build();
 
     private PageDtos() {
     }
@@ -229,20 +233,8 @@ public final class PageDtos {
         if (write.strand() != null) {
             page.setStrand(write.strand());
         }
-        for (String name : cleared) {
-            clearField(page, name);
-        }
+        PAGE_CLEAR.apply(page, cleared);
         errors.throwIfAny();
-    }
-
-    private static void clearField(WeblogPage page, String name) {
-        switch (name) {
-            case "metaTitle" -> page.setMetaTitle(null);
-            case "searchDescription" -> page.setSearchDescription(null);
-            case "canonicalUrl" -> page.setCanonicalUrl(null);
-            case "ogImageId" -> page.setOgImageId(null);
-            default -> throw new IllegalArgumentException("Not clearable: " + name);
-        }
     }
 
     /**

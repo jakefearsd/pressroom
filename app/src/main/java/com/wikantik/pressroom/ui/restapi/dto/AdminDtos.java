@@ -157,9 +157,26 @@ public final class AdminDtos {
                                List<String> clear) {
     }
 
-    public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "copyright", "customDomain", "icon", "about",
-            "newsletterListUuid", "businessId", "frontPage", "placeType",
-            "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl");
+    /** What {@code clear} may name on a weblog, and how each is cleared on the settings bean. */
+    public static final ClearPolicy<WeblogConfigBean> WEBLOG_CLEAR = ClearPolicy.<WeblogConfigBean>builder()
+            .field("tagline", b -> b.setTagline(null))
+            .field("copyright", b -> b.setCopyright(null))
+            .field("customDomain", b -> b.setCustomDomain(null))
+            .field("icon", b -> b.setIcon(null))
+            .field("about", b -> b.setAbout(null))
+            .field("newsletterListUuid", b -> b.setNewsletterListUuid(null))
+            .field("businessId", b -> b.setBusinessId(null))
+            .field("frontPage", b -> b.setFrontPageId(null))
+            .field("placeType", b -> b.setPlaceType(null))
+            .field("placeLocality", b -> b.setPlaceLocality(null))
+            .field("placeRegion", b -> b.setPlaceRegion(null))
+            .field("placeCountry", b -> b.setPlaceCountry(null))
+            .field("placeLat", b -> b.setPlaceLat(null))
+            .field("placeLng", b -> b.setPlaceLng(null))
+            .field("bookingUrl", b -> b.setBookingUrl(null))
+            .pair("placeLat", "placeLng")
+            .build();
+    public static final List<String> WEBLOG_CLEARABLE = WEBLOG_CLEAR.names();
     /** The settings bean's name for the API's {@code frontPage}. */
     public static final String FRONT_PAGE_BEAN_FIELD = "frontPageId";
     public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
@@ -267,9 +284,7 @@ public final class AdminDtos {
             bean.setPlaceLng(twoDecimals("placeLng", patch.placeLng()));
         }
         setIfPresent(patch.bookingUrl(), bean::setBookingUrl);
-        for (String name : cleared) {
-            clearOnBean(bean, name);
-        }
+        WEBLOG_CLEAR.apply(bean, cleared);
         Set<String> touched = new HashSet<>(ClearFields.fieldsWithValue(patch));
         touched.addAll(cleared);
         if (touched.contains("frontPage")) {
@@ -291,27 +306,6 @@ public final class AdminDtos {
             throw ApiException.invalidField(field, field + " must be a finite number.");
         }
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString();
-    }
-
-    private static void clearOnBean(WeblogConfigBean bean, String name) {
-        switch (name) {
-            case "tagline" -> bean.setTagline(null);
-            case "copyright" -> bean.setCopyright(null);
-            case "customDomain" -> bean.setCustomDomain(null);
-            case "icon" -> bean.setIcon(null);
-            case "about" -> bean.setAbout(null);
-            case "newsletterListUuid" -> bean.setNewsletterListUuid(null);
-            case "businessId" -> bean.setBusinessId(null);
-            case "frontPage" -> bean.setFrontPageId(null);
-            case "placeType" -> bean.setPlaceType(null);
-            case "placeLocality" -> bean.setPlaceLocality(null);
-            case "placeRegion" -> bean.setPlaceRegion(null);
-            case "placeCountry" -> bean.setPlaceCountry(null);
-            case "placeLat" -> bean.setPlaceLat(null);
-            case "placeLng" -> bean.setPlaceLng(null);
-            case "bookingUrl" -> bean.setBookingUrl(null);
-            default -> throw new IllegalArgumentException("Not clearable: " + name);
-        }
     }
 
     /**
