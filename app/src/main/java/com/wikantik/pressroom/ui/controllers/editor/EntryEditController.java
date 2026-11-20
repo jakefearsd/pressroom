@@ -724,9 +724,7 @@ public class EntryEditController extends BaseController {
                     weblogger, entry.getWebsite(), entry.getText(), Set.of()));
         }
 
-        if (entry.isPublished() && entry.getPubTime() == null) {
-            entry.setPubTime(entry.getUpdateTime());
-        }
+        entry.stampPubTimeIfPublished(entry.getUpdateTime());
 
         // only a site admin pins an entry to the front page
         GlobalPermission adminPerm = new GlobalPermission(

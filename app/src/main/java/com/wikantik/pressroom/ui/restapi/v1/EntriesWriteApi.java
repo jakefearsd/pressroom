@@ -450,9 +450,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * before the manager is ever called.
      */
     private void applyPublishNowDefault(WeblogEntry entry) {
-        if (entry.isPublished() && entry.getPubTime() == null) {
-            entry.setPubTime(new Timestamp(System.currentTimeMillis()));
-        }
+        entry.stampPubTimeIfPublished(new Timestamp(System.currentTimeMillis()));
     }
 
     /**
@@ -469,7 +467,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * untouched is never refused.
      */
     private void requireScheduledHasPubTime(WeblogEntry entry) {
-        if (entry.getStatus() == WeblogEntry.PubStatus.SCHEDULED && entry.getPubTime() == null) {
+        if (entry.lacksScheduleTime()) {
             throw ApiException.invalidField("pubTime", "pubTime is required when status is SCHEDULED.");
         }
     }

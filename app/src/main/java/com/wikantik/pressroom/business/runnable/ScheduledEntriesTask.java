@@ -109,7 +109,7 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
             if (entry == null || entry.getStatus() != PubStatus.SCHEDULED) {
                 return;
             }
-            entry.setStatus(PubStatus.PUBLISHED);
+            entry.publish(new java.sql.Timestamp(System.currentTimeMillis()));
             wMgr.saveWeblogEntry(entry);
             weblogger().flush();
         } catch (WebloggerException | RuntimeException e) {

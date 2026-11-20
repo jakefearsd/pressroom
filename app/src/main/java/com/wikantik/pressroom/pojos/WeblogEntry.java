@@ -729,6 +729,55 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
         this.status = status;
     }
 
+    /** Publishes the entry; with no pubTime yet, "publish" means now. */
+    public void publish(Timestamp now) {
+        this.status = PubStatus.PUBLISHED;
+        stampPubTimeIfPublished(now);
+    }
+
+    /** Schedules the entry to go live at the given time. */
+    public void schedule(Timestamp at) {
+        this.status = PubStatus.SCHEDULED;
+        this.pubTime = at;
+    }
+
+    /** A PUBLISHED entry with no pubTime gets {@code now}; any other entry is left alone. */
+    public void stampPubTimeIfPublished(Timestamp now) {
+        if (isPublished() && pubTime == null) {
+            this.pubTime = now;
+        }
+    }
+
+    /**
+     * Whether this is SCHEDULED with no pubTime: such an entry could never
+     * be promoted ({@code pubtime <= now} is never true against NULL).
+     */
+    public boolean lacksScheduleTime() {
+        return status == PubStatus.SCHEDULED && pubTime == null;
+    }
+
+    /**
+     * A PUBLISHED entry whose pubTime is more than a minute after {@code now}
+     * becomes SCHEDULED; anything else is left alone.
+     */
+    public void scheduleIfFuture(Timestamp now) {
+        if (isPublished() && pubTime.getTime() > now.getTime() + PressroomConstants.MIN_IN_MS) {
+            this.status = PubStatus.SCHEDULED;
+        }
+    }
+
+    /** Puts the entry in the trash, stamped {@code at}. */
+    public void moveToTrash(Timestamp at) {
+        this.status = PubStatus.TRASHED;
+        this.trashedAt = at;
+    }
+
+    /** Takes the entry out of the trash, back as a draft. */
+    public void restoreFromTrash() {
+        this.status = PubStatus.DRAFT;
+        this.trashedAt = null;
+    }
+
     /**
      * When this entry was moved to the trash. Null means it is not trashed;
      * the trash state itself lives in {@link #getStatus()} being

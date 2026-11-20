@@ -246,9 +246,7 @@ public class EntriesController extends BaseController {
                 entry -> {
                     entry.setStatus(target);
                     entry.setUpdateTime(new Timestamp(System.currentTimeMillis()));
-                    if (entry.isPublished() && entry.getPubTime() == null) {
-                        entry.setPubTime(entry.getUpdateTime());
-                    }
+                    entry.stampPubTimeIfPublished(entry.getUpdateTime());
                     weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
 
                     MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);

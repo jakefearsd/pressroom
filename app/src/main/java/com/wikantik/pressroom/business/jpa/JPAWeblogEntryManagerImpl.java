@@ -48,7 +48,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import com.wikantik.pressroom.business.AnchorTakenException;
@@ -151,14 +150,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 WeblogEntry::getId,
                 entry -> entry.getStatus() == PubStatus.TRASHED,
                 WeblogEntry::getTrashedAt,
-                (entry, at) -> {
-                    entry.setStatus(PubStatus.TRASHED);
-                    entry.setTrashedAt(at);
-                },
-                entry -> {
-                    entry.setStatus(PubStatus.DRAFT);
-                    entry.setTrashedAt(null);
-                },
+                WeblogEntry::moveToTrash,
+                WeblogEntry::restoreFromTrash,
                 this::saveWeblogEntry,
                 entry -> strategy.getEntityManager(true).refresh(entry, LockModeType.PESSIMISTIC_WRITE),
                 this::removeWeblogEntry,
@@ -430,10 +423,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // if the entry was published to future, set status as SCHEDULED
         // we only consider an entry future published if it is scheduled
         // more than 1 minute into the future
-        if (entry.getStatus() == PubStatus.PUBLISHED &&
-                entry.getPubTime().after(new Date(System.currentTimeMillis() + PressroomConstants.MIN_IN_MS))) {
-            entry.setStatus(PubStatus.SCHEDULED);
-        }
+        entry.scheduleIfFuture(new Timestamp(System.currentTimeMillis()));
 
         // A tag counts once for every PUBLISHED entry carrying it. Every tag
         // this save may have touched is recounted from the database at
