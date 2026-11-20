@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -608,7 +607,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         JpqlParameters params = new JpqlParameters();
         // the site space is hidden from every listing, so there is always a
         // predicate for the WHERE keyword to introduce
-        StringBuilder query = new StringBuilder("SELECT w FROM Weblog w WHERE w.siteSpace = false");
+        StringBuilder query = new StringBuilder(160).append("SELECT w FROM Weblog w WHERE w.siteSpace = false");
         if (startDate != null) {
             query.append(" AND w.dateCreated > ").append(params.bind(new Timestamp(startDate.getTime())));
         }

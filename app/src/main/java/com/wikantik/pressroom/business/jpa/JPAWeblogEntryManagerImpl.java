@@ -755,8 +755,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         JpqlParameters params = new JpqlParameters();
         StringBuilder whereClause = new StringBuilder(128);
 
-        whereClause.append("e.website = ").append(params.bind(current.getWebsite()));
-        whereClause.append(" AND e.status = ").append(params.bind(PubStatus.PUBLISHED));
+        whereClause.append("e.website = ").append(params.bind(current.getWebsite()))
+                .append(" AND e.status = ").append(params.bind(PubStatus.PUBLISHED));
 
         if (next) {
             whereClause.append(" AND e.pubTime > ").append(params.bind(current.getPubTime()));
