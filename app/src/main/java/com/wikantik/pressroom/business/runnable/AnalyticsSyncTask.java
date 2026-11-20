@@ -83,27 +83,8 @@ public class AnalyticsSyncTask extends PressroomTaskWithLeasing {
         Properties props = getTaskProperties();
         clientId = props.getProperty("clientId", clientId);
         startTimeDesc = props.getProperty("startTime", startTimeDesc);
-        interval = minutes(props, "interval", interval);
-        leaseTime = minutes(props, "leaseTime", leaseTime);
-    }
-
-    /** A whole number of minutes from the task's properties; the default when absent or not a positive number. */
-    private static int minutes(Properties props, String key, int fallback) {
-        String value = props.getProperty(key);
-        if (value == null) {
-            return fallback;
-        }
-        int parsed;
-        try {
-            parsed = Integer.parseInt(value.trim());
-        } catch (NumberFormatException ex) {
-            parsed = 0;
-        }
-        if (parsed > 0) {
-            return parsed;
-        }
-        log.warn("Invalid {}: {}", key, value);
-        return fallback;
+        interval = positiveMinutes(props, "interval", interval);
+        leaseTime = positiveMinutes(props, "leaseTime", leaseTime);
     }
 
     @Override
@@ -115,8 +96,6 @@ public class AnalyticsSyncTask extends PressroomTaskWithLeasing {
             }
         } catch (RuntimeException e) {
             log.error("Unexpected exception running the analytics sync", e);
-        } finally {
-            weblogger().release();
         }
         log.debug("task completed");
     }

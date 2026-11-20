@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -93,7 +94,7 @@ class PopularityRefreshTaskTest {
         task().runTask();
 
         verify(discovery).refresh();
-        verify(weblogger).release();
+        verify(weblogger, never()).release(); // run() releases once, in the base class
     }
 
     @Test
@@ -101,7 +102,7 @@ class PopularityRefreshTaskTest {
         doThrow(new IllegalStateException("boom")).when(discovery).refresh();
 
         assertDoesNotThrow(() -> task().runTask());
-        verify(weblogger).release();
+        verify(weblogger, never()).release();
     }
 
     @Test

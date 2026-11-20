@@ -253,7 +253,7 @@ class TrashPurgeTaskTest {
 
         task().runTask();
 
-        // released after the failing weblog's purge, and again at the end
+        // released after the failing weblog's purge; the final release is the base run()'s
         verify(weblogger, atLeastOnce()).release();
     }
 
@@ -269,7 +269,7 @@ class TrashPurgeTaskTest {
         task().runTask();
 
         verify(entryManager, never()).purgeTrash(any(), anyInt());
-        verify(weblogger).release();
+        verify(weblogger, never()).release();
     }
 
     /**
@@ -309,7 +309,7 @@ class TrashPurgeTaskTest {
 
         assertDoesNotThrow(() -> task().runTask(),
                 "a failure listing weblogs must not propagate out of runTask()");
-        verify(weblogger).release();
+        verify(weblogger, never()).release();
     }
 
     /**
@@ -327,7 +327,7 @@ class TrashPurgeTaskTest {
 
         assertDoesNotThrow(() -> task().runTask(),
                 "an unchecked exception listing weblogs must not propagate out of runTask() either");
-        verify(weblogger).release();
+        verify(weblogger, never()).release();
     }
 
     // ------------------------------------------------------- task scaffolding

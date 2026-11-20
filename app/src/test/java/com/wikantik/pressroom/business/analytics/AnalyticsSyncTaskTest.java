@@ -76,8 +76,9 @@ class AnalyticsSyncTaskTest {
         InOrder order = inOrder(weblogger.getThreadManager(), analytics, weblogger);
         order.verify(weblogger.getThreadManager()).registerLease(any());
         order.verify(analytics).trySync();
-        order.verify(weblogger).release();
         order.verify(weblogger.getThreadManager()).unregisterLease(any());
+        order.verify(weblogger).release();
+        verify(weblogger).release();
         verify(analytics, never()).sync();
 
         AnalyticsManager refused = mock(AnalyticsManager.class);
@@ -167,7 +168,8 @@ class AnalyticsSyncTaskTest {
         Weblogger weblogger = leasing(analytics, true);
 
         assertDoesNotThrow(() -> task(weblogger).runTask());
-        verify(weblogger).release();
+        // the session is released once, by the base run(), not by runTask()
+        verify(weblogger, never()).release();
     }
 
     @Test

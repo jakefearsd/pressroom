@@ -153,25 +153,8 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
             this.startTimeDesc = startTimeStr;
         }
 
-        // extract interval
-        String intervalStr = props.getProperty("interval");
-        if (intervalStr != null) {
-            try {
-                this.interval = Integer.parseInt(intervalStr);
-            } catch (NumberFormatException ex) {
-                log.warn("Invalid interval: {}", intervalStr);
-            }
-        }
-
-        // extract lease time
-        String leaseTimeStr = props.getProperty("leaseTime");
-        if (leaseTimeStr != null) {
-            try {
-                this.leaseTime = Integer.parseInt(leaseTimeStr);
-            } catch (NumberFormatException ex) {
-                log.warn("Invalid leaseTime: {}", leaseTimeStr);
-            }
-        }
+        this.interval = positiveMinutes(props, "interval", this.interval);
+        this.leaseTime = positiveMinutes(props, "leaseTime", this.leaseTime);
     }
 
 
@@ -235,9 +218,6 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
             log.error("Error running trash purge task", e);
         } catch (Exception e) {
             log.error("Unexpected exception running task", e);
-        } finally {
-            // always release
-            weblogger().release();
         }
 
         log.debug("task completed");

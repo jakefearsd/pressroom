@@ -85,14 +85,7 @@ public class PopularityRefreshTask extends PressroomTaskWithLeasing {
         if (startTimeStr != null) {
             this.startTimeDesc = startTimeStr;
         }
-        String leaseTimeStr = props.getProperty("leaseTime");
-        if (leaseTimeStr != null) {
-            try {
-                this.leaseTime = Integer.parseInt(leaseTimeStr);
-            } catch (NumberFormatException ex) {
-                log.warn("Invalid leaseTime: {}", leaseTimeStr);
-            }
-        }
+        this.leaseTime = positiveMinutes(props, "leaseTime", this.leaseTime);
     }
 
     @Override
@@ -102,8 +95,6 @@ public class PopularityRefreshTask extends PressroomTaskWithLeasing {
             weblogger().getDiscoveryManager().refresh();
         } catch (Exception e) {
             log.error("Unexpected exception running popularity refresh", e);
-        } finally {
-            weblogger().release();
         }
         log.debug("task completed");
     }

@@ -18,6 +18,8 @@
 
 package com.wikantik.pressroom.business.runnable;
 
+import java.util.Properties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -37,6 +39,29 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
     public abstract void runTask() throws WebloggerException;
     
     
+    /**
+     * A whole number of minutes from the task's properties: the fallback when
+     * the key is absent, unparsable or not positive (with a warning), so every
+     * task validates its interval and lease time the same way.
+     */
+    protected static int positiveMinutes(Properties props, String key, int fallback) {
+        String value = props.getProperty(key);
+        if (value == null) {
+            return fallback;
+        }
+        int parsed;
+        try {
+            parsed = Integer.parseInt(value.trim());
+        } catch (NumberFormatException ex) {
+            parsed = 0;
+        }
+        if (parsed > 0) {
+            return parsed;
+        }
+        log.warn("Invalid {}: {}", key, value);
+        return fallback;
+    }
+
     /**
      * The run() method as called by our thread manager.
      *
@@ -83,7 +108,8 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
                 }
             }
             
-            // always release Pressroom session
+            // the one release of the run's session; tasks do not repeat it in
+            // runTask() (they release only between per-item transactions)
             weblogger().release();
         }
         
