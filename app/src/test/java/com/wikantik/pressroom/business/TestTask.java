@@ -17,7 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
-import java.util.Date;
+import java.util.Properties;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.PressroomTaskWithLeasing;
@@ -25,34 +25,38 @@ import com.wikantik.pressroom.business.runnable.PressroomTaskWithLeasing;
 public class TestTask extends PressroomTaskWithLeasing {
     public static final String NAME = "TestTask";
 
-    public TestTask() {}
+    private final String clientId;
+    private final String startTimeDesc;
+
+    public TestTask() {
+        this("TestTaskClientId", "immediate");
+    }
+
+    /** A task whose client id and start window are fixed regardless of the global config. */
+    public TestTask(String clientId, String startTimeDesc) {
+        this.clientId = clientId;
+        this.startTimeDesc = startTimeDesc;
+    }
+
+    @Override
+    protected Properties getTaskProperties() {
+        Properties props = super.getTaskProperties();
+        props.setProperty("clientId", clientId);
+        props.setProperty("startTime", startTimeDesc);
+        return props;
+    }
 
     public void init(Weblogger weblogger) throws WebloggerException {
         this.init(weblogger, TestTask.NAME);
     }
 
     @Override
-    public String getClientId() {
-        return "TestTaskClientId";
-    }
-
-    @Override
-    public Date getStartTime(Date current) {
-        return current;
-    }
-
-    @Override
-    public String getStartTimeDesc() {
-        return "immediate";
-    }
-
-    @Override
-    public int getLeaseTime() {
+    protected int defaultLeaseMinutes() {
         return 300;
     }
 
     @Override
-    public int getInterval() {
+    protected int defaultInterval() {
         return 1800;
     }
 

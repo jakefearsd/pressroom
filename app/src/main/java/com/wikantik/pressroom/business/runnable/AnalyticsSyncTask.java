@@ -17,12 +17,8 @@
  */
 package com.wikantik.pressroom.business.runnable;
 
-import java.util.Date;
-import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.Weblogger;
 
 /**
  * Reads every registered blog's traffic into the local snapshots on a fixed
@@ -46,45 +42,14 @@ public class AnalyticsSyncTask extends PressroomTaskWithLeasing {
     private static final int DEFAULT_INTERVAL = 15;
     private static final int DEFAULT_LEASE = 10;
 
-    private String clientId;
-    private String startTimeDesc = "immediate";
-    // volatile: written by init() on the bootstrap thread, read by the scheduler's
-    private volatile int interval = DEFAULT_INTERVAL;
-    private volatile int leaseTime = DEFAULT_LEASE;
-
     @Override
-    public String getClientId() {
-        return clientId;
+    protected int defaultInterval() {
+        return DEFAULT_INTERVAL;
     }
 
     @Override
-    public Date getStartTime(Date currentTime) {
-        return getAdjustedTime(currentTime, startTimeDesc);
-    }
-
-    @Override
-    public String getStartTimeDesc() {
-        return startTimeDesc;
-    }
-
-    @Override
-    public int getInterval() {
-        return interval;
-    }
-
-    @Override
-    public int getLeaseTime() {
-        return leaseTime;
-    }
-
-    @Override
-    public void init(Weblogger weblogger, String name) throws WebloggerException {
-        super.init(weblogger, name);
-        Properties props = getTaskProperties();
-        clientId = props.getProperty("clientId", clientId);
-        startTimeDesc = props.getProperty("startTime", startTimeDesc);
-        interval = positiveMinutes(props, "interval", interval);
-        leaseTime = positiveMinutes(props, "leaseTime", leaseTime);
+    protected int defaultLeaseMinutes() {
+        return DEFAULT_LEASE;
     }
 
     @Override

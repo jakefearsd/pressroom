@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.business.runnable;
 
-import java.util.Date;
 
 import com.wikantik.pressroom.business.Weblogger;
 import org.junit.jupiter.api.BeforeEach;
@@ -110,31 +109,6 @@ class PressroomTaskWithLeasingTest {
         @Override
         public void runTask() {
             ran = true;
-        }
-
-        @Override
-        public String getClientId() {
-            return "recording-client";
-        }
-
-        @Override
-        public Date getStartTime(Date currentTime) {
-            return currentTime;
-        }
-
-        @Override
-        public String getStartTimeDesc() {
-            return "immediate";
-        }
-
-        @Override
-        public int getInterval() {
-            return 1;
-        }
-
-        @Override
-        public int getLeaseTime() {
-            return 1;
         }
     }
 }

@@ -184,14 +184,11 @@ public class TaskScheduler implements Runnable {
             return false;
         }
         log.debug("MISSED last run, checking if waiting is necessary");
-        Date windowStart;
-        if ("startOfDay".equals(task.getStartTimeDesc())) {
-            windowStart = DateUtil.getStartOfDay(currentTime, calendar());
-        } else if ("startOfHour".equals(task.getStartTimeDesc())) {
-            windowStart = DateUtil.getStartOfHour(currentTime);
-        } else {
+        StartWindow window = StartWindow.parse(task.getStartTimeDesc());
+        if (window == StartWindow.IMMEDIATE) {
             return false;
         }
+        Date windowStart = window.windowStart(currentTime, calendar());
         boolean wait = currentTime.getTime() > windowStart.getTime() + (2 * PressroomConstants.MIN_IN_MS);
         if (wait) {
             log.debug("WAITING for next reasonable run time");

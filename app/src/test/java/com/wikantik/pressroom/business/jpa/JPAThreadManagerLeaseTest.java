@@ -62,12 +62,7 @@ class JPAThreadManagerLeaseTest {
     }
 
     private TestTask taskNamed(String name, String clientId) throws Exception {
-        TestTask task = new TestTask() {
-            @Override
-            public String getClientId() {
-                return clientId;
-            }
-        };
+        TestTask task = new TestTask(clientId, "immediate");
         task.init(TestUtils.weblogger(), name);
         return task;
     }

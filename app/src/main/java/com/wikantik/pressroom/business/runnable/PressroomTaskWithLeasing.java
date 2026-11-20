@@ -18,11 +18,14 @@
 
 package com.wikantik.pressroom.business.runnable;
 
+import java.util.Date;
 import java.util.Properties;
+import java.util.Calendar;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.Weblogger;
 
 
 /**
@@ -33,10 +36,75 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
     private static final Logger log = LoggerFactory.getLogger(PressroomTaskWithLeasing.class);
     protected static final int DEFAULT_LEASE_MINS = 30;
     
+    // volatile: written by init() on the bootstrap thread, read by the scheduler's
+    private volatile TaskSettings settings;
+
     /**
      * Run the task.
      */
     public abstract void runTask() throws WebloggerException;
+
+    /** The default {@code interval}, in minutes; a task with another rhythm overrides this. */
+    protected int defaultInterval() {
+        return DEFAULT_INTERVAL_MINS;
+    }
+
+    /** The default {@code leaseTime}, in minutes. */
+    protected int defaultLeaseMinutes() {
+        return DEFAULT_LEASE_MINS;
+    }
+
+    /** The default {@code startTime} window. */
+    protected StartWindow defaultStartWindow() {
+        return StartWindow.IMMEDIATE;
+    }
+
+    /** The default {@code clientId}: none, until {@code tasks.clientId} supplies one. */
+    protected String defaultClientId() {
+        return null;
+    }
+
+    private TaskSettings defaults() {
+        return TaskSettings.of(defaultClientId(), defaultStartWindow(), defaultInterval(), defaultLeaseMinutes());
+    }
+
+    /** Parses the task's properties once, over the subclass's defaults. */
+    @Override
+    public void init(Weblogger weblogger, String name) throws WebloggerException {
+        super.init(weblogger, name);
+        settings = defaults().overriddenBy(getTaskProperties());
+    }
+
+    private TaskSettings settings() {
+        TaskSettings current = settings;
+        return current != null ? current : defaults();
+    }
+
+    @Override
+    public final String getClientId() {
+        return settings().clientId();
+    }
+
+    @Override
+    public final String getStartTimeDesc() {
+        return settings().startTimeDesc();
+    }
+
+    @Override
+    public final Date getStartTime(Date currentTime) {
+        return settings().startWindow().firstRun(currentTime, Calendar.getInstance());
+    }
+
+    /** Minutes between runs; non-final only because a task may follow a runtime setting instead. */
+    @Override
+    public int getInterval() {
+        return settings().interval();
+    }
+
+    @Override
+    public final int getLeaseTime() {
+        return settings().leaseTime();
+    }
     
     
     /**
@@ -44,7 +112,7 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
      * the key is absent, unparsable or not positive (with a warning), so every
      * task validates its interval and lease time the same way.
      */
-    protected static int positiveMinutes(Properties props, String key, int fallback) {
+    static int positiveMinutes(Properties props, String key, int fallback) {
         String value = props.getProperty(key);
         if (value == null) {
             return fallback;

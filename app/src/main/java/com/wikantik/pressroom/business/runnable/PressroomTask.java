@@ -24,7 +24,6 @@ import java.util.Properties;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
-import com.wikantik.pressroom.util.DateUtil;
 
 
 /**
@@ -165,33 +164,5 @@ public abstract class PressroomTask implements Runnable {
         
         return taskProps;
     }
-    
-    
-    /**
-     * A convenience method for calculating an adjusted time given an initial
-     * Date to work from and a "changeFactor" which describes how the time 
-     * should be adjusted.
-     *
-     * Allowed change factors are ...
-     *   'immediate' - no change
-     *   'startOfHour' - top of the hour, beginning with next hour
-     *   'startOfDay' - midnight, beginning on the next day
-     */
-    protected Date getAdjustedTime(Date startTime, String changeFactor) {
-        
-        if(startTime == null || changeFactor == null) {
-            return startTime;
-        }
-        
-        Date adjustedTime = startTime;
-        
-        if("startOfDay".equals(changeFactor)) {
-            adjustedTime = DateUtil.getEndOfDay(startTime);
-        } else if("startOfHour".equals(changeFactor)) {
-            adjustedTime = DateUtil.getEndOfHour(startTime);
-        }
-        
-        return adjustedTime;
-    }
-    
+
 }

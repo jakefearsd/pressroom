@@ -21,7 +21,6 @@ package com.wikantik.pressroom.business.runnable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -42,81 +41,15 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
     public static final String NAME = "ScheduledEntriesTask";
 
 
-    // a unique id for this specific task instance
-    // this is meant to be unique for each client in a clustered environment
-    private String clientId;
-
-    // a String description of when to start this task
-    private String startTimeDesc = "immediate";
-
-    // interval at which the task is run, default is once per minute.
-    // volatile: written by init() on the bootstrap thread, read via
-    // getInterval() from the scheduler thread TaskScheduler runs on.
-    private volatile int interval = 1;
-
-    // lease time given to task lock, default is 30 minutes.
-    // volatile: same cross-thread shape as interval above.
-    private volatile int leaseTime = DEFAULT_LEASE_MINS;
-
-
     @Override
-    public String getClientId() {
-        return clientId;
-    }
-
-    @Override
-    public Date getStartTime(Date currentTime) {
-        return getAdjustedTime(currentTime, startTimeDesc);
-    }
-
-    @Override
-    public String getStartTimeDesc() {
-        return startTimeDesc;
-    }
-
-    @Override
-    public int getInterval() {
-        return this.interval;
-    }
-
-    @Override
-    public int getLeaseTime() {
-        return this.leaseTime;
+    protected int defaultInterval() {
+        return 1;
     }
 
 
     public void init(Weblogger weblogger) throws WebloggerException {
-    // CPD-OFF -- The two scheduled tasks share their configuration-reading
-    // shape: same properties, same defaults, same parse-and-validate order.
-    // Collapsing it means a shared base for tasks that otherwise have nothing
-    // in common, and the shape is what a third task would be copied from
-    // anyway. Left as a known duplicate rather than an unexamined one.
         this.init(weblogger, NAME);
     }
-
-    @Override
-    public void init(Weblogger weblogger, String name) throws WebloggerException {
-        super.init(weblogger, name);
-
-        // get relevant props
-        Properties props = this.getTaskProperties();
-
-        // extract clientId
-        String client = props.getProperty("clientId");
-        if(client != null) {
-            this.clientId = client;
-        }
-
-        // extract start time
-        String startTimeStr = props.getProperty("startTime");
-        if(startTimeStr != null) {
-            this.startTimeDesc = startTimeStr;
-        }
-
-        this.interval = positiveMinutes(props, "interval", this.interval);
-        this.leaseTime = positiveMinutes(props, "leaseTime", this.leaseTime);
-    }
-
 
     /**
      * Execute the task: promote each due entry in its own transaction.
@@ -134,7 +67,6 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
         log.debug("task started");
 
         try {
-    // CPD-ON
             WeblogEntryManager wMgr = weblogger().getWeblogEntryManager();
 
             Date now = new Date();

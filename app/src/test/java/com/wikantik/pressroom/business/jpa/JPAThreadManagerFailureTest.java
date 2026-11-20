@@ -78,12 +78,7 @@ class JPAThreadManagerFailureTest {
     }
 
     private static TestTask task(String startTimeDesc) throws WebloggerException {
-        TestTask task = new TestTask() {
-            @Override
-            public String getStartTimeDesc() {
-                return startTimeDesc;
-            }
-        };
+        TestTask task = new TestTask("TestTaskClientId", startTimeDesc);
         task.init(MockWeblogger.create().weblogger());
         return task;
     }

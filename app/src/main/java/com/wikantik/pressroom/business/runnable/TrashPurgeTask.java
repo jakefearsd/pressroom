@@ -19,9 +19,7 @@
 package com.wikantik.pressroom.business.runnable;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -64,97 +62,14 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
     public static final String PAGE_RETENTION_PROPERTY = "page.trash.retention.days";
 
 
-    // a unique id for this specific task instance
-    // this is meant to be unique for each client in a clustered environment
-    private String clientId;
-
-    // a String description of when to start this task
-    private String startTimeDesc = "startOfDay";
-
-    // interval at which the task is run, default is once per day.
-    // volatile: written by init() on the bootstrap thread, read via
-    // getInterval() from the scheduler thread TaskScheduler runs on.
-    private volatile int interval = DEFAULT_INTERVAL_MINS;
-
-    // lease time given to task lock, default is 30 minutes.
-    // volatile: same cross-thread shape as interval above.
-    private volatile int leaseTime = DEFAULT_LEASE_MINS;
-
-
     @Override
-    public String getClientId() {
-        return clientId;
-    }
-
-    @Override
-    public Date getStartTime(Date currentTime) {
-        return getAdjustedTime(currentTime, startTimeDesc);
-    }
-
-    @Override
-    public String getStartTimeDesc() {
-        return startTimeDesc;
-    }
-
-    @Override
-    public int getInterval() {
-        return this.interval;
-    }
-
-    @Override
-    public int getLeaseTime() {
-        return this.leaseTime;
+    protected StartWindow defaultStartWindow() {
+        return StartWindow.START_OF_DAY;
     }
 
 
-    // Qualified deliberately, not shortened: this class is modeled directly
-    // on ScheduledEntriesTask (see class javadoc) and the two init() bodies
-    // are otherwise byte-identical boilerplate inherited from
-    // PressroomTaskWithLeasing. Shortening this call to the bare "NAME" the
-    // other PMD.UnnecessaryFullyQualifiedName sites in this file were
-    // shortened to would make this method text-identical to
-    // ScheduledEntriesTask's, extending an already-large shared-boilerplate
-    // span past CPD's 110-token minimum. Keeping one side qualified breaks
-    // that match without reintroducing behavior risk.
-    //
-    // This is a scaffold, not the answer, and it has a scheduled end: the
-    // "Follow-up (not this wave)" section of
-    // docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md
-    // (search that file for "ScheduledEntriesTask") records the honest fix as
-    // hoisting the shared getters and init(String) parsing up into
-    // PressroomTaskWithLeasing, which removes the duplication these two classes
-    // carry at its source and deletes this suppression along with it.
-    @SuppressWarnings("PMD.UnnecessaryFullyQualifiedName")
     public void init(Weblogger weblogger) throws WebloggerException {
-    // CPD-OFF -- The two scheduled tasks share their configuration-reading
-    // shape: same properties, same defaults, same parse-and-validate order.
-    // Collapsing it means a shared base for tasks that otherwise have nothing
-    // in common, and the shape is what a third task would be copied from
-    // anyway. Left as a known duplicate rather than an unexamined one.
-        this.init(weblogger, TrashPurgeTask.NAME);
-    }
-
-    @Override
-    public void init(Weblogger weblogger, String name) throws WebloggerException {
-        super.init(weblogger, name);
-
-        // get relevant props
-        Properties props = this.getTaskProperties();
-
-        // extract clientId
-        String client = props.getProperty("clientId");
-        if (client != null) {
-            this.clientId = client;
-        }
-
-        // extract start time
-        String startTimeStr = props.getProperty("startTime");
-        if (startTimeStr != null) {
-            this.startTimeDesc = startTimeStr;
-        }
-
-        this.interval = positiveMinutes(props, "interval", this.interval);
-        this.leaseTime = positiveMinutes(props, "leaseTime", this.leaseTime);
+        this.init(weblogger, NAME);
     }
 
 
@@ -180,7 +95,6 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
         log.debug("task started");
 
         try {
-    // CPD-ON
             WeblogManager wmgr = weblogger().getWeblogManager();
             WeblogEntryManager wemgr = weblogger().getWeblogEntryManager();
 

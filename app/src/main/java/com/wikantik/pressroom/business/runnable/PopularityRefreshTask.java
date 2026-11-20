@@ -17,12 +17,8 @@
  */
 package com.wikantik.pressroom.business.runnable;
 
-import java.util.Date;
-import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 
 /**
@@ -43,49 +39,10 @@ public class PopularityRefreshTask extends PressroomTaskWithLeasing {
 
     private static final double SECONDS_PER_MINUTE = 60.0;
 
-    private String clientId;
-    private String startTimeDesc = "immediate";
-    private volatile int leaseTime = DEFAULT_LEASE_MINS;
-
-    @Override
-    public String getClientId() {
-        return clientId;
-    }
-
-    @Override
-    public Date getStartTime(Date currentTime) {
-        return getAdjustedTime(currentTime, startTimeDesc);
-    }
-
-    @Override
-    public String getStartTimeDesc() {
-        return startTimeDesc;
-    }
-
     /** Minutes between runs, read from the runtime setting on every call. */
     @Override
     public int getInterval() {
         return Math.max(1, (int) Math.ceil(DiscoverySettings.refreshSeconds() / SECONDS_PER_MINUTE));
-    }
-
-    @Override
-    public int getLeaseTime() {
-        return this.leaseTime;
-    }
-
-    @Override
-    public void init(Weblogger weblogger, String name) throws WebloggerException {
-        super.init(weblogger, name);
-        Properties props = this.getTaskProperties();
-        String client = props.getProperty("clientId");
-        if (client != null) {
-            this.clientId = client;
-        }
-        String startTimeStr = props.getProperty("startTime");
-        if (startTimeStr != null) {
-            this.startTimeDesc = startTimeStr;
-        }
-        this.leaseTime = positiveMinutes(props, "leaseTime", this.leaseTime);
     }
 
     @Override
