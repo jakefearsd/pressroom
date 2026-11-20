@@ -38,6 +38,15 @@ import java.util.Map;
  */
 public class PressroomViewResolver implements ViewResolver, Ordered {
 
+    private static final String MAINMENU = ".tiles-mainmenupage";
+    private static final String TABBED = ".tiles-tabbedpage";
+    private static final String SIMPLE = ".tiles-simplepage";
+    private static final String LOGIN = ".tiles-loginpage";
+    private static final String INSTALL = ".tiles-installpage";
+    private static final String ERROR = ".tiles-errorpage";
+    private static final String POPUP = ".tiles-popuppage";
+    private static final String BARE = ".tiles-barepage";
+
     private final Map<String, ViewDefinition> definitions = new HashMap<>();
     private int order;
 
@@ -67,6 +76,75 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         var merged = new HashMap<>(base.attributes());
         merged.putAll(overrides);
         definitions.put(name, new ViewDefinition(base.layout(), Map.copyOf(merged)));
+    }
+
+    /**
+     * Starts a fluent definition: {@code define(".X").on(TABBED).content(jsp).register()}.
+     * Only what differs from the base is stated; {@link ViewBuilder#register}
+     * rejects an override that repeats the base's own value.
+     */
+    ViewBuilder define(String name) {
+        return new ViewBuilder(name);
+    }
+
+    /** Collects one extended definition's overrides. */
+    final class ViewBuilder {
+        private final String name;
+        private String base;
+        private final Map<String, String> overrides = new HashMap<>();
+
+        ViewBuilder(String name) {
+            this.name = name;
+        }
+
+        ViewBuilder on(String baseName) {
+            this.base = baseName;
+            return this;
+        }
+
+        ViewBuilder content(String jsp) {
+            return set("content", jsp);
+        }
+
+        ViewBuilder head(String jsp) {
+            return set("head", jsp);
+        }
+
+        ViewBuilder styles(String jsp) {
+            return set("styles", jsp);
+        }
+
+        ViewBuilder sidebar(String jsp) {
+            return set("sidebar", jsp);
+        }
+
+        ViewBuilder banner(String jsp) {
+            return set("banner", jsp);
+        }
+
+        ViewBuilder messages(String jsp) {
+            return set("messages", jsp);
+        }
+
+        private ViewBuilder set(String tile, String jsp) {
+            overrides.put(tile, jsp);
+            return this;
+        }
+
+        /** @throws IllegalArgumentException if an override repeats the base's value, or there is no such base */
+        void register() {
+            ViewDefinition parent = definitions.get(base);
+            if (parent == null) {
+                throw new IllegalArgumentException("Base definition not found: " + base);
+            }
+            overrides.forEach((tile, jsp) -> {
+                if (jsp.equals(parent.attributes().get(tile))) {
+                    throw new IllegalArgumentException(
+                            name + " repeats " + base + "'s " + tile + " tile; leave it out");
+                }
+            });
+            addExtendedDefinition(name, base, overrides);
+        }
     }
 
     @Override
@@ -173,41 +251,35 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 "/WEB-INF/jsps/tiles/tiles-barepage.jsp",
                 Map.of("content", "${content}"));
 
-        // ---- extended base definition ----
-
-        addExtendedDefinition(".tiles-popuppage-only-content", ".tiles-popuppage",
-                Map.of("content", "${content}"));
-
         // ---- error pages ----
 
-        addExtendedDefinition(".denied", ".tiles-errorpage",
-                Map.of("content", "/pressroom-ui/errors/denied.jsp"));
+        define(".denied").on(ERROR)
+                .content("/pressroom-ui/errors/denied.jsp")
+                .register();
 
         // ---- core pages ----
 
-        addExtendedDefinition(".Login", ".tiles-loginpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/Login.jsp",
-                        "styles",  "/WEB-INF/jsps/core/Login-css.jsp"
-                ));
+        define(".Login").on(LOGIN)
+                .content("/WEB-INF/jsps/core/Login.jsp")
+                .styles("/WEB-INF/jsps/core/Login-css.jsp")
+                .register();
 
-        addExtendedDefinition(".ForgotPassword", ".tiles-loginpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/ForgotPassword.jsp",
-                        "styles",  "/WEB-INF/jsps/core/Login-css.jsp"
-                ));
+        define(".ForgotPassword").on(LOGIN)
+                .content("/WEB-INF/jsps/core/ForgotPassword.jsp")
+                .styles("/WEB-INF/jsps/core/Login-css.jsp")
+                .register();
 
-        addExtendedDefinition(".ResetPassword", ".tiles-loginpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/ResetPassword.jsp",
-                        "styles",  "/WEB-INF/jsps/core/Login-css.jsp"
-                ));
+        define(".ResetPassword").on(LOGIN)
+                .content("/WEB-INF/jsps/core/ResetPassword.jsp")
+                .styles("/WEB-INF/jsps/core/Login-css.jsp")
+                .register();
 
 
         // ---- setup / install pages ----
 
-        addExtendedDefinition(".Setup", ".tiles-simplepage",
-                Map.of("content", "/WEB-INF/jsps/core/Setup.jsp"));
+        define(".Setup").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/Setup.jsp")
+                .register();
 
         // Profile is a signed-in screen with no weblog scope, so it has no tabs
         // to render -- but it is still admin chrome, and mainmenupage is the
@@ -215,179 +287,164 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         // no tab groups, which is what MainMenu itself uses). On simplepage --
         // the install/login chrome -- it rendered as a bare card with no rail,
         // so a reader who opened it had nothing to navigate back by.
-        addExtendedDefinition(".Profile", ".tiles-mainmenupage",
-                Map.of("content", "/WEB-INF/jsps/core/Profile.jsp"));
+        define(".Profile").on(MAINMENU)
+                .content("/WEB-INF/jsps/core/Profile.jsp")
+                .register();
 
         // Profile -> API tokens and the one-time reveal: signed-in, un-scoped
         // screens in Profile's own chrome (spec 2026-10-13, section 3).
-        addExtendedDefinition(".ProfileTokens", ".tiles-mainmenupage",
-                Map.of("content", "/WEB-INF/jsps/core/ProfileTokens.jsp"));
+        define(".ProfileTokens").on(MAINMENU)
+                .content("/WEB-INF/jsps/core/ProfileTokens.jsp")
+                .register();
 
-        addExtendedDefinition(".TokenReveal", ".tiles-mainmenupage",
-                Map.of("content", "/WEB-INF/jsps/core/TokenReveal.jsp"));
+        define(".TokenReveal").on(MAINMENU)
+                .content("/WEB-INF/jsps/core/TokenReveal.jsp")
+                .register();
 
         // The reader's account page is the one admin-UI screen a reader can
         // open, and the rail has nowhere for a reader to go (its account link
         // opens the profile, which refuses readers), so it is simplepage: the
         // card under the top bar, whose home and log-out links a reader can use.
-        addExtendedDefinition(".Account", ".tiles-simplepage",
-                Map.of("content", "/WEB-INF/jsps/core/Account.jsp"));
+        define(".Account").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/Account.jsp")
+                .register();
 
-        addExtendedDefinition(".CreateWeblog", ".tiles-simplepage",
-                Map.of("content", "/WEB-INF/jsps/core/CreateWeblog.jsp"));
+        define(".CreateWeblog").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/CreateWeblog.jsp")
+                .register();
 
-        addExtendedDefinition(".GenericError", ".tiles-simplepage",
-                Map.of("content", "/WEB-INF/jsps/core/GenericError.jsp"));
+        define(".GenericError").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/GenericError.jsp")
+                .register();
 
-        addExtendedDefinition(".SiteDirectory", ".tiles-simplepage",
-                Map.of("content", "/WEB-INF/jsps/core/SiteDirectory.jsp"));
+        define(".SiteDirectory").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/SiteDirectory.jsp")
+                .register();
 
-        addExtendedDefinition(".MainMenu", ".tiles-mainmenupage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/MainMenu.jsp",
-                        "sidebar", "/WEB-INF/jsps/core/MainMenuSidebar.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".MainMenu").on(MAINMENU)
+                .content("/WEB-INF/jsps/core/MainMenu.jsp")
+                .sidebar("/WEB-INF/jsps/core/MainMenuSidebar.jsp")
+                .register();
 
-        addExtendedDefinition(".CreateDatabase", ".tiles-installpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/CreateDatabase.jsp",
-                        "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
-                ));
+        define(".CreateDatabase").on(INSTALL)
+                .content("/WEB-INF/jsps/core/CreateDatabase.jsp")
+                .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
+                .register();
 
-        addExtendedDefinition(".UpgradeDatabase", ".tiles-installpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/UpgradeDatabase.jsp",
-                        "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
-                ));
+        define(".UpgradeDatabase").on(INSTALL)
+                .content("/WEB-INF/jsps/core/UpgradeDatabase.jsp")
+                .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
+                .register();
 
-        addExtendedDefinition(".DatabaseError", ".tiles-installpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/DatabaseError.jsp",
-                        "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
-                ));
+        define(".DatabaseError").on(INSTALL)
+                .content("/WEB-INF/jsps/core/DatabaseError.jsp")
+                .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
+                .register();
 
-        addExtendedDefinition(".Bootstrap", ".tiles-installpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/core/Bootstrap.jsp",
-                        "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
-                ));
+        define(".Bootstrap").on(INSTALL)
+                .content("/WEB-INF/jsps/core/Bootstrap.jsp")
+                .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
+                .register();
 
         // ---- global admin pages ----
 
-        addExtendedDefinition(".GlobalConfig", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/GlobalConfig.jsp"));
+        define(".GlobalConfig").on(TABBED)
+                .content("/WEB-INF/jsps/admin/GlobalConfig.jsp")
+                .register();
 
-        addExtendedDefinition(".Businesses", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/Businesses.jsp"));
+        define(".Businesses").on(TABBED)
+                .content("/WEB-INF/jsps/admin/Businesses.jsp")
+                .register();
 
-        addExtendedDefinition(".BusinessEdit", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/BusinessEdit.jsp"));
+        define(".BusinessEdit").on(TABBED)
+                .content("/WEB-INF/jsps/admin/BusinessEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".UserAdmin", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/UserAdmin.jsp"));
+        define(".UserAdmin").on(TABBED)
+                .content("/WEB-INF/jsps/admin/UserAdmin.jsp")
+                .register();
 
-        addExtendedDefinition(".UserEdit", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/UserEdit.jsp"));
+        define(".UserEdit").on(TABBED)
+                .content("/WEB-INF/jsps/admin/UserEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".AgentCreate", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/AgentCreate.jsp"));
+        define(".AgentCreate").on(TABBED)
+                .content("/WEB-INF/jsps/admin/AgentCreate.jsp")
+                .register();
 
-        addExtendedDefinition(".Agent", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/Agent.jsp"));
+        define(".Agent").on(TABBED)
+                .content("/WEB-INF/jsps/admin/Agent.jsp")
+                .register();
 
-        addExtendedDefinition(".ApiTokens", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/ApiTokens.jsp"));
+        define(".ApiTokens").on(TABBED)
+                .content("/WEB-INF/jsps/admin/ApiTokens.jsp")
+                .register();
 
-        addExtendedDefinition(".Maintenance", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/Maintenance.jsp"));
+        define(".Maintenance").on(TABBED)
+                .content("/WEB-INF/jsps/admin/Maintenance.jsp")
+                .register();
 
-        addExtendedDefinition(".SiteTraffic", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/admin/SiteTraffic.jsp"));
+        define(".SiteTraffic").on(TABBED)
+                .content("/WEB-INF/jsps/admin/SiteTraffic.jsp")
+                .register();
 
         // ---- weblog editor pages ----
 
-        addExtendedDefinition(".MediaFileAdd", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/MediaFileAdd.jsp",
-                        "sidebar", "/WEB-INF/jsps/tiles/empty.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".MediaFileAdd").on(TABBED)
+                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
+                .register();
 
-        addExtendedDefinition(".MediaFileEdit", ".tiles-popuppage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/MediaFileEdit.jsp"
-                ));
+        define(".MediaFileEdit").on(POPUP)
+                .head("/WEB-INF/jsps/tiles/head.jsp")
+                .content("/WEB-INF/jsps/editor/MediaFileEdit.jsp")
+                .register();
 
 
-        addExtendedDefinition(".MediaFileImageChooser", ".tiles-popuppage-only-content",
-                Map.of(
-                        "head",     "/WEB-INF/jsps/tiles/head.jsp",
-                        "content",  "/WEB-INF/jsps/editor/MediaFileImageChooser.jsp",
-                        "messages", "/WEB-INF/jsps/tiles/messages.jsp"
-                ));
+        define(".MediaFileImageChooser").on(POPUP)
+                .head("/WEB-INF/jsps/tiles/head.jsp")
+                .content("/WEB-INF/jsps/editor/MediaFileImageChooser.jsp")
+                .register();
 
-        addExtendedDefinition(".MediaFileAddInclude", ".tiles-popuppage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/MediaFileAdd.jsp"
-                ));
+        define(".MediaFileAddInclude").on(POPUP)
+                .head("/WEB-INF/jsps/tiles/head.jsp")
+                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
+                .register();
 
         // Bare layout, not popuppage: this document exists only to call
         // parent.onEditSuccess() and is destroyed by the parent's re-submit
         // milliseconds later. Rendering it with the full admin head made the
         // browser abort its webfont fetch mid-flight on every media rename --
         // the GalleryIT "font ERR_ABORTED" flake.
-        addExtendedDefinition(".MediaFileEditSuccess", ".tiles-barepage",
-                Map.of("content", "/WEB-INF/jsps/editor/MediaFileEditSuccess.jsp"));
+        define(".MediaFileEditSuccess").on(BARE)
+                .content("/WEB-INF/jsps/editor/MediaFileEditSuccess.jsp")
+                .register();
 
-        addExtendedDefinition(".MediaFileView", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/MediaFileView.jsp",
-                        "sidebar", "/WEB-INF/jsps/editor/MediaFileSidebar.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".MediaFileView").on(TABBED)
+                .content("/WEB-INF/jsps/editor/MediaFileView.jsp")
+                .sidebar("/WEB-INF/jsps/editor/MediaFileSidebar.jsp")
+                .register();
 
-        addExtendedDefinition(".MediaFileAddSuccess", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/MediaFileAddSuccess.jsp",
-                        "sidebar", "/WEB-INF/jsps/tiles/empty.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".MediaFileAddSuccess").on(TABBED)
+                .content("/WEB-INF/jsps/editor/MediaFileAddSuccess.jsp")
+                .register();
 
-        addExtendedDefinition(".EntryEdit", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/EntryEdit.jsp",
-                        "sidebar", "/WEB-INF/jsps/tiles/empty.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".EntryEdit").on(TABBED)
+                .content("/WEB-INF/jsps/editor/EntryEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".Entries", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Entries.jsp",
-                        "sidebar", "/WEB-INF/jsps/editor/EntriesSidebar.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Entries").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Entries.jsp")
+                .sidebar("/WEB-INF/jsps/editor/EntriesSidebar.jsp")
+                .register();
 
-        addExtendedDefinition(".Trash", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Trash.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Trash").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Trash.jsp")
+                .register();
 
-        addExtendedDefinition(".Categories", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/Categories.jsp",
-                        "sidebar", "/WEB-INF/jsps/editor/CategoriesSidebar.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Categories").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Categories.jsp")
+                .sidebar("/WEB-INF/jsps/editor/CategoriesSidebar.jsp")
+                .register();
 
         // .CategoryEdit and .CategoryRemove used to live here. Their content tiles
         // pointed at empty.jsp because CategoryEdit.jsp and CategoryRemove.jsp were
@@ -397,94 +454,65 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // ---- weblog admin pages ----
 
-        addExtendedDefinition(".WeblogConfig", ".tiles-tabbedpage",
-                Map.of("content", "/WEB-INF/jsps/editor/WeblogConfig.jsp"));
+        define(".WeblogConfig").on(TABBED)
+                .content("/WEB-INF/jsps/editor/WeblogConfig.jsp")
+                .register();
 
-        addExtendedDefinition(".WeblogRemoveConfirm", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/WeblogRemoveConfirm.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".WeblogRemoveConfirm").on(TABBED)
+                .content("/WEB-INF/jsps/editor/WeblogRemoveConfirm.jsp")
+                .register();
 
-        addExtendedDefinition(".ThemeEdit", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/ThemeEdit.jsp"
-                ));
+        define(".ThemeEdit").on(TABBED)
+                .content("/WEB-INF/jsps/editor/ThemeEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".StylesheetEdit", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/StylesheetEdit.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".StylesheetEdit").on(TABBED)
+                .content("/WEB-INF/jsps/editor/StylesheetEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".Templates", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/Templates.jsp",
-                        "sidebar", "/WEB-INF/jsps/editor/TemplatesSidebar.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Templates").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Templates.jsp")
+                .sidebar("/WEB-INF/jsps/editor/TemplatesSidebar.jsp")
+                .register();
 
-        addExtendedDefinition(".TemplateEdit", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/TemplateEdit.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".TemplateEdit").on(TABBED)
+                .content("/WEB-INF/jsps/editor/TemplateEdit.jsp")
+                .register();
 
-        addExtendedDefinition(".Pages", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Pages.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Pages").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Pages.jsp")
+                .register();
 
-        addExtendedDefinition(".PagesTrash", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/PagesTrash.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".PagesTrash").on(TABBED)
+                .content("/WEB-INF/jsps/editor/PagesTrash.jsp")
+                .register();
 
-        addExtendedDefinition(".PageEdit", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/PageEdit.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".PageEdit").on(TABBED)
+                .content("/WEB-INF/jsps/editor/PageEdit.jsp")
+                .register();
 
         // Inquiries is an authoring screen reached from the editor tabs, so it
         // wears the same tabbed chrome the rest of them do. The attribute map
         // is .Trash's -- the minimal tabbed shape: explicit head, the content
         // tile, no page-specific styles, and the base layout's empty menu tile
         // (the tabs come from the navMenu model attribute, not from a tile).
-        addExtendedDefinition(".Submissions", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Submissions.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Submissions").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Submissions.jsp")
+                .register();
 
         // A blog's Traffic page: the same minimal tabbed shape as .Submissions.
-        addExtendedDefinition(".Traffic", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Traffic.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Traffic").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Traffic.jsp")
+                .register();
 
         // Reader-comment moderation: the same minimal tabbed shape as .Submissions.
-        addExtendedDefinition(".Comments", ".tiles-tabbedpage",
-                Map.of(
-                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
-                        "content", "/WEB-INF/jsps/editor/Comments.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Comments").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Comments.jsp")
+                .register();
 
-        addExtendedDefinition(".Members", ".tiles-tabbedpage",
-                Map.of(
-                        "content", "/WEB-INF/jsps/editor/Members.jsp",
-                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
-                ));
+        define(".Members").on(TABBED)
+                .content("/WEB-INF/jsps/editor/Members.jsp")
+                .register();
     }
 
     // ---------------------------------------------------------- helper

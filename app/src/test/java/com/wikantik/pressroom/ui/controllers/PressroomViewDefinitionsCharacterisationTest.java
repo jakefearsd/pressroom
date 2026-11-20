@@ -30,13 +30,17 @@ import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Characterisation test: pins the fully-resolved layout and tile attributes of
  * every view {@link PressroomViewResolver#init()} registers, as written by the
  * code before its definitions were rewritten with the fluent builder. It
  * passed against the old code; it is the proof that the rewrite changed no
- * view. Regenerate deliberately with {@code -Dviews.golden.write=true}.
+ * view, apart from {@code .tiles-popuppage-only-content}, an unused alias
+ * identical to {@code .tiles-popuppage} that was dropped (its line is removed
+ * from the golden file). Regenerate deliberately with {@code -Dviews.golden.write=true}.
  */
 class PressroomViewDefinitionsCharacterisationTest {
 
@@ -56,6 +60,18 @@ class PressroomViewDefinitionsCharacterisationTest {
             assertNotNull(in, GOLDEN);
             assertEquals(new String(in.readAllBytes(), StandardCharsets.UTF_8), actual);
         }
+    }
+
+    @Test
+    void theBuilderRejectsAnOverrideThatRepeatsTheBase() {
+        PressroomViewResolver resolver = new PressroomViewResolver();
+        resolver.init();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> resolver.define(".X").on(".tiles-tabbedpage")
+                        .styles("/WEB-INF/jsps/tiles/empty.jsp").register());
+        assertTrue(e.getMessage().contains("styles"));
+        assertThrows(IllegalArgumentException.class,
+                () -> resolver.define(".Y").on(".nope").content("/c.jsp").register());
     }
 
     @SuppressWarnings("unchecked")

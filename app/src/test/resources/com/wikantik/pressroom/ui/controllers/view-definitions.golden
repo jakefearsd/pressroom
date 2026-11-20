@@ -507,11 +507,6 @@
     content = ${content}
     messages = /WEB-INF/jsps/tiles/messages.jsp
     styles = /WEB-INF/jsps/tiles/empty.jsp
-.tiles-popuppage-only-content -> /WEB-INF/jsps/tiles/tiles-popuppage.jsp
-    banner = /WEB-INF/jsps/tiles/empty.jsp
-    content = ${content}
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
 .tiles-simplepage -> /WEB-INF/jsps/tiles/tiles-simplepage.jsp
     banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
     content = ${content}
