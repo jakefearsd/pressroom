@@ -733,7 +733,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
 
         // A bulk JPQL delete would skip exactly this, leaving the index holding
         // documents that link to pages which now 404. Bulk delete trashes
-        // rather than removes (see BaseController#trashEntryWithIndex), but
+        // rather than removes (see BaseController#trashEntry), but
         // the de-indexing must still happen.
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(first);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(second);

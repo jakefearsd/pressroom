@@ -464,14 +464,14 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * trash: an index that has fallen behind is repairable from the admin
      * screen, whereas a half-trashed entry is not.
      *
-     * <p>Delegates to {@link EntryDeletion#trashEntryWithIndex} (Task 10) so
+     * <p>Delegates to {@link EntryDeletion#trashEntry} (Task 10) so
      * the automation API's write controller -- which does not extend this
      * class -- can reach the same seam without inheriting the JSP-only state
      * ({@code MessageSource}, {@code Model}, flash-message helpers) this
      * class carries.
      */
-    protected void trashEntryWithIndex(WeblogEntry entry) throws WebloggerException {
-        EntryDeletion.trashEntryWithIndex(weblogger, entry);
+    protected void trashEntry(WeblogEntry entry) throws WebloggerException {
+        EntryDeletion.trashEntry(weblogger, entry);
     }
 
     /**
@@ -479,7 +479,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * already-trashed entry -- taking it out of everything that indexes or
      * caches it first.
      *
-     * <p>Same index/cache steps as {@link #trashEntryWithIndex} and for the
+     * <p>Same index/cache steps as {@link #trashEntry} and for the
      * same reason (see its javadoc); the only difference is the final call,
      * which here is the actual, irreversible {@link WeblogEntryManager#removeWeblogEntry}
      * rather than a trash. A trashed entry is normally already out of the
@@ -488,11 +488,11 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * prevents a caller from reaching this on an entry that never went
      * through the trash path.
      *
-     * <p>Delegates to {@link EntryDeletion#deleteEntryForeverWithIndex}, for
-     * the same reason {@link #trashEntryWithIndex} does.
+     * <p>Delegates to {@link EntryDeletion#deleteEntryForever}, for
+     * the same reason {@link #trashEntry} does.
      */
-    protected void deleteEntryForeverWithIndex(WeblogEntry entry) throws WebloggerException {
-        EntryDeletion.deleteEntryForeverWithIndex(weblogger, entry);
+    protected void deleteEntryForever(WeblogEntry entry) throws WebloggerException {
+        EntryDeletion.deleteEntryForever(weblogger, entry);
     }
 
     /**

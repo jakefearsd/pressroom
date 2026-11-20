@@ -148,7 +148,7 @@ public class TrashController extends BaseController {
         return flashAction(request, redirectAttributes, backToList(request),
                 "permanently deleting entry " + deleteId, () -> {
             String title = entry.getDisplayTitle();
-            deleteEntryForeverWithIndex(entry);
+            deleteEntryForever(entry);
             weblogger.flush();
             return Flash.message("trash.deletedForever", title);
         });

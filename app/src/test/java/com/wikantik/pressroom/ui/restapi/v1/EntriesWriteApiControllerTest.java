@@ -55,7 +55,7 @@ class EntriesWriteApiControllerTest {
         WeblogEntryManager entryManager = mock(WeblogEntryManager.class);
         when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
         when(weblogger.getUrlStrategy()).thenReturn(mock(URLStrategy.class));
-        // EntryDeletion.trashEntryWithIndex/deleteEntryForeverWithIndex both
+        // EntryDeletion.trashEntry/deleteEntryForever both
         // reach the index manager before touching the entry manager.
         when(weblogger.getIndexManager()).thenReturn(mock(IndexManager.class));
         // preview renders through the tier's renderer; a real one over this
@@ -1133,7 +1133,7 @@ class EntriesWriteApiControllerTest {
 
     /**
      * The happy path: DELETE removes the entry from the search index before
-     * trashing it -- the ordering {@code EntryDeletion.trashEntryWithIndex}
+     * trashing it -- the ordering {@code EntryDeletion.trashEntry}
      * exists to guarantee -- and never calls the permanent-delete manager
      * method.
      */

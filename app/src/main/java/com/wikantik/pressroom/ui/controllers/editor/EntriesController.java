@@ -289,7 +289,7 @@ public class EntriesController extends BaseController {
                              @ModelAttribute("bean") EntriesBean bean,
                              RedirectAttributes redirectAttributes) {
         return applyToSelection(request, selectedEntries, bean, redirectAttributes,
-                "weblogEntryQuery.bulkDeleted", this::trashEntryWithIndex);
+                "weblogEntryQuery.bulkDeleted", this::trashEntry);
     }
 
     /** What one bulk action does to one entry, once it has been found and vetted. */

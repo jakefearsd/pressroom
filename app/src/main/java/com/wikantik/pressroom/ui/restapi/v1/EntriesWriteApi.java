@@ -272,7 +272,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     /**
      * Trash, not delete. Goes through the same seam the authoring UI uses --
-     * {@link EntryDeletion#trashEntryWithIndex} -- because the index removal
+     * {@link EntryDeletion#trashEntry} -- because the index removal
      * and the {@code weblog.lastModified} bump are not optional now the row
      * survives: a TRASHED entry left in Lucene is findable by site search
      * and links to a permalink that 404s, and {@code WeblogPageCache} has no
@@ -294,7 +294,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (entry.getStatus() == WeblogEntry.PubStatus.TRASHED) {
             throw ApiException.conflict("Entry is already trashed.");
         }
-        EntryDeletion.trashEntryWithIndex(weblogger, entry);
+        EntryDeletion.trashEntry(weblogger, entry);
         weblogger.flush();
         return ResponseEntity.noContent().build();
     }
@@ -343,7 +343,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
             throw ApiException.conflict("Entry is not trashed; trash it first.");
         }
-        EntryDeletion.deleteEntryForeverWithIndex(weblogger, entry);
+        EntryDeletion.deleteEntryForever(weblogger, entry);
         weblogger.flush();
         return ResponseEntity.noContent().build();
     }

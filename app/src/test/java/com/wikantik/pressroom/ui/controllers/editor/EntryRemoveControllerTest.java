@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
  * Tests for {@link EntryRemoveController}.
  *
  * <p>"Deleting" an entry through this controller trashes it (see
- * {@code BaseController#trashEntryWithIndex}) rather than removing it from the
+ * {@code BaseController#trashEntry}) rather than removing it from the
  * database, but it still has to come out of the search index -- an entry that
  * survives only in the Lucene index keeps appearing in site search results and
  * links to a page that now 404s, exactly the failure a genuine delete would

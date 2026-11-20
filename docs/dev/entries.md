@@ -186,7 +186,7 @@ incidental re-save) — minor PII residue worth clearing.
   checkboxes, per-row duplicate and the action bar post through it, so the
   duplicate control is a submit button carrying `name="duplicateId"`, not a
   nested form. Bulk actions loop per id through `BaseController`'s
-  `lookupEntry`; delete goes through `trashEntryWithIndex` so the Lucene index
+  `lookupEntry`; delete goes through `trashEntry` so the Lucene index
   cannot be orphaned. **Delete moves an entry to the trash** (W5, see Trash),
   and the flash copy says so.
 - **Revisions**: `weblogentry_revision` (V010) keeps the pre-save title/text/
@@ -276,8 +276,8 @@ the new dimension from spreading.
 - **Restore always goes to `DRAFT`, never `PUBLISHED`** — silent republishing
   to feeds, sitemap and subscribers is worse than one extra click; hence no
   column remembers the pre-trash status.
-- **`BaseController.trashEntryWithIndex`** (was `removeEntryWithIndex`) is the
-  single authoring-side deletion seam, with `deleteEntryForeverWithIndex`
+- **`BaseController.trashEntry`** (was `removeEntryWithIndex`) is the
+  single authoring-side deletion seam, with `deleteEntryForever`
   beside it. `WeblogEntryManager.removeWeblogEntry` remains the one
   permanent-deletion path — `purgeTrash` calls it per entry, never a bulk
   DELETE.

@@ -38,12 +38,12 @@ public final class EntryDeletion {
     }
 
     /** Moves an entry to the trash; callers never invoke {@code trashWeblogEntry} directly. */
-    public static void trashEntryWithIndex(Weblogger weblogger, WeblogEntry entry) throws WebloggerException {
+    public static void trashEntry(Weblogger weblogger, WeblogEntry entry) throws WebloggerException {
         weblogger.getWeblogEntryManager().trashWeblogEntry(entry);
     }
 
     /** Permanently deletes an entry -- the "delete forever" action on an already-trashed one. */
-    public static void deleteEntryForeverWithIndex(Weblogger weblogger, WeblogEntry entry) throws WebloggerException {
+    public static void deleteEntryForever(Weblogger weblogger, WeblogEntry entry) throws WebloggerException {
         weblogger.getWeblogEntryManager().removeWeblogEntry(entry);
     }
 }

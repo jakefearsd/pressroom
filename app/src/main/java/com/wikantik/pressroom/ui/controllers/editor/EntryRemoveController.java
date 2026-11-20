@@ -86,7 +86,7 @@ public class EntryRemoveController extends BaseController {
         }
 
         try {
-            trashEntryWithIndex(entry);
+            trashEntry(entry);
             weblogger.flush();
 
             addFlashMessage(redirectAttributes, "weblogEdit.entryRemoved", entry.getTitle(),
