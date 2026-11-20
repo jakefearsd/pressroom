@@ -57,7 +57,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.wikantik.pressroom.business.RevisionKeepLimitException;
 
 /**
  * Add or edit a single static page.

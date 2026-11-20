@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.util.DateUtil;
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.ListmonkClient;
@@ -67,7 +66,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.wikantik.pressroom.business.RevisionKeepLimitException;
 
 /**
  * Edit a new or existing entry.
@@ -102,7 +100,7 @@ public class EntryEditController extends BaseController {
     @GetMapping("/entryAdd.rol")
     public String entryAddExecute(HttpServletRequest request, Model model,
                                   @ModelAttribute("bean") EntryBean bean) {
-        populateCommonModel(request, model, new Screen("entryAdd", getText("weblogEdit.title.newEntry", request)));
+        populateCommonModel(request, model, screen(EditorMode.ADD, request));
 
         WeblogEntry entry = new WeblogEntry();
         entry.setCreatorUserName(getAuthenticatedUser(request).getUserName());
@@ -119,17 +117,17 @@ public class EntryEditController extends BaseController {
     @PostMapping("/entryAdd!saveDraft.rol")
     public String entryAddSaveDraft(HttpServletRequest request, Model model,
                                     @ModelAttribute("bean") EntryBean bean) {
-        return doEntryAddSave(request, model, bean, "saveDraft");
+        return doEntryAddSave(request, model, bean, SaveIntent.DRAFT);
     }
 
     @PostMapping("/entryAdd!publish.rol")
     public String entryAddPublish(HttpServletRequest request, Model model,
                                   @ModelAttribute("bean") EntryBean bean) {
-        return doEntryAddSave(request, model, bean, "publish");
+        return doEntryAddSave(request, model, bean, SaveIntent.PUBLISH);
     }
 
-    private String doEntryAddSave(HttpServletRequest request, Model model, EntryBean bean, String action) {
-        populateCommonModel(request, model, new Screen("entryAdd", getText("weblogEdit.title.newEntry", request)));
+    private String doEntryAddSave(HttpServletRequest request, Model model, EntryBean bean, SaveIntent intent) {
+        populateCommonModel(request, model, screen(EditorMode.ADD, request));
 
         WeblogEntry entry = new WeblogEntry();
         entry.setCreatorUserName(getAuthenticatedUser(request).getUserName());
@@ -138,13 +136,9 @@ public class EntryEditController extends BaseController {
         Timestamp pubTime = resolvePubTime(bean, request, model);
         resolveEventTimes(bean, request, model);
 
-        if ("saveDraft".equals(action)) {
-            bean.setStatus(PubStatus.DRAFT.name());
-        } else if ("publish".equals(action)) {
-            setPublishStatus(bean, pubTime, request);
-        }
+        bean.setStatus(intent.status(pubTime, mayPost(request), System.currentTimeMillis()).name());
 
-        String result = doSave(request, model, bean, entry, "entryAdd", pubTime);
+        String result = doSave(request, model, bean, entry, EditorMode.ADD, pubTime);
         model.addAttribute("entry", entry);
         addEntryModelAttributes(request, model, entry, bean);
         return result;
@@ -156,7 +150,7 @@ public class EntryEditController extends BaseController {
     public String entryEditExecute(HttpServletRequest request, Model model,
                                    @ModelAttribute("bean") EntryBean bean,
                                    RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
+        populateCommonModel(request, model, screen(EditorMode.EDIT, request));
 
         // A bookmarked editor URL can name an entry that has since been
         // trashed. lookupEntry alone has no status filter and would render
@@ -333,7 +327,7 @@ public class EntryEditController extends BaseController {
     public String entryEditFirstSave(HttpServletRequest request, Model model,
                                      @ModelAttribute("bean") EntryBean bean,
                                      RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
+        populateCommonModel(request, model, screen(EditorMode.EDIT, request));
 
         // This landing page is just as bookmarkable/reloadable as
         // entryEdit.rol, and resolves the same way via lookupEntry (no status
@@ -362,13 +356,13 @@ public class EntryEditController extends BaseController {
     @PostMapping("/entryEdit!saveDraft.rol")
     public String entryEditSaveDraft(HttpServletRequest request, Model model,
                                      @ModelAttribute("bean") EntryBean bean) {
-        return doEntryEditSave(request, model, bean, "saveDraft");
+        return doEntryEditSave(request, model, bean, SaveIntent.DRAFT);
     }
 
     @PostMapping("/entryEdit!publish.rol")
     public String entryEditPublish(HttpServletRequest request, Model model,
                                    @ModelAttribute("bean") EntryBean bean) {
-        return doEntryEditSave(request, model, bean, "publish");
+        return doEntryEditSave(request, model, bean, SaveIntent.PUBLISH);
     }
 
     /**
@@ -391,7 +385,7 @@ public class EntryEditController extends BaseController {
      * {@code EDIT_DRAFT} gate.</b> Mailing every subscriber is a much bigger
      * blast radius than editing a draft, so a contributor who can only draft
      * (not publish) must not be able to trigger a send -- the same distinction
-     * {@link #setPublishStatus} draws for publishing itself. Denied the same
+     * {@link SaveIntent#status} draws for publishing itself. Denied the same
      * way {@code PressroomHandlerInterceptor} would have denied it at the class
      * level, had this action needed a stricter class-wide gate.
      */
@@ -404,7 +398,7 @@ public class EntryEditController extends BaseController {
             return "redirect:/pressroom-ui/access-denied.rol";
         }
 
-        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
+        populateCommonModel(request, model, screen(EditorMode.EDIT, request));
 
         WeblogEntry entry = lookupEntry(entryId, request);
         if (entry == null) {
@@ -510,8 +504,8 @@ public class EntryEditController extends BaseController {
                 + getActionWeblog(request).getHandle() + "&bean.id=" + entry.getId();
     }
 
-    private String doEntryEditSave(HttpServletRequest request, Model model, EntryBean bean, String action) {
-        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
+    private String doEntryEditSave(HttpServletRequest request, Model model, EntryBean bean, SaveIntent intent) {
+        populateCommonModel(request, model, screen(EditorMode.EDIT, request));
 
         WeblogEntry entry = lookupChangeableEntry(bean.getId(), request);
         if (entry == null) {
@@ -521,13 +515,9 @@ public class EntryEditController extends BaseController {
         Timestamp pubTime = resolvePubTime(bean, request, model);
         resolveEventTimes(bean, request, model);
 
-        if ("saveDraft".equals(action)) {
-            bean.setStatus(PubStatus.DRAFT.name());
-        } else if ("publish".equals(action)) {
-            setPublishStatus(bean, pubTime, request);
-        }
+        bean.setStatus(intent.status(pubTime, mayPost(request), System.currentTimeMillis()).name());
 
-        String result = doSave(request, model, bean, entry, "entryEdit", pubTime);
+        String result = doSave(request, model, bean, entry, EditorMode.EDIT, pubTime);
         model.addAttribute("entry", entry);
         addEntryModelAttributes(request, model, entry, bean);
         return result;
@@ -535,7 +525,7 @@ public class EntryEditController extends BaseController {
 
     /**
      * {@code bean.pubTimeLocal} parsed in the action weblog's timezone, once
-     * per save so {@link #setPublishStatus} and {@link #doSave} agree on the
+     * per save so {@link SaveIntent#status} and {@link #doSave} agree on the
      * same instant -- the old code called {@code bean.getPubTime(...)} twice,
      * which was harmless when a parse failure just returned null, but is not
      * once a bad value has to be reported.
@@ -586,18 +576,12 @@ public class EntryEditController extends BaseController {
 
     // Tag counts need nothing here: saveWeblogEntry derives them from the
     // entry's status as loaded against its status as saved.
-    private void setPublishStatus(EntryBean bean, Timestamp pubTime, HttpServletRequest request) {
-        if (hasWeblogAction(getActionWeblog(request),
-                getAuthenticatedUser(request), WeblogPermission.POST)) {
-            if (pubTime != null && pubTime.after(
-                    new Date(System.currentTimeMillis() + PressroomConstants.MIN_IN_MS))) {
-                bean.setStatus(PubStatus.SCHEDULED.name());
-            } else {
-                bean.setStatus(PubStatus.PUBLISHED.name());
-            }
-        } else {
-            bean.setStatus(PubStatus.PENDING.name());
-        }
+    private boolean mayPost(HttpServletRequest request) {
+        return hasWeblogAction(getActionWeblog(request), getAuthenticatedUser(request), WeblogPermission.POST);
+    }
+
+    private Screen screen(EditorMode mode, HttpServletRequest request) {
+        return new Screen(mode.actionName(), getText(mode.titleKey(), request));
     }
 
     /**
@@ -620,7 +604,7 @@ public class EntryEditController extends BaseController {
     }
 
     private String doSave(HttpServletRequest request, Model model, EntryBean bean,
-                          WeblogEntry entry, String actionName, Timestamp pubTime) {
+                          WeblogEntry entry, EditorMode mode, Timestamp pubTime) {
         if (StringUtils.isNotBlank(bean.getCanonicalUrl())
                 && !EntryFieldRules.isValidCanonicalUrl(bean.getCanonicalUrl())) {
             addError(model, "entryEdit.canonicalUrlInvalid", request);
@@ -649,9 +633,9 @@ public class EntryEditController extends BaseController {
                 }
                 weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
-                afterSave(entry, actionName);
+                afterSave(entry, mode);
 
-                if ("entryEdit".equals(actionName)) {
+                if (mode.rendersAfterSave()) {
                     addStatusMessage(entry.getStatus(), model, entry, request);
                     return ".EntryEdit";
                 } else {
@@ -665,7 +649,7 @@ public class EntryEditController extends BaseController {
                 addError(model, "generic.error.check.logs", request);
             }
         }
-        if ("entryAdd".equals(actionName)) {
+        if (mode.clearsStatusOnFailure()) {
             bean.setStatus(null);
         }
         return ".EntryEdit";
@@ -760,11 +744,11 @@ public class EntryEditController extends BaseController {
      * an entry unpublished takes it out), the rendered pages, and the
      * reviewers' notice for an entry submitted for review.
      */
-    private void afterSave(WeblogEntry entry, String actionName) throws WebloggerException {
+    private void afterSave(WeblogEntry entry, EditorMode mode) throws WebloggerException {
         IndexManager indexMgr = weblogger.getIndexManager();
         if (entry.isPublished()) {
             indexMgr.addEntryReIndexOperation(entry);
-        } else if ("entryEdit".equals(actionName)) {
+        } else if (mode.deindexesUnpublished()) {
             indexMgr.removeEntryIndexOperation(entry);
         }
 

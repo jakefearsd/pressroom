@@ -240,7 +240,7 @@ public class EntriesController extends BaseController {
                               RedirectAttributes redirectAttributes) {
         boolean mayPublish = hasWeblogAction(getActionWeblog(request),
                 getAuthenticatedUser(request), WeblogPermission.POST);
-        PubStatus target = mayPublish ? PubStatus.PUBLISHED : PubStatus.PENDING;
+        PubStatus target = SaveIntent.PUBLISH.status(null, mayPublish, System.currentTimeMillis());
 
         return applyToSelection(request, selectedEntries, bean, redirectAttributes,
                 mayPublish ? "weblogEntryQuery.bulkPublished" : "weblogEntryQuery.bulkSubmitted",
