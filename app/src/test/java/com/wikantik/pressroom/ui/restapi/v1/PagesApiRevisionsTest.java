@@ -189,6 +189,18 @@ class PagesApiRevisionsTest {
         verify(pages, never()).restoreRevision(any(), any(), any());
     }
 
+    /** B9: a null lock means the row is gone, the 404 an entry answers, not a 409 page-changed. */
+    @Test
+    void aPageDeletedDuringTheRequestIsA404UnderTheLock() throws Exception {
+        WeblogPage page = page("p1", "About", "v1");
+        when(pages.lockPageContent(page)).thenReturn(null);
+
+        String body = patchBody("p1", "{\"text\":\"mine\",\"expectedContentHash\":\"" + hash("v1") + "\"}", 404);
+
+        assertTrue(json(body).get("type").asString().endsWith("/not-found"), body);
+        verify(pages, never()).savePage(any(), any(), any());
+    }
+
     @Test
     void aHashThatIsNotAHashIsA400NotAConflict() throws Exception {
         page("p1", "About", "v1");

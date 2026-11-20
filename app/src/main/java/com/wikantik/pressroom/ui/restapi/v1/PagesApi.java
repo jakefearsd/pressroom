@@ -343,6 +343,9 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      */
     private void requireUnchangedUnderLock(WeblogPage page, String read) throws WebloggerException {
         String committed = weblogger.getWeblogPageManager().lockPageContent(page);
+        if (committed == null) {
+            throw ApiException.notFound("No such page.");
+        }
         if (!java.util.Objects.equals(committed, read)) {
             throw ApiException.pageChanged(EntryDtos.contentHash(committed));
         }
