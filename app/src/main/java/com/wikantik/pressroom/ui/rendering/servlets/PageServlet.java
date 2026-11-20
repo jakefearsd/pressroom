@@ -28,8 +28,6 @@ import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
-import com.wikantik.pressroom.pojos.StaticThemeTemplate;
-import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -436,14 +434,8 @@ public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
      * {@code /} is never a 404 or a 500.
      */
     private static ThemeTemplate discoveryTemplate(Weblog weblog, ThemeManager themes) {
-        ThemeTemplate template = null;
-        try {
-            template = themes.getTheme(weblog).getTemplateByName(FrontDoor.DISCOVERY_TEMPLATE);
-        } catch (Exception e) {
-            log.warn("Error looking up the discovery template of the site space; using the shared one", e);
-        }
-        return template != null ? template
-                : new StaticThemeTemplate("templates/weblog/discovery.vm", TemplateLanguage.VELOCITY);
+        return TemplateLookup.namedOr(weblog, themes, FrontDoor.DISCOVERY_TEMPLATE,
+                "templates/weblog/discovery.vm");
     }
 
     /**
@@ -524,30 +516,12 @@ public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
      * pages exist.
      */
     private static ThemeTemplate staticPageTemplate(Weblog weblog, ThemeManager themes) {
-        ThemeTemplate template = null;
-        try {
-            template = themes.getTheme(weblog).getTemplateByName("_page");
-        } catch (Exception e) {
-            // Not simply "no _page override" -- getTemplateByName
-            // returns null for that. An exception here means a real
-            // lookup failure, so fall back to the default page template
-            // (unchanged behavior) but leave a trace for whoever is
-            // debugging why a themed page render looks generic.
-            log.warn("Error looking up '_page' template for weblog {}", weblog.getHandle(), e);
-        }
-        return template != null ? template
-                : new StaticThemeTemplate("templates/weblog/page.vm",
-                        TemplateLanguage.VELOCITY);
+        return TemplateLookup.namedOr(weblog, themes, "_page", "templates/weblog/page.vm");
     }
 
     /** The theme's template for this action, or null when it has none or the lookup fails. */
     private static ThemeTemplate templateForAction(Weblog weblog, ThemeManager themes, ComponentType action) {
-        try {
-            return themes.getTheme(weblog).getTemplateByAction(action);
-        } catch (Exception e) {
-            log.error("Error getting weblog page for action '{}'", action, e);
-            return null;
-        }
+        return TemplateLookup.byAction(weblog, themes, action, action.toString());
     }
 
     /**

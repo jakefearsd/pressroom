@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import java.io.IOException;
+import java.util.List;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
@@ -31,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.ui.rendering.util.WeblogResourceRequest;
 
 /**
@@ -85,31 +85,8 @@ public class ResourceServlet extends WeblogRequestServlet<WeblogResourceRequest>
 
         // first see if resource comes from weblog's shared theme, then
         // whether it is in the weblog's upload dir
-        ServableResource found;
-        try {
-            WeblogTheme weblogTheme = weblogger.getThemeManager().getTheme(weblog);
-            found = weblogTheme == null ? null : ServableResource.of(weblogTheme.getResource(path));
-        } catch (WebloggerException | RuntimeException ex) {
-            // hmmm, some kind of error getting theme. that's an error.
-            fail(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            return;
-        }
-        if (found == null) {
-            found = ServableResource.uploaded(weblogger, weblog, path);
-        }
-        if (found == null) {
-            // still not found? then we don't have it, 404.
-            fail(response, HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-        found.serve(request, response, context, path);
-    }
-
-    private static void fail(HttpServletResponse response, int status) throws IOException {
-        if (!response.isCommitted()) {
-            response.reset();
-        }
-        response.sendError(status);
+        ResourceSource.serveFirst(List.of(ResourceSource.theme(weblogger, weblog),
+                ResourceSource.uploaded(weblogger, weblog)), request, response, context, path);
     }
 
 }

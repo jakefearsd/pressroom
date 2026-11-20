@@ -49,10 +49,15 @@ final class RenderingServletUtils {
      * Sends a 404 Not Found error, resetting the response first if not yet committed.
      */
     static void sendNotFound(HttpServletResponse response) throws IOException {
+        sendError(response, HttpServletResponse.SC_NOT_FOUND);
+    }
+
+    /** Sends the status as an error, resetting the response first if not yet committed. */
+    static void sendError(HttpServletResponse response, int status) throws IOException {
         if (!response.isCommitted()) {
             response.reset();
         }
-        response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        response.sendError(status);
     }
 
     /**

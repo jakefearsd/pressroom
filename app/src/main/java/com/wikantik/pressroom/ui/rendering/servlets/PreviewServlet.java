@@ -20,11 +20,9 @@ package com.wikantik.pressroom.ui.rendering.servlets;
 
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.StaticThemeTemplate;
 import com.wikantik.pressroom.pojos.Theme;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Template;
-import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import org.slf4j.Logger;
@@ -288,19 +286,8 @@ public class PreviewServlet extends WeblogRequestServlet<WeblogPreviewRequest> {
      * beats a 404 in an iframe.
      */
     private Template previewShell(Weblog tmpWebsite) {
-        ThemeTemplate shell = null;
-        try {
-            shell = weblogger.getThemeManager().getTheme(tmpWebsite).getTemplateByName("_preview");
-        } catch (Exception e) {
-            // Not simply "no _preview override" -- getTemplateByName returns
-            // null for that. An exception is a real lookup failure, so fall
-            // back to the shared shell (the author still gets a preview) but
-            // leave a trace for whoever wonders why it looks generic.
-            log.warn("Error looking up '_preview' template for weblog {}",
-                    tmpWebsite.getHandle(), e);
-        }
-        return shell != null ? shell
-                : new StaticThemeTemplate("templates/weblog/preview.vm", TemplateLanguage.VELOCITY);
+        return TemplateLookup.namedOr(tmpWebsite, weblogger.getThemeManager(), "_preview",
+                "templates/weblog/preview.vm");
     }
 
     /**
@@ -309,11 +296,6 @@ public class PreviewServlet extends WeblogRequestServlet<WeblogPreviewRequest> {
      * next rung.
      */
     private Template templateForAction(Weblog weblog, ComponentType action, String label) {
-        try {
-            return weblogger.getThemeManager().getTheme(weblog).getTemplateByAction(action);
-        } catch (Exception e) {
-            log.error("Error getting weblog page for action '{}'", label, e);
-            return null;
-        }
+        return TemplateLookup.byAction(weblog, weblogger.getThemeManager(), action, label);
     }
 }

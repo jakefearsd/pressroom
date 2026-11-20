@@ -19,6 +19,8 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -29,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
-import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewResourceRequest;
 
@@ -91,34 +92,15 @@ public class PreviewResourceServlet extends WeblogRequestServlet<WeblogPreviewRe
         String path = resourceRequest.getResourcePath();
         log.debug("Resource requested [{}]", path);
 
-        // first, see if we have a preview theme to operate from
-        ServableResource found = null;
+        // the preview theme, if one was asked for, then what the live
+        // resource servlet would serve
+        List<ResourceSource> sources = new ArrayList<>();
         if (!StringUtils.isEmpty(resourceRequest.getThemeName())) {
-            found = ServableResource.of(resourceRequest.getTheme().getResource(path));
+            sources.add(p -> ServableResource.of(resourceRequest.getTheme().getResource(p)));
         }
-
-        // second, see if resource comes from weblog's configured shared theme
-        if (found == null) {
-            try {
-                WeblogTheme weblogTheme = weblogger.getThemeManager().getTheme(weblog);
-                found = weblogTheme == null ? null : ServableResource.of(weblogTheme.getResource(path));
-            } catch (WebloggerException | RuntimeException ex) {
-                // hmmm, some kind of error getting theme. that's an error.
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                return;
-            }
-        }
-
-        // if not from theme then see if resource is in weblog's upload dir
-        if (found == null) {
-            found = ServableResource.uploaded(weblogger, weblog, path);
-        }
-        if (found == null) {
-            // still not found? then we don't have it, 404.
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
-        found.serve(request, response, context, path);
+        sources.add(ResourceSource.theme(weblogger, weblog));
+        sources.add(ResourceSource.uploaded(weblogger, weblog));
+        ResourceSource.serveFirst(sources, request, response, context, path);
     }
 
 }

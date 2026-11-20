@@ -37,8 +37,6 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
-import com.wikantik.pressroom.pojos.StaticThemeTemplate;
-import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTheme;
@@ -207,14 +205,8 @@ public class SearchServlet extends WeblogRequestServlet<WeblogSearchRequest> {
      * its template.
      */
     private static ThemeTemplate siteSearchTemplate(Weblog weblog, ThemeManager themes) {
-        ThemeTemplate template = null;
-        try {
-            template = themes.getTheme(weblog).getTemplateByName(SITE_SEARCH_TEMPLATE);
-        } catch (Exception e) {
-            log.warn("Error looking up the site-search template of the site space; using the shared one", e);
-        }
-        return template != null ? template
-                : new StaticThemeTemplate("templates/weblog/site-search.vm", TemplateLanguage.VELOCITY);
+        return TemplateLookup.namedOr(weblog, themes, SITE_SEARCH_TEMPLATE,
+                "templates/weblog/site-search.vm");
     }
 
 }
