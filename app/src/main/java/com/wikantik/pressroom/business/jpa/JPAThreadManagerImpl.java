@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.Date;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
@@ -30,6 +31,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManagerImpl;
 import com.wikantik.pressroom.business.runnable.PressroomTask;
+import com.wikantik.pressroom.business.runnable.StartWindow;
 import com.wikantik.pressroom.pojos.TaskLock;
 
 
@@ -88,15 +90,13 @@ public class JPAThreadManagerImpl extends ThreadManagerImpl {
                 // i.e. if a task is meant to run daily at midnight this should
                 // reflect 00:00:00 on the current day
                 Date runTime;
-                if("startOfDay".equals(task.getStartTimeDesc())) {
-                    // start of today
-                    runTime = DateUtil.getStartOfDay(currentTime);
-                } else if("startOfHour".equals(task.getStartTimeDesc())) {
-                    // start of this hour
-                    runTime = DateUtil.getStartOfHour(currentTime);
-                } else {
+                StartWindow window = StartWindow.parse(task.getStartTimeDesc());
+                if (window == StartWindow.IMMEDIATE) {
                     // start of this minute
                     runTime = DateUtil.getStartOfMinute(currentTime);
+                } else {
+                    // start of today or of this hour, in the JVM default zone
+                    runTime = window.windowStart(currentTime, Calendar.getInstance());
                 }
 
                 log.debug("last run = {}", taskLock.getLastRun());
