@@ -24,9 +24,6 @@
         <named-query name="User.getByUserName">
             <query>SELECT u FROM User u WHERE u.userName= ?1</query>
         </named-query>
-        <named-query name="User.getByUserName&amp;Enabled">
-            <query>SELECT u FROM User u WHERE u.userName= ?1 AND u.enabled = ?2</query>
-        </named-query>
         <named-query name="User.getByEmailAddress&amp;Enabled">
             <!-- emailaddress has no unique constraint at the database level
                  (V002 baseline schema), so this orders deterministically and
