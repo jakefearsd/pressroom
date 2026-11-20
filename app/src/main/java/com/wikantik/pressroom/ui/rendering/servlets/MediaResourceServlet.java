@@ -25,10 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -52,7 +50,7 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogMediaResourceRequest;
  * way to serve them up. This servlet assumes that resources are stored on a
  * filesystem in the "uploads.dir" directory.
  */
-public class MediaResourceServlet extends HttpServlet {
+public class MediaResourceServlet extends WeblogRequestServlet<WeblogMediaResourceRequest> {
 
     private static final long serialVersionUID = 1L;
 
@@ -78,35 +76,18 @@ public class MediaResourceServlet extends HttpServlet {
 
     }
 
+    @Override
+    WeblogMediaResourceRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogMediaResourceRequest(weblogger, request);
+    }
+
     /**
      * Handles requests for user uploaded media file resources.
      */
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+        @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogMediaResourceRequest resourceRequest, Weblog weblog)
             throws ServletException, IOException {
-
-        WeblogMediaResourceRequest resourceRequest;
-        Weblog weblog;
-        try {
-            // parse the incoming request and extract the relevant data
-            resourceRequest = new WeblogMediaResourceRequest(weblogger, request);
-
-            weblog = resourceRequest.getWeblog();
-
-        } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request
-            log.debug("error creating weblog resource request", e);
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-        // The site space's files are reached only through the mapper's
-        // forward of /site-space/<context>/..., never at this servlet's
-        // own path.
-        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
-            log.debug("no weblog to serve resources for {}", resourceRequest.getWeblogHandle());
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
 
         MediaFile mediaFile = servableMediaFile(resourceRequest, weblog, response);
         if (mediaFile == null) {
@@ -162,12 +143,12 @@ public class MediaResourceServlet extends HttpServlet {
         } catch (Exception ex) {
             // still not found? then we don't have it, 404.
             log.debug("Unable to get resource", ex);
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            RenderingServletUtils.sendNotFound(response);
             return null;
         }
         if (mediaFile == null || mediaFile.getLastUpdated() == null) {
             log.debug("No servable media file {}", resourceRequest.getResourceId());
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            RenderingServletUtils.sendNotFound(response);
             return null;
         }
 
@@ -182,7 +163,7 @@ public class MediaResourceServlet extends HttpServlet {
         if (!weblog.equals(owningWeblog)) {
             log.debug("media file {} does not belong to weblog {}", resourceRequest.getResourceId(),
                     weblog.getHandle());
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            RenderingServletUtils.sendNotFound(response);
             return null;
         }
 
@@ -196,7 +177,7 @@ public class MediaResourceServlet extends HttpServlet {
             if (!WeblogEditors.requesterMayEdit(weblog, weblogger.getUserManager())) {
                 log.debug("media file {} is in a private directory; not serving it on the base path",
                         resourceRequest.getResourceId());
-                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                RenderingServletUtils.sendNotFound(response);
                 return null;
             }
             response.setHeader("Cache-Control", "private, no-store");

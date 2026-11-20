@@ -20,11 +20,9 @@ package com.wikantik.pressroom.ui.rendering.servlets;
 
 import java.io.IOException;
 
-import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -40,7 +38,7 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogResourceRequest;
  * Serves fixed-path files such as old-style uploads and theme resources, which
  * must exist at a fixed-path even if moved in media file folders.
  */
-public class ResourceServlet extends HttpServlet {
+public class ResourceServlet extends WeblogRequestServlet<WeblogResourceRequest> {
 
     private static final long serialVersionUID = 1350679411381917714L;
 
@@ -70,35 +68,17 @@ public class ResourceServlet extends HttpServlet {
         this.context = config.getServletContext();
     }
 
+    @Override
+    WeblogResourceRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogResourceRequest(weblogger, request);
+    }
+
     /**
      * Handles requests for user uploaded resources.
      */
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        Weblog weblog;
-        WeblogResourceRequest resourceRequest;
-        try {
-            // parse the incoming request and extract the relevant data
-            resourceRequest = new WeblogResourceRequest(weblogger, request);
-
-            weblog = resourceRequest.getWeblog();
-
-        } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request
-            log.debug("error creating weblog resource request", e);
-            fail(response, HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-        // The site space's files are reached only through the mapper's
-        // forward of /site-space/<context>/..., never at this servlet's
-        // own path.
-        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
-            log.debug("no weblog to serve resources for {}", resourceRequest.getWeblogHandle());
-            fail(response, HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
+        @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogResourceRequest resourceRequest, Weblog weblog) throws ServletException, IOException {
 
         String path = resourceRequest.getResourcePath();
         log.debug("Resource requested [{}]", path);

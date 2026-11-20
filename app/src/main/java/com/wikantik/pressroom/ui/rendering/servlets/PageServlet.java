@@ -44,10 +44,8 @@ import com.wikantik.pressroom.ui.rendering.util.cache.RenderCache;
 import com.wikantik.pressroom.ui.rendering.util.cache.RenderCaches;
 import com.wikantik.pressroom.util.cache.CachedContent;
 
-import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.jsp.JspFactory;
@@ -61,7 +59,7 @@ import java.util.Map;
 /**
  * Provides access to weblog pages.
  */
-public class PageServlet extends HttpServlet {
+public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
 
     private static final long serialVersionUID = 1L;
 
@@ -141,37 +139,18 @@ public class PageServlet extends HttpServlet {
     // justification, on servedFromCache below.)
     @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    WeblogPageRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogPageRequest(weblogger, request);
+    }
+
+    @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogPageRequest pageRequest, Weblog weblog) throws ServletException, IOException {
 
         log.debug("Entering");
 
-        Weblog weblog;
-        boolean isSiteWide;
-
-        WeblogPageRequest pageRequest;
-        try {
-            pageRequest = new WeblogPageRequest(weblogger, request);
-
-            weblog = pageRequest.getWeblog();
-
-            // is this the site-wide weblog?
-            isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(pageRequest
-                    .getWeblogHandle());
-        } catch (WebloggerException | RuntimeException e) {
-            // some kind of error parsing the request or looking up weblog
-            log.debug("error creating page request", e);
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
-        // The site space is reached only through a container forward --
-        // WeblogRequestMapper's /<slug>, index.jsp's / -- never by its
-        // internal handle at this servlet's own path.
-        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
-            log.debug("no weblog to serve for {}", pageRequest.getWeblogHandle());
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
+        // is this the site-wide weblog?
+        boolean isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(pageRequest.getWeblogHandle());
 
         // the site-wide question is asked once, here, and answered by holding
         // the cache it selects for the rest of the request

@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.jsp.JspFactory;
@@ -51,7 +49,7 @@ import com.wikantik.pressroom.ui.rendering.util.cache.RenderCaches;
 /**
  * Handles search queries for weblogs.
  */
-public class SearchServlet extends HttpServlet {
+public class SearchServlet extends WeblogRequestServlet<WeblogSearchRequest> {
 
     private static final long serialVersionUID = 6246730804167411636L;
 
@@ -93,37 +91,17 @@ public class SearchServlet extends HttpServlet {
      * Handle GET requests for weblog pages.
      */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    WeblogSearchRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogSearchRequest(weblogger, request);
+    }
+
+    // The site's search is reached only through WeblogRequestMapper's forward
+    // of /search, never by the site space's internal handle (as PageServlet).
+    @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogSearchRequest searchRequest, Weblog weblog) throws ServletException, IOException {
 
         log.debug("Entering");
-
-        Weblog weblog;
-        WeblogSearchRequest searchRequest;
-
-        // first off lets parse the incoming request and validate it
-        try {
-            searchRequest = new WeblogSearchRequest(weblogger, request);
-
-            // now make sure the specified weblog really exists
-            weblog = searchRequest.getWeblog();
-            if (weblog == null) {
-                RenderingServletUtils.sendNotFound(response);
-                return;
-            }
-            // The site's search is reached only through WeblogRequestMapper's
-            // forward of /search, never by the site space's internal handle
-            // at this servlet's own path (as PageServlet).
-            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
-                RenderingServletUtils.sendNotFound(response);
-                return;
-            }
-        } catch (Exception e) {
-            // invalid search request format or weblog doesn't exist
-            log.debug("error creating weblog search request", e);
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
 
         // Development only. Reload if theme has been modified
         if (themeReload && !WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())) {

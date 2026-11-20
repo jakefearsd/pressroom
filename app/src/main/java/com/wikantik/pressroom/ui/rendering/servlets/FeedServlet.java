@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -46,7 +45,7 @@ import com.wikantik.pressroom.ui.rendering.util.ModDateHeaderUtil;
 /**
  * Responsible for rendering weblog feeds.
  */
-public class FeedServlet extends HttpServlet {
+public class FeedServlet extends WeblogRequestServlet<WeblogFeedRequest> {
 
     private static final long serialVersionUID = 1L;
 
@@ -96,36 +95,23 @@ public class FeedServlet extends HttpServlet {
     // internally before it is returned; there is nothing left to close here.
     @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    WeblogFeedRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogFeedRequest(weblogger, request);
+    }
+
+    @Override
+    boolean siteSpaceOnlyByForward() {
+        return false;
+    }
+
+    @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogFeedRequest feedRequest, Weblog weblog) throws ServletException, IOException {
 
         log.debug("Entering");
 
-        Weblog weblog;
-        boolean isSiteWide;
-
-        WeblogFeedRequest feedRequest;
-        try {
-            // parse the incoming request and extract the relevant data
-            feedRequest = new WeblogFeedRequest(weblogger, request);
-
-            weblog = feedRequest.getWeblog();
-
-            // is this the site-wide weblog?
-            isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(feedRequest
-                    .getWeblogHandle());
-
-        } catch (WebloggerException | RuntimeException e) {
-            // invalid feed request format
-            log.debug("error creating weblog feed request", e);
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
-        if (weblog == null) {
-            log.debug("unable to lookup weblog: {}", feedRequest.getWeblogHandle());
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
+        // is this the site-wide weblog?
+        boolean isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(feedRequest.getWeblogHandle());
 
         // the site-wide question is asked once, here, and answered by holding
         // the cache it selects for the rest of the request

@@ -37,7 +37,6 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewRequest;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.jsp.JspFactory;
@@ -54,7 +53,7 @@ import java.util.Map;
  * of what a weblog will look like with a given theme.  It is not available
  * outside of the authoring interface.
  */
-public class PreviewServlet extends HttpServlet {
+public class PreviewServlet extends WeblogRequestServlet<WeblogPreviewRequest> {
 
     private static final long serialVersionUID = 1L;
 
@@ -89,31 +88,21 @@ public class PreviewServlet extends HttpServlet {
      * Handle GET requests for weblog pages.
      */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    WeblogPreviewRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogPreviewRequest(weblogger, request);
+    }
+
+    // Gated by the editors check below, not by how the site space is reached.
+    @Override
+    boolean siteSpaceOnlyByForward() {
+        return false;
+    }
+
+    @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogPreviewRequest previewRequest, Weblog weblog) throws ServletException, IOException {
 
         log.debug("Entering");
-        
-        Weblog weblog;
-        
-        WeblogPreviewRequest previewRequest;
-
-        try {
-            previewRequest = new WeblogPreviewRequest(weblogger, request);
-
-            // lookup weblog specified by preview request
-            weblog = previewRequest.getWeblog();
-        } catch (WebloggerException | RuntimeException e) {
-            // some kind of error parsing the request or getting weblog
-            log.debug("error creating preview request", e);
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
-        if (weblog == null) {
-            log.debug("unable to lookup weblog: {}", previewRequest.getWeblogHandle());
-            RenderingServletUtils.sendNotFound(response);
-            return;
-        }
 
         // A preview shows the weblog's unpublished drafts; the authoring path
         // admits any editor of any weblog and this servlet is outside

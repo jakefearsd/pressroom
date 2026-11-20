@@ -22,7 +22,6 @@ import java.io.IOException;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
@@ -40,7 +39,7 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewResourceRequest;
  * ResourceServlet because it can accept urls parameters which affect how it
  * behaves which are used for previewing.
  */
-public class PreviewResourceServlet extends HttpServlet {
+public class PreviewResourceServlet extends WeblogRequestServlet<WeblogPreviewResourceRequest> {
 
     private static final long serialVersionUID = 1L;
 
@@ -70,33 +69,24 @@ public class PreviewResourceServlet extends HttpServlet {
         this.context = config.getServletContext();
     }
 
+    @Override
+    WeblogPreviewResourceRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogPreviewResourceRequest(weblogger, request);
+    }
+
+    // The preview's resources are reached at this servlet's own path.
+    @Override
+    boolean siteSpaceOnlyByForward() {
+        return false;
+    }
+
     /**
      * Handles requests for user uploaded resources.
      */
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+        @Override
+    void serve(HttpServletRequest request, HttpServletResponse response,
+            WeblogPreviewResourceRequest resourceRequest, Weblog weblog)
             throws ServletException, IOException {
-
-        Weblog weblog;
-
-        WeblogPreviewResourceRequest resourceRequest;
-        try {
-            // parse the incoming request and extract the relevant data
-            resourceRequest = new WeblogPreviewResourceRequest(weblogger, request);
-
-            weblog = resourceRequest.getWeblog();
-
-        } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request
-            log.debug("error creating weblog resource request", e);
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-        if (weblog == null) {
-            log.debug("unable to lookup weblog: {}", resourceRequest.getWeblogHandle());
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
 
         String path = resourceRequest.getResourcePath();
         log.debug("Resource requested [{}]", path);
@@ -125,7 +115,7 @@ public class PreviewResourceServlet extends HttpServlet {
         }
         if (found == null) {
             // still not found? then we don't have it, 404.
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            RenderingServletUtils.sendNotFound(response);
             return;
         }
         found.serve(request, response, context, path);
