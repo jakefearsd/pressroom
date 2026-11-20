@@ -278,15 +278,9 @@ public class UtilitiesTest  {
     class Truncation {
 
         @Test
-        public void truncateStripsMarkupAndCutsAtAWordBoundary() {
-            assertEquals("blah blah blah...", Utilities.truncate("blah blah blah blah blah", 11, 15, "..."));
-        }
-
-        @Test
         public void truncateLeavesShortTextAloneAndDoesNotAppendTheSuffix() {
             // Off-by-one guard: a string exactly as long as 'upper' is not
             // truncated, so no ellipsis may appear.
-            assertEquals("0123456789", Utilities.truncate("0123456789", 5, 10, "..."));
             assertEquals("0123456789", Utilities.truncateText("0123456789", 5, 10, "..."));
             assertEquals("0123456789", Utilities.truncateNicely("0123456789", 5, 10, "..."));
         }
@@ -296,25 +290,8 @@ public class UtilitiesTest  {
             // Boundary between the two cutting strategies: the space sits at
             // index 5 with lower == 5, so the word-boundary branch applies and
             // the excerpt ends at the word, not mid-word at the upper limit.
-            assertEquals("abcde...", Utilities.truncate("abcde fghijklmno", 5, 10, "..."));
             assertEquals("abcde...", Utilities.truncateText("abcde fghijklmno", 5, 10, "..."));
             assertEquals("abcde...", Utilities.truncateNicely("abcde fghijklmno", 5, 10, "..."));
-        }
-
-        @Test
-        public void truncateCutsAtUpperWhenThereIsNoSpaceAfterLower() {
-            // Long unbroken text (a URL, or a CJK sentence with no spaces) must
-            // still be cut, otherwise excerpts grow without bound.
-            assertEquals("aaaaaaaaaa...", Utilities.truncate("aaaaaaaaaaaaaaaaaaaa", 5, 10, "..."));
-        }
-
-        @Test
-        public void truncateRaisesUpperToLowerWhenCallerSuppliesThemBackwards() {
-            // upper < lower is a caller bug; the method repairs it rather than
-            // throwing a StringIndexOutOfBoundsException from substring().
-            // With upper raised to 10 the last space sits at 9, below 'lower',
-            // so the cut happens at the hard limit and keeps that space.
-            assertEquals("aaaa bbbb ...", Utilities.truncate("aaaa bbbb cccc dddd", 10, 5, "..."));
         }
 
         @Test
@@ -352,17 +329,6 @@ public class UtilitiesTest  {
     class StringHelpers {
 
         @Test
-        public void stripJsessionIdRemovesTheSegmentAndKeepsTheQueryString() {
-            // Referer URLs arrive with the container's session id glued on;
-            // keeping it would fragment referer statistics per session.
-            assertEquals("http://e.com/x?a=1",
-                    Utilities.stripJsessionId("http://e.com/x;jsessionid=ABC?a=1"));
-            assertEquals("http://e.com/x",
-                    Utilities.stripJsessionId("http://e.com/x;jsessionid=ABC"));
-            assertEquals("http://e.com/x", Utilities.stripJsessionId("http://e.com/x"));
-        }
-
-        @Test
         public void autoformatTurnsNewlinesIntoBreaks() {
             assertEquals("a<br />b", Utilities.autoformat("a\nb"));
         }
@@ -375,11 +341,6 @@ public class UtilitiesTest  {
             assertEquals("café_naïve", Utilities.replaceNonAlphanumeric("café naïve"));
             assertEquals("a-b", Utilities.replaceNonAlphanumeric("a b", '-'));
             assertEquals("", Utilities.replaceNonAlphanumeric(""));
-        }
-
-        @Test
-        public void removeNonAlphanumericKeepsPeriodsBecausePageLinksNeedThem() {
-            assertEquals("a.bcd", Utilities.removeNonAlphanumeric("a.b c-d!"));
         }
 
         @Test
@@ -426,29 +387,6 @@ public class UtilitiesTest  {
             assertThrows(NullPointerException.class, () -> Utilities.stringToStringList(null, ","));
         }
 
-        @Test
-        public void intArrayRoundTrip() {
-            assertEquals("1,2,3", Utilities.intArrayToString(new int[]{1, 2, 3}));
-            assertArrayEquals(new int[]{1, 2, 3}, Utilities.stringToIntArray("1,2,3", ","));
-            assertEquals("", Utilities.intArrayToString(new int[0]));
-            assertEquals("-1,0", Utilities.intArrayToString(new int[]{-1, 0}));
-        }
-
-        @Test
-        public void stringToIntArrayThrowsOnNonNumericInput() {
-            assertThrows(NumberFormatException.class, () -> Utilities.stringToIntArray("1,x", ","));
-        }
-
-        @Test
-        public void stringToIntReturnsZeroForAnythingItCannotParse() {
-            // Used on request parameters, where garbage is normal; a zero is
-            // the documented fallback, an exception would be a 500 page.
-            assertEquals(42, Utilities.stringToInt("42"));
-            assertEquals(-42, Utilities.stringToInt("-42"));
-            assertEquals(0, Utilities.stringToInt("abc"));
-            assertEquals(0, Utilities.stringToInt(""));
-            assertEquals(0, Utilities.stringToInt(null));
-        }
     }
 
     // ------------------------------------------------------------------ tags
@@ -529,35 +467,12 @@ public class UtilitiesTest  {
             assertEquals("//79", Utilities.toBase64(new byte[]{(byte) 0xff, (byte) 0xfe, (byte) 0xfd}));
         }
 
-        @Test
-        public void hexEncodeTurnsEmailIntoPercentEscapes() {
-            assertEquals("%61%40%62%2e%63%6f%6d", Utilities.hexEncode("a@b.com"));
-        }
-
-        @Test
-        public void hexEncodeAndEncodeEmailPassNullAndEmptyThrough() {
-            assertNull(Utilities.hexEncode(null));
-            assertEquals("", Utilities.hexEncode(""));
-            assertNull(Utilities.encodeEmail(null));
-        }
-
-        @Test
-        public void encodeEmailObfuscatesPlaintextAddresses() {
-            assertEquals("a-AT-b-DOT-com", Utilities.encodeEmail("a@b.com"));
-        }
     }
 
     // ----------------------------------------------------------------- files
 
     @Nested
     class Streams {
-
-        @Test
-        public void streamToStringReadsEveryLine() throws IOException {
-            String text = "line one" + System.lineSeparator() + "line two" + System.lineSeparator();
-            InputStream in = new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
-            assertEquals(text, Utilities.streamToString(in));
-        }
 
         @Test
         public void streamToStringReturnsEmptyStringForAnEmptyStream() {
@@ -572,175 +487,6 @@ public class UtilitiesTest  {
             } catch (IOException e) {
                 throw new AssertionError("streamToString threw on an empty stream", e);
             }
-        }
-
-        @Test
-        public void copyInputToOutputCopiesMoreThanOneBuffer() throws IOException {
-            // The copy loop is chunked at 8kb, so anything smaller would never
-            // exercise the second iteration.
-            byte[] data = new byte[20000];
-            for (int i = 0; i < data.length; i++) {
-                data[i] = (byte) (i % 251);
-            }
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Utilities.copyInputToOutput(new ByteArrayInputStream(data), out);
-            assertArrayEquals(data, out.toByteArray());
-        }
-
-        @Test
-        public void copyInputToOutputStopsAfterTheRequestedByteCount() throws IOException {
-            // Uploads are copied with an explicit length; copying past it would
-            // let one upload bleed into the next.
-            byte[] data = "0123456789".getBytes(StandardCharsets.UTF_8);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Utilities.copyInputToOutput(new ByteArrayInputStream(data), out, 4);
-            assertEquals("0123", out.toString(StandardCharsets.UTF_8));
-        }
-
-        @Test
-        public void copyInputToOutputStopsAtEndOfStreamEvenIfMoreWasPromised() throws IOException {
-            byte[] data = "abc".getBytes(StandardCharsets.UTF_8);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Utilities.copyInputToOutput(new ByteArrayInputStream(data), out, 1000);
-            assertEquals("abc", out.toString(StandardCharsets.UTF_8));
-        }
-
-        @Test
-        public void copyInputToOutputClosesBothStreamsWhenItFinishes() throws IOException {
-            // Media uploads go through here. A stream left open holds a file
-            // descriptor (and on Windows a lock on the file) until GC, so a
-            // busy site runs out of handles.
-            TrackingInput in = new TrackingInput("data".getBytes(StandardCharsets.UTF_8));
-            TrackingOutput out = new TrackingOutput();
-            Utilities.copyInputToOutput(in, out);
-            assertTrue(in.closed, "input stream was left open");
-            assertTrue(out.closed, "output stream was left open");
-
-            TrackingInput in2 = new TrackingInput("data".getBytes(StandardCharsets.UTF_8));
-            TrackingOutput out2 = new TrackingOutput();
-            Utilities.copyInputToOutput(in2, out2, 4);
-            assertTrue(in2.closed, "input stream was left open by the counted copy");
-            assertTrue(out2.closed, "output stream was left open by the counted copy");
-        }
-
-        @Test
-        public void aFailedReadClosesBothStreamsAndSaysWhichSideFailed() {
-            // A half-finished upload must not leak the descriptors it opened.
-            TrackingOutput out = new TrackingOutput();
-            FailingInput failing = new FailingInput();
-
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(failing, out, 10));
-
-            assertTrue(thrown.getMessage().contains("Reading input stream"),
-                    "A failed copy must name the side that failed so the log points at the "
-                            + "right thing. Message was: " + thrown.getMessage());
-            assertTrue(failing.closed, "the input stream must be closed when the copy aborts");
-            assertTrue(out.closed, "the output stream must be closed when the copy aborts");
-        }
-
-        @Test
-        public void aFailedWriteClosesBothStreamsAndSaysWhichSideFailed() {
-            // More than one 8kb buffer, so the write actually reaches the
-            // underlying stream during the copy rather than at close time.
-            TrackingInput in = new TrackingInput(new byte[20000]);
-            FailingOutput out = new FailingOutput();
-
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(in, out, 20000));
-
-            assertTrue(thrown.getMessage().contains("Writing output stream"),
-                    "Message was: " + thrown.getMessage());
-            assertTrue(in.closed, "the input stream must be closed when the copy aborts");
-            assertTrue(out.closed, "the output stream must be closed when the copy aborts");
-        }
-
-        @Test
-        public void aWriteThatOnlyFailsWhenFlushedIsStillReported() {
-            // A copy smaller than the 8kb buffer succeeds all the way to
-            // close(), where the flush fails. Swallowing that would report a
-            // successful upload of a file that was never written.
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(
-                            new TrackingInput("data".getBytes(StandardCharsets.UTF_8)),
-                            new FailingOutput(), 4));
-
-            assertTrue(thrown.getMessage().contains("Closing file streams"),
-                    "Message was: " + thrown.getMessage());
-        }
-
-        @Test
-        public void aFailedReadWhoseCleanupCloseAlsoFailsStillReportsTheReadFailure() {
-            // The read failure is what matters to the caller; a second,
-            // unrelated failure while cleaning up must not replace it or go
-            // unswallowed.
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(
-                            new FailingInputThatWontClose(), new ByteArrayOutputStream(), 10));
-
-            assertTrue(thrown.getMessage().contains("Reading input stream"),
-                    "Message was: " + thrown.getMessage());
-        }
-
-        @Test
-        public void aFailedWriteWhoseCleanupCloseAlsoFailsStillReportsTheWriteFailure() {
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(
-                            new TrackingInput(new byte[20000]), new FailingOutputThatWontClose(), 20000));
-
-            assertTrue(thrown.getMessage().contains("Writing output stream"),
-                    "Message was: " + thrown.getMessage());
-        }
-
-        @Test
-        public void aFailedFinalCloseOnTheTwoArgOverloadIsReported() {
-            // copyInputToOutput(in, out) -- no byte count -- has its own final
-            // close(), distinct from the byte-counted overload above.
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyInputToOutput(
-                            new FailingCloseInput("data".getBytes(StandardCharsets.UTF_8)),
-                            new ByteArrayOutputStream()));
-
-            assertTrue(thrown.getMessage().contains("Closing file streams"),
-                    "Message was: " + thrown.getMessage());
-        }
-
-        @Test
-        public void copyFileReproducesTheFileByteForByte(@TempDir Path tmp) throws IOException {
-            Path from = tmp.resolve("from.txt");
-            Files.writeString(from, "contents café", StandardCharsets.UTF_8);
-            Path to = tmp.resolve("to.txt");
-
-            Utilities.copyFile(from.toFile(), to.toFile());
-
-            assertArrayEquals(Files.readAllBytes(from), Files.readAllBytes(to));
-        }
-
-        @Test
-        public void copyFileReportsWhichSideFailedToOpen(@TempDir Path tmp) {
-            File missing = tmp.resolve("does-not-exist").toFile();
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyFile(missing, tmp.resolve("out").toFile()));
-            assertTrue(thrown.getMessage().contains("input stream"),
-                    "copyFile must say which stream it failed to open, otherwise a failed "
-                            + "theme or upload copy is undiagnosable. Message was: " + thrown.getMessage());
-        }
-
-        @Test
-        public void copyFileReportsAnUnwritableDestination(@TempDir Path tmp) throws IOException {
-            // The destination here is an existing directory, which cannot be
-            // opened for writing. The source stream has already been opened at
-            // that point and must be released before the error propagates.
-            Path source = tmp.resolve("source.txt");
-            Files.writeString(source, "x");
-            File directory = tmp.resolve("subdir").toFile();
-            assertTrue(directory.mkdir());
-
-            IOException thrown = assertThrows(IOException.class,
-                    () -> Utilities.copyFile(source.toFile(), directory));
-
-            assertTrue(thrown.getMessage().contains("output stream"),
-                    "Message was: " + thrown.getMessage());
         }
 
         private static class TrackingInput extends ByteArrayInputStream {
@@ -861,28 +607,6 @@ public class UtilitiesTest  {
     @Nested
     class EmailValidation {
 
-        @Test
-        public void acceptsOrdinaryAddresses() {
-            assertTrue(Utilities.isValidEmailAddress("a@b.com"));
-            assertTrue(Utilities.isValidEmailAddress("first.last+tag@sub.example.co.uk"));
-        }
-
-        @Test
-        public void rejectsAddressesWithoutBothANameAndADomain() {
-            // A bare "albert" is a legal InternetAddress but never what a
-            // commenter meant, so the extra name/domain check must stay.
-            assertFalse(Utilities.isValidEmailAddress("albert"));
-            assertFalse(Utilities.isValidEmailAddress("@b.com"));
-            assertFalse(Utilities.isValidEmailAddress("a@"));
-            assertFalse(Utilities.isValidEmailAddress("a@b@c.com"));
-        }
-
-        @Test
-        public void rejectsNullEmptyAndMalformedInput() {
-            assertFalse(Utilities.isValidEmailAddress(null));
-            assertFalse(Utilities.isValidEmailAddress(""));
-            assertFalse(Utilities.isValidEmailAddress("a b@c.com"));
-        }
     }
 
     @Test

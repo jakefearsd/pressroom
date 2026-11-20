@@ -195,30 +195,6 @@ public class DateUtilTest {
         }
 
         @Test
-        public void parseReadsAValueBackWithTheGivenFormat() throws ParseException {
-            SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd");
-            fmt.setTimeZone(UTC);
-            assertEquals("2004-06-14 00:00:00.000", isoUtc(DateUtil.parse("20040614", fmt)));
-        }
-
-        @Test
-        public void parseReturnsNullForMissingInputAndThrowsForGarbage() {
-            SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd");
-            assertNull(assertParsedOrNull(null, fmt));
-            assertNull(assertParsedOrNull("", fmt));
-            assertNull(assertParsedOrNull("20040614", null));
-            assertThrows(ParseException.class, () -> DateUtil.parse("not a date", fmt));
-        }
-
-        private Date assertParsedOrNull(String value, SimpleDateFormat fmt) {
-            try {
-                return DateUtil.parse(value, fmt);
-            } catch (ParseException e) {
-                throw new AssertionError("DateUtil.parse should return null, not throw, for " + value, e);
-            }
-        }
-
-        @Test
         public void theEightAndSixCharacterStampsRespectTheSuppliedZone() {
             // These build the /date/YYYYMMDD permalinks. 22:00Z on the 14th is
             // already the 15th in Sydney, so a weblog in that zone must get the
@@ -257,12 +233,6 @@ public class DateUtilTest {
         }
 
         @Test
-        public void iso8601DayIsJustTheDate() {
-            Date d = dateIn(TimeZone.getDefault(), 2004, Calendar.JUNE, 14, 12, 0, 0, 0);
-            assertEquals("2004-06-14", DateUtil.formatIso8601Day(d));
-        }
-
-        @Test
         public void rfc822UsesEnglishNamesWhateverTheServerLocaleIs() {
             // ROL-725/ROL-628: on a server whose default locale is not English
             // the RSS pubDate came out as "Mo, 14 Jun ...", which is not valid
@@ -295,7 +265,6 @@ public class DateUtilTest {
                 assertEquals("200406", DateUtil.get6charDateFormat().format(d));
                 assertEquals("2004-06-14", DateUtil.getIso8601DayDateFormat().format(d));
                 assertTrue(DateUtil.getIso8601DateFormat().format(d).startsWith("2004-06-14T"));
-                assertTrue(DateUtil.defaultTimestampFormat().format(d).startsWith("2004-06-14 "));
             } finally {
                 Locale.setDefault(original);
             }
@@ -322,20 +291,7 @@ public class DateUtilTest {
             // These strings appear in the admin UI; the minimal form drops
             // leading zeroes and uses a two digit year.
             Date d = dateIn(TimeZone.getDefault(), 2004, Calendar.JUNE, 4, 21, 20, 30, 0);
-            assertEquals("4.6.04", DateUtil.minimalDate(d));
-            assertEquals("4.6.04", DateUtil.friendlyDate(d));
             assertEquals("04.06.2004", DateUtil.fullDate(d));
-            assertEquals("04.06.2004", DateUtil.friendlyDate(d, false));
-            assertEquals("04.06.2004 21:20:30", DateUtil.friendlyTimestamp(d));
-            assertEquals("2004-06-04 21:20:30.000", DateUtil.defaultTimestamp(d));
-        }
-
-        @Test
-        public void defaultDateIsTheMinimalFormatDespiteTheName() {
-            // defaultDateFormat() delegates to friendlyDateFormat(true), so
-            // "default" here means the short form, not "dd.MM.yyyy".
-            Date d = dateIn(TimeZone.getDefault(), 2004, Calendar.JUNE, 4, 12, 0, 0, 0);
-            assertEquals("4.6.04", DateUtil.defaultDate(d));
         }
 
         @Test
@@ -350,11 +306,7 @@ public class DateUtilTest {
             assertNotSame(DateUtil.getIso8601DateFormat(), DateUtil.getIso8601DateFormat(), why);
             assertNotSame(DateUtil.getIso8601DayDateFormat(), DateUtil.getIso8601DayDateFormat(), why);
             assertNotSame(DateUtil.getRfc822DateFormat(), DateUtil.getRfc822DateFormat(), why);
-            assertNotSame(DateUtil.defaultTimestampFormat(), DateUtil.defaultTimestampFormat(), why);
-            assertNotSame(DateUtil.friendlyTimestampFormat(), DateUtil.friendlyTimestampFormat(), why);
-            assertNotSame(DateUtil.minimalDateFormat(), DateUtil.minimalDateFormat(), why);
             assertNotSame(DateUtil.fullDateFormat(), DateUtil.fullDateFormat(), why);
-            assertNotSame(DateUtil.defaultDateFormat(), DateUtil.defaultDateFormat(), why);
         }
     }
 
@@ -364,26 +316,6 @@ public class DateUtilTest {
         private final Date early = new Date(1_000_000L);
         private final Date late = new Date(2_000_000L);
 
-        @Test
-        public void aRangeIsValidWhenTheEndIsAfterTheStart() {
-            assertTrue(DateUtil.isValidDateRange(early, late));
-            assertFalse(DateUtil.isValidDateRange(late, early));
-        }
-
-        @Test
-        public void equalDatesAreValidUnlessTheCallerSaysOtherwise() {
-            // The comment search form uses the strict form to reject a
-            // zero-length window.
-            assertTrue(DateUtil.isValidDateRange(early, new Date(early.getTime())));
-            assertFalse(DateUtil.isValidDateRange(early, new Date(early.getTime()), false));
-        }
-
-        @Test
-        public void aMissingEndpointIsNeverAValidRange() {
-            assertFalse(DateUtil.isValidDateRange(null, late));
-            assertFalse(DateUtil.isValidDateRange(early, null));
-            assertFalse(DateUtil.isValidDateRange(null, null));
-        }
     }
 
     /** Spec 2026-11-12 (0.9.1), criterion 11: the "Updated" line's decision. */
@@ -441,15 +373,6 @@ public class DateUtilTest {
             assertFalse(DateUtil.isLaterCalendarDay(day, null, UTC));
             assertFalse(DateUtil.isLaterCalendarDay(day, next, null));
         }
-    }
-
-    @Test
-    public void nowReturnsTheCurrentTimeAsASqlTimestamp() {
-        long before = System.currentTimeMillis();
-        java.sql.Timestamp now = DateUtil.now();
-        assertTrue(now.getTime() >= before && now.getTime() <= System.currentTimeMillis(),
-                "DateUtil.now() must be the current time; it is written straight into "
-                        + "created/updated columns.");
     }
 
     @Test

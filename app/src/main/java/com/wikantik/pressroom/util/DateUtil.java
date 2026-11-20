@@ -279,12 +279,7 @@ public final class DateUtil {
                 .isAfter(Instant.ofEpochMilli(first.getTime()).atZone(zoneId).toLocalDate());
     }
 
-    /**
-     * Returns a java.sql.Timestamp equal to the current time
-     **/
-    public static java.sql.Timestamp now() {
-        return new java.sql.Timestamp(new Date().getTime());
-    }
+
     
     
     /**
@@ -300,53 +295,21 @@ public final class DateUtil {
     }
     
     
-    /**
-     * Returns a Date using the passed-in string and format.  Returns null if the string
-     * is null or empty or if the format is null.  The string must match the format.
-     **/
-    public static Date parse(String aValue, SimpleDateFormat aFormat) throws ParseException {
-        if (StringUtils.isEmpty(aValue) || aFormat == null) {
-            return null;
-        }
-        synchronized(aFormat) {
-            return aFormat.parse(aValue);
-        }
-    }
+
     
     
-    /**
-     * Returns true if endDate is after startDate or if startDate equals endDate
-     * or if they are the same date.  Returns false if either value is null.
-     **/
-    public static boolean isValidDateRange(Date startDate, Date endDate) {
-        return isValidDateRange(startDate, endDate, true);
-    }
+
     
     
-    /**
-     * Returns true if endDate is after startDate or if startDate equals endDate.
-     * Returns false if either value is null.  If equalOK, returns true if the
-     * dates are equal.
-     **/
-    public static boolean isValidDateRange(Date startDate, Date endDate, boolean equalOK) {
-        // false if either value is null
-        if (startDate == null || endDate == null) { return false; }
-        
-        // true if they are equal (when equalOK) or endDate is after startDate
-        return (equalOK && startDate.equals(endDate)) || endDate.after(startDate);
-    }
+
     
     
     // convenience method returns minimal date format
-    public static SimpleDateFormat defaultDateFormat() {
-        return friendlyDateFormat(true);
-    }
+
     
     
     // convenience method returns minimal date format
-    public static SimpleDateFormat minimalDateFormat() {
-        return friendlyDateFormat(true);
-    }
+
     
     
     // convenience method that returns friendly data format
@@ -370,15 +333,11 @@ public final class DateUtil {
     
     
     // returns full timestamp format
-    public static SimpleDateFormat defaultTimestampFormat() {
-        return new SimpleDateFormat(FORMAT_DEFAULT_TIMESTAMP, Locale.ROOT);
-    }
+
     
     
     // convenience method returns long friendly timestamp format
-    public static SimpleDateFormat friendlyTimestampFormat() {
-        return new SimpleDateFormat(FORMAT_FRIENDLY_TIMESTAMP, Locale.ROOT);
-    }
+
     
     
     // convenience method returns minimal date format
@@ -414,15 +373,11 @@ public final class DateUtil {
     
     
     // convenience method
-    public static String defaultDate(Date date) {
-        return format(date, defaultDateFormat());
-    }
+
     
     
     // convenience method using minimal date format
-    public static String minimalDate(Date date) {
-        return format(date, minimalDateFormat());
-    }
+
     
     
     public static String fullDate(Date date) {
@@ -430,30 +385,19 @@ public final class DateUtil {
     }
     
     
-    /**
-     * Format the date using the "friendly" date format.
-     */
-    public static String friendlyDate(Date date, boolean minimalFormat) {
-        return format(date, friendlyDateFormat(minimalFormat));
-    }
+
     
     
     // convenience method
-    public static String friendlyDate(Date date) {
-        return format(date, friendlyDateFormat(true));
-    }
+
     
     
     // convenience method
-    public static String defaultTimestamp(Date date) {
-        return format(date, defaultTimestampFormat());
-    }
+
     
     
     // convenience method returns long friendly formatted timestamp
-    public static String friendlyTimestamp(Date date) {
-        return format(date, friendlyTimestampFormat());
-    }
+
     
     
     // convenience method returns 8 char day stamp YYYYMMDD
@@ -481,9 +425,7 @@ public final class DateUtil {
     }
 
     // convenience method returns long friendly formatted timestamp
-    public static String formatIso8601Day(Date date) {
-        return format(date, getIso8601DayDateFormat());
-    }
+
     
     
     public static String formatRfc822(Date date) {

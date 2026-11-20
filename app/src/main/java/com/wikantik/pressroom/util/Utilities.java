@@ -88,16 +88,7 @@ public final class Utilities {
             Pattern.CASE_INSENSITIVE);
 
     // ------------------------------------------------------------------------
-    /** Strip jsessionid off of a URL */
-    public static String stripJsessionId(String url) {
-        // Strip off jsessionid found in referer URL
-        int startPos = url.indexOf(";jsessionid=");
-        if (startPos == -1) {
-            return url;
-        }
-        int endPos = url.indexOf('?', startPos);
-        return endPos == -1 ? url.substring(0, startPos) : url.substring(0, startPos) + url.substring(endPos);
-    }
+
 
     public static String unescapeHTML(String str) {
         return StringEscapeUtils.unescapeHtml4(str);
@@ -222,20 +213,7 @@ public final class Utilities {
     }
 
     // ------------------------------------------------------------------------
-    /**
-     * Remove occurences of non-alphanumeric characters.
-     */
-    public static String removeNonAlphanumeric(String str) {
-        StringBuilder ret = new StringBuilder(str.length());
-        char[] testChars = str.toCharArray();
-        for (char testChar : testChars) {
-            // MR: Allow periods in page links
-            if (Character.isLetterOrDigit(testChar) || testChar == '.') {
-                ret.append(testChar);
-            }
-        }
-        return ret.toString();
-    }
+
 
     // ------------------------------------------------------------------------
     /** Convert string array to string with delimeters. */
@@ -283,31 +261,10 @@ public final class Utilities {
     }
 
     // --------------------------------------------------------------------------
-    /** Convert string to integer array. */
-    public static int[] stringToIntArray(String instr, String delim) {
-        String[] str = StringUtils.split(instr, delim);
-        int[] intArray = new int[str.length];
-        int i = 0;
-        for (String string : str) {
-            int nInt = Integer.parseInt(string);
-            intArray[i++] = nInt;
-        }
-        return intArray;
-    }
+
 
     // -------------------------------------------------------------------
-    /** Convert integer array to a string. */
-    public static String intArrayToString(int[] intArray) {
-        StringBuilder bldr = new StringBuilder();
-        for (int s : intArray) {
-            if (bldr.length() > 0) {
-                bldr.append(',').append(Integer.toString(s));
-            } else {
-                bldr.append(Integer.toString(s));
-            }
-        }
-        return bldr.toString();
-    }
+
 
     // ------------------------------------------------------------------------
     // `in`/`out` are closed inside copyInputToOutput(InputStream, OutputStream,
@@ -315,164 +272,17 @@ public final class Utilities {
     // branches all close both streams before returning or rethrowing. PMD's
     // CloseResource can't see a close happening inside a different method.
     @SuppressWarnings("PMD.CloseResource")
-    public static void copyFile(File from, File to) throws IOException {
-        InputStream in;
 
-        try {
-            in = Files.newInputStream(from.toPath());
-        } catch (IOException ex) {
-            throw new IOException("Utilities.copyFile: opening input stream '"
-                    + from.getPath() + "', " + ex.getMessage(), ex);
-        }
 
-        OutputStream out;
-        try {
-            out = Files.newOutputStream(to.toPath());
-        } catch (Exception ex) {
-            try {
-                in.close();
-            } catch (IOException ignored) {
-                // We are already about to throw the more informative
-                // exception below; a failure to close the still-open input
-                // stream here is secondary and would only mask it.
-            }
-            throw new IOException("Utilities.copyFile: opening output stream '"
-                    + to.getPath() + "', " + ex.getMessage(), ex);
-        }
 
-        copyInputToOutput(in, out, from.length());
-    }
-
-    /**
-     * Reads an inputstream into a string
-     */
-    public static String streamToString(InputStream is) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader in = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-        String line;
-        while ((line = in.readLine()) != null) {
-            sb.append(line)
-                    .append(System.getProperty("line.separator"));
-        }
-        return sb.toString();
-    }
 
     // ------------------------------------------------------------------------
-    /**
-     * Utility method to copy an input stream to an output stream. Wraps both
-     * streams in buffers. Ensures right numbers of bytes copied.
-     */
-    public static void copyInputToOutput(InputStream input,
-            OutputStream output, long byteCount) throws IOException {
-        int bytes;
-        long length;
 
-        BufferedInputStream in = new BufferedInputStream(input);
-        BufferedOutputStream out = new BufferedOutputStream(output);
-
-        byte[] buffer;
-        buffer = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
-
-        for (length = byteCount; length > 0;) {
-            bytes = (int) (length > PressroomConstants.EIGHT_KB_IN_BYTES ? PressroomConstants.EIGHT_KB_IN_BYTES : length);
-
-            try {
-                bytes = in.read(buffer, 0, bytes);
-            } catch (IOException ex) {
-                try {
-                    in.close();
-                    out.close();
-                } catch (IOException ignored) {
-                    // Already failing the read; a close failure on top of
-                    // that has nothing further to tell the caller.
-                }
-                throw new IOException("Reading input stream, "
-                        + ex.getMessage(), ex);
-            }
-
-            if (bytes < 0) {
-                break;
-            }
-
-            length -= bytes;
-
-            try {
-                out.write(buffer, 0, bytes);
-            } catch (IOException ex) {
-                try {
-                    in.close();
-                    out.close();
-                } catch (IOException ignored) {
-                    // Already failing the write; a close failure on top of
-                    // that has nothing further to tell the caller.
-                }
-                throw new IOException("Writing output stream, "
-                        + ex.getMessage(), ex);
-            }
-        }
-
-        try {
-            in.close();
-            out.close();
-        } catch (IOException ex) {
-            throw new IOException("Closing file streams, " + ex.getMessage(), ex);
-        }
-    }
 
     // ------------------------------------------------------------------------
-    public static void copyInputToOutput(InputStream input, OutputStream output)
-            throws IOException {
-        BufferedInputStream in = new BufferedInputStream(input);
-        BufferedOutputStream out = new BufferedOutputStream(output);
-        byte[] buffer = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
-        for (int count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES); count != -1;
-                count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES)) {
-            out.write(buffer, 0, count);
-        }
 
-        try {
-            in.close();
-            out.close();
-        } catch (IOException ex) {
-            throw new IOException("Closing file streams, " + ex.getMessage(), ex);
-        }
-    }
 
-    /**
-     * Strips HTML and truncates.
-     */
-    public static String truncate(String str, int lower, int upper,
-            String appendToEnd) {
-        // strip markup from the string
-        String str2 = removeHTML(str, false);
 
-        // quickly adjust the upper if it is set lower than 'lower'
-        int limit = Math.max(upper, lower);
-
-        // now determine if the string fits within the limit limit
-        // if it does, go straight to return, do not pass 'go' and collect $200
-        if (str2.length() > limit) {
-            // the magic location int
-            int loc;
-
-            // first we determine where the next space appears after lower
-            loc = str2.lastIndexOf(' ', limit);
-
-            // now we'll see if the location is greater than the lower limit
-            if (loc >= lower) {
-                // yes it was, so we'll cut it off here
-                str2 = str2.substring(0, loc);
-            } else {
-                // no it wasnt, so we'll cut it off at the limit limit
-                str2 = str2.substring(0, limit);
-            }
-
-            // the string was truncated, so we append the appendToEnd String
-            str2 = str2 + appendToEnd;
-        }
-
-        return str2;
-    }
 
     /**
      * This method based on code from the String taglib at Apache Jakarta:
@@ -614,30 +424,11 @@ public final class Utilities {
         return ret.toString();
     }
 
-    public static String hexEncode(String str) {
-        if (StringUtils.isEmpty(str)) {
-            return str;
-        }
 
-        return RegexUtil.encode(str);
-    }
 
-    public static String encodeEmail(String str) {
-        return str != null ? RegexUtil.encodeEmail(str) : null;
-    }
 
-    /**
-     * @param string
-     * @return
-     */
-    public static int stringToInt(String string) {
-        try {
-            return Integer.parseInt(string);
-        } catch (NumberFormatException e) {
-            log.debug("Invalid Integer:{}", string);
-        }
-        return 0;
-    }
+
+
 
     /**
      * Convert a byte array into a Base64 string (as used in mime formats)
@@ -814,38 +605,7 @@ public final class Utilities {
         }
     }
 
-    /**
-     * Validate the form of an email address.
-     * 
-     * <P>
-     * Return <tt>true</tt> only if
-     * <ul>
-     * <li> <tt>aEmailAddress</tt> can successfully construct an
-     * {@link javax.mail.internet.InternetAddress}
-     * <li>when parsed with "@" as delimiter, <tt>aEmailAddress</tt> contains
-     * two tokens which satisfy
-     * </ul>
-     * <P>
-     * The second condition arises since local email addresses, simply of the
-     * form "<tt>albert</tt>", for example, are valid for
-     * {@link javax.mail.internet.InternetAddress}, but almost always undesired.
-     */
-    public static boolean isValidEmailAddress(String aEmailAddress) {
-        if (aEmailAddress == null) {
-            return false;
-        }
-        boolean result = true;
-        try {
-            // See if its valid
-            new InternetAddress(aEmailAddress);
-            if (!hasNameAndDomain(aEmailAddress)) {
-                result = false;
-            }
-        } catch (AddressException ex) {
-            result = false;
-        }
-        return result;
-    }
+
 
     /**
      * Checks for name and domain.
