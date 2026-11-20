@@ -1,0 +1,75 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+package com.wikantik.pressroom.ui.controllers.editor;
+
+import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogEntryRevision;
+import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
+import com.wikantik.pressroom.util.cache.CacheManager;
+
+/** The entry editor's revisions, bound to an entry already resolved for change. */
+final class EntryRevisions implements RevisionActions.Revisions<WeblogEntryRevision> {
+
+    private final Weblogger weblogger;
+    private final WeblogEntry entry;
+
+    EntryRevisions(Weblogger weblogger, WeblogEntry entry) {
+        this.weblogger = weblogger;
+        this.entry = entry;
+    }
+
+    @Override
+    public WeblogEntryRevision find(String revisionId) {
+        // The one ownership check, shared with the API's revision routes;
+        // null for a null entry.
+        return WeblogOwnership.revision(weblogger, revisionId, entry);
+    }
+
+    @Override
+    public void restore(WeblogEntryRevision revision, User editor) throws WebloggerException {
+        weblogger.getWeblogEntryManager().restoreRevision(entry, revision, editor);
+        weblogger.flush();
+    }
+
+    @Override
+    public void setKept(WeblogEntryRevision revision, boolean kept) throws WebloggerException {
+        weblogger.getWeblogEntryManager().setRevisionKept(revision, kept);
+        weblogger.flush();
+    }
+
+    @Override
+    public void afterRestore() throws WebloggerException {
+        if (entry.isPublished()) {
+            weblogger.getIndexManager().addEntryReIndexOperation(entry);
+        }
+        CacheManager.invalidate(entry);
+    }
+
+    @Override
+    public String restoredKey() {
+        return "weblogEdit.revisionRestored";
+    }
+
+    @Override
+    public String notFoundKey() {
+        return "weblogEntry.notFound";
+    }
+}

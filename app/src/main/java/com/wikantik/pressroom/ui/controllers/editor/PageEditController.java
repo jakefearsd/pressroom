@@ -583,6 +583,21 @@ public class PageEditController extends BaseController {
                 .body(html);
     }
 
+    private RevisionActions<WeblogPageRevision> revisionActions(WeblogPage page, HttpServletRequest request,
+                                                                RedirectAttributes redirectAttributes) {
+        return new RevisionActions<>(new PageRevisions(weblogger, page), log, new RevisionActions.Flash() {
+            @Override
+            public void message(String key) {
+                addFlashMessage(redirectAttributes, key, request);
+            }
+
+            @Override
+            public void error(String key) {
+                addFlashError(redirectAttributes, key, request);
+            }
+        });
+    }
+
     /**
      * Marks one of the page's revisions as kept, or releases it. A kept
      * revision is exempt from every retention limit; a page may have ten.
@@ -595,21 +610,8 @@ public class PageEditController extends BaseController {
                                RedirectAttributes redirectAttributes) {
         String handle = getActionWeblog(request).getHandle();
         WeblogPage page = lookupPage(id, request);
-        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
-        if (revision == null) {
-            addFlashError(redirectAttributes, "pageEdit.notFound", request);
+        if (!revisionActions(page, request, redirectAttributes).keep(revisionId, kept)) {
             return "redirect:/pressroom-ui/authoring/pages.rol?weblog=" + handle;
-        }
-        try {
-            weblogger.getWeblogPageManager().setRevisionKept(revision, kept);
-            weblogger.flush();
-            addFlashMessage(redirectAttributes, kept ? "weblogEdit.revisionKept" : "weblogEdit.revisionUnkept",
-                    request);
-        } catch (RevisionKeepLimitException e) {
-            addFlashError(redirectAttributes, "weblogEdit.revisionKeepLimit", request);
-        } catch (Exception ex) {
-            log.error("Error keeping revision {} of page {}", revision.getId(), page.getId(), ex);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
         return "redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle + "&id=" + page.getId();
     }
@@ -627,20 +629,8 @@ public class PageEditController extends BaseController {
                                   RedirectAttributes redirectAttributes) {
         String handle = getActionWeblog(request).getHandle();
         WeblogPage page = lookupPage(id, request);
-        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
-        if (revision == null) {
-            addFlashError(redirectAttributes, "pageEdit.notFound", request);
+        if (!revisionActions(page, request, redirectAttributes).restore(revisionId, getAuthenticatedUser(request))) {
             return "redirect:/pressroom-ui/authoring/pages.rol?weblog=" + handle;
-        }
-        try {
-            // The manager's restore, not a plain save: a restore is never
-            // coalesced, so what it replaces always becomes a revision.
-            weblogger.getWeblogPageManager().restoreRevision(page, revision, getAuthenticatedUser(request));
-            weblogger.flush();
-            addFlashMessage(redirectAttributes, "pageEdit.revisionRestored", request);
-        } catch (Exception ex) {
-            log.error("Error restoring revision {} of page {}", revision.getId(), page.getId(), ex);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
         return "redirect:/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle + "&id=" + page.getId();
     }
