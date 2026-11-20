@@ -116,8 +116,12 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     private final TrashLifecycle<WeblogEntry> trash;
     private final List<EntryChangeListener> listeners;
     
-    // cached mapping of entryAnchors -> entryIds
-    private final Map<String, String> entryAnchorToIdMap = Collections.synchronizedMap(new HashMap<>());
+    // cached mapping of weblog handle + anchor -> entryIds; the find is free
+    // while the entry is in EclipseLink's shared cache (sized in pressroom.properties)
+    private final IdLookupCache<String, WeblogEntry> entryByAnchor = new IdLookupCache<>(
+            this::getWeblogEntry,
+            entry -> anchorKey(entry.getWebsite(), entry.getAnchor()),
+            WeblogEntry::getId);
     
     private static final Comparator<TagStat> TAG_STAT_NAME_COMPARATOR = new TagStatComparator();
     
@@ -622,7 +626,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
         
         // remove entry from cache mapping
-        this.entryAnchorToIdMap.remove(entry.getWebsite().getHandle()+":"+entry.getAnchor());
+        this.entryByAnchor.evict(anchorKey(entry.getWebsite(), entry.getAnchor()));
 
         announce(new EntryChanged(entry, entry.getStatus(), null, true));
     }
@@ -1086,44 +1090,23 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             throw new WebloggerException("Anchor is null");
         }
         
-        // mapping key is combo of weblog + anchor
-        String mappingKey = website.getHandle() + ":" + anchor;
-        
-        // check cache first; the find is free while the entry is in
-        // EclipseLink's shared cache (sized in pressroom.properties)
-        if(this.entryAnchorToIdMap.containsKey(mappingKey)) {
-            
-            WeblogEntry entry = this.getWeblogEntry(this.entryAnchorToIdMap.get(mappingKey));
-            if(entry != null && anchor.equals(entry.getAnchor())) {
-                log.debug("entryAnchorToIdMap CACHE HIT - {}", mappingKey);
-                return entry;
-            } else {
-                // the entry is gone or now has another anchor: the mapping
-                // is old, so remove it and look the anchor up afresh
-                this.entryAnchorToIdMap.remove(mappingKey);
+        return entryByAnchor.find(anchorKey(website, anchor), key -> {
+            TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
+                    "WeblogEntry.getByWebsite&AnchorOrderByPubTimeDesc", WeblogEntry.class);
+            q.setParameter(1, website);
+            q.setParameter(2, anchor);
+            try {
+                return q.getSingleResult();
+            } catch (NoResultException e) {
+                return null;
             }
-        }
-        
-        // cache failed, do lookup
-        TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
-                "WeblogEntry.getByWebsite&AnchorOrderByPubTimeDesc", WeblogEntry.class);
-        q.setParameter(1, website);
-        q.setParameter(2, anchor);
-        WeblogEntry entry;
-        try {
-            entry = q.getSingleResult();
-        } catch (NoResultException e) {
-            entry = null;
-        }
-        
-        // add mapping to cache
-        if(entry != null) {
-            log.debug("entryAnchorToIdMap CACHE MISS - {}", mappingKey);
-            this.entryAnchorToIdMap.put(mappingKey, entry.getId());
-        }
-        return entry;
+        });
     }
-    
+
+    private static String anchorKey(Weblog website, String anchor) {
+        return website.getHandle() + ":" + anchor;
+    }
+
     /**
      * Gives a new entry its anchor, or checks the one its caller chose, so
      * that no two entries of a weblog ever share one.

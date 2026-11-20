@@ -67,7 +67,9 @@ public class JPAUserManagerImpl implements UserManager {
     private final JPAPersistenceStrategy strategy;
     
     // cached mapping of userNames -> userIds
-    private final Map<String, String> userNameToIdMap = Collections.synchronizedMap(new HashMap<>());
+    // NOTE: if we ever allow changing usernames, evict the old one
+    private final IdLookupCache<String, User> userByName = new IdLookupCache<>(
+            this::getUser, User::getUserName, User::getId);
     
 
     public JPAUserManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strat) {
@@ -125,7 +127,7 @@ public class JPAUserManagerImpl implements UserManager {
         this.strategy.remove(user);
 
         // remove entry from cache mapping
-        this.userNameToIdMap.remove(userName);
+        this.userByName.evict(userName);
     }
 
     
@@ -183,51 +185,18 @@ public class JPAUserManagerImpl implements UserManager {
             throw new WebloggerException("userName cannot be null");
         }
         
-        // check cache first
-        // NOTE: if we ever allow changing usernames then this needs updating
-        if(this.userNameToIdMap.containsKey(userName)) {
-
-            User user = this.getUser(
-                    this.userNameToIdMap.get(userName));
-            if (user != null) {
-                // only return the user if the enabled status matches
-                if(enabled == null || enabled.equals(user.getEnabled())) {
-                    log.debug("userNameToIdMap CACHE HIT - {}", userName);
-                    return user;
-                }
-            } else {
-                // mapping hit with lookup miss?  mapping must be old, remove it
-                this.userNameToIdMap.remove(userName);
+        // Looked up by name alone and the enabled status checked here: the
+        // name is unique, so this answers what the by-name-and-enabled query did.
+        User user = userByName.find(userName, key -> {
+            TypedQuery<User> query = strategy.getNamedQuery("User.getByUserName", User.class);
+            query.setParameter(1, key);
+            try {
+                return query.getSingleResult();
+            } catch (NoResultException e) {
+                return null;
             }
-        }
-
-        // cache failed, do lookup
-        TypedQuery<User> query;
-        Object[] params;
-        if (enabled != null) {
-            query = strategy.getNamedQuery(
-                    "User.getByUserName&Enabled", User.class);
-            params = new Object[] {userName, enabled};
-        } else {
-            query = strategy.getNamedQuery(
-                    "User.getByUserName", User.class);
-            params = new Object[] {userName};
-        }
-        bindParams(query, params);
-        User user;
-        try {
-            user = query.getSingleResult();
-        } catch (NoResultException e) {
-            user = null;
-        }
-
-        // add mapping to cache
-        if(user != null) {
-            log.debug("userNameToIdMap CACHE MISS - {}", userName);
-            this.userNameToIdMap.put(user.getUserName(), user.getId());
-        }
-
-        return user;
+        });
+        return user != null && (enabled == null || enabled.equals(user.getEnabled())) ? user : null;
     }
 
     @Override
@@ -689,12 +658,6 @@ public class JPAUserManagerImpl implements UserManager {
 
         } catch (NoResultException e) {
             throw new WebloggerException("ERROR: removing role", e);
-        }
-    }
-
-    private static void bindParams(TypedQuery<?> query, Object[] params) {
-        for (int i = 0; i < params.length; i++) {
-            query.setParameter(i + 1, params[i]);
         }
     }
 }
