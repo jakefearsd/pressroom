@@ -36,6 +36,16 @@ class MapPinsTest {
 
     // ---------------------------------------------------------------- parsing
 
+    /** B6: an unclosed [pin with thousands of characters after it must not overflow the stack. */
+    @Test
+    void anUnclosedPinTagOfThousandsOfCharactersDoesNotOverflowTheStack() {
+        String text = "[map]\n[pin lat=\"1\" lng=\"2\"]\n[pin " + "word ".repeat(1000) + "\n[/map]";
+
+        List<MapPins.Pin> pins = MapPins.parse(text);
+
+        assertEquals(1, pins.size(), "the closed pin still parses");
+    }
+
     @Test
     void parsesPinsInSourceOrder() {
         List<MapPins.Pin> pins = MapPins.parse(

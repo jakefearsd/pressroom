@@ -62,11 +62,12 @@ public final class MapPins {
 
     /**
      * A {@code [pin ...]} tag: same attribute-section grammar as
-     * {@link ShortcodeExpander}'s OPEN_TAG, anchored to the {@code pin} name
+     * {@link ShortcodeExpander}'s OPEN_TAG (including its possessive runs, so a
+     * long unclosed {@code [pin} cannot overflow the stack), anchored to the {@code pin} name
      * ({@code [pins ...]} is a different, unknown tag).
      */
     private static final Pattern PIN_TAG = Pattern.compile(
-            "\\[pin((?:\\s(?:[^\\]\"']|\"[^\"]*\"|'[^']*')*)?/?)\\]",
+            "\\[pin((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?/?)\\]",
             Pattern.CASE_INSENSITIVE);
 
     /** Same attribute grammar as the expander: double-quoted, single-quoted, or bare. */
