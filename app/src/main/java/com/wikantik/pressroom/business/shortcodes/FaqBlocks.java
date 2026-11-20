@@ -53,9 +53,10 @@ import java.util.regex.Pattern;
  */
 public final class FaqBlocks {
 
-    /** A {@code [faq]...[/faq]} block in raw entry text; body-less forms have no pairs. */
+    /** A {@code [faq ...]...[/faq]} block (open tag grammar as the expander's) in raw entry text; body-less forms have no pairs. */
     private static final Pattern FAQ_BLOCK = Pattern.compile(
-            "\\[faq\\](.*?)\\[/faq\\]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+            "\\[faq((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)\\](.*?)\\[/faq\\]",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     /**
      * One question/answer pair, in entry-source order. Both sides are raw
@@ -80,7 +81,7 @@ public final class FaqBlocks {
      */
     public static List<Qa> parse(String rawEntryText) {
         if (rawEntryText == null
-                || !rawEntryText.toLowerCase(Locale.ROOT).contains("[faq]")) {
+                || !rawEntryText.toLowerCase(Locale.ROOT).contains("[faq")) {
             return List.of();
         }
         List<Qa> pairs = new ArrayList<>();
@@ -92,7 +93,7 @@ public final class FaqBlocks {
             }
             // parsePairs() never returns null (an empty list means
             // "malformed, or nothing to parse"), so nothing to guard here.
-            pairs.addAll(parsePairs(matcher.group(1)));
+            pairs.addAll(parsePairs(matcher.group(2)));
         }
         return pairs;
     }

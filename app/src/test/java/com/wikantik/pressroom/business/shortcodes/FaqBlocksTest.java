@@ -144,4 +144,19 @@ class FaqBlocksTest {
         assertTrue(FaqBlocks.parse("no faq here").isEmpty());
         assertTrue(FaqBlocks.parse("[q]outside a faq block[/q][a]x[/a]").isEmpty());
     }
+
+    /** B7: the page-side [faq] accepts attributes on the open tag, so the JSON-LD side must too. */
+    @Test
+    void anOpenTagWithAttributesIsStillABlock() {
+        List<FaqBlocks.Qa> pairs = FaqBlocks.parse(
+                "[faq title=\"Trip questions\"][q]When?[/q][a]May.[/a][/faq]");
+
+        assertEquals(1, pairs.size());
+        assertEquals("When?", pairs.get(0).question());
+    }
+
+    @Test
+    void aTagNameThatMerelyStartsWithFaqIsNotABlock() {
+        assertTrue(FaqBlocks.parse("[faqs][q]x[/q][a]y[/a][/faq]").isEmpty());
+    }
 }
