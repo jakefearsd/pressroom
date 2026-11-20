@@ -20,7 +20,6 @@ package com.wikantik.pressroom.ui.controllers.core;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -87,8 +86,6 @@ public class SeoController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(SeoController.class);
 
-    private static final String SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9";
-    private static final String IMAGE_NS = "http://www.google.com/schemas/sitemap-image/1.1";
     private static final MediaType APPLICATION_XML_UTF8 =
             new MediaType("application", "xml", java.nio.charset.StandardCharsets.UTF_8);
 
@@ -154,10 +151,6 @@ public class SeoController extends BaseController {
      * {@code robots.txt}.
      */
     @GetMapping("/sitemap.xml")
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Every value written into the XML goes through escapeXml(); the URLs come from "
-                    + "the configured absolute URL and weblog handles.")
     public ResponseEntity<String> sitemapIndex(HttpServletRequest request) {
         String vhostHandle = weblogger.getVirtualHostRegistry().handleFor(request.getHeader("Host"));
         if (vhostHandle != null) {
@@ -173,30 +166,24 @@ public class SeoController extends BaseController {
             return ResponseEntity.internalServerError().build();
         }
 
-        StringBuilder xml = new StringBuilder(256);
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<sitemapindex xmlns=\"").append(SITEMAP_NS)
-                .append("\">\n");
+        SitemapXml xml = SitemapXml.index();
         for (Weblog weblog : weblogs) {
             String customDomain = weblog.getCustomDomain();
             if (customDomain != null && !customDomain.isBlank()) {
                 continue;
             }
-            xml.append("  <sitemap>\n    <loc>").append(escapeXml(absoluteContextURL()
-                    + "/sitemap-" + weblog.getHandle() + ".xml")).append("</loc>\n");
-            appendLastmod(xml, "    ", instant(weblog.getLastModified()));
-            xml.append("  </sitemap>\n");
+            xml.sitemap(absoluteContextURL() + "/sitemap-" + weblog.getHandle() + ".xml",
+                    instant(weblog.getLastModified()));
         }
         try {
             Weblog site = weblogger.getWeblogManager().getSiteSpace();
             if (site != null && !weblogger.getWeblogPageManager().getPublishedPages(site).isEmpty()) {
-                xml.append("  <sitemap>\n    <loc>").append(escapeXml(absoluteContextURL()
-                        + "/sitemap-site-pages.xml")).append("</loc>\n  </sitemap>\n");
+                xml.sitemap(absoluteContextURL() + "/sitemap-site-pages.xml", null);
             }
         } catch (WebloggerException e) {
             // A display-path catch: the index is still valid without the site's entry.
             log.error("Error checking the site pages for the sitemap index", e);
         }
-        xml.append("</sitemapindex>\n");
         return xmlResponse(xml);
     }
 
@@ -291,11 +278,8 @@ public class SeoController extends BaseController {
             if (pages.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            StringBuilder xml = new StringBuilder(128);
-            xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
-                    .append("\">\n");
+            SitemapXml xml = SitemapXml.urlset(false);
             appendPages(xml, pages, site, weblogger.getUrlStrategy());
-            xml.append("</urlset>\n");
             return xmlResponse(xml);
         } catch (WebloggerException e) {
             log.error("Error building the site pages sitemap", e);
@@ -303,10 +287,6 @@ public class SeoController extends BaseController {
         }
     }
 
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
-                    + "by the URL strategy from the stored weblog, entries and pages.")
     private String buildWeblogSitemap(Weblog weblog, URLStrategy urlStrategy, String weblogURL)
             throws WebloggerException {
         // Bounded, because this is an anonymous endpoint. Unbounded it is a
@@ -323,9 +303,7 @@ public class SeoController extends BaseController {
         // indexable; the post listing has moved to /posts.
         WeblogPage frontPage = frontPage(weblog, pages);
 
-        StringBuilder xml = new StringBuilder(256);
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
-                .append("\" xmlns:image=\"").append(IMAGE_NS).append("\">\n");
+        SitemapXml xml = SitemapXml.urlset(true);
         // the weblog home page follows the urlset opening
         // A front door that resolves to no published page falls back to the
         // listing, whose canonical is /posts: the root is not listed then.
@@ -344,10 +322,7 @@ public class SeoController extends BaseController {
             if (entry.noindex() || canonicalElsewhere(entry.canonicalUrl(), loc)) {
                 continue;
             }
-            xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
-            appendLastmod(xml, "    ", entry.lastmod());
-            appendFeaturedImage(xml, urlStrategy, weblog, entry.publicImageId());
-            xml.append("  </url>\n");
+            xml.url(loc, entry.lastmod(), featuredImageURL(urlStrategy, weblog, entry.publicImageId()));
         }
 
         // Pages sit alongside entries in the sitemap: they are the addresses a
@@ -357,19 +332,12 @@ public class SeoController extends BaseController {
         List<WeblogPage> otherPages = frontPage == null ? pages
                 : pages.stream().filter(page -> !page.getId().equals(frontPage.getId())).toList();
         appendPages(xml, otherPages, weblog, urlStrategy);
-        xml.append("</urlset>\n");
-        return xml.toString();
+        return xml.build();
     }
 
     /** One {@code url} for a weblog-level address (its root, its listing), dated by the weblog. */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "The URL is built by the URL strategy from the stored weblog and goes "
-                    + "through escapeXml().")
-    private static void appendWeblogUrl(StringBuilder xml, String loc, Weblog weblog) {
-        xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
-        appendLastmod(xml, "    ", instant(weblog.getLastModified()));
-        xml.append("  </url>\n");
+    private static void appendWeblogUrl(SitemapXml xml, String loc, Weblog weblog) {
+        xml.url(loc, instant(weblog.getLastModified()));
     }
 
     /** The blog's front page among its published pages, or null (no front door, or the id resolves to none). */
@@ -391,20 +359,14 @@ public class SeoController extends BaseController {
      * The {@code loc} comes from the URL strategy, the one rule the theme's
      * own navigation uses (encoding, and the site's front door at the root).
      */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
-                    + "by the URL strategy from the stored weblog and pages.")
-    private void appendPages(StringBuilder xml, List<WeblogPage> pages, Weblog weblog,
+    private void appendPages(SitemapXml xml, List<WeblogPage> pages, Weblog weblog,
             URLStrategy urlStrategy) {
         for (WeblogPage page : pages) {
             String loc = urlStrategy.getWeblogStaticPageURL(weblog, page, true);
             if (!isSubmitted(page, loc)) {
                 continue;
             }
-            xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
-            appendLastmod(xml, "    ", instant(page.getUpdated()));
-            xml.append("  </url>\n");
+            xml.url(loc, instant(page.getUpdated()));
         }
     }
 
@@ -477,41 +439,19 @@ public class SeoController extends BaseController {
      * must stay valid even when a referenced upload was deleted after the
      * entry was saved.
      */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "The image URL is built by the URL strategy from the media file's id and goes "
-                    + "through escapeXml().")
-    private static void appendFeaturedImage(StringBuilder xml, URLStrategy urlStrategy,
-            Weblog weblog, String publicImageId) {
+    private static String featuredImageURL(URLStrategy urlStrategy, Weblog weblog, String publicImageId) {
         if (publicImageId == null) {
-            return;
+            return null;
         }
         // Largest rendition of the pipeline's ladder; MediaResourceServlet
         // serves the original when no such rendition exists for the file.
-        String imageURL = urlStrategy.getMediaFileURL(weblog, publicImageId, true) + "?w=1600";
-        xml.append("    <image:image>\n      <image:loc>").append(escapeXml(imageURL))
-                .append("</image:loc>\n    </image:image>\n");
+        return urlStrategy.getMediaFileURL(weblog, publicImageId, true) + "?w=1600";
     }
 
-    private static ResponseEntity<String> xmlResponse(StringBuilder xml) {
+    private static ResponseEntity<String> xmlResponse(SitemapXml xml) {
         return ResponseEntity.ok()
                 .contentType(APPLICATION_XML_UTF8)
-                .body(xml.toString());
-    }
-
-    /** Appends a {@code lastmod} element in W3C datetime (UTC) if a time is known. */
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Writes only a date formatted by DateTimeFormatter.ISO_INSTANT, and a constant "
-                    + "indent.")
-    private static void appendLastmod(StringBuilder xml, String indent, Instant time) {
-        if (time == null) {
-            return;
-        }
-        xml.append(indent).append("<lastmod>")
-                .append(DateTimeFormatter.ISO_INSTANT.format(
-                        Instant.ofEpochSecond(time.toEpochMilli() / 1000)))
-                .append("</lastmod>\n");
+                .body(xml.build());
     }
 
     private static Instant instant(Date date) {
@@ -520,13 +460,5 @@ public class SeoController extends BaseController {
 
     private static String absoluteContextURL() {
         return WebloggerRuntimeConfig.getAbsoluteContextURL();
-    }
-
-    private static String escapeXml(String text) {
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&apos;");
     }
 }
