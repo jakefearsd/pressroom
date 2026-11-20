@@ -19,6 +19,8 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.File;
 import java.io.IOException;
+
+import org.apache.lucene.index.IndexWriter;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -246,16 +248,10 @@ class SearchDuringWriteTest {
         index(entry("first"));
         assertEquals(List.of("first"), titles(search()), "precondition");
         WeblogEntry second = entry("second");
-        WriteToIndexOperation dying = new WriteToIndexOperation(manager) {
+        WriteToIndexOperation dying = new WriteToIndexOperation(manager, null) {
             @Override
-            protected void doRun() {
-                try {
-                    beginWriting().addDocument(getDocument(second));
-                } catch (IOException e) {
-                    throw new IllegalStateException(e);
-                } finally {
-                    endWriting();
-                }
+            protected void write(IndexWriter writer) throws IOException {
+                writer.addDocument(IndexDocuments.entry(manager, second));
                 throw new SimulatedError();
             }
         };

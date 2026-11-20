@@ -48,6 +48,9 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
 
     private final Weblog website;
     private final Weblogger pressroom;
+    private Date start;
+    private String handle;
+    private String name;
 
     // ~ Constructors
     // ===========================================================
@@ -60,7 +63,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
      */
     public RemoveWebsiteIndexOperation(Weblogger pressroom, LuceneIndexManager mgr,
             Weblog website) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.website = website;
     }
@@ -68,22 +71,16 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     // ~ Methods
     // ================================================================
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-        Date start = new Date();
-
+    protected boolean prepare() {
+        start = new Date();
         // The handle as it was given: a weblog being deleted is removed from
         // the index after its delete commits, when it can no longer be
         // re-queried. A weblog that still exists is re-queried, since this
         // operation can run on a separate thread and the object passed in is
         // detached.
-        String handle = website.getHandle();
-        String name = website.getName();
+        handle = website.getHandle();
+        name = website.getName();
         try {
             Weblog current = pressroom.getWeblogManager().getWeblog(website.getId());
             if (current != null) {
@@ -92,27 +89,22 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
             }
         } catch (WebloggerException ex) {
             log.error("Error getting website object", ex);
-            return;
+            return false;
         }
+        return true;
+    }
 
-        IndexWriter writer = beginWriting();
-        try {
-            if (writer != null) {
-                Term tHandle = IndexUtil.handleTerm(handle);
-
-                if (tHandle != null) {
-                    writer.deleteDocuments(tHandle);
-                }
-            }
-        } catch (IOException e) {
-            log.info("Problems deleting doc from index", e);
-        } finally {
-            endWriting();
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
+        Term tHandle = IndexUtil.handleTerm(handle);
+        if (tHandle != null) {
+            writer.deleteDocuments(tHandle);
         }
+    }
 
-        Date end = new Date();
-        double length = (end.getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
-
+    @Override
+    protected void afterWrite() {
+        double length = (new Date().getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
         log.info("Completed deleting indices for website '{}' in '{}' seconds", name, length);
     }
 }

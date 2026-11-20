@@ -22,10 +22,10 @@ class PageIndexableTest {
 
     @Test
     void onlyAPublishedPageWithoutNoindexIsIndexable() {
-        assertTrue(IndexOperation.isIndexable(page(WeblogPage.PubStatus.PUBLISHED, false)));
-        assertFalse(IndexOperation.isIndexable(page(WeblogPage.PubStatus.PUBLISHED, true)));
-        assertFalse(IndexOperation.isIndexable(page(WeblogPage.PubStatus.DRAFT, false)));
-        assertFalse(IndexOperation.isIndexable(page(WeblogPage.PubStatus.TRASHED, false)));
-        assertFalse(IndexOperation.isIndexable(null));
+        assertTrue(IndexDocuments.isIndexable(page(WeblogPage.PubStatus.PUBLISHED, false)));
+        assertFalse(IndexDocuments.isIndexable(page(WeblogPage.PubStatus.PUBLISHED, true)));
+        assertFalse(IndexDocuments.isIndexable(page(WeblogPage.PubStatus.DRAFT, false)));
+        assertFalse(IndexDocuments.isIndexable(page(WeblogPage.PubStatus.TRASHED, false)));
+        assertFalse(IndexDocuments.isIndexable(null));
     }
 }

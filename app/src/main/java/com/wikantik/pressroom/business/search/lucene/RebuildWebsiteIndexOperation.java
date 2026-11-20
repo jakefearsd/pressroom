@@ -58,6 +58,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
 
     private Weblog website;
     private final Weblogger pressroom;
+    private Date start;
 
     // ~ Constructors
     // ===========================================================
@@ -70,7 +71,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
      */
     public RebuildWebsiteIndexOperation(Weblogger pressroom, LuceneIndexManager mgr,
             Weblog website) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.website = website;
     }
@@ -78,16 +79,9 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
     // ~ Methods
     // ================================================================
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-
-        Date start = new Date();
-
+    protected boolean prepare() {
+        start = new Date();
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
         // lazy initialization problems, so requery for the object now
@@ -98,42 +92,42 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                         this.website.getId());
             } catch (WebloggerException ex) {
                 log.error("Error getting website object", ex);
-                return;
+                return false;
             }
         } else {
             log.debug("Reindexining entire site");
         }
+        return true;
+    }
 
-        IndexWriter writer = beginWriting();
-        boolean succeeded = false;
-
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
         try {
-            if (writer != null) {
-                replaceDocuments(writer);
-            }
-            succeeded = true;
-        } catch (Exception e) {
-            log.error("ERROR adding/deleting doc to index; rolling back rebuild", e);
-        } finally {
-            // A rebuild is all-or-nothing: on any failure after the writer is
-            // open, roll back rather than let endWriting()'s close() commit a
-            // partial delete/add. IndexWriter.rollback() itself closes the
-            // writer, and closing an already-closed writer is a documented
-            // no-op, so endWriting() below still safely releases the
-            // analyzer and (via the write lock in WriteToIndexOperation) the
-            // index is never left half-written.
-            if (writer != null && !succeeded) {
-                rollBack(writer);
-            }
-            endWriting();
-            if (pressroom != null) {
-                pressroom.release();
-            }
+            replaceDocuments(writer);
+        } catch (WebloggerException e) {
+            throw new IOException("Could not read what to rebuild the index from", e);
         }
+    }
 
-        Date end = new Date();
-        double length = (end.getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
+    /**
+     * A rebuild is all-or-nothing: on any failure after the writer is open,
+     * roll back rather than let the close commit a partial delete/add.
+     * {@code rollback()} closes the writer, and closing an already-closed
+     * writer is a documented no-op, so the base class's close still releases
+     * the analyzer.
+     */
+    @Override
+    protected void onFailure(IndexWriter writer) {
+        try {
+            writer.rollback();
+        } catch (IOException ioe) {
+            log.error("ERROR rolling back index writer", ioe);
+        }
+    }
 
+    @Override
+    protected void afterWrite() {
+        double length = (new Date().getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
         if (website == null) {
             log.info("Completed rebuilding index for all users in '{}' secs", length);
         } else {
@@ -221,7 +215,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         List<WeblogPage> pages = new ArrayList<>();
         for (Weblog blog : blogs) {
             for (WeblogPage page : pageManager.getPublishedPages(blog)) {
-                if (isIndexable(page)) {
+                if (IndexDocuments.isIndexable(page)) {
                     pages.add(page);
                 }
             }
@@ -229,18 +223,10 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         return pages;
     }
 
-    private static void rollBack(IndexWriter writer) {
-        try {
-            writer.rollback();
-        } catch (IOException ioe) {
-            log.error("ERROR rolling back index writer", ioe);
-        }
-    }
-
     /** The page's document, or null (logged) when it cannot be built. */
     private Document documentOrNull(WeblogPage page) {
         try {
-            return getDocument(page);
+            return IndexDocuments.page(manager, page);
         } catch (RuntimeException e) {
             log.warn("Could not index page {}; it is left out of this rebuild", page.getId(), e);
             return null;
@@ -250,7 +236,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
     /** The entry's document, or null (logged) when it cannot be built. */
     private Document documentOrNull(WeblogEntry entry) {
         try {
-            return getDocument(entry);
+            return IndexDocuments.entry(manager, entry);
         } catch (RuntimeException e) {
             log.warn("Could not index entry {}; it is left out of this rebuild", entry.getId(), e);
             return null;

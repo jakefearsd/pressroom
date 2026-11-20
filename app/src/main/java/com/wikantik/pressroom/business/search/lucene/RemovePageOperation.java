@@ -19,8 +19,6 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.lucene.index.IndexWriter;
 
 /**
@@ -29,31 +27,15 @@ import org.apache.lucene.index.IndexWriter;
  */
 public class RemovePageOperation extends WriteToIndexOperation {
 
-    private static final Logger log = LoggerFactory.getLogger(RemovePageOperation.class);
-
     private final String pageId;
 
     public RemovePageOperation(LuceneIndexManager mgr, String pageId) {
-        super(mgr);
+        super(mgr, null);
         this.pageId = pageId;
     }
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-        IndexWriter writer = beginWriting();
-        try {
-            if (writer != null) {
-                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_PAGE, pageId));
-            }
-        } catch (IOException e) {
-            log.error("Problems removing page {} from the index", pageId, e);
-        } finally {
-            endWriting();
-        }
+    protected void write(IndexWriter writer) throws IOException {
+        writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_PAGE, pageId));
     }
 }

@@ -45,6 +45,7 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
     // ========================================================
 
     private WeblogEntry data;
+    private String entryId;
     private final Weblogger pressroom;
 
     // ~ Constructors
@@ -52,7 +53,7 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
 
     public RemoveEntryOperation(Weblogger pressroom, LuceneIndexManager mgr,
             WeblogEntry data) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.data = data;
     }
@@ -60,38 +61,26 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
     // ~ Methods
     // ================================================================
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-
+    protected boolean prepare() {
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
-        // lazy initialization problems, so requery for the object now
+        // lazy initialization problems, so requery for the object now.
         // The id is captured first: this runs after a hard delete, when the
         // re-fetch returns null, and the document must still be removed.
-        String entryId = this.data.getId();
+        entryId = this.data.getId();
         try {
             WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(entryId);
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
-            return;
+            return false;
         }
-
-        IndexWriter writer = beginWriting();
-        try {
-            if (writer != null) {
-                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
-            }
-        } catch (IOException e) {
-            log.error("Error deleting doc from index", e);
-        } finally {
-            endWriting();
-        }
+        return true;
     }
 
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
+        writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
+    }
 }

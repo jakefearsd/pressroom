@@ -45,6 +45,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     // ========================================================
 
     private WeblogEntry data;
+    private String entryId;
     private final Weblogger pressroom;
 
     // ~ Constructors
@@ -55,7 +56,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
      */
     public ReIndexEntryOperation(Weblogger pressroom, LuceneIndexManager mgr,
             WeblogEntry data) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.data = data;
     }
@@ -63,64 +64,41 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     // ~ Methods
     // ================================================================
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-
-        // pressroom is dereferenced unconditionally below (getWeblogEntryManager,
-        // then release() in the finally); the guard belongs here, before
-        // either happens, not after -- there is nothing this operation can do
-        // without it.
+    protected boolean prepare() {
         if (pressroom == null) {
             log.error("Weblogger unavailable; cannot re-index weblog entry");
-            return;
+            return false;
         }
-
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is prone to
         // lazy initialization problems, so requery for the object now.
-        // The id is captured before the requery because a genuinely deleted
-        // entry re-fetches as null, and the delete-by-id below still needs
-        // to know what id to remove from the index.
-        String entryId = this.data.getId();
+        // The id is captured first because a genuinely deleted entry
+        // re-fetches as null, and the delete-by-id still needs the id.
+        entryId = this.data.getId();
         try {
             WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(entryId);
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
-            return;
+            return false;
         }
+        return true;
+    }
 
-        IndexWriter writer = beginWriting();
-        try {
-            if (writer != null) {
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
+        // Delete Doc -- always, whether or not it comes back below. A
+        // re-fetch that returns null (entry deleted out from under this
+        // queued job) or a non-PUBLISHED entry (e.g. trashed since this job
+        // was queued) must not leave a stale document behind.
+        writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
 
-                // Delete Doc -- always, whether or not it comes back below.
-                // A re-fetch that returns null (entry deleted out from under
-                // this queued job) or a non-PUBLISHED entry (e.g. trashed
-                // since this job was queued) must not leave a stale document
-                // behind.
-                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
-
-                // Add Doc -- only a published entry belongs in the search
-                // index. Every caller already gates on isPublished() before
-                // scheduling this operation, but by the time this runs on
-                // its own thread the entry may have moved on (trashed,
-                // unpublished, deleted) -- that check is enforced here too
-                // rather than trusted from the scheduling side.
-                if (data != null && data.isPublished()) {
-                    writer.addDocument(getDocument(data));
-                }
-            }
-        } catch (IOException e) {
-            log.error("Problems adding/deleting doc to index", e);
-        } finally {
-            pressroom.release();
-            endWriting();
+        // Add Doc -- only a published entry belongs in the search index; by
+        // the time this runs on its own thread the entry may have moved on,
+        // so the check is enforced here rather than trusted from the caller.
+        if (data != null && data.isPublished()) {
+            writer.addDocument(IndexDocuments.entry(manager, data));
         }
     }
 }

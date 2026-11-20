@@ -41,52 +41,39 @@ public class ReIndexPageOperation extends WriteToIndexOperation {
 
     private final Weblogger pressroom;
     private final String pageId;
+    private WeblogPage page;
 
     public ReIndexPageOperation(Weblogger pressroom, LuceneIndexManager mgr, String pageId) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.pageId = pageId;
     }
 
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
+    protected boolean prepare() {
         try {
-            WeblogPage page;
-            try {
-                page = pressroom.getWeblogPageManager().getPage(pageId);
-            } catch (WebloggerException ex) {
-                // nothing is known about the page: its document stays as it is
-                log.error("Could not read page {} to reindex it", pageId, ex);
-                return;
-            }
-            IndexWriter writer = beginWriting();
-            try {
-                if (writer != null) {
-                    writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_PAGE, pageId));
-                    Document doc = isIndexable(page) ? documentOrNull(page) : null;
-                    if (doc != null) {
-                        writer.addDocument(doc);
-                    }
-                }
-            } catch (IOException e) {
-                log.error("Problems reindexing page {}", pageId, e);
-            } finally {
-                endWriting();
-            }
-        } finally {
-            pressroom.release();
+            page = pressroom.getWeblogPageManager().getPage(pageId);
+            return true;
+        } catch (WebloggerException ex) {
+            // nothing is known about the page: its document stays as it is
+            log.error("Could not read page {} to reindex it", pageId, ex);
+            return false;
+        }
+    }
+
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
+        writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_PAGE, pageId));
+        Document doc = IndexDocuments.isIndexable(page) ? documentOrNull(page) : null;
+        if (doc != null) {
+            writer.addDocument(doc);
         }
     }
 
     /** The page's document, or null (logged) when it cannot be built: the page is then left out, as in a rebuild. */
     private Document documentOrNull(WeblogPage page) {
         try {
-            return getDocument(page);
+            return IndexDocuments.page(manager, page);
         } catch (RuntimeException e) {
             log.warn("Could not index page {}; it is left out of the index", pageId, e);
             return null;

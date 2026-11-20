@@ -50,61 +50,44 @@ public class AddEntryOperation extends WriteToIndexOperation {
      * Adds a web log entry into the index.
      */
     public AddEntryOperation(Weblogger pressroom, LuceneIndexManager mgr, WeblogEntry data) {
-        super(mgr);
+        super(mgr, pressroom);
         this.pressroom = pressroom;
         this.data = data;
     }
     
     //~ Methods ================================================================
     
-    // The IndexWriter returned by beginWriting() is the base class's own
-    // `writer` field; endWriting() in the finally below closes that same
-    // field. PMD's CloseResource can't see that a close happening inside a
-    // different method (via the field alias) satisfies this local variable.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
-    protected void doRun() {
-        // pressroom is dereferenced unconditionally below (getWeblogEntryManager,
-        // then release() in the finally); the guard belongs here, before
-        // either happens, not after -- there is nothing this operation can do
-        // without it.
+    protected boolean prepare() {
+        // pressroom is dereferenced below; there is nothing this operation
+        // can do without it.
         if (pressroom == null) {
             log.error("Weblogger unavailable; cannot index weblog entry");
-            return;
+            return false;
         }
-
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
-        // lazy initialization problems, so requery for the object now --
-        // before the writer opens, as ReIndexEntryOperation does: returning
-        // here with it open leaked the writer and the directory's
-        // write.lock, and every later write then failed to open its own
+        // lazy initialization problems, so requery for the object now
         try {
             WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(this.data.getId());
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
-            return;
+            return false;
         }
+        return true;
+    }
 
-        IndexWriter writer = beginWriting();
-        try {
-            // Only a published entry belongs in the search index -- the
-            // same guard ReIndexEntryOperation applies on its own add path.
-            // This class has no production caller today (only tests reach
-            // addEntryIndexOperation directly), but the interface exists for
-            // a future one, and re-fetching by id on a background thread
-            // means whatever the scheduling caller checked can already be
-            // stale by the time this runs: an entry trashed or unpublished
-            // between scheduling and execution must not be added.
-            if (writer != null && data != null && data.isPublished()) {
-                writer.addDocument(getDocument(data));
-            }
-        } catch (IOException e) {
-            log.error("Problems adding doc to index", e);
-        } finally {
-            pressroom.release();
-            endWriting();
+    @Override
+    protected void write(IndexWriter writer) throws IOException {
+        // Only a published entry belongs in the search index -- the same
+        // guard ReIndexEntryOperation applies on its own add path. This class
+        // has no production caller today, but re-fetching by id on a
+        // background thread means whatever the scheduling caller checked can
+        // already be stale: an entry trashed or unpublished between
+        // scheduling and execution must not be added.
+        if (data != null && data.isPublished()) {
+            writer.addDocument(IndexDocuments.entry(manager, data));
         }
     }
 }
