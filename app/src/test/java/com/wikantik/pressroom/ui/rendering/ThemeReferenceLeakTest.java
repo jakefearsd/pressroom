@@ -209,6 +209,7 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $seoPage.searchDescription", // null when the page has no search description; tested with $utils.isNotEmpty
             "weblog.vm: $seoPublisher", // null when the weblog has no business profile; tested with #if
             "weblog.vm: $seoTypedJson", // null unless the entry is a travel entry; tested with #if
+            "weblog.vm: $srModel.siteSearchUrl", // null when the install has no site space; tested with #if
             "weblog.vm: $site", // bound only on the aggregated front page; absence is the test in #if(!$site && ...) in showWeblogSearchAgainForm
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
             "weblog.vm: $utils.businessPublisherJson()", // returns null when the weblog has no business profile; the result is tested with #if($seoPublisher)

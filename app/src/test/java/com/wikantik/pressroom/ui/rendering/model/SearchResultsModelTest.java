@@ -116,7 +116,6 @@ class SearchResultsModelTest {
                 entry.setPubTime(new java.sql.Timestamp(System.currentTimeMillis() - 60_000L));
                 TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
                 TestUtils.endSession(true);
-                indexManager.addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
             }
             SearchResultsModel model = executeSearch("blah", true);
             long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();

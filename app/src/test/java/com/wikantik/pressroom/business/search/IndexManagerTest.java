@@ -254,7 +254,7 @@ public class IndexManagerTest {
                 +"the inhabitants of planet Sigma Iotia II, and Uhura puts Kirk "
                 +"in communication with Boss Oxmyx.");
 
-        // save and index those entries
+        // save those entries (the commit indexes them)
 
         for (WeblogEntry entry : entries) {
 
@@ -274,9 +274,8 @@ public class IndexManagerTest {
             entry.setLocale(testWeblog.getLocale());
 
             entryManager.saveWeblogEntry(entry);
+            // the commit indexes it: the entry manager's change listeners
             TestUtils.endSession(true);
-
-            indexManager.addEntryIndexOperation(entry);
         }
 
         awaitHits(testWeblog, indexManager, "Enterprise", 2);

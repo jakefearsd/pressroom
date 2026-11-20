@@ -99,6 +99,25 @@ class EntryTagsFetchRenderingTest {
         for (int i = 0; i < ENTRIES; i++) {
             entries.add(taggedEntry("tagged-" + i, "only" + i + " shared"));
         }
+        awaitNoTagReads();
+    }
+
+    /**
+     * Each save above queues a search reindex on a background thread, and the
+     * reindex reads the entry's tags. The counting tests count every tag read
+     * in the JVM, so they start only once those have drained: no tag read for
+     * two quiet intervals in a row.
+     */
+    private static void awaitNoTagReads() throws Exception {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(15).toNanos();
+        int quiet = 0;
+        while (quiet < 2 && System.nanoTime() < deadline) {
+            AtomicInteger reads = new AtomicInteger();
+            try (Counter _ = new Counter(reads)) {
+                Thread.sleep(250);
+            }
+            quiet = reads.get() == 0 ? quiet + 1 : 0;
+        }
     }
 
     @AfterEach
