@@ -302,26 +302,7 @@ public final class SiteWideCache implements CacheHandler {
             key.append("/page=").append(feedRequest.getPage());
         }
 
-        if (feedRequest.getTerm() != null) {
-            // arbitrary text straight off the query string
-            key.append("/search/").append(CacheKeys.encode(feedRequest.getTerm()));
-        }
-
-        if(feedRequest.getWeblogCategoryName() != null) {
-            key.append("/cat/").append(CacheKeys.encode(feedRequest.getWeblogCategoryName()));
-        }
-
-        if(feedRequest.getLocale() != null) {
-            key.append('/').append(feedRequest.getLocale());
-        }
-
-        if(feedRequest.isExcerpts()) {
-            key.append("/excerpts");
-        }
-
-        if(feedRequest.getTags() != null && !feedRequest.getTags().isEmpty()) {
-            key.append("/tags/").append(CacheKeys.tags(feedRequest.getTags()));
-        }
+        CacheKeys.appendFeedSegments(key, feedRequest);
 
         return key.toString();
     }

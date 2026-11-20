@@ -105,26 +105,7 @@ public final class WeblogFeedCache extends LazyExpiringRenderCache {
             key.append("/page=").append(feedRequest.getPage());
         }
 
-        if (feedRequest.getTerm() != null) {
-            // arbitrary text straight off the query string
-            key.append("/search/").append(CacheKeys.encode(feedRequest.getTerm()));
-        }
-
-        if(feedRequest.getWeblogCategoryName() != null) {
-            key.append("/cat/").append(CacheKeys.encode(feedRequest.getWeblogCategoryName()));
-        }
-
-        if(feedRequest.getTags() != null && !feedRequest.getTags().isEmpty()) {
-            key.append("/tags/").append(CacheKeys.tags(feedRequest.getTags()));
-        }
-
-        if(feedRequest.getLocale() != null) {
-            key.append('/').append(feedRequest.getLocale());
-        }
-
-        if(feedRequest.isExcerpts()) {
-            key.append("/excerpts");
-        }
+        CacheKeys.appendFeedSegments(key, feedRequest);
 
         return key.toString();
     }

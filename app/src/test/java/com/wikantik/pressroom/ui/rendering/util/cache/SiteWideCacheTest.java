@@ -307,9 +307,9 @@ public class SiteWideCacheTest {
         assertEquals("cache.sitewide:feed/frontpage"
                         + "/comments/atom"
                         + "/search/winter%20storm"
+                        + "/tags/apple+banana"
                         + "/en_US"
-                        + "/excerpts"
-                        + "/tags/apple+banana",
+                        + "/excerpts",
                 cache.generateKey(request),
                 "and the same for a feed request");
     }

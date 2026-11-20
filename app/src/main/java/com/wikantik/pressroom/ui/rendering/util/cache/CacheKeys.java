@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
 import com.wikantik.pressroom.util.Utilities;
 
@@ -81,6 +82,34 @@ final class CacheKeys {
         // add login state
         if (pageRequest.getAuthenticUser() != null) {
             key.append("/user=").append(pageRequest.getAuthenticUser());
+        }
+    }
+
+    /**
+     * The feed key segments after the prefix and page number, which the
+     * per-weblog and site-wide feed caches share: [/search/t], [/cat/c],
+     * [/tags/t], [/locale], [/excerpts], each labelled and escaped.
+     */
+    static void appendFeedSegments(StringBuilder key, WeblogFeedRequest feedRequest) {
+        if (feedRequest.getTerm() != null) {
+            // arbitrary text straight off the query string
+            key.append("/search/").append(encode(feedRequest.getTerm()));
+        }
+
+        if (feedRequest.getWeblogCategoryName() != null) {
+            key.append("/cat/").append(encode(feedRequest.getWeblogCategoryName()));
+        }
+
+        if (feedRequest.getTags() != null && !feedRequest.getTags().isEmpty()) {
+            key.append("/tags/").append(tags(feedRequest.getTags()));
+        }
+
+        if (feedRequest.getLocale() != null) {
+            key.append('/').append(feedRequest.getLocale());
+        }
+
+        if (feedRequest.isExcerpts()) {
+            key.append("/excerpts");
         }
     }
 
