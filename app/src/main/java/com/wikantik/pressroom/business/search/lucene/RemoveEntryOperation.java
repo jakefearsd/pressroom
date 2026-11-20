@@ -71,9 +71,12 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
         // lazy initialization problems, so requery for the object now
+        // The id is captured first: this runs after a hard delete, when the
+        // re-fetch returns null, and the document must still be removed.
+        String entryId = this.data.getId();
         try {
             WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
-            this.data = wMgr.getWeblogEntry(this.data.getId());
+            this.data = wMgr.getWeblogEntry(entryId);
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
             return;
@@ -82,7 +85,7 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
         IndexWriter writer = beginWriting();
         try {
             if (writer != null) {
-                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, data.getId()));
+                writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, entryId));
             }
         } catch (IOException e) {
             log.error("Error deleting doc from index", e);

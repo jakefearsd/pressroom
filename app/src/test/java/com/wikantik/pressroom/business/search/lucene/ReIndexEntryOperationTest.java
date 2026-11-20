@@ -224,6 +224,48 @@ class ReIndexEntryOperationTest {
                 "The logger must be named after this class, not a copy-pasted sibling (AddEntryOperation).");
     }
 
+    /**
+     * {@link RemoveEntryOperation} runs after a hard delete (EntryDeletion,
+     * the API), so its re-fetch by id returns null. The id must be captured
+     * first: the document is still removed from the index, and nothing throws.
+     */
+    @Test
+    void removingAHardDeletedEntryStillRemovesItFromTheIndex() throws Exception {
+        WeblogEntry entry = savedEntry("remove-deleted", "Removed after delete");
+        indexManager().addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
+        awaitTitles(titles -> titles.contains("Removed after delete"),
+                "the entry must be findable before it is deleted");
+
+        WeblogEntry detached = new WeblogEntry();
+        detached.setId(TestUtils.getManagedWeblogEntry(entry).getId());
+        TestUtils.weblogger().getWeblogEntryManager()
+                .removeWeblogEntry(TestUtils.getManagedWeblogEntry(entry));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertDoesNotThrow(() -> indexManager().removeEntryIndexOperation(detached));
+
+        // The search path drops hits whose row is gone, so count the index's
+        // own documents for the id instead.
+        LuceneIndexManager lucene = (LuceneIndexManager) indexManager();
+        String id = detached.getId();
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        int docs;
+        do {
+            org.apache.lucene.search.IndexSearcher searcher = lucene.acquireSearcher();
+            try {
+                docs = searcher.count(IndexUtil.document(FieldConstants.KIND_ENTRY, id));
+            } finally {
+                lucene.releaseSearcher(searcher);
+            }
+            if (docs == 0) {
+                break;
+            }
+            Thread.sleep(50);
+        } while (System.nanoTime() < deadline);
+        assertEquals(0, docs, "a hard-deleted entry must be removed from the index");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private WeblogEntry savedEntry(String anchor, String title) throws Exception {
