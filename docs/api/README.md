@@ -172,7 +172,7 @@ request: the token's `role`, and its `weblog` pin.
 |---------|--------|
 | `READ`  | GET only. |
 | `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. |
-| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint and `/api/v1/weblogs` (the site-wide weblog list/administration resource, not the per-weblog content APIs) and the Maintenance actions. |
+| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, not the per-weblog content APIs) and the Maintenance actions. |
 
 A non-write method (`GET`/`HEAD`) never needs more than `READ`. Anything else
 needs `POST` or `ADMIN`; a `READ`-role token gets a 403
@@ -1352,7 +1352,10 @@ analytics service. So read `state` and `asOf` before the numbers:
 
 ## Site administration
 
-`ADMIN` scope only, for all of the below.
+An `ADMIN`-role token and a site admin, for all of the below except the
+weblog routes: `GET/PATCH /api/v1/weblogs/{handle}` are the weblog owner's
+(an `ADMIN`-role token), and `POST /api/v1/weblogs` follows the Create Weblog
+page (both below).
 
 ```
 GET   /api/v1/admin/users[?enabled=&offset=&limit=]
@@ -1451,19 +1454,20 @@ is declared server-side, not asserted by the caller — and every name and
 value in the request is validated *before* anything is saved, so a bad
 request never leaves a partial write behind.
 
-`GET/PATCH /api/v1/weblogs/{handle}` is **not** the same resource as
-`/api/v1/weblogs/{handle}/entries` etc. — those act only on the weblog a
-token is scoped to; this one is meant to reach *any* weblog on the site by
-handle, since it requires `ADMIN` role. **A weblog-pinned token cannot
-actually reach it, `ADMIN` role or not.** `ApiScopeInterceptor` applies the
-token's weblog-scope check *before and independently of* the role check —
-if the token is pinned to a weblog, that pin is enforced against
-`{handle}` first, and a pin that doesn't match answers 404 regardless of
-role. Only an **unpinned** `ADMIN` token — one minted with no `weblog`
-scope at all — reaches every weblog on the site through this endpoint. An
-operator who wants that reach must mint the token unpinned; pinning it "to
-be safe" and expecting `ADMIN` role to still cross other weblogs is the
-opposite of what happens.
+**`GET/PATCH /api/v1/weblogs/{handle}` is the weblog's owner's, as the
+Weblog Settings and Theme pages are.** They need the weblog's `ADMIN`
+permission (the owner, or a site admin, who holds it on every weblog) and an
+`ADMIN`-role token; a `READ` or `POST` token is a 403 (`This token is not
+scoped for administration.`). A caller with no role on the weblog gets 404,
+as for a handle that does not exist; a member below `ADMIN` gets 403. A token
+pinned to that weblog reaches it; one pinned to another weblog gets 404,
+whatever its owner's role there, so reaching several weblogs takes an
+unpinned token. The settings form reserves no field to site admins, so
+neither does `PATCH`. `GET /api/v1/weblogs`, the list of every weblog, stays
+site-admin only, and a pinned token gets 404 there because the route names
+no weblog. These are not the same resource as
+`/api/v1/weblogs/{handle}/entries` and the other content routes, which a
+`POST` token and a lower weblog role reach.
 
 **`customDomain`** carries the weblog's virtual-host hostname (e.g.
 `blog.example.com`), or `null` when the weblog is served the default way,

@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * (spec 2026-11-08 agent API parity, H1-H4): the theme page's rule, its
  * stylesheet handling and its cache expiry.
  */
-class WeblogsApiThemeTest {
+class WeblogSettingsApiThemeTest {
 
     private final Weblogger weblogger = mock(Weblogger.class);
     private final WeblogManager weblogs = mock(WeblogManager.class);
@@ -71,7 +71,7 @@ class WeblogsApiThemeTest {
         weblog.setEntryDisplayCount(15);
         weblog.setEditorTheme("journal");
 
-        WeblogsApi controller = new WeblogsApi();
+        WeblogSettingsApi controller = new WeblogSettingsApi();
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
     }

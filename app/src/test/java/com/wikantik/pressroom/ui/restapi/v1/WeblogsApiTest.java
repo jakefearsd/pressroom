@@ -9,6 +9,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -43,17 +44,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static com.wikantik.pressroom.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /**
- * Controller-level tests for {@link WeblogsApi}: routing, the ownership
- * -free (site-wide) reach, and the guards between raw client input and a
- * manager call. {@code actionWeblog} is injected as a request attribute
+ * Controller-level tests for {@link WeblogsApi} (the site-wide list) and
+ * {@link WeblogSettingsApi} (one weblog by handle): routing, and the guards
+ * between raw client input and a manager call. Who may call which is
+ * {@code WeblogSettingsApiDispatchTest}. {@code actionWeblog} is injected as a request attribute
  * rather than resolved by a real interceptor, matching {@code
  * CategoriesApiTest}'s standalone style -- these do not touch the DB; they
  * run against a Mockito-mocked {@code Weblogger}.
  */
 class WeblogsApiTest {
 
-    private MockMvc mockMvc(WeblogsApi controller) {
-        return MockMvcBuilders.standaloneSetup(controller)
+    private MockMvc mockMvc(Object... controllers) {
+        return MockMvcBuilders.standaloneSetup(controllers)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
@@ -92,10 +94,13 @@ class WeblogsApiTest {
         return new tools.jackson.databind.ObjectMapper().readTree(r.andReturn().getResponse().getContentAsString());
     }
 
-    private WeblogsApi controllerFor(Weblogger weblogger) {
-        WeblogsApi controller = new WeblogsApi();
-        controller.weblogger = weblogger;
-        return controller;
+    /** The list ({@link WeblogsApi}) and the by-handle routes ({@link WeblogSettingsApi}). */
+    private Object[] controllerFor(Weblogger weblogger) {
+        WeblogsApi list = new WeblogsApi();
+        list.weblogger = weblogger;
+        WeblogSettingsApi settings = new WeblogSettingsApi();
+        settings.weblogger = weblogger;
+        return new Object[] {list, settings};
     }
 
     private static Weblog aWeblog(String handle) {
@@ -187,7 +192,7 @@ class WeblogsApiTest {
     /**
      * WeblogPageCache has no CacheHandler and expires only lazily against
      * weblog.lastModified -- CacheManager.invalidate is the only thing that
-     * bumps it (see WeblogsApi.update's javadoc), so a save with no
+     * bumps it (see WeblogSettingsApi.update's javadoc), so a save with no
      * corresponding invalidate call would leave a cached home page serving
      * stale content indefinitely. CacheManager.invalidate is a static call,
      * so it is verified with a MockedStatic rather than a Mockito mock.
@@ -803,9 +808,24 @@ class WeblogsApiTest {
     }
 
     /**
+     * The Weblog Settings page's own declaration (BaseController's defaults): ADMIN on the
+     * {handle} weblog, so the owner reaches it; the interceptor must resolve that weblog.
+     */
+    @Test
+    void theSettingsRoutesDeclareTheSettingsPagesPermission() {
+        WeblogSettingsApi settings = new WeblogSettingsApi();
+        assertEquals(List.of(WeblogPermission.ADMIN), settings.requiredWeblogPermissionActions());
+        assertEquals(List.of(GlobalPermission.LOGIN), settings.requiredGlobalPermissionActions());
+        assertTrue(settings.isUserRequired());
+        assertTrue(settings.isWeblogRequired());
+        assertTrue(WeblogSettingsApi.class.isAnnotationPresent(AdminScoped.class),
+                "the settings routes keep the ADMIN-role token requirement");
+    }
+
+    /**
      * WeblogsApi is mapped at /v1/weblogs, not /v1/admin, so {@code
      * AdminScopedCoverageTest} does not force this -- see the class javadoc
-     * for why it carries the annotation anyway: this reaches ANY weblog on
+     * for why it carries the annotation anyway: this lists EVERY weblog on
      * the site, the same reach {@code AdminApi} has over accounts, and a
      * token minted for routine single-weblog automation must not be able to
      * use it just because its user happens to hold GlobalPermission.ADMIN.
@@ -813,7 +833,7 @@ class WeblogsApiTest {
     @Test
     void carriesAdminScoped() {
         assertTrue(WeblogsApi.class.isAnnotationPresent(AdminScoped.class),
-                "WeblogsApi must carry @AdminScoped -- it reaches every weblog on the site, not just "
+                "WeblogsApi must carry @AdminScoped -- it lists every weblog on the site, not just "
                         + "the caller's own, and ApiScopeInterceptor otherwise never applies the "
                         + "ADMIN-role ceiling to it.");
     }

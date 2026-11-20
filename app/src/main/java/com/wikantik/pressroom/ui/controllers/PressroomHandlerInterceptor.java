@@ -288,9 +288,10 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
      * that needs one is refused exactly as for an unknown handle (a redirect,
      * or the API's 404), and one that needs none never sees it. Withholding
      * here rather than refusing inside {@link #enforceSecurity} is what covers
-     * the second kind: {@code WeblogsApi} requires no action weblog yet reads
-     * it, so a refusal that only ran for weblog-requiring handlers would have
-     * let an admin token read and rewrite the site space's settings.
+     * the second kind: {@code WeblogsApi} once served the by-handle settings
+     * routes requiring no action weblog yet reading it, so a refusal that only
+     * ran for weblog-requiring handlers let an admin token read and rewrite
+     * the site space's settings.
      *
      * <p>A global admin holds every weblog permission implicitly, so without
      * this the site space would open every blog screen to one. A check that

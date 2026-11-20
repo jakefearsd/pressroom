@@ -55,6 +55,7 @@ import com.wikantik.pressroom.ui.controllers.editor.WeblogRemoveController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
+import com.wikantik.pressroom.ui.restapi.v1.WeblogSettingsApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogsApi;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -249,6 +250,11 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
+        WeblogSettingsApi weblogSettingsApi() {
+            return new WeblogSettingsApi();
+        }
+
+        @Bean
         ApiExceptionHandler apiExceptionHandler() {
             return new ApiExceptionHandler();
         }
@@ -395,8 +401,9 @@ class SiteSpaceAccessTest {
                     who.getUserName() + ": the site pages through the API");
         }
 
-        // WeblogsApi requires no action weblog, so a rule that only ran when one was required
-        // would have let an admin token read and rewrite the site space's settings here.
+        // WeblogsApi once served these routes requiring no action weblog, so a rule that only ran when
+        // one was required would have let an admin token read and rewrite the site space's settings
+        // here. WeblogSettingsApi requires one; the withholding still decides.
         signInWithToken(admin, ApiToken.Role.ADMIN);
         assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE))).getResponse().getStatus());
         assertEquals(404, perform(api(patch("/api/v1/weblogs/" + SITE)

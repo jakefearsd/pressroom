@@ -25,9 +25,10 @@ public final class McpToolCatalog {
             tool("whoami", "Who this token belongs to: user name, whether the user is a site admin, "
                     + "the token's role and weblog limit, and the weblogs it can act on.", true,
                     action("", "Describe the caller.", "GET /v1/me")),
-            tool("weblogs", "Weblogs: create one (any writing token not limited to a weblog); list them and change "
-                    + "their settings (ADMIN tokens).", false,
-                    action("list", "List weblogs.", "GET /v1/weblogs"),
+            tool("weblogs", "Weblogs: create one (any writing token not limited to a weblog); read and change a "
+                    + "weblog's settings and theme as its owner (ADMIN tokens); list every weblog (site admins).",
+                    false,
+                    action("list", "List every weblog on the site (site admins).", "GET /v1/weblogs"),
                     action("get", "One weblog's settings.", "GET " + W),
                     action("create", "Create a weblog; you become its owner.", "POST /v1/weblogs"),
                     action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W)),

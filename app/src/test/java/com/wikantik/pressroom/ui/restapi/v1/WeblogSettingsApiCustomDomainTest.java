@@ -18,22 +18,22 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@code WeblogsApi}'s handling of {@code customDomain} on GET/PATCH
+ * {@code WeblogSettingsApi}'s handling of {@code customDomain} on GET/PATCH
  * {@code /v1/weblogs/{handle}}. The point of this class is that the 400/409
  * outcomes come from {@link com.wikantik.pressroom.ui.controllers.CustomDomainRules}
  * -- the same class {@code WeblogConfigController} calls for the JSP Weblog
  * Settings form -- not from a second, API-side reimplementation of the
  * hostname rule that could drift from it.
  *
- * <p>Calls {@code WeblogsApi}'s handler methods directly rather than through
+ * <p>Calls {@code WeblogSettingsApi}'s handler methods directly rather than through
  * MockMvc (contrast {@code WeblogsApiTest}): {@code ApiException} is
  * unchecked, so a direct call lets {@code assertThrows} capture it and read
  * {@code getStatus()} without a round trip through {@code
  * ApiExceptionHandler} and a serialized problem-detail body.
  */
-class WeblogsApiCustomDomainTest {
+class WeblogSettingsApiCustomDomainTest {
 
-    private WeblogsApi weblogsApi;
+    private WeblogSettingsApi weblogsApi;
     private WeblogManager weblogManager;
     private MockWeblogger mocks;
     private Weblog vhostblog;
@@ -50,7 +50,7 @@ class WeblogsApiCustomDomainTest {
         mocks = MockWeblogger.attached();
         weblogManager = mocks.getWeblogManager();
 
-        weblogsApi = new WeblogsApi();
+        weblogsApi = new WeblogSettingsApi();
         weblogsApi.weblogger = mocks.weblogger();
 
         vhostblog = aWeblog("vhostblog");

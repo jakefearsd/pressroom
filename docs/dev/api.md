@@ -80,6 +80,17 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   (implemented by `ApiPrincipal`; an interface in `ui.controllers`, not a second import from
   `ui.restapi`). `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
   `BaseApiController` follow this.
+- **A weblog's settings take the Weblog Settings page's permission (2026-11-20).**
+  `GET/PATCH /v1/weblogs/{handle}` live in `WeblogSettingsApi`, which declares what
+  `WeblogConfigController`/`ThemeEditController` inherit from `BaseController`
+  (`WeblogPermission.ADMIN`, `GlobalPermission.LOGIN`, weblog required), and stays
+  `@AdminScoped`. The list `GET /v1/weblogs` stays in `WeblogsApi` with
+  `GlobalPermission.ADMIN`. Declarations are per controller class, so a route that needs a
+  different permission needs its own controller; before the split, an owner who was not a site
+  admin could not change their own blog over the API. `WeblogSettingsApiDispatchTest` pins
+  owner, member, no-role, pin and token-role cases through the real interceptors. The form
+  reserves no setting to site admins; a field it ever reserves must be refused here through the
+  same rule (`WeblogSettingsRules`), not a second check.
 - **The OpenAPI document is machine-readable, not a browser explorer.**
   `springdoc-openapi-starter-webmvc-api` serves `GET /api/v1/openapi.json`
   (`/v1/openapi.json` in `application.properties`, per the prefix point),
@@ -267,7 +278,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   reference `docs/api/README.md`). It is the page's id, set through the same `WeblogSettingsRules.checkFrontDoor`
   the settings form uses (published page of this blog; a draft, another blog's page and an unknown id are
   one refusal, so a token never learns what another blog holds). A refusal is a **400** with an `errors`
-  entry named `frontPage` (the rule's violation field is the bean's `frontPageId`; `WeblogsApi.apiField`
+  entry named `frontPage` (the rule's violation field is the bean's `frontPageId`; `WeblogSettingsApi.apiField`
   maps it, and `FormBodyParityTest` records the rename). A lookup that cannot run, and the site space, fail
   closed. It is removed with `clear: ["frontPage"]` (`ClearFields`; null is never a value). The view omits
   it when unset. A save bumps `weblog.lastModified`, so rendered pages expire.
