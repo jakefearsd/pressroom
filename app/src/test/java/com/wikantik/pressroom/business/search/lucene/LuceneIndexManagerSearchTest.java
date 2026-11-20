@@ -1499,9 +1499,8 @@ class LuceneIndexManagerSearchTest {
     }
 
     @Test
-    void aSearchOperationIsForPostsOrPagesOnly() {
-        assertThrows(IllegalArgumentException.class, () -> new SearchOperation(manager, "comment"));
-        assertThrows(IllegalArgumentException.class, () -> new SearchOperation(manager, null));
+    void aSearchOperationNeedsADocumentKind() {
+        assertThrows(NullPointerException.class, () -> new SearchOperation(manager, null));
     }
 
     /** A page search the thread manager refuses to run is empty (logged), never an exception. */

@@ -101,6 +101,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         return java.util.Collections.unmodifiableMap(boosts);
     }
 
+    private static final Map<DocumentKind, Map<String, Float>> BOOSTS_BY_KIND = Map.of(
+            DocumentKind.ENTRY, FIELD_BOOSTS, DocumentKind.PAGE, PAGE_FIELD_BOOSTS);
+
     private static final TopDocs NO_HITS = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO),
             new org.apache.lucene.search.ScoreDoc[0]);
 
@@ -147,9 +150,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     // flagged for the site whose blog handle is in it.
     private java.util.Set<String> siteHandles;
     private String excludedHandle;
-    // false: posts (the default every post search relies on); true: pages.
+    // ENTRY: posts (the default every post search relies on); PAGE: pages.
     // Final: set by the caller's thread, read on the pool thread run() uses.
-    private final boolean pages;
+    private final DocumentKind kind;
 
     // ~ Constructors
     // ===========================================================
@@ -158,27 +161,22 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * Create a new operation that searches the index.
      */
     public SearchOperation(IndexManager mgr) {
-        this(mgr, FieldConstants.KIND_ENTRY);
+        this(mgr, DocumentKind.ENTRY);
     }
 
     /**
      * An operation that searches one kind of document: posts
-     * ({@link FieldConstants#KIND_ENTRY}, what the one-argument constructor
-     * makes) or pages ({@link FieldConstants#KIND_PAGE}): the page fields,
+     * ({@link DocumentKind#ENTRY}, what the one-argument constructor
+     * makes) or pages ({@link DocumentKind#PAGE}): the page fields,
      * with no publish-time or site-flag filter (a page in the index is
      * published and not noindex). The scope setters apply to pages as they
      * do to posts, the handle set of {@link #restrictToSite} included.
-     *
-     * @throws IllegalArgumentException for any other kind
      */
-    public SearchOperation(IndexManager mgr, String kind) {
+    public SearchOperation(IndexManager mgr, DocumentKind kind) {
         // TODO: finish moving IndexManager to backend, so this cast is not
         // needed
         super((LuceneIndexManager) mgr);
-        if (!FieldConstants.KIND_ENTRY.equals(kind) && !FieldConstants.KIND_PAGE.equals(kind)) {
-            throw new IllegalArgumentException("Unknown document kind: " + kind);
-        }
-        this.pages = FieldConstants.KIND_PAGE.equals(kind);
+        this.kind = java.util.Objects.requireNonNull(kind, "kind");
     }
 
     // ~ Methods
@@ -282,9 +280,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             // (from three words), then any of them. The page says when it fell
             // back, so a reader is never shown partial matches as if they were
             // complete ones.
-            Query phrase = pages
-                    ? phraseBoost(term, manager.getAnalyzer(), FieldConstants.PAGE_TITLE, FieldConstants.PAGE_CONTENT)
-                    : phraseBoost(term, manager.getAnalyzer());
+            Query phrase = phraseBoost(term, manager.getAnalyzer(), kind.titleField(), kind.contentField());
             Query all = parse(MultiFieldQueryParser.Operator.AND);
             parsedQuery = all;
             searchresults = run(searcher, all, phrase, nowMillis);
@@ -324,8 +320,8 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     private Query parse(MultiFieldQueryParser.Operator operator) throws ParseException {
-        return pages ? parse(term, operator, manager.getAnalyzer(), PAGE_FIELD_BOOSTS)
-                : parse(term, operator, manager.getAnalyzer());
+        return parse(term, operator, manager.getAnalyzer(),
+                BOOSTS_BY_KIND.get(kind));
     }
 
     /** The reader's words as the query the index runs, confined to the searched fields and weighted. */
@@ -427,7 +423,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                     BooleanClause.Occur.MUST)
             // posts or pages, never both: a filter, so it changes no score
             .add(new TermQuery(new Term(FieldConstants.KIND,
-                    pages ? FieldConstants.KIND_PAGE : FieldConstants.KIND_ENTRY)), BooleanClause.Occur.FILTER);
+                    kind.kindValue())), BooleanClause.Occur.FILTER);
 
         Term handleTerm = IndexUtil.handleTerm(weblogHandle);
         if (handleTerm != null) {
@@ -455,7 +451,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         // next page) is the hit count. PUBLISHED holds the pub time as
         // Timestamp#toString, whose text order is time order. A page has
         // no publish time: in the index means published.
-        if (!pages) {
+        if (kind.isDated()) {
             query.add(notFuture(manager.now()), BooleanClause.Occur.FILTER);
         }
 
@@ -472,7 +468,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             return false;
         }
         // the post's half of the discovery rule; a page's is its being in the index
-        if (!pages) {
+        if (kind.isDated()) {
             query.add(new TermQuery(new Term(FieldConstants.SITE, FieldConstants.SITE_V)),
                     BooleanClause.Occur.FILTER);
         }

@@ -515,7 +515,7 @@ public class LuceneIndexManager implements IndexManager {
             }
             handles.add(Weblog.SITE_SPACE_HANDLE);
         }
-        try (SearchOperation search = new SearchOperation(this, FieldConstants.KIND_PAGE)) {
+        try (SearchOperation search = new SearchOperation(this, DocumentKind.PAGE)) {
             search.setTerm(spec.words());
             if (handles == null) {
                 search.setWeblogHandle(spec.weblogHandle());
