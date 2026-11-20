@@ -104,6 +104,8 @@ public final class MockWeblogger {
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         when(weblogger.getWeblogEntryManager()).thenReturn(weblogEntryManager);
         when(weblogger.getPropertiesManager()).thenReturn(propertiesManager);
+        // background() is the Adapter over executeInBackground: keep it real so the verifiable call is the primitive
+        when(threadManager.background()).thenCallRealMethod();
         when(weblogger.getThreadManager()).thenReturn(threadManager);
         when(weblogger.getIndexManager()).thenReturn(indexManager);
         when(weblogger.getDiscoveryManager()).thenReturn(discoveryManager);

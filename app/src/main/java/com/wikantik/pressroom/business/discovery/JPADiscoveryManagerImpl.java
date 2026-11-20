@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business.discovery;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.UnitOfWork;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -42,7 +43,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -132,16 +132,9 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         this.background = background;
     }
 
-    /** The tier's background pool; a scheduling failure surfaces as a rejection. */
+    /** The tier's background pool; resolved per task, so the lazy {@code Weblogger} is not touched at construction. */
     private static Executor inBackgroundOf(Weblogger weblogger) {
-        return task -> {
-            try {
-                weblogger.getThreadManager().executeInBackground(task);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RejectedExecutionException("interrupted while scheduling", e);
-            }
-        };
+        return task -> weblogger.getThreadManager().background().execute(task);
     }
 
     // ------------------------------------------------------------ refresh
@@ -248,13 +241,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
      */
     private void scoreInBackground() {
         try {
-            background.execute(() -> {
-                try {
-                    refresh();
-                } finally {
-                    weblogger.release();
-                }
-            });
+            background.execute(UnitOfWork.releasing(weblogger, this::refresh));
         } catch (RuntimeException e) {
             log.warn("Discovery could not schedule the first scored refresh; the scheduled one will score", e);
         }

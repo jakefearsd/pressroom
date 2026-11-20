@@ -18,6 +18,8 @@
 
 package com.wikantik.pressroom.business.runnable;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.InitializationException;
 import com.wikantik.pressroom.pojos.TaskLock;
@@ -48,6 +50,23 @@ public interface ThreadManager {
         throws InterruptedException;
     
     
+    /**
+     * The background pool as a plain {@link Executor} (an Adapter over
+     * {@link #executeInBackground}); an interrupt while scheduling restores the
+     * flag and surfaces as a {@link RejectedExecutionException}.
+     */
+    default Executor background() {
+        return task -> {
+            try {
+                executeInBackground(task);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("interrupted while scheduling", e);
+            }
+        };
+    }
+
+
     /**
      * Execute runnable in foreground (synchronously).
      */

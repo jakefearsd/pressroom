@@ -19,6 +19,7 @@ package com.wikantik.pressroom.business.analytics;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.business.UnitOfWork;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.analytics.SiteTraffic.BlogRow;
 import com.wikantik.pressroom.business.discovery.DiscoverySettings;
@@ -48,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntSupplier;
@@ -221,16 +221,9 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         this.cache = new TrafficCache(strategy);
     }
 
-    /** The tier's background pool; a scheduling failure surfaces as a rejection. */
+    /** The tier's background pool; resolved per task, so the lazy {@code Weblogger} is not touched at construction. */
     private static Executor inBackgroundOf(Weblogger weblogger) {
-        return task -> {
-            try {
-                weblogger.getThreadManager().executeInBackground(task);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RejectedExecutionException("interrupted while scheduling", e);
-            }
-        };
+        return task -> weblogger.getThreadManager().background().execute(task);
     }
 
     // ------------------------------------------------------------ startup
@@ -350,13 +343,13 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
      * failures; this only keeps a surprise from stopping the drain.
      */
     private void runOnce() {
-        try {
-            sync();
-        } catch (RuntimeException e) {
-            log.error("Analytics sync failed", e);
-        } finally {
-            weblogger.release();
-        }
+        UnitOfWork.releasing(weblogger, () -> {
+            try {
+                sync();
+            } catch (RuntimeException e) {
+                log.error("Analytics sync failed", e);
+            }
+        }).run();
     }
 
     // ------------------------------------------------------------ sync
