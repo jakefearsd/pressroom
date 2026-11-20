@@ -354,7 +354,7 @@ public class GlobalConfigController extends BaseController {
             switch (problem) {
                 case PropertyType.Range range ->
                     addRangeError(model, propertyDef, range.min(), range.max(), request);
-                case PropertyType.Unparsed unparsed -> addUnparsedError(model,
+                case PropertyType.Unparsed _ -> addUnparsedError(model,
                         type == PropertyType.INTEGER ? "ConfigForm.invalidIntegerProperty"
                                 : "ConfigForm.invalidFloatProperty",
                         propertyDef, incomingProp, request);

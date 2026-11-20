@@ -23,7 +23,6 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.MediaImports;
 import com.wikantik.pressroom.ui.restapi.Paging;
-import com.wikantik.pressroom.ui.restapi.dto.ClearFields;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import com.wikantik.pressroom.util.PressroomMessages;

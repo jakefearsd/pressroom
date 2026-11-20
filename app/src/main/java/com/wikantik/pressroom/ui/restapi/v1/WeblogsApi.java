@@ -19,7 +19,6 @@ import com.wikantik.pressroom.ui.restapi.ApiProblem;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
-import com.wikantik.pressroom.ui.restapi.dto.ClearFields;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;

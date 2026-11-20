@@ -17,7 +17,6 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
-import com.wikantik.pressroom.ui.restapi.dto.ClearFields;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
