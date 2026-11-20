@@ -179,16 +179,14 @@ so a title with a quote or `</script>` stays inside its string.
   `WeblogConfig.jsp`'s per-weblog default are deleted;
   `weblogentry.plugins`/`weblog.defaultplugins` drop via V021 (idempotent),
   discarding live `"ConvertLineBreaks"` data. `PluginManagerImpl`,
-  `WeblogEntryPlugin` and `Weblog.getInitializedPlugins()` **stay** as the seam
-  `ShortcodeExpander` runs through (`applyWeblogEntryPlugins`); it and
-  `WeblogEntry.render()` apply every registered plugin unconditionally. See
-  Entry editing.
+  `WeblogEntryPlugin` and `Weblog.getInitializedPlugins()` **stay**;
+  `EntryRenderer` is the only render pipeline (the old
+  `applyWeblogEntryPlugins` seam is deleted) and applies every registered
+  plugin unconditionally. See Entry editing.
 
 ## Shortcodes
 `com.wikantik.pressroom.business.shortcodes` — `ShortcodeExpander` expands
-`[name attr="v"]body[/name]` **unconditionally** at both render seams
-(`WeblogEntry.render()` and `PluginManagerImpl.applyWeblogEntryPlugins`),
-immediately before sanitization.
+`[name attr="v"]body[/name]` **unconditionally** in `EntryRenderer`, immediately before sanitization.
 
 - `[image id=".." caption=".." alt=".."]` emits a responsive
   `<figure><picture>` (the media chooser pastes it).

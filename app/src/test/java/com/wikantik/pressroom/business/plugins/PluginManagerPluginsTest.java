@@ -23,7 +23,6 @@ import java.util.Map;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.plugins.entry.WeblogEntryPlugin;
-import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
 import com.wikantik.pressroom.config.StaticConfigOverride;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -32,9 +31,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Loading configured page plugins and applying them. The registry belongs to
@@ -60,12 +56,6 @@ class PluginManagerPluginsTest {
         @Override public String render(WeblogEntry entry, String str) { return "BROKEN"; }
     }
 
-    private static ShortcodeExpander passThrough() {
-        ShortcodeExpander expander = mock(ShortcodeExpander.class);
-        when(expander.expand(any(), any())).thenAnswer(call -> call.getArgument(1));
-        return expander;
-    }
-
     @Test
     void onlyClassesThatArePluginsAreRegisteredAndAppliedInTheirOutput() {
         String configured = String.join(",",
@@ -74,15 +64,13 @@ class PluginManagerPluginsTest {
                 "java.lang.StringBuilder",
                 "no.such.Plugin");
         try (var _ = StaticConfigOverride.set("plugins.page", configured)) {
-            PluginManagerImpl manager = new PluginManagerImpl(passThrough());
+            PluginManagerImpl manager = new PluginManagerImpl();
 
             assertTrue(manager.hasPagePlugins());
             Map<String, WeblogEntryPlugin> plugins = manager.getWeblogEntryPlugins(new Weblog());
             assertEquals(List.of("Shout"), List.copyOf(plugins.keySet()),
                     "a plugin that fails init is left out; a non-plugin class is never registered");
-
-            String rendered = manager.applyWeblogEntryPlugins(plugins, new WeblogEntry(), "hello");
-            assertTrue(rendered.contains("HELLO"), "got: " + rendered);
+            assertEquals("HELLO", plugins.get("Shout").render(new WeblogEntry(), "hello"));
         }
     }
 
@@ -90,20 +78,10 @@ class PluginManagerPluginsTest {
     @Test
     void aManagerSeesOnlyThePluginsItLoaded() {
         try (var _ = StaticConfigOverride.set("plugins.page", ShoutPlugin.class.getName())) {
-            assertTrue(new PluginManagerImpl(passThrough()).hasPagePlugins());
+            assertTrue(new PluginManagerImpl().hasPagePlugins());
         }
 
-        assertFalse(new PluginManagerImpl(passThrough()).hasPagePlugins(),
+        assertFalse(new PluginManagerImpl().hasPagePlugins(),
                 "the plugin an earlier manager loaded leaked into this one");
-    }
-
-    @Test
-    void withNoPluginsTheTextStillGoesThroughMarkdown() {
-        PluginManagerImpl manager = new PluginManagerImpl(passThrough());
-        assertFalse(manager.hasPagePlugins());
-
-        String rendered = manager.applyWeblogEntryPlugins(Map.of(), new WeblogEntry(), "*em*");
-
-        assertTrue(rendered.contains("<em>em</em>"), "got: " + rendered);
     }
 }

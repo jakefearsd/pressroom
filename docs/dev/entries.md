@@ -98,9 +98,9 @@ incidental re-save) — minor PII residue worth clearing.
   `ConvertLineBreaksPlugin`, the "Plugins to apply" card and
   `weblogentry.plugins`/`weblog.defaultplugins` (dropped V021, idempotent)
   are deleted (see Plugin System). `PluginManagerImpl`/`WeblogEntryPlugin`
-  and `WeblogEntry.render()`'s call into `applyWeblogEntryPlugins` stay
-  because `ShortcodeExpander` runs through that call (see Shortcodes); both
-  call sites now apply every site-registered plugin unconditionally.
+  stay; `EntryRenderer` is the single render pipeline
+  (`applyWeblogEntryPlugins` is deleted) and applies every site-registered
+  plugin unconditionally.
 - **Editor**: CodeMirror 6, built by Maven from `app/frontend/` (see "Frontend
   build"); one global, `PressroomEditor.create(options)`, called from
   `EditorScript.jsp`. `EditorSurface.jsp` (markup) and `EditorScript.jsp`

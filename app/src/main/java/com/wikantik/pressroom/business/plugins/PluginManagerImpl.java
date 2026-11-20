@@ -24,13 +24,10 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.config.WebloggerConfig;
-import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.Weblog;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.MarkdownRenderer;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
-import com.wikantik.pressroom.util.HTMLSanitizer;
 import com.wikantik.pressroom.util.Reflection;
 
 
@@ -48,21 +45,21 @@ public class PluginManagerImpl implements PluginManager {
     private final Map<String, Class<? extends WeblogEntryPlugin>> mPagePlugins = new LinkedHashMap<>();
 
 
-    private final ShortcodeExpander expander;
-
-    /**
-     * @param expander the shortcode registry the business render seam expands
-     *                 with -- the same instance {@code EntryRenderer} uses, so
-     *                 the two render paths cannot drift on which shortcodes
-     *                 exist
-     */
-    public PluginManagerImpl(ShortcodeExpander expander) {
-        this.expander = expander;
+    public PluginManagerImpl() {
         // load weblog entry plugins
         loadPagePluginClasses();
     }
-    
-    
+
+    /**
+     * Kept so {@code WebloggerBeanConfig} still compiles; the expander is
+     * unused now that rendering lives only in {@code EntryRenderer}.
+     *
+     * @param expander ignored
+     */
+    public PluginManagerImpl(ShortcodeExpander expander) {
+        this();
+    }
+
     @Override
     public boolean hasPagePlugins() {
         log.debug("mPluginClasses.size(): {}", mPagePlugins.size());
@@ -89,36 +86,6 @@ public class PluginManagerImpl implements PluginManager {
         }
         return ret;
     }
-    
-    @Override
-    public String applyWeblogEntryPlugins(Map<String, WeblogEntryPlugin> pagePlugins, WeblogEntry entry, String str) {
-
-        String ret = str;
-
-        // Per-entry opt-in died with weblogentry.plugins (V021, the entry
-        // editor's last plugin checkbox). Every plugin the caller passes in
-        // is now applied unconditionally, the same way shortcodes always
-        // have been -- there is no more per-entry list to filter against. An
-        // empty map (the only case left in production, since plugins.page is
-        // no longer configured) is a first-class no-op, not an error.
-        for (WeblogEntryPlugin pagePlugin : pagePlugins.values()) {
-            ret = pagePlugin.render(entry, ret);
-        }
-
-        // Shortcodes are NOT opt-in the way named plugins are: they expand
-        // unconditionally in every render path, before sanitization
-        // (see docs/superpowers/plans/2026-08-01-stage2-wave1-media-seo.md).
-        ret = expander.expand(entry, ret);
-
-        // ...and markdown converts after them, so this seam matches
-        // EntryRenderer exactly. Every entry is markdown; leaving one of
-        // the two render seams behind is precisely the drift the shared
-        // shortcode parsers exist to prevent.
-        ret = MarkdownRenderer.render(ret);
-
-        return HTMLSanitizer.conditionallySanitize(ret);
-    }
-    
     
     /**
      * Initialize PagePlugins declared in pressroom.properties.

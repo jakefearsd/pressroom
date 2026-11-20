@@ -69,9 +69,8 @@ import org.slf4j.LoggerFactory;
  *       ships.</li>
  * </ul>
  *
- * <p>Expansion runs UNCONDITIONALLY in both entry render paths
- * ({@code WeblogEntry#render} and
- * {@code PluginManagerImpl#applyWeblogEntryPlugins}), before
+ * <p>Expansion runs UNCONDITIONALLY in the entry render pipeline
+ * ({@code EntryRenderer}), before
  * {@code HTMLSanitizer.conditionallySanitize} -- shortcodes are not
  * opt-in-per-entry the way named {@code WeblogEntryPlugin}s are (deliberate
  * contract change; see docs/superpowers/plans/2026-08-01-stage2-wave1-media-seo.md).

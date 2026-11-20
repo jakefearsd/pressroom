@@ -20,7 +20,6 @@ package com.wikantik.pressroom.business;
 import java.util.Map;
 
 import com.wikantik.pressroom.business.plugins.PluginManager;
-import com.wikantik.pressroom.business.plugins.PluginManagerImpl;
 import com.wikantik.pressroom.business.plugins.entry.WeblogEntryPlugin;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeContext;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
@@ -155,22 +154,6 @@ class EntryRendererTest {
         assertTrue(plain.contains("http://example.com/f?w=480 480w"),
                 "srcset must climb the rendition ladder: " + rendered);
         assertTrue(rendered.contains("http://example.com/f 1200w"), rendered);
-        assertFalse(rendered.contains("[image"), rendered);
-    }
-
-    @Test
-    void theBusinessPluginSeamExpandsShortcodesUnconditionallyToo() throws Exception {
-        // Same contract, second render call-site: PluginManagerImpl's
-        // applyWeblogEntryPlugins (used with an explicit, empty plugin map)
-        // must also expand shortcodes with no plugins registered -- through
-        // the same expander instance this renderer holds.
-        installMediaFile();
-        entry.setText("irrelevant");
-
-        String rendered = new PluginManagerImpl(ShortcodeExpander.builtIn(weblogger, mediaFiles))
-                .applyWeblogEntryPlugins(Map.of(), entry, "see [image id=mf-1] here");
-
-        assertTrue(rendered.contains("<figure class=\"shortcode-image\">"), rendered);
         assertFalse(rendered.contains("[image"), rendered);
     }
 

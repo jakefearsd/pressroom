@@ -29,7 +29,6 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Property;
-import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import org.junit.jupiter.api.Test;
 
@@ -50,7 +49,7 @@ class PluginManagerImplTest {
 
     @Test
     void hasPagePluginsIsFalseWhenNoneAreRegistered() {
-        PluginManagerImpl mgr = new PluginManagerImpl(mock(ShortcodeExpander.class));
+        PluginManagerImpl mgr = new PluginManagerImpl();
         assertFalse(mgr.hasPagePlugins());
     }
 
@@ -89,7 +88,7 @@ class PluginManagerImplTest {
                 .getLoggerConfig(PluginManagerImpl.class.getName());
         loggerConfig.addAppender(appender, null, null);
         try {
-            new PluginManagerImpl(mock(ShortcodeExpander.class));
+            new PluginManagerImpl();
         } finally {
             loggerConfig.removeAppender("PluginManagerImplTest-capture");
             appender.stop();

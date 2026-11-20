@@ -20,7 +20,6 @@ package com.wikantik.pressroom.business.plugins;
 
 import java.util.Map;
 import com.wikantik.pressroom.business.plugins.entry.WeblogEntryPlugin;
-import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.Weblog;
 
 
@@ -44,18 +43,6 @@ public interface PluginManager {
     Map<String, WeblogEntryPlugin> getWeblogEntryPlugins(Weblog website);
     
     
-    /**
-     * Apply a set of weblog entry plugins to the specified string and
-     * return the results.  This method must *NOT* alter the contents of
-     * the original entry object.
-     *
-     * @param entry       Original weblog entry
-     * @param str         String to which to apply plugins
-     * @return        the transformed text
-     */
-    String applyWeblogEntryPlugins(Map<String, WeblogEntryPlugin> pagePlugins, WeblogEntry entry, String str);
-
-
     /**
      * Release all resources associated with Pressroom session.
      */
