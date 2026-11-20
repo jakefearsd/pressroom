@@ -20,7 +20,6 @@ package com.wikantik.pressroom.util;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,7 +37,6 @@ import java.util.Locale;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -471,143 +469,7 @@ public class UtilitiesTest  {
 
     // ----------------------------------------------------------------- files
 
-    @Nested
-    class Streams {
-
-        @Test
-        public void streamToStringReturnsEmptyStringForAnEmptyStream() {
-            // The AJAX comment endpoint feeds a request body straight in; an
-            // empty POST must produce "" rather than an exception.
-            assertEquals("", assertDoesNotThrowIOException(new ByteArrayInputStream(new byte[0])));
-        }
-
-        private String assertDoesNotThrowIOException(InputStream in) {
-            try {
-                return Utilities.streamToString(in);
-            } catch (IOException e) {
-                throw new AssertionError("streamToString threw on an empty stream", e);
-            }
-        }
-
-        private static class TrackingInput extends ByteArrayInputStream {
-            private boolean closed;
-
-            TrackingInput(byte[] data) {
-                super(data);
-            }
-
-            @Override
-            public void close() throws IOException {
-                closed = true;
-                super.close();
-            }
-        }
-
-        private static class TrackingOutput extends ByteArrayOutputStream {
-            private boolean closed;
-
-            @Override
-            public void close() throws IOException {
-                closed = true;
-                super.close();
-            }
-        }
-
-        /** Fails on every read, and remembers whether it was closed. */
-        private static class FailingInput extends InputStream {
-            private boolean closed;
-
-            @Override
-            public int read() throws IOException {
-                throw new IOException("disk gone");
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                throw new IOException("disk gone");
-            }
-
-            @Override
-            public void close() {
-                closed = true;
-            }
-        }
-
-        /** Fails on every write, and remembers whether it was closed. */
-        private static class FailingOutput extends OutputStream {
-            private boolean closed;
-
-            @Override
-            public void write(int b) throws IOException {
-                throw new IOException("disk full");
-            }
-
-            @Override
-            public void write(byte[] b, int off, int len) throws IOException {
-                throw new IOException("disk full");
-            }
-
-            @Override
-            public void close() {
-                closed = true;
-            }
-        }
-
-        /** Fails on every read, AND fails to close -- for the read-failure cleanup catch. */
-        private static class FailingInputThatWontClose extends InputStream {
-            @Override
-            public int read() throws IOException {
-                throw new IOException("disk gone");
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                throw new IOException("disk gone");
-            }
-
-            @Override
-            public void close() throws IOException {
-                throw new IOException("stuck open");
-            }
-        }
-
-        /** Fails on every write, AND fails to close -- for the write-failure cleanup catch. */
-        private static class FailingOutputThatWontClose extends OutputStream {
-            @Override
-            public void write(int b) throws IOException {
-                throw new IOException("disk full");
-            }
-
-            @Override
-            public void write(byte[] b, int off, int len) throws IOException {
-                throw new IOException("disk full");
-            }
-
-            @Override
-            public void close() throws IOException {
-                throw new IOException("stuck open");
-            }
-        }
-
-        /** Reads normally but always fails to close -- for the final-close catch. */
-        private static class FailingCloseInput extends ByteArrayInputStream {
-            FailingCloseInput(byte[] data) {
-                super(data);
-            }
-
-            @Override
-            public void close() throws IOException {
-                throw new IOException("stuck open");
-            }
-        }
-    }
-
     // ----------------------------------------------------------------- email
-
-    @Nested
-    class EmailValidation {
-
-    }
 
     @Test
     public void contentTypeIsDerivedFromTheFileExtension() {

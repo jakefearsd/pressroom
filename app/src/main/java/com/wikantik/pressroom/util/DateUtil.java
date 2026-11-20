@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.util;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -26,8 +25,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
-import org.apache.commons.lang3.StringUtils;
-
 
 /**
  * General purpose date utilities.
@@ -44,10 +41,6 @@ public final class DateUtil {
     // a bunch of date formats
     private static final String FORMAT_DEFAULT_DATE = "dd.MM.yyyy";
     private static final String FORMAT_DEFAULT_DATE_MINIMAL = "d.M.yy";
-    private static final String FORMAT_DEFAULT_TIMESTAMP = "yyyy-MM-dd HH:mm:ss.SSS";
-    
-    private static final String FORMAT_FRIENDLY_TIMESTAMP = "dd.MM.yyyy HH:mm:ss";
-    
     private static final String FORMAT_6CHARS = "yyyyMM";
     private static final String FORMAT_8CHARS = "yyyyMMdd";
     
@@ -55,8 +48,7 @@ public final class DateUtil {
     private static final String FORMAT_ISO_8601_DAY = "yyyy-MM-dd";
     
     private static final String FORMAT_RFC_822 = "EEE, d MMM yyyy HH:mm:ss Z";
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the day, just
      * after midnight. If a null day is passed in, a new Date is created.
@@ -65,8 +57,7 @@ public final class DateUtil {
     public static Date getStartOfDay(Date day) {
         return getStartOfDay(day, Calendar.getInstance());
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the day, just
      * after midnight. If a null day is passed in, a new Date is created.
@@ -80,8 +71,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the last possible millisecond of the day, just
      * before midnight. If a null day is passed in, a new Date is created.
@@ -90,8 +80,7 @@ public final class DateUtil {
     public static Date getEndOfDay(Date day) {
         return getEndOfDay(day,Calendar.getInstance());
     }
-    
-    
+
     public static Date getEndOfDay(Date day,Calendar cal) {
         cal.setTime(day == null ? new Date() : day);
         cal.set(Calendar.HOUR_OF_DAY, cal.getMaximum(Calendar.HOUR_OF_DAY));
@@ -100,8 +89,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMaximum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the hour.
      * If a null day is passed in, a new Date is created.
@@ -109,8 +97,7 @@ public final class DateUtil {
     public static Date getStartOfHour(Date day) {
         return getStartOfHour(day, Calendar.getInstance());
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the hour.
      * If a null day is passed in, a new Date is created.
@@ -122,8 +109,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the last possible millisecond of the day, just
      * before midnight. If a null day is passed in, a new Date is created.
@@ -132,8 +118,7 @@ public final class DateUtil {
     public static Date getEndOfHour(Date day) {
         return getEndOfHour(day, Calendar.getInstance());
     }
-    
-    
+
     public static Date getEndOfHour(Date day, Calendar cal) {
         if (day == null || cal == null) {
             return day;
@@ -145,8 +130,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMaximum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the minute.
      * If a null day is passed in, a new Date is created.
@@ -154,8 +138,7 @@ public final class DateUtil {
     public static Date getStartOfMinute(Date day) {
         return getStartOfMinute(day, Calendar.getInstance());
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the minute.
      * If a null day is passed in, a new Date is created.
@@ -166,8 +149,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the last possible millisecond of the minute.
      * If a null day is passed in, a new Date is created.
@@ -175,8 +157,7 @@ public final class DateUtil {
     public static Date getEndOfMinute(Date day) {
         return getEndOfMinute(day, Calendar.getInstance());
     }
-    
-    
+
     public static Date getEndOfMinute(Date day, Calendar cal) {
         if (day == null || cal == null) {
             return day;
@@ -187,8 +168,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMaximum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the first possible millisecond of the month, just
      * after midnight. If a null day is passed in, a new Date is created.
@@ -197,8 +177,7 @@ public final class DateUtil {
     public static Date getStartOfMonth(Date day) {
         return getStartOfMonth(day, Calendar.getInstance());
     }
-    
-    
+
     public static Date getStartOfMonth(Date day, Calendar cal) {
         cal.setTime(day == null ? new Date() : day);
         
@@ -213,8 +192,7 @@ public final class DateUtil {
         
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set to the last possible millisecond of the month, just
      * before midnight. If a null day is passed in, a new Date is created.
@@ -223,8 +201,7 @@ public final class DateUtil {
     public static Date getEndOfMonth(Date day) {
         return getEndOfMonth(day, Calendar.getInstance());
     }
-    
-    
+
     public static Date getEndOfMonth(Date day,Calendar cal) {
         cal.setTime(day == null ? new Date() : day);
         
@@ -245,8 +222,7 @@ public final class DateUtil {
         
         return cal.getTime();
     }
-    
-    
+
     /**
      * Returns a Date set just to Noon, to the closest possible millisecond
      * of the day. If a null day is passed in, a new Date is created.
@@ -260,8 +236,7 @@ public final class DateUtil {
         cal.set(Calendar.MILLISECOND, cal.getMinimum(Calendar.MILLISECOND));
         return cal.getTime();
     }
-    
-    
+
     /**
      * Whether {@code second} falls on a later calendar day than {@code first}
      * as a reader in {@code zone} counts days. The clock time between them is
@@ -279,9 +254,6 @@ public final class DateUtil {
                 .isAfter(Instant.ofEpochMilli(first.getTime()).atZone(zoneId).toLocalDate());
     }
 
-
-    
-    
     /**
      * Returns a string the represents the passed-in date parsed
      * according to the passed-in format.  Returns an empty string
@@ -293,32 +265,13 @@ public final class DateUtil {
             return aFormat.format(aDate);
         }
     }
-    
-    
 
-    
-    
-
-    
-    
-
-    
-    
-    // convenience method returns minimal date format
-
-    
-    
-    // convenience method returns minimal date format
-
-    
-    
     // convenience method that returns friendly data format
     // using full month, day, year digits.
     public static SimpleDateFormat fullDateFormat() {
         return friendlyDateFormat(false);
     }
-    
-    
+
     /** 
      * Returns a "friendly" date format.
      * @param minimalFormat Should the date format allow single digits.
@@ -330,76 +283,38 @@ public final class DateUtil {
         
         return new SimpleDateFormat(FORMAT_DEFAULT_DATE, Locale.ROOT);
     }
-    
-    
-    // returns full timestamp format
 
-    
-    
-    // convenience method returns long friendly timestamp format
-
-    
-    
     // convenience method returns minimal date format
     public static SimpleDateFormat get8charDateFormat() {
         return new SimpleDateFormat(FORMAT_8CHARS, Locale.ROOT);
     }
-    
-    
+
     // convenience method returns minimal date format
     public static SimpleDateFormat get6charDateFormat() {
         return new SimpleDateFormat(FORMAT_6CHARS, Locale.ROOT);
     }
-    
-    
+
     // convenience method returns minimal date format
     public static SimpleDateFormat getIso8601DateFormat() {
         return new SimpleDateFormat(FORMAT_ISO_8601, Locale.ROOT);
     }
-    
-    
+
     // convenience method returns minimal date format
     public static SimpleDateFormat getIso8601DayDateFormat() {
         return new SimpleDateFormat(FORMAT_ISO_8601_DAY, Locale.ROOT);
     }
-    
-    
+
     // convenience method returns minimal date format
     public static SimpleDateFormat getRfc822DateFormat() {
         // http://www.w3.org/Protocols/rfc822/Overview.html#z28
         // Using Locale.US to fix ROL-725 and ROL-628
         return new SimpleDateFormat(FORMAT_RFC_822, Locale.US);
     }
-    
-    
-    // convenience method
 
-    
-    
-    // convenience method using minimal date format
-
-    
-    
     public static String fullDate(Date date) {
         return format(date, fullDateFormat());
     }
-    
-    
 
-    
-    
-    // convenience method
-
-    
-    
-    // convenience method
-
-    
-    
-    // convenience method returns long friendly formatted timestamp
-
-    
-    
     // convenience method returns 8 char day stamp YYYYMMDD
     public static String format8chars(Date date) {
         return format(date, get8charDateFormat());
@@ -424,15 +339,10 @@ public final class DateUtil {
         return format(date, formatter);
     }
 
-    // convenience method returns long friendly formatted timestamp
-
-    
-    
     public static String formatRfc822(Date date) {
         return format(date, getRfc822DateFormat());
     }
-    
-    
+
     // This is a hack, but it seems to work
     public static String formatIso8601(Date date) {
         if (date == null) {
@@ -449,7 +359,5 @@ public final class DateUtil {
                 .append( str.substring(str.length()-2) );
         return sb.toString();
     }
-    
-    
-    
+
 }

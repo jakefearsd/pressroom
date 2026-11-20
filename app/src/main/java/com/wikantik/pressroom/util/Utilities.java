@@ -1,15 +1,5 @@
 package com.wikantik.pressroom.util;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,8 +11,6 @@ import java.util.regex.Pattern;
 
 import jakarta.activation.FileTypeMap;
 import jakarta.activation.MimetypesFileTypeMap;
-import jakarta.mail.internet.AddressException;
-import jakarta.mail.internet.InternetAddress;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.text.StringEscapeUtils;
@@ -86,9 +74,6 @@ public final class Utilities {
             "&lt;a href=.*?&gt;", Pattern.CASE_INSENSITIVE);
     private static final Pattern QUOTE_PATTERN = Pattern.compile("&quot;",
             Pattern.CASE_INSENSITIVE);
-
-    // ------------------------------------------------------------------------
-
 
     public static String unescapeHTML(String str) {
         return StringEscapeUtils.unescapeHtml4(str);
@@ -213,9 +198,6 @@ public final class Utilities {
     }
 
     // ------------------------------------------------------------------------
-
-
-    // ------------------------------------------------------------------------
     /** Convert string array to string with delimeters. */
     public static String stringArrayToString(String[] stringArray, String delim) {
         StringBuilder bldr = new StringBuilder();
@@ -259,30 +241,6 @@ public final class Utilities {
         stringList.addAll(Arrays.asList(str));
         return stringList;
     }
-
-    // --------------------------------------------------------------------------
-
-
-    // -------------------------------------------------------------------
-
-
-    // ------------------------------------------------------------------------
-    // `in`/`out` are closed inside copyInputToOutput(InputStream, OutputStream,
-    // long) below, on every path -- the success path and both IOException
-    // branches all close both streams before returning or rethrowing. PMD's
-    // CloseResource can't see a close happening inside a different method.
-    @SuppressWarnings("PMD.CloseResource")
-
-
-
-
-    // ------------------------------------------------------------------------
-
-
-    // ------------------------------------------------------------------------
-
-
-
 
     /**
      * This method based on code from the String taglib at Apache Jakarta:
@@ -423,12 +381,6 @@ public final class Utilities {
         }
         return ret.toString();
     }
-
-
-
-
-
-
 
     /**
      * Convert a byte array into a Base64 string (as used in mime formats)
@@ -603,21 +555,6 @@ public final class Utilities {
             // a trace if someone is chasing that down.
             log.debug("Could not register PNG mime type", ex);
         }
-    }
-
-
-
-    /**
-     * Checks for name and domain.
-     * 
-     * @param aEmailAddress
-     *            the a email address
-     * @return true, if successful
-     */
-    private static boolean hasNameAndDomain(String aEmailAddress) {
-        String[] tokens = aEmailAddress.split("@");
-        return tokens.length == 2 && StringUtils.isNotEmpty(tokens[0])
-                && StringUtils.isNotEmpty(tokens[1]);
     }
 
 }
