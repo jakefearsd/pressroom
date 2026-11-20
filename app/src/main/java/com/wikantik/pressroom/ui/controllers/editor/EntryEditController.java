@@ -304,7 +304,7 @@ public class EntryEditController extends BaseController {
 
     private RevisionActions<WeblogEntryRevision> revisionActions(WeblogEntry entry, HttpServletRequest request,
                                                                  RedirectAttributes redirectAttributes) {
-        return new RevisionActions<>(new EntryRevisions(weblogger, entry), log, new RevisionActions.Flash() {
+        return new RevisionActions<>(new EntryRevisions(weblogger, entry), log, new RevisionActions.FlashSink() {
             @Override
             public void message(String key) {
                 addFlashMessage(redirectAttributes, key, request);

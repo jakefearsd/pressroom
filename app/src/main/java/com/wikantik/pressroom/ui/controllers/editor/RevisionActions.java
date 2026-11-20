@@ -59,7 +59,7 @@ final class RevisionActions<R> {
     }
 
     /** The controller's flash helpers, bound to one request. */
-    interface Flash {
+    interface FlashSink {
         void message(String key);
 
         void error(String key);
@@ -67,9 +67,9 @@ final class RevisionActions<R> {
 
     private final Revisions<R> revisions;
     private final Logger log;
-    private final Flash flash;
+    private final FlashSink flash;
 
-    RevisionActions(Revisions<R> revisions, Logger log, Flash flash) {
+    RevisionActions(Revisions<R> revisions, Logger log, FlashSink flash) {
         this.revisions = revisions;
         this.log = log;
         this.flash = flash;

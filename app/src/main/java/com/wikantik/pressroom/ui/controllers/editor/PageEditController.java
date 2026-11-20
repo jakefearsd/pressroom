@@ -584,7 +584,7 @@ public class PageEditController extends BaseController {
 
     private RevisionActions<WeblogPageRevision> revisionActions(WeblogPage page, HttpServletRequest request,
                                                                 RedirectAttributes redirectAttributes) {
-        return new RevisionActions<>(new PageRevisions(weblogger, page), log, new RevisionActions.Flash() {
+        return new RevisionActions<>(new PageRevisions(weblogger, page), log, new RevisionActions.FlashSink() {
             @Override
             public void message(String key) {
                 addFlashMessage(redirectAttributes, key, request);
