@@ -98,8 +98,7 @@ public class PagesController extends BaseController {
     @PostMapping("/pageRemove.rol")
     public String remove(HttpServletRequest request, Model model,
                          @RequestParam(name = "removeId", required = false) String removeId) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "pageRemove");
+        populateCommonModel(request, model, new Screen("pageRemove", getPageTitle()));
 
         WeblogPage page = lookupPage(removeId, request);
         if (page == null) {

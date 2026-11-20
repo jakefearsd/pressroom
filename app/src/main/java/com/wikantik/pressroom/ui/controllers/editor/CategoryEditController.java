@@ -68,9 +68,7 @@ public class CategoryEditController extends BaseController {
     public String categoryAddSave(HttpServletRequest request, Model model,
                                   @ModelAttribute("bean") CategoryBean bean,
                                   RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "categoryAdd");
-        model.addAttribute("pageTitle", getText("categoryForm.add.title", request));
+        populateCommonModel(request, model, new Screen("categoryAdd", getText("categoryForm.add.title", request)));
 
         myValidate(bean, true, request, model);
 
@@ -120,9 +118,7 @@ public class CategoryEditController extends BaseController {
     public String categoryEditSave(HttpServletRequest request, Model model,
                                    @ModelAttribute("bean") CategoryBean bean,
                                    RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "categoryEdit");
-        model.addAttribute("pageTitle", getText("categoryForm.edit.title", request));
+        populateCommonModel(request, model, new Screen("categoryEdit", getText("categoryForm.edit.title", request)));
 
         myValidate(bean, false, request, model);
 

@@ -102,9 +102,7 @@ public class EntryEditController extends BaseController {
     @GetMapping("/entryAdd.rol")
     public String entryAddExecute(HttpServletRequest request, Model model,
                                   @ModelAttribute("bean") EntryBean bean) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryAdd");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.newEntry", request));
+        populateCommonModel(request, model, new Screen("entryAdd", getText("weblogEdit.title.newEntry", request)));
 
         WeblogEntry entry = new WeblogEntry();
         entry.setCreatorUserName(getAuthenticatedUser(request).getUserName());
@@ -131,9 +129,7 @@ public class EntryEditController extends BaseController {
     }
 
     private String doEntryAddSave(HttpServletRequest request, Model model, EntryBean bean, String action) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryAdd");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.newEntry", request));
+        populateCommonModel(request, model, new Screen("entryAdd", getText("weblogEdit.title.newEntry", request)));
 
         WeblogEntry entry = new WeblogEntry();
         entry.setCreatorUserName(getAuthenticatedUser(request).getUserName());
@@ -160,9 +156,7 @@ public class EntryEditController extends BaseController {
     public String entryEditExecute(HttpServletRequest request, Model model,
                                    @ModelAttribute("bean") EntryBean bean,
                                    RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryEdit");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.editEntry", request));
+        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
 
         // A bookmarked editor URL can name an entry that has since been
         // trashed. lookupEntry alone has no status filter and would render
@@ -354,9 +348,7 @@ public class EntryEditController extends BaseController {
     public String entryEditFirstSave(HttpServletRequest request, Model model,
                                      @ModelAttribute("bean") EntryBean bean,
                                      RedirectAttributes redirectAttributes) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryEdit");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.editEntry", request));
+        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
 
         // This landing page is just as bookmarkable/reloadable as
         // entryEdit.rol, and resolves the same way via lookupEntry (no status
@@ -427,9 +419,7 @@ public class EntryEditController extends BaseController {
             return "redirect:/pressroom-ui/access-denied.rol";
         }
 
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryEdit");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.editEntry", request));
+        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
 
         WeblogEntry entry = lookupEntry(entryId, request);
         if (entry == null) {
@@ -536,9 +526,7 @@ public class EntryEditController extends BaseController {
     }
 
     private String doEntryEditSave(HttpServletRequest request, Model model, EntryBean bean, String action) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "entryEdit");
-        model.addAttribute("pageTitle", getText("weblogEdit.title.editEntry", request));
+        populateCommonModel(request, model, new Screen("entryEdit", getText("weblogEdit.title.editEntry", request)));
 
         WeblogEntry entry = lookupChangeableEntry(bean.getId(), request);
         if (entry == null) {

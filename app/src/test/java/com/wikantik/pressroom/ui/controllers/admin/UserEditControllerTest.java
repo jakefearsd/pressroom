@@ -1215,4 +1215,30 @@ class UserEditControllerTest {
         assertEquals(List.of("agent.error.notAPerson"), ControllerTestFixture.errors(model));
         verify(weblogger.userManager(), never()).saveUser(any());
     }
+
+    /** B5: createUser and modifyUser select the Users rail item, not nothing. */
+    @Test
+    void createAndModifyUserSelectTheirRailItem() throws Exception {
+        when(weblogger.weblogger().getUserManager().checkPermission(any(), any())).thenReturn(true);
+        HttpServletRequest request = ControllerTestFixture.requestFor(null);
+        controller.createUserExecute(request, model);
+        assertEquals("userAdmin", selectedRailItem(model.getAttribute("menu")));
+
+        ExtendedModelMap modify = new ExtendedModelMap();
+        try {
+            controller.modifyUserExecute(request, modify, null);
+        } catch (RuntimeException expectedWithBareMocks) {
+            // only the menu built before the failure is under test
+        }
+        assertEquals("userAdmin", selectedRailItem(modify.getAttribute("menu")));
+    }
+
+    /** The action of the rail item the built menu selected, or null when none is. */
+    private static String selectedRailItem(Object menu) {
+        return ((com.wikantik.pressroom.ui.core.util.menu.Menu) menu).getTabs().stream()
+                .flatMap(t -> t.getItems().stream())
+                .filter(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::isSelected)
+                .map(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::getAction)
+                .findFirst().orElse(null);
+    }
 }

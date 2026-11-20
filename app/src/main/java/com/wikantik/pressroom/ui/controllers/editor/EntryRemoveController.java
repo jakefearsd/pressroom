@@ -77,8 +77,7 @@ public class EntryRemoveController extends BaseController {
     private String removeEntry(HttpServletRequest request, Model model, String removeId,
                                RedirectAttributes redirectAttributes, String actionName) {
 
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", actionName);
+        populateCommonModel(request, model, new Screen(actionName, getPageTitle()));
 
         WeblogEntry entry = lookupChangeableEntry(removeId, request);
         if (entry == null) {

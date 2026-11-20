@@ -102,17 +102,10 @@ public class PageEditController extends BaseController {
     @GetMapping("/pageEdit.rol")
     public String edit(@RequestParam(name = "id", required = false) String id,
                        HttpServletRequest request, Model model) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "pageEdit");
-        // getPageTitle() (via populateCommonModel above) always answers
-        // "pageEdit.title" ("Edit page") -- this one route handles both add
-        // and edit (id absent vs present), unlike the entry editor's separate
-        // entryAdd.rol/entryEdit.rol pair, so only the request has enough
-        // information to pick the right title. Same override-after-populate
-        // shape as EntryEditController's actionName.
-        if (StringUtils.isBlank(id)) {
-            model.addAttribute("pageTitle", "pageEdit.title.new");
-        }
+        // One route handles both add and edit (id absent vs present), so only
+        // the request has enough information to pick the right title.
+        populateCommonModel(request, model, new Screen("pageEdit",
+                StringUtils.isBlank(id) ? "pageEdit.title.new" : getPageTitle()));
 
         PageBean bean = new PageBean();
         WeblogPage page = null;
@@ -137,8 +130,7 @@ public class PageEditController extends BaseController {
     @PostMapping("/pageEdit!save.rol")
     public String save(HttpServletRequest request, Model model,
                        @ModelAttribute("bean") PageBean bean) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "pageEdit");
+        populateCommonModel(request, model, new Screen("pageEdit", getPageTitle()));
 
         boolean isNew = StringUtils.isBlank(bean.getId());
         WeblogPage page;

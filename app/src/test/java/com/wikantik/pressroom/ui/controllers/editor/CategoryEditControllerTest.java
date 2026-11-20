@@ -421,4 +421,26 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(List.of("category_bean_name"), flashInvalidFields(redirectAttributes),
                 "the field marker must survive the redirect too: " + flashInvalidFields(redirectAttributes));
     }
+
+    /** B5: the rail is built from the action being served, not the controller's null default. */
+    @Test
+    void categoryAddAndEditSelectTheirRailItem() throws Exception {
+        when(weblogger.getUserManager().checkPermission(any(), any())).thenReturn(true);
+        bean.setName("Travel");
+        controller.categoryAddSave(request, model, bean, redirectAttributes);
+        assertEquals("categories", selectedRailItem(model.getAttribute("menu")));
+
+        Model editModel = newModel();
+        controller.categoryEditSave(request, editModel, bean, newRedirectAttributes());
+        assertEquals("categories", selectedRailItem(editModel.getAttribute("menu")));
+    }
+
+    /** The action of the rail item the built menu selected, or null when none is. */
+    private static String selectedRailItem(Object menu) {
+        return ((com.wikantik.pressroom.ui.core.util.menu.Menu) menu).getTabs().stream()
+                .flatMap(t -> t.getItems().stream())
+                .filter(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::isSelected)
+                .map(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::getAction)
+                .findFirst().orElse(null);
+    }
 }

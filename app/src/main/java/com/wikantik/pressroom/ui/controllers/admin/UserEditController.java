@@ -95,9 +95,7 @@ public class UserEditController extends BaseController {
 
     @GetMapping("/createUser.rol")
     public String createUserExecute(HttpServletRequest request, Model model) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "createUser");
-        model.addAttribute("pageTitle", "userAdmin.title.createNewUser");
+        populateCommonModel(request, model, new Screen("createUser", "userAdmin.title.createNewUser"));
 
         CreateUserBean bean = new CreateUserBean();
         bean.setLocale(java.util.Locale.getDefault().toString());
@@ -114,9 +112,7 @@ public class UserEditController extends BaseController {
     @PostMapping("/createUser!save.rol")
     public String createUserSave(HttpServletRequest request, Model model,
                                  @ModelAttribute("bean") CreateUserBean bean) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "createUser");
-        model.addAttribute("pageTitle", "userAdmin.title.createNewUser");
+        populateCommonModel(request, model, new Screen("createUser", "userAdmin.title.createNewUser"));
         model.addAttribute("bean", bean);
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
         addLocalesAndTimezones(model);
@@ -181,9 +177,7 @@ public class UserEditController extends BaseController {
     @GetMapping("/modifyUser.rol")
     public String modifyUserExecute(HttpServletRequest request, Model model,
                                     @ModelAttribute("bean") CreateUserBean bean) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "modifyUser");
-        model.addAttribute("pageTitle", "userAdmin.title.editUser");
+        populateCommonModel(request, model, new Screen("modifyUser", "userAdmin.title.editUser"));
 
         User user = lookupUser(bean);
         if (user == null) {
@@ -226,9 +220,7 @@ public class UserEditController extends BaseController {
     @PostMapping("/modifyUser!save.rol")
     public String modifyUserSave(HttpServletRequest request, Model model,
                                  @ModelAttribute("bean") CreateUserBean bean) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "modifyUser");
-        model.addAttribute("pageTitle", "userAdmin.title.editUser");
+        populateCommonModel(request, model, new Screen("modifyUser", "userAdmin.title.editUser"));
         model.addAttribute("bean", bean);
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
         addLocalesAndTimezones(model);
@@ -359,9 +351,7 @@ public class UserEditController extends BaseController {
     @PostMapping("/userEdit!sendPasswordLink.rol")
     public String sendPasswordLink(HttpServletRequest request, Model model,
                                    @RequestParam(name = "bean.userName") String userName) {
-        populateCommonModel(request, model);
-        model.addAttribute("actionName", "modifyUser");
-        model.addAttribute("pageTitle", "userAdmin.title.editUser");
+        populateCommonModel(request, model, new Screen("modifyUser", "userAdmin.title.editUser"));
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
         addLocalesAndTimezones(model);
 

@@ -2032,4 +2032,30 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().isBlank(), response.getBody());
     }
+
+    /** B5: entryAdd and entryEdit select the Entries rail item, not nothing. */
+    @Test
+    void entryAddAndEditSelectTheirRailItem() throws Exception {
+        when(weblogger.getUserManager().checkPermission(any(), any())).thenReturn(true);
+        Model add = newModel();
+        controller.entryAddExecute(request, add, new EntryBean());
+        assertEquals("entryAdd", selectedRailItem(add.getAttribute("menu")));
+
+        Model edit = newModel();
+        try {
+            controller.entryEditExecute(request, edit, new EntryBean(), newRedirectAttributes());
+        } catch (RuntimeException expectedWithBareMocks) {
+            // only the menu built before the failure is under test
+        }
+        assertEquals("entryAdd", selectedRailItem(edit.getAttribute("menu")));
+    }
+
+    /** The action of the rail item the built menu selected, or null when none is. */
+    private static String selectedRailItem(Object menu) {
+        return ((com.wikantik.pressroom.ui.core.util.menu.Menu) menu).getTabs().stream()
+                .flatMap(t -> t.getItems().stream())
+                .filter(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::isSelected)
+                .map(com.wikantik.pressroom.ui.core.util.menu.MenuTabItem::getAction)
+                .findFirst().orElse(null);
+    }
 }

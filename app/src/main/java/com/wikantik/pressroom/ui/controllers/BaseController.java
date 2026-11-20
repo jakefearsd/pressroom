@@ -656,19 +656,35 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
             "mediaFileView", "themeEdit", "weblogConfig", "members", "traffic");
 
     /**
+     * What a screen is called: its menu action (selects the rail item, and
+     * the switcher) and the {@code pageTitle} model value, as its page expects
+     * it (a message key for some, resolved text for others). Handed to
+     * {@link #populateCommonModel(HttpServletRequest, Model, Screen)} so the
+     * menu, switcher and model are all built from the one value.
+     */
+    public record Screen(String actionName, String pageTitle) {
+    }
+
+    /** {@link #populateCommonModel(HttpServletRequest, Model, Screen)} for the controller's own action and title. */
+    protected void populateCommonModel(HttpServletRequest request, Model model) {
+        populateCommonModel(request, model, new Screen(getActionName(), getPageTitle()));
+    }
+
+    /**
      * Populate common model attributes used across all pages:
      * authenticatedUser, userIsAuthor, actionWeblog, pageTitle, siteURL,
-     * absoluteSiteURL, menu.
+     * absoluteSiteURL, menu. A controller with several actions passes the
+     * {@link Screen} of the one it is serving.
      */
-    protected void populateCommonModel(HttpServletRequest request, Model model) {
+    protected void populateCommonModel(HttpServletRequest request, Model model, Screen screen) {
         User user = getAuthenticatedUser(request);
         Weblog weblog = getActionWeblog(request);
-        String actionName = getActionName();
+        String actionName = screen.actionName();
 
         model.addAttribute("authenticatedUser", user);
         model.addAttribute("userIsAuthor", isAuthor(user));
         model.addAttribute("actionWeblog", weblog);
-        model.addAttribute("pageTitle", getPageTitle());
+        model.addAttribute("pageTitle", screen.pageTitle());
         model.addAttribute("siteURL", WebloggerRuntimeConfig.getRelativeContextURL());
         model.addAttribute("absoluteSiteURL", WebloggerRuntimeConfig.getAbsoluteContextURL());
         model.addAttribute("actionName", actionName);
