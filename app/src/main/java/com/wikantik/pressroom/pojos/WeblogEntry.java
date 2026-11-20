@@ -735,12 +735,6 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
         stampPubTimeIfPublished(now);
     }
 
-    /** Schedules the entry to go live at the given time. */
-    public void schedule(Timestamp at) {
-        this.status = PubStatus.SCHEDULED;
-        this.pubTime = at;
-    }
-
     /** A PUBLISHED entry with no pubTime gets {@code now}; any other entry is left alone. */
     public void stampPubTimeIfPublished(Timestamp now) {
         if (isPublished() && pubTime == null) {

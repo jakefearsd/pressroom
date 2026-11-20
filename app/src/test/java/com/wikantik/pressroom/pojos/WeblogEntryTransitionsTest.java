@@ -48,14 +48,6 @@ class WeblogEntryTransitionsTest {
     }
 
     @Test
-    void scheduleSetsStatusAndTime() {
-        WeblogEntry e = new WeblogEntry();
-        e.schedule(NOW);
-        assertEquals(PubStatus.SCHEDULED, e.getStatus());
-        assertSame(NOW, e.getPubTime());
-    }
-
-    @Test
     void scheduledWithoutPubTimeIsFlagged() {
         WeblogEntry e = new WeblogEntry();
         e.setStatus(PubStatus.SCHEDULED);
