@@ -132,7 +132,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
             for (String gap : gaps) {
                 counts.merge(gap, 1, Integer::sum);
             }
-            gappy.add(new AuditDtos.SeoGap(entry.getId(), entry.getAnchor(), entry.getTitle(), gaps));
+            gappy.add(AuditDtos.seoGap(entry, gaps));
         }
 
         int total = gappy.size();

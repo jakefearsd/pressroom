@@ -430,6 +430,16 @@ curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
       }'
 ```
 
+**Entry titles are plain text, in and out.** Send `Tom & Jerry`, not
+`Tom &amp; Jerry`, and expect `Tom & Jerry` back, in every view that carries
+an entry's title (the entry, its revisions, the SEO audit, a comment's
+`entryTitle`, traffic posts, a strand's parts). Pressroom stores the title
+escaped and does the escaping once, on write, so a `GET` followed by a `PATCH`
+of the same `title` changes nothing. **Changed in 0.15.0:** earlier versions
+answered the stored, escaped form (`Tom &amp; Jerry`); a client that
+unescaped those titles itself should stop, or it will unescape a literal
+`&amp;` an author typed.
+
 `title` and `text` are required on create (they are `NOT NULL` columns; an
 entry with neither is not a resource this API will create). `text` is at
 most 1,000,000 characters, on create and on update alike (what `edits` make
@@ -766,7 +776,7 @@ replaces nothing.
 
 **`GET .../entries/{id}/revisions`** lists the entry's revisions, newest
 first, as a bare array: `id`, `created`, `creator`, `note` (absent when there
-is none) and `title` (stored escaped, like an entry's). No text, so a long
+is none) and `title` (plain text, like an entry's). No text, so a long
 history stays a short answer. The first is what undoing the latest save
 would bring back.
 
@@ -1017,12 +1027,9 @@ by hyphens: "Start Here" becomes `start-here`). `slug`
 is validated against the same reserved-word list (`ReservedSlugs`) the
 renderer's own URL parser uses, and checked for a duplicate against the
 weblog, before either ever reaches the database — both are 400/409 here
-rather than an opaque 500. Unlike an entry title, **a page title is stored
-raw, not HTML-escaped** — this API does not double-encode it, matching how
-every bundled theme's page template escapes it at render time instead (the
-"Escaping" hazard in the repository's `CLAUDE.md`, if you are consuming both
-`EntryView.title` and `PageView.title` in the same client: the first is
-entity-escaped, the second raw).
+rather than an opaque 500. A page title is stored
+raw and an entry title is stored HTML-escaped, but over this API **both are
+plain text, in and out** (see "Entry titles are plain text" above).
 
 A page carries the page editor's navigation and SEO fields too, in every
 response (`list`, `get`, `create`, `update`; a field with no value is
@@ -1056,8 +1063,8 @@ parts are posts of its own blog.
 
 Every page view carries `strand` (boolean) and `parts`, read-only: a strand's
 members in order, drafts and the trash included, each
-`{id, anchor, title, status, position}` (`title` is the entry's stored,
-escaped title, as in the entry view; `position` orders the parts and need not
+`{id, anchor, title, status, position}` (`title` is the entry's
+plain-text title, as in the entry view; `position` orders the parts and need not
 be contiguous). `parts` is empty for a page that is not a strand.
 
 - **Make a page a strand** with `"strand": true` on create or `PATCH`.
@@ -1141,8 +1148,7 @@ defaults to 50 with a maximum of 200.
 `authorIsOwner` (the author holds a role on this weblog), `replyTo` (the id of
 the comment this answers) and `reply` (the id of its reply, whatever that
 reply's status). An email address or account id is never part of a view.
-`entryTitle` is the entry's stored title, which is stored HTML-escaped, so it is
-returned unchanged. An empty `body` on a `HIDDEN` comment means its author
+`entryTitle` is the entry's plain-text title, as in the entry view. An empty `body` on a `HIDDEN` comment means its author
 deleted it.
 
 ```bash
@@ -1333,7 +1339,7 @@ analytics service. So read `state` and `asOf` before the numbers:
   `24h` the buckets are hours and carry `hour` (0 to 23).
 - `posts` has one row per recorded path, most viewed first. `entryId` and
   `title` are null for a path that is not an entry (a tag page, the front
-  page); `title` is stored escaped, as in `entries`. `visitors` is null when
+  page); `title` is plain text, as in `entries`. `visitors` is null when
   the service cannot count it. `trend` compares this period's daily view
   rate with the next longer period's, minus one: 0 is steady, 1 is twice the
   usual rate, -0.5 half; null when no longer period has the path to compare

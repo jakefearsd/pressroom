@@ -136,7 +136,7 @@ class EntriesWriteApiControllerTest {
         verify(weblogger).flush();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals("Cats &amp; Dogs", json.get("title").asString());
+        assertEquals("Cats & Dogs", json.get("title").asString());
     }
 
     /**

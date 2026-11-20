@@ -27,17 +27,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EntriesApiReadTest {
 
     /**
-     * Titles are stored escaped, so the DTO carries them through unchanged.
-     * Escaping again here would send "&amp;amp;" to every client.
+     * Titles are stored escaped but the API speaks plain text, so the view
+     * unescapes: "&amp;amp;" must never reach a client.
      */
     @Test
-    void theViewCarriesTheStoredTitleWithoutReEscaping() {
+    void theViewUnescapesTheStoredTitle() {
         WeblogEntry entry = new WeblogEntry();
         entry.setTitle("Cats &amp; Dogs");
         entry.setStatus(WeblogEntry.PubStatus.DRAFT);
 
         EntryDtos.EntryView view = EntryDtos.toView(entry, null);
-        assertEquals("Cats &amp; Dogs", view.title());
+        assertEquals("Cats & Dogs", view.title());
     }
 
     /** TRASHED is reachable only through the explicit status filter. */

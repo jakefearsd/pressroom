@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
@@ -62,8 +63,8 @@ public final class PageDtos {
     }
 
     /**
-     * One part of a strand. {@code title} is the entry's stored (escaped)
-     * title, as {@code EntryView} carries it; {@code position} is the stored
+     * One part of a strand. {@code title} is the entry's title as plain
+     * text, as {@code EntryView} carries it; {@code position} is the stored
      * position, which orders the parts but need not be contiguous: readers
      * see "Part N of M" counted over the published parts only.
      */
@@ -160,7 +161,7 @@ public final class PageDtos {
     }
 
     private static PartView toPartView(WeblogEntry entry) {
-        return new PartView(entry.getId(), entry.getAnchor(), entry.getTitle(),
+        return new PartView(entry.getId(), entry.getAnchor(), EntryFieldRules.plainTitle(entry.getTitle()),
                 entry.getStatus() == null ? null : entry.getStatus().name(),
                 entry.getStrandPosition() == null ? 0 : entry.getStrandPosition());
     }

@@ -21,6 +21,7 @@ public final class McpInstructions {
             `get` returned; on 409 entry-changed, get again and redo. `revisionNote` says why; \
             `entries revisions` and restore_revision undo. Pages have the same guard (409 page-changed), \
             revisionNote and `pages revisions`; `pages delete` is a trash, undone by restore.
+            - Titles are plain text in and out (Tom & Jerry, not Tom &amp; Jerry).
             - `anchor` on create fixes the URL slug, so a retried create answers 409, not a second entry. \
             A refused write lists every bad field in `errors`.
             - Write entry text as Markdown: callouts as GitHub alerts (> [!NOTE], [!TIP], [!WARNING]), code \

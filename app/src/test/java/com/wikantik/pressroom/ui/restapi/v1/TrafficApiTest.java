@@ -108,7 +108,7 @@ class TrafficApiTest {
 
         JsonNode post = body.get("posts").get(0);
         assertEquals("e1", post.get("entryId").asString());
-        assertEquals("Tom &amp; Jerry", post.get("title").asString(), "entry titles are stored escaped");
+        assertEquals("Tom & Jerry", post.get("title").asString(), "entry titles are stored escaped and spoken as plain text");
         assertEquals("/myblog/entry/tom", post.get("path").asString());
         assertEquals(90, post.get("views").asLong());
         assertEquals(30, post.get("visitors").asLong());

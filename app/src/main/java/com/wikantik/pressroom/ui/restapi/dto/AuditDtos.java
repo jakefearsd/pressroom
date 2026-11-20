@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +98,12 @@ public final class AuditDtos {
     }
 
     public static SeoGap toSeoGap(WeblogEntry entry) {
-        return new SeoGap(entry.getId(), entry.getAnchor(), entry.getTitle(), gapsFor(entry));
+        return seoGap(entry, gapsFor(entry));
+    }
+
+    /** An audit row: the entry's plain-text title and the gap codes already found for it. */
+    public static SeoGap seoGap(WeblogEntry entry, List<String> gaps) {
+        return new SeoGap(entry.getId(), entry.getAnchor(), EntryFieldRules.plainTitle(entry.getTitle()), gaps);
     }
 
     /** The findings' codes, in order: what {@code audits seo} lists as an entry's {@code gaps}. */
@@ -106,7 +112,7 @@ public final class AuditDtos {
     }
 
     public static SeoEntryAudit toSeoEntryAudit(WeblogEntry entry, List<EntrySeoChecks.Finding> findings) {
-        return new SeoEntryAudit(entry.getId(), entry.getAnchor(), entry.getTitle(), findings.stream()
+        return new SeoEntryAudit(entry.getId(), entry.getAnchor(), EntryFieldRules.plainTitle(entry.getTitle()), findings.stream()
                 .map(f -> new SeoFinding(f.code(), f.severity(), f.message(), f.value(), f.limit()))
                 .toList());
     }

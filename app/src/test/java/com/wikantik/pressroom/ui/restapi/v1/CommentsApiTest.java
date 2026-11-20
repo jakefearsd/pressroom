@@ -225,7 +225,7 @@ class CommentsApiTest {
         JsonNode v = json(ok(get(BASE + "/c1").requestAttr("actionWeblog", weblog)));
         assertEquals("c1", v.get("id").asString());
         assertEquals("e1", v.get("entryId").asString());
-        assertEquals("Tom &amp; Jerry", v.get("entryTitle").asString(), "titles are stored escaped and pass through");
+        assertEquals("Tom & Jerry", v.get("entryTitle").asString(), "titles are stored escaped and spoken as plain text");
         assertEquals("PUBLISHED", v.get("status").asString());
         assertEquals("hello", v.get("body").asString());
         assertEquals("reader", v.get("authorUserName").asString());

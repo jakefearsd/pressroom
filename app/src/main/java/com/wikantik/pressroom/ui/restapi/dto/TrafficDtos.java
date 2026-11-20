@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -60,7 +61,7 @@ public final class TrafficDtos {
 
     /**
      * One recorded path. {@code entryId} and {@code title} are null for a path that is not an entry;
-     * {@code title} is the entry's title as stored (escaped). Every component is written, nulls included.
+     * {@code title} is the entry's title as plain text. Every component is written, nulls included.
      */
     public record Post(
             String entryId,
@@ -99,7 +100,7 @@ public final class TrafficDtos {
     }
 
     private static Post post(BlogTraffic.PostRow row) {
-        return new Post(row.entryId(), row.title(), row.path(), row.views(),
+        return new Post(row.entryId(), EntryFieldRules.plainTitle(row.title()), row.path(), row.views(),
                 row.visitors() < 0 ? null : row.visitors(),
                 Double.isFinite(row.trend()) ? row.trend() : null);
     }

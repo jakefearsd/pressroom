@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.Date;
@@ -29,8 +30,8 @@ import com.wikantik.pressroom.pojos.User;
  *
  * <p>The view carries no email address and no author id, on purpose: the
  * author is named by user name and display name only. {@code entryTitle} is
- * the entry's stored title, which is stored escaped, so it is passed through
- * unchanged. A HIDDEN comment with an empty body is one its author deleted.
+ * the entry's title as plain text (stored escaped, unescaped here, as an
+ * entry view's is). A HIDDEN comment with an empty body is one its author deleted.
  */
 public final class CommentDtos {
 
@@ -58,7 +59,7 @@ public final class CommentDtos {
         return new CommentView(
                 c.getId(),
                 c.getEntry().getId(),
-                c.getEntry().getTitle(),
+                EntryFieldRules.plainTitle(c.getEntry().getTitle()),
                 c.getStatus().name(),
                 c.getBody() == null ? "" : c.getBody(),
                 instant(c.getCreated()),

@@ -107,6 +107,16 @@ public final class EntryFieldRules {
     }
 
     /**
+     * An entry title as plain text, the exact inverse of {@link #escapeTitle}
+     * (and of what the JSP editor does in {@code EntryBean.copyFrom}). The
+     * one place every API output that carries an entry title goes through, so
+     * the surfaces cannot drift. Null-safe.
+     */
+    public static String plainTitle(String storedTitle) {
+        return StringEscapeUtils.unescapeHtml4(storedTitle);
+    }
+
+    /**
      * HTML-escapes an entry title for storage. Null-safe: a null title
      * (never entered) stays null rather than becoming the literal string
      * {@code "null"}.

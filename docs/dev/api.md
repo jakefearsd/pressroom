@@ -61,7 +61,9 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   API — one home each for entry-field rules and by-id ownership checks.**
   `EntryBean` and `EntryDtos.applyWrite` both call
   `EntryFieldRules.escapeTitle` and `EntryFieldRules.parsePubTime`
-  (weblog-timezone), so the surfaces cannot drift. `WeblogOwnership` is the one
+  (weblog-timezone), so the surfaces cannot drift. Entry titles are stored escaped but plain text over the API
+  both ways: every DTO that carries one goes through
+  `EntryFieldRules.plainTitle` (add any new entry-title output to it, with a test). `WeblogOwnership` is the one
   IDOR defense for a by-id lookup (see Categories): the
   `BaseController.lookup*` family and
   `BaseApiController.requireEntry`/`CategoriesApi`/`PagesApi` all delegate to

@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
@@ -27,7 +28,7 @@ public final class RevisionDtos {
             String creator,
             @Schema(description = "Why that save was made, when it said: an update's revisionNote.")
             String note,
-            @Schema(description = "The entry's title as it was, stored escaped like an entry's title.")
+            @Schema(description = "The entry's title as it was, as plain text like an entry's title.")
             String title,
             @Schema(description = "True when the revision is kept: exempt from every retention limit until "
                     + "released with .../unkeep. At most 10 per item.")
@@ -54,7 +55,7 @@ public final class RevisionDtos {
 
     public static RevisionSummary toSummary(WeblogEntryRevision revision) {
         return new RevisionSummary(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle(), revision.isKept());
+                revision.getNote(), EntryFieldRules.plainTitle(revision.getTitle()), revision.isKept());
     }
 
     /** A page revision in a page's list: everything but its content. A page's title is stored raw. */
@@ -71,7 +72,8 @@ public final class RevisionDtos {
 
     public static RevisionView toView(WeblogEntryRevision revision, String diff) {
         return new RevisionView(revision.getId(), instant(revision.getCreated()), revision.getCreator(),
-                revision.getNote(), revision.getTitle(), revision.getSummary(), revision.getText(), diff,
+                revision.getNote(), EntryFieldRules.plainTitle(revision.getTitle()), revision.getSummary(),
+                revision.getText(), diff,
                 revision.isKept());
     }
 

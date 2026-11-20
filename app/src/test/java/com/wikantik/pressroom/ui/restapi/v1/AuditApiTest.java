@@ -269,6 +269,25 @@ class AuditApiTest {
         assertEquals(1, json.get("counts").get("noindex").asInt());
     }
 
+    /** An entry title in the audit list is plain text, though stored escaped. */
+    @Test
+    void seoAuditRowsCarryThePlainTextTitle() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        WeblogEntry gappy = new WeblogEntry();
+        gappy.setId("e1");
+        gappy.setAnchor("tom");
+        gappy.setTitle("Tom &amp; Jerry");
+        when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(List.of(gappy));
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo").requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals("Tom & Jerry",
+                new tools.jackson.databind.ObjectMapper().readTree(body).get("entries").get(0).get("title").asString());
+    }
+
     private static WeblogEntry published(String id, String title) {
         WeblogEntry entry = new WeblogEntry();
         entry.setId(id);

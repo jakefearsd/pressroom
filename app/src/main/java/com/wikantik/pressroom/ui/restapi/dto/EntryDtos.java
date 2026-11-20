@@ -123,8 +123,9 @@ public final class EntryDtos {
 
     /**
      * Titles are stored HTML-escaped (see CLAUDE.md's entry/page title
-     * asymmetry), so the view carries the stored value through unchanged --
-     * escaping it again here would send "&amp;amp;" to every client.
+     * asymmetry) but the API speaks plain text both ways: the view unescapes
+     * the stored value, and a write escapes it once, so a GET followed by a
+     * PATCH of the same value leaves the stored title unchanged.
      * {@code permalink} is passed in rather than computed here because the
      * entity does not know its own url (that is the {@code URLStrategy}'s
      * job), and this pure mapper has no business depending on the tier.
@@ -133,7 +134,7 @@ public final class EntryDtos {
         return new EntryView(
                 entry.getId(),
                 entry.getAnchor(),
-                entry.getTitle(),
+                EntryFieldRules.plainTitle(entry.getTitle()),
                 entry.getSummary(),
                 entry.getText(),
                 contentHash(entry.getText()),
@@ -225,6 +226,9 @@ public final class EntryDtos {
      * lookup this pure mapper has no business making.
      */
     public record EntryWrite(
+            @Schema(description = "The entry's title, as plain text in and out: send and receive \"Tom & Jerry\", "
+                    + "never \"Tom &amp; Jerry\". The server escapes it once for storage and unescapes it on every "
+                    + "read, so a title read back can be sent back unchanged.")
             String title,
             @Schema(description = "A sentence or two shown under the title in lists of entries, and as the "
                     + "feed's summary. Markdown is accepted; lists show it as plain text. Without one, lists show "
