@@ -21,7 +21,6 @@ package com.wikantik.pressroom.ui.rendering.pagers;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.EntryPins;
@@ -37,12 +36,9 @@ import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 /**
  * A pager over a collection of recent weblog entries.
  */
-public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
+public class WeblogEntriesLatestPager extends QueriedEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesLatestPager.class);
-    
-    // collection for the pager
-    private Map<Date, List<WeblogEntryWrapper>> entries;
     
     // the blog's pinned posts, read once, for page one of the home listing
     private List<WeblogEntryWrapper> pinned;
@@ -53,9 +49,6 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
      */
     private static final int MAX_PINNED = EntryPins.MAX_PER_WEBLOG;
 
-    // are there more pages?
-    private boolean more;
-    
     
     public WeblogEntriesLatestPager(
             URLStrategy        strat,
@@ -77,28 +70,16 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
     
     
     @Override
-    public Map<Date, List<WeblogEntryWrapper>> getEntries() {
-
-        if (entries == null) {
-            entries = newDayMap();
-            try {
-                WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
-                wesc.setEndDate(new Date());
-                if (isHomeListing()) {
-                    // Pinned posts are listed apart (getPinnedEntries), on
-                    // every page's behalf: leaving them out here keeps the
-                    // offsets counting regular posts only.
-                    wesc.setPinned(Boolean.FALSE);
-                }
-                more = queryEntries(wesc, entries);
-            } catch (Exception e) {
-                log.error("ERROR: getting entry month map", e);
-            }
+    protected void narrow(WeblogEntrySearchCriteria wesc) {
+        wesc.setEndDate(new Date());
+        if (isHomeListing()) {
+            // Pinned posts are listed apart (getPinnedEntries), on
+            // every page's behalf: leaving them out here keeps the
+            // offsets counting regular posts only.
+            wesc.setPinned(Boolean.FALSE);
         }
-
-        return entries;
     }
-    
+
     
     /** The home listing: no category and no tags (the latest pager never has a date). */
     private boolean isHomeListing() {
@@ -137,9 +118,4 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
         return pinned;
     }
 
-    @Override
-    public boolean hasMoreEntries() {
-        return more;
-    }
-    
 }
