@@ -19,13 +19,11 @@
 package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
-import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -48,7 +46,6 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
 
     private final Weblog website;
     private final Weblogger pressroom;
-    private Date start;
     private String handle;
     private String name;
 
@@ -73,20 +70,16 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
 
     @Override
     protected boolean prepare() {
-        start = new Date();
         // The handle as it was given: a weblog being deleted is removed from
         // the index after its delete commits, when it can no longer be
         // re-queried. A weblog that still exists is re-queried, since this
         // operation can run on a separate thread and the object passed in is
         // detached.
-        handle = website.getHandle();
-        name = website.getName();
         try {
             Weblog current = pressroom.getWeblogManager().getWeblog(website.getId());
-            if (current != null) {
-                handle = current.getHandle();
-                name = current.getName();
-            }
+            Weblog named = current != null ? current : website;
+            handle = named.getHandle();
+            name = named.getName();
         } catch (WebloggerException ex) {
             log.error("Error getting website object", ex);
             return false;
@@ -103,8 +96,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     }
 
     @Override
-    protected void afterWrite() {
-        double length = (new Date().getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
+    protected void afterWrite(double length) {
         log.info("Completed deleting indices for website '{}' in '{}' seconds", name, length);
     }
 }

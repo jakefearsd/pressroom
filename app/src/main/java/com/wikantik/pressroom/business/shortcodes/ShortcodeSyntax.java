@@ -107,6 +107,10 @@ final class ShortcodeSyntax {
      * shortcodes (such as {@code [pin]}). The escaped {@code [[name ...]]}
      * form, other names, and tags that never close are not children.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares an author's tag name case-insensitively with the child tag asked for; "
+                    + "it decides only which of the author's own tags a reader collects.")
     static List<Map<String, String>> childTags(String body, String name) {
         List<Map<String, String>> tags = new ArrayList<>();
         Matcher matcher = OPEN_TAG.matcher(body);

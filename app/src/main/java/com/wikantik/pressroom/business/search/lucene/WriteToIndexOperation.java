@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
+import com.wikantik.pressroom.util.PressroomConstants;
 
 /**
  * An operation that writes to index. It owns the whole write protocol, in
@@ -106,8 +107,12 @@ public abstract class WriteToIndexOperation extends IndexOperation {
     /** The index change itself; a failure here is logged and ends the job. */
     protected abstract void write(IndexWriter writer) throws IOException;
 
-    /** Runs after a successful write, with the writer still open. */
-    protected void afterWrite() {
+    /**
+     * Runs after a successful write, with the writer still open.
+     *
+     * @param elapsedSeconds from the start of {@code prepare} to the end of the write
+     */
+    protected void afterWrite(double elapsedSeconds) {
         // most operations have nothing to do
     }
 
@@ -119,9 +124,10 @@ public abstract class WriteToIndexOperation extends IndexOperation {
     /** The template: prepare, write, close, release. Not overridable. */
     @Override
     protected final void doRun() {
+        long startMillis = System.currentTimeMillis();
         try {
             if (prepare()) {
-                writeWithWriter();
+                writeWithWriter(startMillis);
             }
         } finally {
             if (toRelease != null) {
@@ -133,14 +139,14 @@ public abstract class WriteToIndexOperation extends IndexOperation {
     // The writer is closed in endWriting() (the field alias), which PMD's
     // CloseResource cannot see.
     @SuppressWarnings("PMD.CloseResource")
-    private void writeWithWriter() {
+    private void writeWithWriter(long startMillis) {
         IndexWriter writer = beginWriting();
         if (writer == null) {
             return;
         }
         try {
             write(writer);
-            afterWrite();
+            afterWrite((System.currentTimeMillis() - startMillis) / (double) PressroomConstants.SEC_IN_MS);
         } catch (IOException | RuntimeException e) {
             log.error("Problems writing to the search index; operation {} failed",
                     getClass().getSimpleName(), e);

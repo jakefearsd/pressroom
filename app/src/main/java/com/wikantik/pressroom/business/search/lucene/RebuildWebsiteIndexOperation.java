@@ -20,7 +20,6 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -28,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
@@ -58,7 +56,6 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
 
     private Weblog website;
     private final Weblogger pressroom;
-    private Date start;
 
     // ~ Constructors
     // ===========================================================
@@ -81,7 +78,6 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
 
     @Override
     protected boolean prepare() {
-        start = new Date();
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
         // lazy initialization problems, so requery for the object now
@@ -126,8 +122,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
     }
 
     @Override
-    protected void afterWrite() {
-        double length = (new Date().getTime() - start.getTime()) / (double) PressroomConstants.SEC_IN_MS;
+    protected void afterWrite(double length) {
         if (website == null) {
             log.info("Completed rebuilding index for all users in '{}' secs", length);
         } else {
