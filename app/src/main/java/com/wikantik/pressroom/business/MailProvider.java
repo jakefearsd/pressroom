@@ -63,7 +63,7 @@ public class MailProvider {
     private ConfigurationType type = ConfigurationType.JNDI_NAME;
     
     private final String mailHostname;
-    private int    mailPort = -1;
+    private final int mailPort;
     private final String mailUsername;
     private final String mailPassword;
 
@@ -82,7 +82,7 @@ public class MailProvider {
         mailHostname = WebloggerConfig.getProperty("mail.hostname");
         mailUsername = WebloggerConfig.getProperty("mail.username");
         mailPassword = WebloggerConfig.getProperty("mail.password");
-        mailPort = ConfigSource.staticConfig().intOr("mail.port", mailPort, v -> v >= 1 && v <= 65_535);
+        mailPort = ConfigSource.staticConfig().intOr("mail.port", -1, v -> v >= 1 && v <= 65_535);
         
         // init and connect now so we fail early
         if (type == ConfigurationType.JNDI_NAME) {            
