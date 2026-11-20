@@ -195,6 +195,50 @@ class AdminApiTest {
     }
 
     @Test
+    void postWithSeveralBadFieldsNamesEveryOneAndAddsNobody() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/admin/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userName\":\" \",\"emailAddress\":\"not-an-address\","
+                                + "\"screenName\":\"" + "s".repeat(256) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(List.of("userName", "emailAddress", "screenName"), errorFields(body));
+        verify(weblogger.getUserManager(), never()).addUser(any());
+    }
+
+    @Test
+    void patchWithSeveralBadFieldsNamesEveryOneAndSavesNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User user = aUser("alice");
+        when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/users/alice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailAddress\":\"not-an-address\",\"screenName\":\" \"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(List.of("emailAddress", "screenName"), errorFields(body));
+        assertEquals("alice@example.test", user.getEmailAddress());
+        assertEquals("Screen alice", user.getScreenName());
+        verify(weblogger.getUserManager(), never()).saveUser(any());
+    }
+
+    private static List<String> errorFields(String problemJson) throws Exception {
+        List<String> fields = new java.util.ArrayList<>();
+        for (tools.jackson.databind.JsonNode e
+                : new tools.jackson.databind.ObjectMapper().readTree(problemJson).get("errors")) {
+            fields.add(e.get("field").asString());
+        }
+        return fields;
+    }
+
+    @Test
     void postRejectsADisallowedUserNameCharacter() throws Exception {
         Weblogger weblogger = mockedWeblogger();
 
