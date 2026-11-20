@@ -64,6 +64,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
     private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     private final RevisionLog<WeblogPage, WeblogPageRevision> revisions;
+    private final TrashLifecycle<WeblogPage> trash;
 
     /**
      * Each weblog's published page ids, in nav order, at the stamp they were
@@ -82,6 +83,23 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
                 WeblogPageRevision::setPage, WeblogPageRevision::getPage,
                 WeblogPageRevision::getNote, WeblogPageRevision::setNote,
                 WeblogPageRevision::isKept, WeblogPageRevision::setKept));
+        // A trash or a restore runs persist, not savePage: no slug check, no revision.
+        this.trash = new TrashLifecycle<>(new TrashLifecycle.Binding<>("page",
+                WeblogPage::getId,
+                page -> page.getStatus() == WeblogPage.PubStatus.TRASHED,
+                WeblogPage::getTrashedAt,
+                (page, at) -> {
+                    page.setStatus(WeblogPage.PubStatus.TRASHED);
+                    page.setTrashedAt(at);
+                },
+                page -> {
+                    page.setStatus(WeblogPage.PubStatus.DRAFT);
+                    page.setTrashedAt(null);
+                },
+                this::persist,
+                page -> strategy.getEntityManager(true).refresh(page, LockModeType.PESSIMISTIC_WRITE),
+                this::removePage,
+                this::getTrashedPages));
     }
 
     /** Whether the published pages are remembered for this weblog; for tests. */
@@ -267,24 +285,14 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     @Override
     public void trashPage(WeblogPage page) throws WebloggerException {
-        if (page.getStatus() == WeblogPage.PubStatus.TRASHED) {
-            throw new WebloggerException("page is already in the trash: " + page.getId());
-        }
-        page.setStatus(WeblogPage.PubStatus.TRASHED);
-        page.setTrashedAt(new Timestamp(System.currentTimeMillis()));
         // No longer PUBLISHED: persist clears the front door, moves the
         // stamp and takes the page out of search. Strand parts stay.
-        persist(page);
+        trash.trash(page);
     }
 
     @Override
     public void restorePage(WeblogPage page) throws WebloggerException {
-        if (page.getStatus() != WeblogPage.PubStatus.TRASHED) {
-            throw new WebloggerException("page is not in the trash: " + page.getId());
-        }
-        page.setStatus(WeblogPage.PubStatus.DRAFT);
-        page.setTrashedAt(null);
-        persist(page);
+        trash.restore(page, restoring -> { });
     }
 
     @Override
@@ -298,42 +306,14 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     @Override
     public int purgeTrash(Weblog weblog, int retentionDays) throws WebloggerException {
-        if (retentionDays < 0) {
-            return 0;
-        }
-        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(retentionDays);
-        int purged = 0;
         // One removePage per page, never a bulk delete: each takes its
         // strand's parts out, its search document and a stale front-door id.
-        for (WeblogPage page : new ArrayList<>(getTrashedPages(weblog))) {
-            Timestamp trashedAt = page.getTrashedAt();
-            if (trashedAt != null && trashedAt.getTime() <= cutoff && removeIfStillTrashed(page)) {
-                purged++;
-            }
-        }
-        return purged;
+        return trash.purge(weblog, retentionDays);
     }
 
-    /**
-     * Removes a purge candidate, but only if its row is still trash now. The
-     * sweep holds the page as it was when listed, and an author's restore
-     * can commit before the delete: the row is read again under a write
-     * lock, so a restore either is seen here or waits until this is done. A
-     * page that left the trash, or is already gone, is left alone.
-     *
-     * @return whether the page was removed
-     */
-    boolean removeIfStillTrashed(WeblogPage page) throws WebloggerException {
-        try {
-            strategy.getEntityManager(true).refresh(page, LockModeType.PESSIMISTIC_WRITE);
-        } catch (EntityNotFoundException gone) {
-            return false;
-        }
-        if (page.getStatus() != WeblogPage.PubStatus.TRASHED) {
-            return false;
-        }
-        removePage(page);
-        return true;
+    /** The purge step on one candidate; see {@link TrashLifecycle#removeIfStillTrashed}. */
+    boolean removeIfStillTrashed(WeblogPage page, Timestamp cutoff) throws WebloggerException {
+        return trash.removeIfStillTrashed(page, cutoff);
     }
 
     @Override

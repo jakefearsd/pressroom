@@ -85,7 +85,7 @@ class PageTrashPurgeRaceTest {
         restore.setParameter(1, id);
         assertEquals(1, restore.executeUpdate());
 
-        assertFalse(manager().removeIfStillTrashed(candidate));
+        assertFalse(manager().removeIfStillTrashed(candidate, cutoff()));
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
         // The native update went round the shared cache; read the row itself.
@@ -102,10 +102,41 @@ class PageTrashPurgeRaceTest {
         String id = trashedPage("about");
         WeblogPage candidate = manager().getTrashedPages(TestUtils.getManagedWebsite(weblog)).get(0);
 
-        assertTrue(manager().removeIfStillTrashed(candidate));
+        assertTrue(manager().removeIfStillTrashed(candidate, cutoff()));
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
 
         assertNull(manager().getPage(id));
+    }
+
+    /** The purge step's cutoff: a moment from now, so a page trashed just now is past it. */
+    private static java.sql.Timestamp cutoff() {
+        return new java.sql.Timestamp(System.currentTimeMillis() + 60_000);
+    }
+
+    /** A page trashed after the cutoff (re-trashed since the sweep listed it) is kept, as an entry is. */
+    @Test
+    void aPageTrashedAfterTheCutoffIsNotPurged() throws Exception {
+        String id = trashedPage("about");
+        WeblogPage candidate = manager().getTrashedPages(TestUtils.getManagedWebsite(weblog)).get(0);
+        java.sql.Timestamp yesterday = java.sql.Timestamp.from(
+                java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
+
+        assertFalse(manager().removeIfStillTrashed(candidate, yesterday));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertNotNull(manager().getPage(id));
+    }
+
+    @Test
+    void aPageAlreadyInTheTrashCannotBeTrashedAgainNorADraftRestored() throws Exception {
+        String id = trashedPage("about");
+        WeblogPage trashed = manager().getPage(id);
+        org.junit.jupiter.api.Assertions.assertThrows(com.wikantik.pressroom.WebloggerException.class,
+                () -> manager().trashPage(trashed));
+        manager().restorePage(trashed);
+        org.junit.jupiter.api.Assertions.assertThrows(com.wikantik.pressroom.WebloggerException.class,
+                () -> manager().restorePage(trashed));
     }
 }

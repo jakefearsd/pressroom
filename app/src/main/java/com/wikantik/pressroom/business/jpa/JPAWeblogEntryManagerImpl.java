@@ -41,6 +41,7 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.FlushModeType;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceUnitUtil;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import org.eclipse.persistence.annotations.BatchFetchType;
@@ -113,6 +114,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     private final JPAPersistenceStrategy strategy;
     private final TagAggregateStore tagAggregates;
     private final RevisionLog<WeblogEntry, WeblogEntryRevision> revisions;
+    private final TrashLifecycle<WeblogEntry> trash;
     
     // cached mapping of entryAnchors -> entryIds
     private final Map<String, String> entryAnchorToIdMap = Collections.synchronizedMap(new HashMap<>());
@@ -134,6 +136,22 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 WeblogEntryRevision::setWeblogEntry, WeblogEntryRevision::getWeblogEntry,
                 WeblogEntryRevision::getNote, WeblogEntryRevision::setNote,
                 WeblogEntryRevision::isKept, WeblogEntryRevision::setKept));
+        this.trash = new TrashLifecycle<>(new TrashLifecycle.Binding<>("entry",
+                WeblogEntry::getId,
+                entry -> entry.getStatus() == PubStatus.TRASHED,
+                WeblogEntry::getTrashedAt,
+                (entry, at) -> {
+                    entry.setStatus(PubStatus.TRASHED);
+                    entry.setTrashedAt(at);
+                },
+                entry -> {
+                    entry.setStatus(PubStatus.DRAFT);
+                    entry.setTrashedAt(null);
+                },
+                this::saveWeblogEntry,
+                entry -> strategy.getEntityManager(true).refresh(entry, LockModeType.PESSIMISTIC_WRITE),
+                this::removeWeblogEntry,
+                this::getTrashedEntries));
     }
     
     /**
@@ -600,9 +618,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     @Override
     public void trashWeblogEntry(WeblogEntry entry) throws WebloggerException {
         boolean wasPublished = entry.isPublished();
-        entry.setStatus(PubStatus.TRASHED);
-        entry.setTrashedAt(new Timestamp(System.currentTimeMillis()));
-        saveWeblogEntry(entry);
+        trash.trash(entry);
 
         if (wasPublished) {
             pressroom.getWeblogManager().saveWeblog(entry.getWebsite());
@@ -637,13 +653,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public void restoreWeblogEntry(WeblogEntry entry) throws WebloggerException {
-        // stored false: a trashed pin is not among the counted, so it comes back as a new one
-        if (entry.getPinned() && EntryPins.wouldExceed(false, true, getPinnedEntryCount(entry.getWebsite()))) {
-            entry.setPinned(Boolean.FALSE);
-        }
-        entry.setStatus(PubStatus.DRAFT);
-        entry.setTrashedAt(null);
-        saveWeblogEntry(entry);
+        trash.restore(entry, restoring -> {
+            // stored false: a trashed pin is not among the counted, so it comes back as a new one
+            if (restoring.getPinned()
+                    && EntryPins.wouldExceed(false, true, getPinnedEntryCount(restoring.getWebsite()))) {
+                restoring.setPinned(Boolean.FALSE);
+            }
+        });
     }
 
     /**
@@ -681,47 +697,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public int purgeTrash(Weblog weblog, int retentionDays) throws WebloggerException {
-        if (retentionDays < 0) {
-            // -1 (and, defensively, any other negative value) means "keep
-            // trash forever" -- purge nothing.
-            return 0;
-        }
-
-        Timestamp cutoff = Timestamp.from(
-                java.time.Instant.now().minus(java.time.Duration.ofDays(retentionDays)));
-
-        int purged = 0;
-        for (WeblogEntry entry : new ArrayList<>(getTrashedEntries(weblog))) {
-            Timestamp trashedAt = entry.getTrashedAt();
-            // Same rule as pages: trashed at or before the cutoff.
-            if (trashedAt != null && !trashedAt.after(cutoff) && removeIfStillTrashed(entry, cutoff)) {
-                purged++;
-            }
-        }
-        return purged;
+        // A negative retention (-1, and defensively any other) keeps the trash forever.
+        return trash.purge(weblog, retentionDays);
     }
 
-    /**
-     * Removes a purge candidate only if its row is still trash and still past
-     * the cutoff now. The sweep holds the entry as it was when listed; a
-     * restore (or a re-trash) can commit before the delete, so the row is read
-     * again under a write lock. An entry that left the trash, or is gone, is
-     * left alone.
-     *
-     * @return whether the entry was removed
-     */
+    /** The purge step on one candidate; see {@link TrashLifecycle#removeIfStillTrashed}. */
     boolean removeIfStillTrashed(WeblogEntry entry, Timestamp cutoff) throws WebloggerException {
-        try {
-            strategy.getEntityManager(true).refresh(entry, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
-        } catch (jakarta.persistence.EntityNotFoundException gone) {
-            return false;
-        }
-        Timestamp trashedAt = entry.getTrashedAt();
-        if (entry.getStatus() != PubStatus.TRASHED || trashedAt == null || trashedAt.after(cutoff)) {
-            return false;
-        }
-        removeWeblogEntry(entry);
-        return true;
+        return trash.removeIfStillTrashed(entry, cutoff);
     }
 
     private List<WeblogEntry> getNextPrevEntries(WeblogEntry current, String catName,

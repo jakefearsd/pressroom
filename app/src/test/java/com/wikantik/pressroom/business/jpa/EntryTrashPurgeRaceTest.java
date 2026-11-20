@@ -123,4 +123,16 @@ class EntryTrashPurgeRaceTest {
 
         assertNull(manager().getWeblogEntry(id));
     }
+
+    /** Entries refuse the same state errors pages do. */
+    @Test
+    void anEntryCannotBeTrashedTwiceNorRestoredFromADraft() throws Exception {
+        WeblogEntry trashed = trashedEntry("refusals", Instant.now());
+        org.junit.jupiter.api.Assertions.assertThrows(com.wikantik.pressroom.WebloggerException.class,
+                () -> manager().trashWeblogEntry(trashed));
+        manager().restoreWeblogEntry(trashed);
+        assertEquals(PubStatus.DRAFT, trashed.getStatus());
+        org.junit.jupiter.api.Assertions.assertThrows(com.wikantik.pressroom.WebloggerException.class,
+                () -> manager().restoreWeblogEntry(trashed));
+    }
 }
