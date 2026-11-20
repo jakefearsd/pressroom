@@ -146,6 +146,20 @@ class MediaApiTest {
         assertEquals("original.jpg", file.getName(), "the in-memory file must be untouched on refusal");
     }
 
+    @Test
+    void aPatchWithSeveralBadFieldsNamesEveryOneAndChangesNothing() {
+        MediaFile file = new MediaFile();
+        file.setName("original.jpg");
+
+        ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(file,
+                new MediaDtos.MediaPatch("a".repeat(256), 2.0, null, null, " ", null), java.util.Set.of()));
+
+        assertEquals(java.util.List.of("focalX", "altText", "name"),
+                ex.getFieldErrors().stream().map(f -> f.field()).distinct().toList());
+        assertEquals("original.jpg", file.getName());
+        assertNull(file.getAltText());
+    }
+
     // -----------------------------------------------------------------
     // Controller-level tests: routing, status codes, the ownership checks
     // and JSON shape -- none of which the DTO-only tests above can see.

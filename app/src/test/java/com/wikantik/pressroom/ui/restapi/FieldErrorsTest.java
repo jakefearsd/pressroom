@@ -34,6 +34,26 @@ class FieldErrorsTest {
     }
 
     @Test
+    void valueReturnsThePassingResultAndRecordsAFailingOne() {
+        FieldErrors errors = new FieldErrors();
+        assertEquals("ok", errors.value("slug", () -> "ok").orElseThrow());
+        assertTrue(errors.isEmpty());
+        assertTrue(errors.value("slug", () -> {
+            throw ApiException.badRequest("bad slug");
+        }).isEmpty());
+        ApiException ex = assertThrows(ApiException.class, errors::throwIfAny);
+        assertEquals("slug", ex.getFieldErrors().get(0).field());
+    }
+
+    @Test
+    void valuePropagatesANon400() {
+        FieldErrors errors = new FieldErrors();
+        assertThrows(ApiException.class, () -> errors.value("slug", () -> {
+            throw ApiException.notFound("gone");
+        }));
+    }
+
+    @Test
     void aSingleProblemKeepsItsOwnMessageAsTheDetail() {
         FieldErrors errors = new FieldErrors();
         errors.check("status", () -> {

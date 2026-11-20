@@ -15,6 +15,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 
 /**
@@ -216,32 +217,40 @@ public final class AdminDtos {
      * violations against.
      */
     public static Set<String> applyPatch(WeblogConfigBean bean, WeblogPatch patch, Set<String> cleared) {
+        FieldErrors errors = new FieldErrors();
         if (patch.name() != null) {
             String name = patch.name().trim();
-            if (name.isBlank()) {
-                throw ApiException.invalidField("name", "name cannot be blank.");
-            }
-            ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
+            errors.check("name", () -> {
+                if (name.isBlank()) {
+                    throw ApiException.invalidField("name", "name cannot be blank.");
+                }
+                ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
+            });
             bean.setName(name);
         }
         if (patch.tagline() != null) {
-            ColumnLimits.requireMaxLength("tagline", patch.tagline(), ColumnLimits.TAGLINE);
+            errors.check("tagline", () -> ColumnLimits.requireMaxLength("tagline", patch.tagline(),
+                    ColumnLimits.TAGLINE));
             bean.setTagline(patch.tagline());
         }
         if (patch.copyright() != null) {
-            ColumnLimits.requireMaxLength("copyright", patch.copyright(), ColumnLimits.COPYRIGHT);
+            errors.check("copyright", () -> ColumnLimits.requireMaxLength("copyright", patch.copyright(),
+                    ColumnLimits.COPYRIGHT));
             bean.setCopyright(patch.copyright());
         }
         if (patch.emailAddress() != null) {
-            ColumnLimits.requireMaxLength("emailAddress", patch.emailAddress(), ColumnLimits.WEBLOG_EMAIL_ADDRESS);
+            errors.check("emailAddress", () -> ColumnLimits.requireMaxLength("emailAddress", patch.emailAddress(),
+                    ColumnLimits.WEBLOG_EMAIL_ADDRESS));
             bean.setEmailAddress(patch.emailAddress());
         }
         if (patch.locale() != null) {
-            ColumnLimits.requireMaxLength("locale", patch.locale(), ColumnLimits.LOCALE);
+            errors.check("locale", () -> ColumnLimits.requireMaxLength("locale", patch.locale(),
+                    ColumnLimits.LOCALE));
             bean.setLocale(patch.locale());
         }
         if (patch.timeZone() != null) {
-            ColumnLimits.requireMaxLength("timeZone", patch.timeZone(), ColumnLimits.TIME_ZONE);
+            errors.check("timeZone", () -> ColumnLimits.requireMaxLength("timeZone", patch.timeZone(),
+                    ColumnLimits.TIME_ZONE));
             bean.setTimeZone(patch.timeZone());
         }
         if (patch.entryDisplayCount() != null) {
@@ -278,13 +287,16 @@ public final class AdminDtos {
         setIfPresent(patch.placeRegion(), bean::setPlaceRegion);
         setIfPresent(patch.placeCountry(), bean::setPlaceCountry);
         if (patch.placeLat() != null) {
-            bean.setPlaceLat(twoDecimals("placeLat", patch.placeLat()));
+            errors.value("placeLat", () -> twoDecimals("placeLat", patch.placeLat()))
+                    .ifPresent(bean::setPlaceLat);
         }
         if (patch.placeLng() != null) {
-            bean.setPlaceLng(twoDecimals("placeLng", patch.placeLng()));
+            errors.value("placeLng", () -> twoDecimals("placeLng", patch.placeLng()))
+                    .ifPresent(bean::setPlaceLng);
         }
         setIfPresent(patch.bookingUrl(), bean::setBookingUrl);
         WEBLOG_CLEAR.apply(bean, cleared);
+        errors.throwIfAny();
         Set<String> touched = new HashSet<>(ClearFields.fieldsWithValue(patch));
         touched.addAll(cleared);
         if (touched.contains("frontPage")) {

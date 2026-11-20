@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.StrandRules;
@@ -123,22 +124,21 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         // Both act on stored content, which a create has none of.
         RevisionedContent.refuseRevisionNote(errors, body.revisionNote());
         RevisionedContent.refuseExpectedHash(errors, body.expectedContentHash());
-        String[] slug = new String[1];
         // No slug named: the title's, held to the rules a typed one is.
         String wanted = body.slug() == null || body.slug().isBlank()
                 ? WeblogPage.slugFromTitle(body.title()) : body.slug();
-        errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(wanted));
+        Optional<String> slug = errors.value("slug", () -> PageDtos.requireUsableSlug(wanted));
         checkWrite(errors, weblog, body, Set.of(), null);
         checkStrand(errors, weblog, null, body.strand());
         errors.throwIfAny();
         // A clash with stored state, not a field format problem: a 409,
         // reported only once every field passed (as an entry's anchor is).
-        requireSlugAvailable(weblog, slug[0], null);
+        requireSlugAvailable(weblog, slug.orElseThrow(), null);
 
         WeblogPage page = new WeblogPage();
         page.setWeblog(weblog);
         PageDtos.applyWrite(page, body, Set.of());
-        page.setSlug(slug[0]);
+        page.setSlug(slug.orElseThrow());
 
         weblogger.getWeblogPageManager().savePage(page, requireAuthenticatedUser(request), null);
         weblogger.flush();
@@ -166,18 +166,16 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         if (body.title() != null && body.title().isBlank()) {
             errors.add("title", "title cannot be blank.");
         }
-        String[] slug = new String[1];
-        if (body.slug() != null) {
-            errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(body.slug()));
-        }
+        Optional<String> slug = body.slug() == null ? Optional.empty()
+                : errors.value("slug", () -> PageDtos.requireUsableSlug(body.slug()));
         Set<String> cleared = new HashSet<>();
         errors.check("clear", () -> cleared.addAll(
                 PageDtos.PAGE_CLEAR.validate(body.clear(), body)));
         checkWrite(errors, page.getWeblog(), body, cleared, page.getOgImageId());
         checkStrand(errors, page.getWeblog(), page, body.strand());
         errors.throwIfAny();
-        if (slug[0] != null) {
-            requireSlugAvailable(page.getWeblog(), slug[0], page.getId());
+        if (slug.isPresent()) {
+            requireSlugAvailable(page.getWeblog(), slug.get(), page.getId());
         }
 
         // Read before anything is applied; checked again under the row lock,
@@ -188,9 +186,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
 
         PageDtos.applyWrite(page, body, cleared);
-        if (slug[0] != null) {
-            page.setSlug(slug[0]);
-        }
+        slug.ifPresent(page::setSlug);
 
         weblogger.getWeblogPageManager().savePage(page, requireAuthenticatedUser(request), revisionNote);
         weblogger.flush();

@@ -9,6 +9,7 @@ import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.util.PressroomMessages;
 
@@ -175,9 +176,9 @@ public final class MediaDtos {
      * would leave half a point, and is a 400 too. Checked before anything is
      * applied, so a refused patch changes nothing.
      */
-    private static void checkFocalPoint(MediaFile file, MediaPatch patch) {
-        requireFraction("focalX", patch.focalX());
-        requireFraction("focalY", patch.focalY());
+    private static void checkFocalPoint(FieldErrors errors, MediaFile file, MediaPatch patch) {
+        errors.check("focalX", () -> requireFraction("focalX", patch.focalX()));
+        errors.check("focalY", () -> requireFraction("focalY", patch.focalY()));
         if (patch.focalX() == null && patch.focalY() == null) {
             return;
         }
@@ -186,8 +187,7 @@ public final class MediaDtos {
         boolean hasY = patch.focalY() != null || file.getFocalY() != null;
         if (hasX != hasY) {
             String field = patch.focalX() != null ? "focalX" : "focalY";
-            throw ApiException.invalidField(field,
-                    "focalX and focalY are set together; this file has no focal point yet.");
+            errors.add(field, "focalX and focalY are set together; this file has no focal point yet.");
         }
     }
 
@@ -209,9 +209,25 @@ public final class MediaDtos {
      * silently broken one.
      */
     public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared) {
-        checkFocalPoint(file, patch);
+        // Every field is judged before any is applied (the file is managed),
+        // and one 400 names all the bad ones.
+        FieldErrors errors = new FieldErrors();
+        checkFocalPoint(errors, file, patch);
         if (patch.altText() != null) {
-            ColumnLimits.requireMaxLength("altText", patch.altText(), ColumnLimits.MEDIA_ALT_TEXT);
+            errors.check("altText", () -> ColumnLimits.requireMaxLength("altText", patch.altText(),
+                    ColumnLimits.MEDIA_ALT_TEXT));
+        }
+        String name = patch.name() == null ? null : patch.name().trim();
+        if (name != null) {
+            errors.check("name", () -> {
+                if (name.isEmpty()) {
+                    throw ApiException.invalidField("name", "name cannot be blank.");
+                }
+                ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
+            });
+        }
+        errors.throwIfAny();
+        if (patch.altText() != null) {
             file.setAltText(patch.altText());
         }
         if (patch.focalX() != null) {
@@ -220,12 +236,7 @@ public final class MediaDtos {
         if (patch.focalY() != null) {
             file.setFocalY(patch.focalY());
         }
-        if (patch.name() != null) {
-            String name = patch.name().trim();
-            if (name.isEmpty()) {
-                throw ApiException.invalidField("name", "name cannot be blank.");
-            }
-            ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
+        if (name != null) {
             file.setName(name);
         }
         MEDIA_CLEAR.apply(file, cleared);

@@ -366,6 +366,18 @@ class WeblogsApiTest {
     }
 
     @Test
+    void aPatchWithSeveralBadFieldsNamesEveryOne() {
+        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(" ", "t".repeat(2000), null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
+
+        ApiException e = assertThrows(ApiException.class,
+                () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
+
+        assertEquals(400, e.getStatus());
+        assertTrue(e.getFieldErrors().size() >= 2, e.getFieldErrors().toString());
+    }
+
+    @Test
     void aRuleTheRequestBreaksIsA400AndChangesNothing() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");

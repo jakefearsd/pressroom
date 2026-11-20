@@ -35,6 +35,7 @@ import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.util.TokenGenerator;
@@ -129,27 +130,22 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     + "existing account that differs only in case.")
     public ResponseEntity<AdminDtos.UserView> createUser(@RequestBody AdminDtos.UserCreate body)
             throws WebloggerException {
+        FieldErrors errors = new FieldErrors();
         String userName = body.userName() == null ? null : body.userName().trim();
-        if (StringUtils.isBlank(userName)) {
-            throw ApiException.invalidField("userName", "userName is required.");
-        }
-        ColumnLimits.requireMaxLength("userName", userName, ColumnLimits.USERNAME);
-        String allowed = WebloggerConfig.getProperty("username.allowedChars");
-        if (StringUtils.isBlank(allowed)) {
-            allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
-        }
-        if (!CharSetUtils.keep(userName, allowed).equals(userName)) {
-            throw ApiException.invalidField("userName", "userName contains characters that are not allowed.");
-        }
+        errors.check("userName", () -> requireValidUserName(userName));
 
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
-        if (StringUtils.isBlank(emailAddress) || !EMAIL_PATTERN.matcher(emailAddress).matches()) {
-            throw ApiException.invalidField("emailAddress", "A valid emailAddress is required.");
-        }
-        ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
+        errors.check("emailAddress", () -> {
+            if (StringUtils.isBlank(emailAddress) || !EMAIL_PATTERN.matcher(emailAddress).matches()) {
+                throw ApiException.invalidField("emailAddress", "A valid emailAddress is required.");
+            }
+            ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
+        });
 
         String screenName = StringUtils.isBlank(body.screenName()) ? userName : body.screenName().trim();
-        ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
+        errors.check("screenName", () -> ColumnLimits.requireMaxLength("screenName", screenName,
+                ColumnLimits.SCREEN_NAME));
+        errors.throwIfAny();
 
         UserManager mgr = weblogger.getUserManager();
         // Checked with enabled=null (any status) rather than relying on
@@ -229,22 +225,29 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         AdminAccountGuard.requireNotAdmin(mgr, user);
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
 
+        FieldErrors errors = new FieldErrors();
         if (body.emailAddress() != null) {
             String emailAddress = body.emailAddress().trim();
-            if (!EMAIL_PATTERN.matcher(emailAddress).matches()) {
-                throw ApiException.invalidField("emailAddress", "emailAddress is not a valid address.");
-            }
-            ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
-            user.setEmailAddress(emailAddress);
+            // Set only when it passes: the user is a managed entity.
+            errors.value("emailAddress", () -> {
+                if (!EMAIL_PATTERN.matcher(emailAddress).matches()) {
+                    throw ApiException.invalidField("emailAddress", "emailAddress is not a valid address.");
+                }
+                ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
+                return emailAddress;
+            }).ifPresent(user::setEmailAddress);
         }
         if (body.screenName() != null) {
             String screenName = body.screenName().trim();
-            if (screenName.isBlank()) {
-                throw ApiException.invalidField("screenName", "screenName cannot be blank.");
-            }
-            ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
-            user.setScreenName(screenName);
+            errors.value("screenName", () -> {
+                if (screenName.isBlank()) {
+                    throw ApiException.invalidField("screenName", "screenName cannot be blank.");
+                }
+                ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
+                return screenName;
+            }).ifPresent(user::setScreenName);
         }
+        errors.throwIfAny();
         if (body.enabled() != null) {
             user.setEnabled(body.enabled());
         }
@@ -257,6 +260,20 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
         }
         return AdminDtos.toView(user, roles(user));
+    }
+
+    private static void requireValidUserName(String userName) {
+        if (StringUtils.isBlank(userName)) {
+            throw ApiException.invalidField("userName", "userName is required.");
+        }
+        ColumnLimits.requireMaxLength("userName", userName, ColumnLimits.USERNAME);
+        String allowed = WebloggerConfig.getProperty("username.allowedChars");
+        if (StringUtils.isBlank(allowed)) {
+            allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
+        }
+        if (!CharSetUtils.keep(userName, allowed).equals(userName)) {
+            throw ApiException.invalidField("userName", "userName contains characters that are not allowed.");
+        }
     }
 
     private List<String> roles(User user) throws WebloggerException {

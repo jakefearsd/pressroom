@@ -2,6 +2,8 @@ package com.wikantik.pressroom.ui.restapi;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +42,23 @@ public final class FieldErrors {
     /** As above, for a check whose 400s name their own fields. */
     public <E extends Exception> void check(Check<E> check) throws E {
         check(null, check);
+    }
+
+    /**
+     * As {@link #check(String, Check)} for a check that yields a value: the
+     * value when it passes, empty (and the problem recorded) when it does not.
+     */
+    public <T> Optional<T> value(String field, Supplier<T> check) {
+        try {
+            return Optional.ofNullable(check.get());
+        } catch (ApiException e) {
+            if (e.getStatus() != 400) {
+                throw e;
+            }
+            List<ApiProblem.FieldError> named = e.getFieldErrors();
+            errors.addAll(named.isEmpty() ? List.of(new ApiProblem.FieldError(field, e.getMessage())) : named);
+            return Optional.empty();
+        }
     }
 
     public void add(String field, String message) {
