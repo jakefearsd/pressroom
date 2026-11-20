@@ -129,6 +129,11 @@ public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
         themeReload = WebloggerConfig.getBooleanProperty("themes.reload.mode");
     }
 
+    @Override
+    WeblogPageRequest parseRequest(HttpServletRequest request) throws WebloggerException {
+        return new WeblogPageRequest(weblogger, request);
+    }
+
     /**
      * Handle GET requests for weblog pages.
      */
@@ -137,11 +142,6 @@ public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
     // left for this method to close. (The cache-hit object has its own
     // justification, on servedFromCache below.)
     @SuppressWarnings("PMD.CloseResource")
-    @Override
-    WeblogPageRequest parseRequest(HttpServletRequest request) throws WebloggerException {
-        return new WeblogPageRequest(weblogger, request);
-    }
-
     @Override
     void serve(HttpServletRequest request, HttpServletResponse response,
             WeblogPageRequest pageRequest, Weblog weblog) throws ServletException, IOException {

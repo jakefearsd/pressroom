@@ -24,7 +24,6 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.Theme;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Template;
-import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -85,16 +85,6 @@ public class FeedServlet extends WeblogRequestServlet<WeblogFeedRequest> {
     }
 
 
-    /**
-     * Handle GET requests for weblog feeds.
-     */
-    // Two CachedContent sites here are false positives for CloseResource:
-    // the cache-hit object (siteWideCache/weblogFeedCache.get(...)) is owned
-    // by the render cache and may still be serving other concurrent
-    // requests -- this method must not close it. The cache-miss object
-    // (RenderingServletUtils.renderAndFlush(...)) is already flushed and closed
-    // internally before it is returned; there is nothing left to close here.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
     WeblogFeedRequest parseRequest(HttpServletRequest request) throws WebloggerException {
         return new WeblogFeedRequest(weblogger, request);
@@ -105,6 +95,16 @@ public class FeedServlet extends WeblogRequestServlet<WeblogFeedRequest> {
         return false;
     }
 
+    /**
+     * Handle GET requests for weblog feeds.
+     */
+    // Two CachedContent sites here are false positives for CloseResource:
+    // the cache-hit object (siteWideCache/weblogFeedCache.get(...)) is owned
+    // by the render cache and may still be serving other concurrent
+    // requests -- this method must not close it. The cache-miss object
+    // (RenderingServletUtils.renderAndFlush(...)) is already flushed and closed
+    // internally before it is returned; there is nothing left to close here.
+    @SuppressWarnings("PMD.CloseResource")
     @Override
     void serve(HttpServletRequest request, HttpServletResponse response,
             WeblogFeedRequest feedRequest, Weblog weblog) throws ServletException, IOException {
