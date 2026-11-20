@@ -71,8 +71,11 @@ limit in code, so a future change to the column moves them.
 1. A `POST`/`PATCH` to `/api/v1/.../entries` whose `text` is 1,000,000
    characters of a 3-byte BMP character (e.g. `中`), plus a normal title, is
    not refused by the body-size limit (test fails today with 413).
-2. A body one byte over the new limit is still 413 `too-large`, both with a
-   declared length and without one (streamed).
+2. A body one byte over the new limit is still refused: 413 `too-large` when
+   the length is declared; when it is not (streamed), the capped read fails
+   and the answer is 400, as before this change and as the README documents.
+   (Amended after the final review: the original text asked for 413 in both
+   cases; making the streamed case 413 would be a separate behaviour change.)
 3. `MAX_BODY_BYTES` is computed from `ColumnLimits.ENTRY_TEXT` (3 bytes per
    character plus a fixed headroom for the other fields and JSON framing),
    with the derivation in its javadoc, and a test pins the relationship.

@@ -113,7 +113,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   constant. The JSP editor posts urlencoded (a 3-byte character is 9 bytes),
   so `server.tomcat.max-http-form-post-size` in `application.properties` is
   `9 * ENTRY_TEXT + HEADROOM_BYTES` (10,048,576); `EntryWriteLimitsTest` pins
-  all three, so raising the column cap means moving that property too.
+  the API limit and the form-post property (`McpServerConfigTest` pins the MCP
+  limit to the API's), so raising the column cap means moving that property too.
   `ColumnLimits.ENTRY_TEXT` (1,000,000 characters) caps entry text in
   `EntryDtos.applyWrite`, so edits cannot grow an entry past it a request at a
   time. `TextDiff` caps its table at `MAX_CELLS` after matching the common
