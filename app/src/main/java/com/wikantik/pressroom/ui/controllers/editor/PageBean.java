@@ -198,9 +198,9 @@ public class PageBean {
         page.setStatus(parseStatus(status));
         page.setShowInNav(showInNav);
         page.setNavOrder(navOrder);
-        page.setMetaTitle(metaTitle);
-        page.setSearchDescription(searchDescription);
-        page.setCanonicalUrl(canonicalUrl);
+        page.setMetaTitle(StringUtils.trimToNull(metaTitle));
+        page.setSearchDescription(StringUtils.trimToNull(searchDescription));
+        page.setCanonicalUrl(StringUtils.trimToNull(canonicalUrl));
         page.setNoindex(noindex);
         page.setOgImageId(ogImageId);
         page.setStrand(strand);
