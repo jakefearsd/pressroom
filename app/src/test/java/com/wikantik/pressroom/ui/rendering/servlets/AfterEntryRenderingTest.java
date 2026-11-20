@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -37,6 +38,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.search.IndexManager;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -69,6 +72,7 @@ class AfterEntryRenderingTest {
     private Weblog weblog;
     private final List<Weblog> otherBlogs = new ArrayList<>();
     private long clock = System.currentTimeMillis() - 86_400_000L * 30;
+    private int published;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -109,7 +113,44 @@ class AfterEntryRenderingTest {
         edit.apply(managed);
         mgr.saveWeblogEntry(managed);
         TestUtils.endSession(true);
+        if (status == PubStatus.PUBLISHED && handle.equals(weblog.getHandle())) {
+            published++;
+        }
         return entry;
+    }
+
+    /**
+     * Saves are indexed in the background after commit (EntryIndexer), and
+     * the related list takes the index's picks first (FurtherReadingTest
+     * covers that). These tests pin the tag-and-category rule, which rendered
+     * either way depending on whether indexing had finished by render time.
+     * So wait until every published post is indexed -- nothing is left in
+     * flight to re-add one -- then take the blog out of the index.
+     */
+    private void settleIndex() throws Exception {
+        IndexManager index = TestUtils.weblogger().getIndexManager();
+        awaitIndexed(index, published);
+        index.removeWeblogIndex(TestUtils.getManagedWebsite(weblog));
+        TestUtils.endSession(true);
+        awaitIndexed(index, 0);
+        // a later call waits only for posts made since this one
+        published = 0;
+    }
+
+    private void awaitIndexed(IndexManager index, int expected) throws Exception {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        int found = indexed(index);
+        while (found != expected && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+            found = indexed(index);
+        }
+        assertEquals(expected, found, "posts in the index");
+    }
+
+    private int indexed(IndexManager index) throws Exception {
+        // every post's text is TestUtils' "blah blah entry"
+        return index.find(new SearchSpec("blah", SearchSpec.Scope.BLOG, handle, null, 0, 50, "en_US"),
+                TestUtils.weblogger().getUrlStrategy()).total();
     }
 
     private WeblogEntry post(String anchor, Edit edit) throws Exception {
@@ -168,6 +209,7 @@ class AfterEntryRenderingTest {
 
     /** Runs the check under each article theme and reports every theme that fails. */
     private void inEveryTheme(String locale, ThemeCheck check) throws Exception {
+        settleIndex();
         List<String> failures = new ArrayList<>();
         for (String theme : THEMES) {
             try {
