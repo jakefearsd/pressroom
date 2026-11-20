@@ -63,6 +63,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
+    private final RevisionLog<WeblogPage, WeblogPageRevision> revisions;
 
     /**
      * Each weblog's published page ids, in nav order, at the stamp they were
@@ -75,6 +76,12 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         this.pressroom = pressroom;
         this.strategy = strategy;
         this.publishedPageIds = new WeblogStampedCache<>(strategy);
+        this.revisions = new RevisionLog<>(strategy, new RevisionLog.Binding<>(
+                RevisionRetention.Kind.PAGE, WeblogPage.class, WeblogPageRevision.class,
+                "WeblogPageRevision.getByPage", WeblogPage::getId,
+                WeblogPageRevision::setPage, WeblogPageRevision::getPage,
+                WeblogPageRevision::getNote, WeblogPageRevision::setNote,
+                WeblogPageRevision::isKept, WeblogPageRevision::setKept));
     }
 
     /** Whether the published pages are remembered for this weblog; for tests. */
@@ -144,93 +151,24 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
      * save with it. So it is written after that commit, in a transaction of
      * its own, where a failure is logged and costs only the revision.
      */
-    // The factory is the tier's own, shared and closed at shutdown by the
-    // strategy; closing it here would take the whole persistence unit down.
-    @SuppressWarnings("PMD.CloseResource")
     private void recordRevision(WeblogPage page, User editor, String revisionNote, boolean restore) {
-        int retention = RevisionRetention.Kind.PAGE.retention();
-        if (retention == 0) {
-            return;
-        }
         String actor = editor != null ? editor.getUserName() : null;
-        WeblogPageRevision revision = page.contentBeingReplaced(actor);
-        if (revision == null) {
-            return;
-        }
-        revision.setNote(revisionNote);
-        String pageId = page.getId();
-        EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
-        strategy.runAfterCommit(() -> storeRevision(emf, pageId, revision, retention, actor, restore));
-    }
-
-    /**
-     * Stores {@code revision} for the page and prunes its oldest beyond
-     * {@code retention}, in a transaction of its own on its own
-     * EntityManager: the thread's unit of work has just committed, and a
-     * failure here must leave it exactly as the save left it.
-     */
-    private static void storeRevision(EntityManagerFactory emf, String pageId,
-            WeblogPageRevision revision, int retention, String actor, boolean restore) {
-        try (EntityManager em = emf.createEntityManager()) {
-            EntityTransaction tx = em.getTransaction();
-            tx.begin();
-            try {
-                WeblogPage page = em.find(WeblogPage.class, pageId);
-                if (page == null) {
-                    // deleted by the transaction that saved it: nothing to hang off
-                    return;
-                }
-                // Which revisions exist is RevisionRetention's decision: a
-                // coalesced save writes none and so pushes none out.
-                if (!RevisionRetention.shouldStore(em, RevisionRetention.Kind.PAGE, pageId, actor,
-                        revision.getNote(), restore)) {
-                    return;
-                }
-                revision.setPage(page);
-                RevisionRetention.pruneAtWrite(em, RevisionRetention.Kind.PAGE, WeblogPageRevision.class,
-                        pageId, retention);
-                em.persist(revision);
-                tx.commit();
-            } finally {
-                if (tx.isActive()) {
-                    tx.rollback();
-                }
-            }
-        } catch (RuntimeException e) {
-            log.warn("Could not record a revision for page {}; the save itself is unaffected", pageId, e);
-        }
+        revisions.record(page, () -> page.contentBeingReplaced(actor), revisionNote, actor, restore);
     }
 
     @Override
     public List<WeblogPageRevision> getRevisions(WeblogPage page) throws WebloggerException {
-        if (page == null || page.getId() == null) {
-            return Collections.emptyList();
-        }
-        TypedQuery<WeblogPageRevision> query = strategy.getNamedQuery(
-                "WeblogPageRevision.getByPage", WeblogPageRevision.class);
-        query.setParameter(1, page);
-        return query.getResultList();
+        return revisions.list(page);
     }
 
     @Override
     public WeblogPageRevision getRevision(String id) throws WebloggerException {
-        if (id == null) {
-            return null;
-        }
-        return (WeblogPageRevision) strategy.load(WeblogPageRevision.class, id);
+        return revisions.get(id);
     }
 
     @Override
     public void setRevisionKept(WeblogPageRevision revision, boolean kept) throws WebloggerException {
-        if (revision.isKept() == kept) {
-            return;
-        }
-        if (kept) {
-            RevisionRetention.requireRoomToKeep(strategy.getEntityManager(true), RevisionRetention.Kind.PAGE,
-                    revision.getPage().getId());
-        }
-        revision.setKept(kept);
-        strategy.store(revision);
+        revisions.setKept(revision, kept);
     }
 
     @Override

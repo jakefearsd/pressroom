@@ -463,6 +463,9 @@ public class WeblogEntryRevisionTest {
     // ------------------------------------------------------------- fixtures
 
     private static final String REFUSING_CHECK = "wer_test_refuses_title";
+    /** The logger of the shared revision writer (package-private, so named). */
+    private static final String REVISION_LOG = "com.wikantik.pressroom.business.jpa.RevisionLog";
+
 
     private static Appender captureWarnings(List<LogEvent> into) {
         Appender appender = new AbstractAppender("WeblogEntryRevisionTest-warnings", null, null,
@@ -470,20 +473,20 @@ public class WeblogEntryRevisionTest {
             @Override
             public void append(LogEvent event) {
                 if (event.getLevel().isMoreSpecificThan(Level.WARN)
-                        && JPAWeblogEntryManagerImpl.class.getName().equals(event.getLoggerName())) {
+                        && REVISION_LOG.equals(event.getLoggerName())) {
                     into.add(event.toImmutable());
                 }
             }
         };
         appender.start();
         LoggerContext.getContext(false).getConfiguration()
-                .getLoggerConfig(JPAWeblogEntryManagerImpl.class.getName()).addAppender(appender, null, null);
+                .getLoggerConfig(REVISION_LOG).addAppender(appender, null, null);
         return appender;
     }
 
     private static void stopCapturing(Appender appender) {
         LoggerContext.getContext(false).getConfiguration()
-                .getLoggerConfig(JPAWeblogEntryManagerImpl.class.getName())
+                .getLoggerConfig(REVISION_LOG)
                 .removeAppender(appender.getName());
         appender.stop();
     }

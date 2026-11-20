@@ -112,6 +112,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     private final TagAggregateStore tagAggregates;
+    private final RevisionLog<WeblogEntry, WeblogEntryRevision> revisions;
     
     // cached mapping of entryAnchors -> entryIds
     private final Map<String, String> entryAnchorToIdMap = Collections.synchronizedMap(new HashMap<>());
@@ -127,6 +128,12 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         this.pressroom = pressroom;
         this.strategy = strategy;
         this.tagAggregates = new TagAggregateStore(strategy);
+        this.revisions = new RevisionLog<>(strategy, new RevisionLog.Binding<>(
+                RevisionRetention.Kind.ENTRY, WeblogEntry.class, WeblogEntryRevision.class,
+                "WeblogEntryRevision.getByEntry", WeblogEntry::getId,
+                WeblogEntryRevision::setWeblogEntry, WeblogEntryRevision::getWeblogEntry,
+                WeblogEntryRevision::getNote, WeblogEntryRevision::setNote,
+                WeblogEntryRevision::isKept, WeblogEntryRevision::setKept));
     }
     
     /**
@@ -469,68 +476,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * logged and costs only the revision. A save that never commits records
      * nothing.
      */
-    // The factory is the tier's own, shared and closed at shutdown by the
-    // strategy; closing it here would take the whole persistence unit down.
-    @SuppressWarnings("PMD.CloseResource")
     private void recordRevision(WeblogEntry entry, User editor, String revisionNote, boolean restore) {
-        int retention = RevisionRetention.Kind.ENTRY.retention();
-        if (retention == 0) {
-            return;
-        }
-        WeblogEntryRevision revision = entry.contentBeingReplaced(
-                editor != null ? editor.getUserName() : entry.getCreatorUserName());
-        if (revision == null) {
-            // nothing replaced, so nothing for the note to label
-            return;
-        }
-        // Set every time, null included: the snapshot object is the entry's
-        // own, and a note must label only the revision its save left.
-        revision.setNote(revisionNote);
-        String entryId = entry.getId();
-        EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
         // The acting user, null for a save no person made, even where the
         // revision's creator falls back to the entry's own: coalescing joins
         // only one person's own repeated saves.
         String actor = editor != null ? editor.getUserName() : null;
-        strategy.runAfterCommit(() -> storeRevision(emf, entryId, revision, retention, actor, restore));
-    }
-
-    /**
-     * Stores {@code revision} for the entry and prunes its oldest beyond
-     * {@code retention}, in a transaction of its own on its own
-     * EntityManager: the thread's unit of work has just committed, and a
-     * failure here must leave it exactly as the save left it.
-     */
-    private static void storeRevision(EntityManagerFactory emf, String entryId,
-            WeblogEntryRevision revision, int retention, String actor, boolean restore) {
-        try (EntityManager em = emf.createEntityManager()) {
-            EntityTransaction tx = em.getTransaction();
-            tx.begin();
-            try {
-                WeblogEntry entry = em.find(WeblogEntry.class, entryId);
-                if (entry == null) {
-                    // deleted by the transaction that saved it: nothing to hang off
-                    return;
-                }
-                // Which revisions exist is RevisionRetention's decision: a
-                // coalesced save writes none and so pushes none out.
-                if (!RevisionRetention.shouldStore(em, RevisionRetention.Kind.ENTRY, entryId, actor,
-                        revision.getNote(), restore)) {
-                    return;
-                }
-                revision.setWeblogEntry(entry);
-                RevisionRetention.pruneAtWrite(em, RevisionRetention.Kind.ENTRY, WeblogEntryRevision.class,
-                        entryId, retention);
-                em.persist(revision);
-                tx.commit();
-            } finally {
-                if (tx.isActive()) {
-                    tx.rollback();
-                }
-            }
-        } catch (RuntimeException e) {
-            log.warn("Could not record a revision for entry {}; the save itself is unaffected", entryId, e);
-        }
+        revisions.record(entry,
+                () -> entry.contentBeingReplaced(actor != null ? actor : entry.getCreatorUserName()),
+                revisionNote, actor, restore);
     }
 
     /** Created on first use: it needs the factory, which the strategy has only once it is running. */
@@ -552,15 +505,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
     @Override
     public void setRevisionKept(WeblogEntryRevision revision, boolean kept) throws WebloggerException {
-        if (revision.isKept() == kept) {
-            return;
-        }
-        if (kept) {
-            RevisionRetention.requireRoomToKeep(strategy.getEntityManager(true), RevisionRetention.Kind.ENTRY,
-                    revision.getWeblogEntry().getId());
-        }
-        revision.setKept(kept);
-        strategy.store(revision);
+        revisions.setKept(revision, kept);
     }
 
     @Override
@@ -579,21 +524,12 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
     @Override
     public List<WeblogEntryRevision> getRevisions(WeblogEntry entry) throws WebloggerException {
-        if (entry == null || entry.getId() == null) {
-            return Collections.emptyList();
-        }
-        TypedQuery<WeblogEntryRevision> query = strategy.getNamedQuery(
-                "WeblogEntryRevision.getByEntry", WeblogEntryRevision.class);
-        query.setParameter(1, entry);
-        return query.getResultList();
+        return revisions.list(entry);
     }
 
     @Override
     public WeblogEntryRevision getRevision(String id) throws WebloggerException {
-        if (id == null) {
-            return null;
-        }
-        return (WeblogEntryRevision) strategy.load(WeblogEntryRevision.class, id);
+        return revisions.get(id);
     }
 
     @Override
