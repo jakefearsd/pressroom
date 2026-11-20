@@ -80,6 +80,18 @@ public final class MailUtil {
     }
 
     /**
+     * Tells the reviewers about an entry that is pending review, when mail is
+     * configured and the entry is pending; otherwise does nothing. The one
+     * condition every save path (editor, bulk action, API) shares.
+     */
+    public static void sendPendingEntryNoticeIfDue(Weblogger weblogger, WeblogEntry entry)
+            throws WebloggerException {
+        if (entry.isPending() && isMailConfigured()) {
+            sendPendingEntryNotice(weblogger, entry);
+        }
+    }
+
+    /**
      * Send an email notice that a new pending entry has been submitted.
      *
      * @param weblogger the business tier, handed in by the caller: it answers

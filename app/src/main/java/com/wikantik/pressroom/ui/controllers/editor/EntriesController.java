@@ -44,6 +44,7 @@ import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.util.URLUtilities;
+import com.wikantik.pressroom.util.MailUtil;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.ui.controllers.pagers.EntriesPager;
 import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
@@ -255,6 +256,7 @@ public class EntriesController extends BaseController {
                         weblogger.getIndexManager().addEntryReIndexOperation(entry);
                     }
                     CacheManager.invalidate(entry);
+                    MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
                 });
     }
 

@@ -30,6 +30,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.startup.MockMailProvider;
+import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -664,6 +666,40 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         controller.bulkPublish(request, List.of("entry-1"), bean, newRedirectAttributes());
 
         assertEquals(WeblogEntry.PubStatus.PENDING, entry.getStatus());
+    }
+
+    /**
+     * B4: an entry submitted for review by the bulk action tells the
+     * reviewers, as the editor's own submit does.
+     */
+    @Test
+    void bulkSubmittingForReviewSendsThePendingNotice() throws Exception {
+        MockMailProvider mail = MockMailProvider.install();
+        try {
+            User author = new User();
+            author.setUserName("author");
+            author.setEmailAddress("author@example.invalid");
+            User reviewer = new User();
+            reviewer.setUserName("reviewer");
+            reviewer.setEmailAddress("reviewer@example.invalid");
+            weblog.setLocale("en_US");
+            weblog.setHandle("blog");
+            weblog.setName("Blog");
+            when(weblogger.getUserManager().getUserByUserName("author")).thenReturn(author);
+            when(weblogger.getWeblogManager().getWeblogUsers(weblog, true)).thenReturn(List.of(reviewer));
+            when(weblogger.getUserManager().checkPermission(any(), org.mockito.ArgumentMatchers.eq(reviewer)))
+                    .thenReturn(true);
+            when(weblogger.getUrlStrategy().getEntryEditURL("blog", "entry-1", true)).thenReturn("https://x.invalid/e");
+            WeblogEntry entry = ownedDraft("entry-1");
+            entry.setCreatorUserName("author");
+
+            controller.bulkPublish(request, List.of("entry-1"), bean, newRedirectAttributes());
+
+            assertEquals(WeblogEntry.PubStatus.PENDING, entry.getStatus());
+            assertNotNull(mail.onlyMessage(), "reviewers must be told");
+        } finally {
+            MockMailProvider.uninstall();
+        }
     }
 
     /**

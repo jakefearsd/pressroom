@@ -797,9 +797,7 @@ public class EntryEditController extends BaseController {
 
         CacheManager.invalidate(entry);
 
-        if (entry.isPending() && MailUtil.isMailConfigured()) {
-            MailUtil.sendPendingEntryNotice(weblogger, entry);
-        }
+        MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
     }
 
     /**

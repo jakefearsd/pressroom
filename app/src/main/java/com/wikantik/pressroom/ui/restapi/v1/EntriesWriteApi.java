@@ -37,7 +37,10 @@ import com.wikantik.pressroom.ui.restapi.dto.ClearFields;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
+import com.wikantik.pressroom.util.MailUtil;
 import com.wikantik.pressroom.util.Utilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -69,6 +72,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesWriteApi extends BaseApiController implements UISecurityEnforced {
+
+    private static final Logger log = LoggerFactory.getLogger(EntriesWriteApi.class);
 
     @Autowired
     RemoteImageFetcher imageFetcher;
@@ -138,6 +143,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (entry.isPublished()) {
             weblogger.getIndexManager().addEntryReIndexOperation(entry);
         }
+        notifyReviewers(entry);
 
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .path("/{id}")
@@ -199,8 +205,22 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
         weblogger.flush();
         reindex(entry);
+        notifyReviewers(entry);
 
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
+    }
+
+    /**
+     * The editor's pending-review notice, for a write that leaves the entry
+     * pending. The save has committed, so a notice that cannot be sent is
+     * logged rather than failing a write that did succeed.
+     */
+    private void notifyReviewers(WeblogEntry entry) {
+        try {
+            MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
+        } catch (WebloggerException e) {
+            log.error("Pending notice for entry {} not sent", entry.getId(), e);
+        }
     }
 
     /**
