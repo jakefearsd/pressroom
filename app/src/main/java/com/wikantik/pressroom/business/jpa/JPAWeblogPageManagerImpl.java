@@ -18,20 +18,14 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.sql.Timestamp;
-import java.util.Collections;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import jakarta.persistence.FlushModeType;
-import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 
