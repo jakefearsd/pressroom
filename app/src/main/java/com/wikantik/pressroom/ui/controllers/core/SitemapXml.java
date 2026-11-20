@@ -37,6 +37,8 @@ final class SitemapXml {
     private static final String IMAGE_NS = "http://www.google.com/schemas/sitemap-image/1.1";
     private static final String PROLOG = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 
+    // A builder that lives for one request and is dropped after build().
+    @SuppressWarnings("PMD.AvoidStringBufferField")
     private final StringBuilder xml = new StringBuilder(256);
     private final String root;
 

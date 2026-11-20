@@ -39,7 +39,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
 
     /** The two periods, each knowing its range, neighbours, date format and message keys. */
     public enum Period {
-        DAY("day") {
+        DAY("weblogEntriesPager.day.dateFormat", "weblogEntriesPager.day.home", "weblogEntriesPager.day.next", "weblogEntriesPager.day.prev", "weblogEntriesPager.day.nextCollection", "weblogEntriesPager.day.prevCollection") {
             @Override
             void range(Date date, Calendar cal, WeblogEntrySearchCriteria wesc) {
                 wesc.setStartDate(DateUtil.getStartOfDay(date, cal));
@@ -76,7 +76,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
                 return DateUtil.format8chars(date, tz);
             }
         },
-        MONTH("month") {
+        MONTH("weblogEntriesPager.month.dateFormat", "weblogEntriesPager.month.home", "weblogEntriesPager.month.next", "weblogEntriesPager.month.prev", "weblogEntriesPager.month.nextCollection", "weblogEntriesPager.month.prevCollection") {
             @Override
             void range(Date date, Calendar cal, WeblogEntrySearchCriteria wesc) {
                 cal.setTime(date);
@@ -111,10 +111,22 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
             }
         };
 
-        private final String key;
+        // Whole-key literals, so MessageKeyTest sees each bundle key used.
+        private final String dateFormat;
+        private final String home;
+        private final String next;
+        private final String prev;
+        private final String nextCollection;
+        private final String prevCollection;
 
-        Period(String key) {
-            this.key = key;
+        Period(String dateFormat, String home, String next, String prev,
+                String nextCollection, String prevCollection) {
+            this.dateFormat = dateFormat;
+            this.home = home;
+            this.next = next;
+            this.prev = prev;
+            this.nextCollection = nextCollection;
+            this.prevCollection = prevCollection;
         }
 
         abstract void range(Date date, Calendar cal, WeblogEntrySearchCriteria wesc);
@@ -126,10 +138,6 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
         abstract Date endOf(Date date, Calendar cal);
 
         abstract String format(Date date, TimeZone tz);
-
-        String message(String suffix) {
-            return "weblogEntriesPager." + key + "." + suffix;
-        }
     }
 
     private final Period period;
@@ -146,7 +154,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
 
         TimeZone tz = weblog.getTimeZoneInstance();
         periodFormat = new SimpleDateFormat(
-            messageUtils.getString(period.message("dateFormat")), messageUtils.getLocale());
+            messageUtils.getString(period.dateFormat), messageUtils.getLocale());
         periodFormat.setTimeZone(tz);
 
         getEntries();
@@ -179,7 +187,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
 
     @Override
     public String getHomeName() {
-        return messageUtils.getString(period.message("home"));
+        return messageUtils.getString(period.home);
     }
 
     @Override
@@ -193,7 +201,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
     @Override
     public String getNextName() {
         if (getNextLink() != null) {
-            return named("next", current);
+            return named(period.next, current);
         }
         return null;
     }
@@ -209,7 +217,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
     @Override
     public String getPrevName() {
         if (getPrevLink() != null) {
-            return named("prev", current);
+            return named(period.prev, current);
         }
         return null;
     }
@@ -221,7 +229,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
 
     @Override
     public String getNextCollectionName() {
-        return nextPeriod == null ? null : named("nextCollection", nextPeriod);
+        return nextPeriod == null ? null : named(period.nextCollection, nextPeriod);
     }
 
     @Override
@@ -231,7 +239,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
 
     @Override
     public String getPrevCollectionName() {
-        return prevPeriod == null ? null : named("prevCollection", prevPeriod);
+        return prevPeriod == null ? null : named(period.prevCollection, prevPeriod);
     }
 
     private String collectionLink(Date target) {
@@ -242,7 +250,7 @@ public class WeblogEntriesPeriodPager extends QueriedEntriesPager {
                 period.format(target, weblog.getTimeZoneInstance()), catName, tags);
     }
 
-    private String named(String suffix, Date date) {
-        return messageUtils.getString(period.message(suffix), new Object[] {periodFormat.format(date)});
+    private String named(String messageKey, Date date) {
+        return messageUtils.getString(messageKey, new Object[] {periodFormat.format(date)});
     }
 }
