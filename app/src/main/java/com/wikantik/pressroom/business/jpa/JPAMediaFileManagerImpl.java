@@ -17,12 +17,9 @@
  */
 package com.wikantik.pressroom.business.jpa;
 
-import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;
@@ -35,7 +32,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import javax.imageio.ImageIO;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 
@@ -43,7 +39,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.BlurHash;
 import com.wikantik.pressroom.business.ContentHashes;
 import com.wikantik.pressroom.business.ExifSupport;
 import com.wikantik.pressroom.business.FileContentManager;
@@ -52,7 +47,6 @@ import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.RenditionSupport;
 import com.wikantik.pressroom.business.Weblogger;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.FileContent;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
@@ -303,117 +297,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         mediaFile.setHeight(img.getHeight());
         strategy.store(mediaFile);
 
-        try {
-            writeAdminThumbnail(cmgr, mediaFile, img);
-        } catch (Exception e) {
-            // the admin list falls back to the full image; the rest still runs
-            log.warn("Could not write the admin thumbnail for media file {}", mediaFile.getId(), e);
-        }
+        // admin thumbnail, ladder, EXIF and blurhash: see ImageDerivatives.
+        ImageDerivatives.rebuild(strategy, cmgr, mediaFile, img, fc, ImageDerivatives.ExifPolicy.EXTRACT);
 
         pressroom.flush();
         // Refresh associated parent for changes
         strategy.refresh(mediaFile.getDirectory());
-
-        // Responsive-image width ladder (independent of the admin thumbnail
-        // above). RenditionSupport never throws -- per-rendition failures are
-        // logged at WARN with the media file id.
-        RenditionSupport.generate(cmgr, mediaFile, img);
-
-        // EXIF/GPS/blurhash: reads from the file already saved to disk
-        // (fc, re-opened) rather than the original upload stream, which
-        // saveFileContent() already consumed. Never lets a metadata
-        // failure affect the thumbnail/rendition work above.
-        extractExifAndBlurhash(cmgr, mediaFile, fc);
-    }
-
-    /**
-     * Renders and stores the {@code <id>_sm} admin thumbnail from the
-     * already orientation-corrected image. The thumbnail box is derived from
-     * the media file's stored width/height, so callers must have set those
-     * from the same image first.
-     */
-    private void writeAdminThumbnail(FileContentManager cmgr, MediaFile mediaFile,
-            BufferedImage img) throws IOException, WebloggerException {
-        int newWidth = mediaFile.getThumbnailWidth();
-        int newHeight = mediaFile.getThumbnailHeight();
-
-        Image newImage = img.getScaledInstance(newWidth, newHeight,
-                Image.SCALE_SMOOTH);
-        BufferedImage tmp = new BufferedImage(newWidth, newHeight,
-                BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = tmp.createGraphics();
-        g2.drawImage(newImage, 0, 0, newWidth, newHeight, null);
-        g2.dispose();
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(tmp, "png", baos);
-
-        cmgr.saveFileContent(mediaFile.getWeblog(), mediaFile.getId()
-                + "_sm", new ByteArrayInputStream(baos.toByteArray()));
-    }
-
-    /**
-     * Reads EXIF/GPS metadata from the stored original ({@code fc}, re-opened
-     * -- {@link FileContent#getInputStream()} returns a fresh stream backed
-     * by the on-disk file each time it's called) and encodes a BlurHash
-     * placeholder from the smallest available rendition. Applies the
-     * {@code uploads.exif.stripGps} site setting by nulling the GPS fields
-     * before they are ever persisted -- the original file on disk is never
-     * touched either way. Metadata extraction and blurhash encoding never
-     * throw: each is independent, and a failure in one (unreadable EXIF,
-     * blurhash decode failure) does not prevent the other from being stored.
-     * Only the final {@code strategy.store()} can throw, and that propagates
-     * to the caller like any other failure to persist.
-     */
-    private void extractExifAndBlurhash(FileContentManager cmgr, MediaFile mediaFile, FileContent fc)
-            throws WebloggerException {
-        ExifSupport.ExifData exif = ExifSupport.ExifData.EMPTY;
-        try {
-            exif = ExifSupport.extract(fc.getInputStream());
-        } catch (Exception e) {
-            log.debug("Could not extract EXIF metadata for media file {}", mediaFile.getId(), e);
-        }
-
-        mediaFile.setExifCamera(exif.camera);
-        mediaFile.setExifLens(exif.lens);
-        mediaFile.setExifExposure(exif.exposure);
-        mediaFile.setExifAperture(exif.aperture);
-        mediaFile.setExifIso(exif.iso);
-        mediaFile.setExifFocalLength(exif.focalLength);
-        mediaFile.setExifTaken(exif.taken);
-
-        boolean stripGps = WebloggerRuntimeConfig.getBooleanProperty("uploads.exif.stripGps");
-        mediaFile.setGpsLatitude(stripGps ? null : exif.gpsLatitude);
-        mediaFile.setGpsLongitude(stripGps ? null : exif.gpsLongitude);
-
-        try {
-            mediaFile.setBlurhash(computeBlurhash(cmgr, mediaFile));
-        } catch (Exception e) {
-            log.debug("Could not compute blurhash for media file {}", mediaFile.getId(), e);
-        }
-
-        strategy.store(mediaFile);
-    }
-
-    /**
-     * Encodes a BlurHash from the smallest available rendition: the 480w
-     * rung of the responsive ladder, falling back to the admin thumbnail
-     * ({@code _sm}) when the original was narrower than 480 (so the ladder
-     * skipped it). Returns null if neither is available or decodable.
-     */
-    private String computeBlurhash(FileContentManager cmgr, MediaFile mediaFile) {
-        for (String candidateId : List.of(mediaFile.getId() + "_480", mediaFile.getId() + "_sm")) {
-            try {
-                FileContent candidate = cmgr.getFileContent(mediaFile.getWeblog(), candidateId);
-                BufferedImage image = ImageDecoding.read(candidate.getInputStream());
-                if (image != null) {
-                    return BlurHash.encode(image);
-                }
-            } catch (Exception e) {
-                log.debug("No usable rendition '{}' for blurhash encoding", candidateId, e);
-            }
-        }
-        return null;
     }
 
     /**
@@ -857,24 +746,15 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     // 2000px self does not), and that rung would go on
                     // serving the sideways pixels at its ?w= URL.
                     deleteDerivedFilesQuietly(cmgr, weblog, mf.getId());
-                    // The admin thumbnail too: before it was rebuilt here a
-                    // sideways thumbnail stayed sideways, and the blurhash of
-                    // an image under 480px is encoded from it.
-                    writeAdminThumbnail(cmgr, mf, img);
-                    RenditionSupport.generate(cmgr, mf, img);
                     // Bump lastUpdated so MediaResourceServlet's Last-Modified/304
                     // check (keyed off this field) doesn't keep serving a 304 for
                     // stale renditions cached by a client from before the backfill.
                     mf.setLastUpdated(new Timestamp(System.currentTimeMillis()));
-
-                    // EXIF and the blurhash placeholder too, not just the
-                    // rendition ladder. A photo uploaded before this pipeline
-                    // existed otherwise kept blank camera/lens/exposure fields
-                    // and no placeholder forever, because this action was the
-                    // only remediation offered and it rebuilt just the images.
-                    // Must run after generate(): the blurhash is encoded from
-                    // the smallest rendition. This also stores the entity.
-                    extractExifAndBlurhash(cmgr, mf, fc);
+                    // Thumbnail (a sideways one stayed sideways before it was
+                    // rebuilt here), ladder, EXIF and blurhash: a photo
+                    // uploaded before this pipeline existed otherwise kept
+                    // blank fields forever. Also stores the entity.
+                    ImageDerivatives.rebuild(strategy, cmgr, mf, img, fc, ImageDerivatives.ExifPolicy.EXTRACT);
                     count++;
                 } catch (WebloggerException | IOException | RuntimeException e) {
                     log.warn("Failed to regenerate renditions for media file {}", mf.getId(), e);
@@ -983,29 +863,13 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             mediaFile.setLastUpdated(new Timestamp(System.currentTimeMillis()));
 
             // From here on the crop is committed on disk; derived artifacts
-            // are best-effort so a thumbnail/rendition failure can never
-            // leave the entity describing the OLD image while the file holds
-            // the new one. (RenditionSupport.generate never throws.)
-            try {
-                writeAdminThumbnail(cmgr, mediaFile, cropped);
-            } catch (Exception e) {
-                log.warn("Could not regenerate the admin thumbnail after cropping media file {}",
-                        mediaFile.getId(), e);
-            }
-            RenditionSupport.generate(cmgr, mediaFile, cropped);
+            // are best-effort so a failure can never leave the entity
+            // describing the OLD image while the file holds the new one. The
+            // stored EXIF fields are deliberately NOT re-extracted: the
+            // re-encoded file carries no EXIF block, so re-extraction would
+            // null out camera metadata that still truthfully describes the photo.
+            ImageDerivatives.rebuild(strategy, cmgr, mediaFile, cropped, null, ImageDerivatives.ExifPolicy.KEEP);
 
-            // Recompute the blurhash from the cropped renditions. The stored
-            // EXIF fields are deliberately NOT re-extracted: the re-encoded
-            // file carries no EXIF block, so re-extraction would null out
-            // camera metadata that still truthfully describes the photo.
-            try {
-                mediaFile.setBlurhash(computeBlurhash(cmgr, mediaFile));
-            } catch (Exception e) {
-                log.debug("Could not recompute blurhash after cropping media file {}",
-                        mediaFile.getId(), e);
-            }
-
-            strategy.store(mediaFile);
             pressroom.flush();
             strategy.refresh(mediaFile.getDirectory());
 

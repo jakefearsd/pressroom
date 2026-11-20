@@ -277,6 +277,39 @@ class MediaFileContentConsistencyTest {
         assertTrue(stored(id + "_480").length > 0, "the rungs it does reach are rebuilt");
     }
 
+    /**
+     * The admin thumbnail is best-effort everywhere (upload, crop,
+     * regenerate): a thumbnail that cannot be written must not cost the file
+     * its rungs, EXIF or blurhash, and must not drop it from the count.
+     */
+    @Test
+    void regeneratingKeepsTheRestWhenTheAdminThumbnailCannotBeWritten() throws Exception {
+        String id = upload("photo.jpg", "image/jpeg", jpeg(600, 300));
+        Weblogger real = TestUtils.weblogger();
+        FileContentManager watching = mock(FileContentManager.class,
+                org.mockito.AdditionalAnswers.delegatesTo(cmgr));
+        doAnswer(inv -> {
+            if (inv.getArgument(1, String.class).endsWith("_sm")) {
+                throw new WebloggerException("simulated thumbnail failure");
+            }
+            cmgr.saveFileContent(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
+            return null;
+        }).when(watching).saveFileContent(any(Weblog.class), any(String.class), any(InputStream.class));
+        Weblogger failing = mock(Weblogger.class, org.mockito.AdditionalAnswers.delegatesTo(real));
+        org.mockito.Mockito.doReturn(watching).when(failing).getFileContentManager();
+        MediaFileManager failingMgr = new JPAMediaFileManagerImpl(failing, liveStrategy(real));
+
+        cmgr.deleteFile(testWeblog, id + "_480");
+        testWeblog = TestUtils.getManagedWebsite(testWeblog);
+        assertEquals(1, failingMgr.regenerateRenditions(testWeblog),
+                "a lost thumbnail does not fail the file");
+        TestUtils.endSession(true);
+
+        assertTrue(stored(id + "_480").length > 0, "the rung is rebuilt without the thumbnail");
+        assertNotNull(mfMgr.getMediaFile(id).getBlurhash(), "the blurhash is still stored");
+        TestUtils.endSession(false);
+    }
+
     // ---------------------------------------------------------- new uploads
 
     private MediaFile newFile(String name, String contentType, long length, InputStream in) throws Exception {
