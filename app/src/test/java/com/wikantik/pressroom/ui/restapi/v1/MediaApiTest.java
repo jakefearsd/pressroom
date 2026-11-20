@@ -155,7 +155,7 @@ class MediaApiTest {
                 new MediaDtos.MediaPatch("a".repeat(256), 2.0, null, null, " ", null), java.util.Set.of()));
 
         assertEquals(java.util.List.of("focalX", "altText", "name"),
-                ex.getFieldErrors().stream().map(f -> f.field()).distinct().toList());
+                ex.getFieldErrors().stream().map(f -> f.field()).toList());
         assertEquals("original.jpg", file.getName());
         assertNull(file.getAltText());
     }

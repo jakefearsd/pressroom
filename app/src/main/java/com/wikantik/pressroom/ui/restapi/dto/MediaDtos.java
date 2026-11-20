@@ -187,7 +187,7 @@ public final class MediaDtos {
         boolean hasY = patch.focalY() != null || file.getFocalY() != null;
         if (hasX != hasY) {
             String field = patch.focalX() != null ? "focalX" : "focalY";
-            errors.add(field, "focalX and focalY are set together; this file has no focal point yet.");
+            errors.addIfAbsent(field, "focalX and focalY are set together; this file has no focal point yet.");
         }
     }
 

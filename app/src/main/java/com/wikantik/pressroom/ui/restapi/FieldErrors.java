@@ -65,6 +65,18 @@ public final class FieldErrors {
         errors.add(new ApiProblem.FieldError(field, message));
     }
 
+    /**
+     * As {@link #add}, unless {@code field} already has a problem: the first
+     * wins, so a rule layered over a field's own check (the focal-point pair
+     * rule over the range check) never lists the field twice. {@link #add}
+     * itself repeats a field on purpose (one error per bad id in a list).
+     */
+    public void addIfAbsent(String field, String message) {
+        if (errors.stream().noneMatch(known -> field.equals(known.field()))) {
+            add(field, message);
+        }
+    }
+
     public boolean isEmpty() {
         return errors.isEmpty();
     }

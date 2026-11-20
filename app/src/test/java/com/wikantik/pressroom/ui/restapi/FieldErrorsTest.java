@@ -46,6 +46,22 @@ class FieldErrorsTest {
     }
 
     @Test
+    void aFieldIsReportedOnceAndTheFirstProblemWins() {
+        FieldErrors errors = new FieldErrors();
+        errors.check("focalX", () -> {
+            throw ApiException.badRequest("focalX must be between 0 and 1.");
+        });
+        errors.addIfAbsent("focalX", "focalX and focalY are set together.");
+        errors.addIfAbsent("name", "name is blank.");
+
+        ApiException ex = assertThrows(ApiException.class, errors::throwIfAny);
+
+        assertEquals(List.of(new ApiProblem.FieldError("focalX", "focalX must be between 0 and 1."),
+                new ApiProblem.FieldError("name", "name is blank.")), ex.getFieldErrors());
+        assertEquals("focalX must be between 0 and 1. name is blank.", ex.getMessage());
+    }
+
+    @Test
     void valuePropagatesANon400() {
         FieldErrors errors = new FieldErrors();
         assertThrows(ApiException.class, () -> errors.value("slug", () -> {
