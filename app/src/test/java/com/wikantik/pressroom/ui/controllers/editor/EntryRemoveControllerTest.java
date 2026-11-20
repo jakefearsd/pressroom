@@ -174,43 +174,6 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void aPublishedEntryIsTakenOutOfTheSearchIndexBeforeItIsDeleted() throws Exception {
-        // Once the row is gone the index entry can no longer be resolved, so
-        // the de-index has to happen first.
-        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        InOrder order = inOrder(weblogger.getIndexManager(), weblogger.getWeblogEntryManager());
-        order.verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-        order.verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
-    }
-
-    @Test
-    void anUnpublishedEntryIsAlsoDeIndexed() throws Exception {
-        // The de-index call is unconditional now, not gated on isPublished():
-        // removing a document that was never indexed is a safe no-op, and
-        // asking every time is simpler than trusting a status check to be
-        // right in every caller.
-        entry.setStatus(PubStatus.DRAFT);
-
-        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-        verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
-    }
-
-    @Test
-    void theEntrysPublicationStatusIsUntouchedByDeIndexing() throws Exception {
-        // De-indexing used to flip the entry to DRAFT to trigger a re-index
-        // job, then flip it back. That trick is gone -- the de-index call
-        // asks the index directly and never touches the entry's own status.
-        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        assertEquals(PubStatus.PUBLISHED, entry.getStatus(),
-                "De-indexing must not mutate the entry's own status field");
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-    }
-
-    @Test
     void aSuccessfulRemovalNamesTheEntryInTheFlashMessage() throws Exception {
         registerMessage("weblogEdit.entryRemoved", "removed:{0}");
 
@@ -248,27 +211,6 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void theListVariantAlsoDeIndexesAPublishedEntry() throws Exception {
-        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        InOrder order = inOrder(weblogger.getIndexManager(), weblogger.getWeblogEntryManager());
-        order.verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-        order.verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
-        assertEquals(PubStatus.PUBLISHED, entry.getStatus(),
-                "De-indexing must not mutate the entry's own status field here either");
-    }
-
-    @Test
-    void theListVariantAlsoDeIndexesAnUnpublishedEntry() throws Exception {
-        entry.setStatus(PubStatus.DRAFT);
-
-        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-        verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
-    }
-
-    @Test
     void theListVariantReportsAFailedDeletion() throws Exception {
         org.mockito.Mockito.doThrow(new WebloggerException("constraint violation"))
                 .when(weblogger.getWeblogEntryManager()).trashWeblogEntry(any());
@@ -298,19 +240,6 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(1, weblogger.flushCount(), "The deletion must be committed");
-    }
-
-    @Test
-    void aFailedIndexUpdateDoesNotStopTheDeletion() throws Exception {
-        // The index is a derived artefact; failing to update it must not leave
-        // the author unable to delete their own post.
-        org.mockito.Mockito.doThrow(new WebloggerException("index locked"))
-                .when(weblogger.getIndexManager()).removeEntryIndexOperation(any(WeblogEntry.class));
-
-        String view = controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
-
-        assertEquals(ENTRIES_REDIRECT, view);
-        verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
     }
 
     @Test

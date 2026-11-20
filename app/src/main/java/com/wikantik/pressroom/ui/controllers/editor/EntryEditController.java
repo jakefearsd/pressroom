@@ -40,7 +40,6 @@ import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.WeblogEntryManager;
-import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -53,7 +52,6 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
-import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.util.MailUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -633,7 +631,7 @@ public class EntryEditController extends BaseController {
                 }
                 weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
-                afterSave(entry, mode);
+                afterSave(entry);
 
                 if (mode.rendersAfterSave()) {
                     addStatusMessage(entry.getStatus(), model, entry, request);
@@ -740,20 +738,11 @@ public class EntryEditController extends BaseController {
     }
 
     /**
-     * What follows a committed save: the search index (an edit that leaves
-     * an entry unpublished takes it out), the rendered pages, and the
-     * reviewers' notice for an entry submitted for review.
+     * What follows a committed save: the reviewers' notice for an entry
+     * submitted for review. The search index and the rendered pages are kept
+     * by the entry manager's change listeners.
      */
-    private void afterSave(WeblogEntry entry, EditorMode mode) throws WebloggerException {
-        IndexManager indexMgr = weblogger.getIndexManager();
-        if (entry.isPublished()) {
-            indexMgr.addEntryReIndexOperation(entry);
-        } else if (mode.deindexesUnpublished()) {
-            indexMgr.removeEntryIndexOperation(entry);
-        }
-
-        CacheManager.invalidate(entry);
-
+    private void afterSave(WeblogEntry entry) throws WebloggerException {
         MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
     }
 

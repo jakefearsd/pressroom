@@ -723,7 +723,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void bulkDeleteRemovesEachEntryFromTheSearchIndex() throws Exception {
+    void bulkDeleteTrashesEachEntry() throws Exception {
         WeblogEntry first = ownedDraft("entry-1");
         first.setStatus(WeblogEntry.PubStatus.PUBLISHED);
         WeblogEntry second = ownedDraft("entry-2");
@@ -735,8 +735,6 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         // documents that link to pages which now 404. Bulk delete trashes
         // rather than removes (see BaseController#trashEntryWithIndex), but
         // the de-indexing must still happen.
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(first);
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(second);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(first);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(second);
     }

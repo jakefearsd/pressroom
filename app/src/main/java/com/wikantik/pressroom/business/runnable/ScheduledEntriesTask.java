@@ -27,11 +27,9 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WeblogEntryManager;
-import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
-import com.wikantik.pressroom.util.cache.CacheManager;
 
 
 /**
@@ -138,7 +136,6 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
         try {
     // CPD-ON
             WeblogEntryManager wMgr = weblogger().getWeblogEntryManager();
-            IndexManager searchMgr = weblogger().getIndexManager();
 
             Date now = new Date();
 
@@ -156,7 +153,7 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
             log.debug("promoting {} entries to PUBLISHED state", dueIds.size());
 
             for (String id : dueIds) {
-                promote(id, wMgr, searchMgr);
+                promote(id, wMgr);
             }
 
         } catch (WebloggerException e) {
@@ -170,11 +167,11 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
     }
 
     /**
-     * Publishes one entry and commits, then expires its cached pages and
-     * reindexes it (both need the committed row). Re-read first: it is
+     * Publishes one entry and commits; the entry manager's change listeners
+     * then expire its cached pages and index it. Re-read first: it is
      * skipped if it is gone or no longer SCHEDULED by now.
      */
-    private void promote(String id, WeblogEntryManager wMgr, IndexManager searchMgr) {
+    private void promote(String id, WeblogEntryManager wMgr) {
         try {
             WeblogEntry entry = wMgr.getWeblogEntry(id);
             if (entry == null || entry.getStatus() != PubStatus.SCHEDULED) {
@@ -183,9 +180,6 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
             entry.setStatus(PubStatus.PUBLISHED);
             wMgr.saveWeblogEntry(entry);
             weblogger().flush();
-
-            CacheManager.invalidate(entry);
-            searchMgr.addEntryReIndexOperation(entry);
         } catch (WebloggerException | RuntimeException e) {
             log.error("Could not publish scheduled entry {}; it stays scheduled and is retried next run", id, e);
         } finally {

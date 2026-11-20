@@ -135,9 +135,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             throw anchorConflict(taken.getAnchor(), taken.getHolderStatus(), taken);
         }
         weblogger.flush();
-        if (entry.isPublished()) {
-            weblogger.getIndexManager().addEntryReIndexOperation(entry);
-        }
         notifyReviewers(entry);
 
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
@@ -199,7 +196,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // and carries the note when one was sent.
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
         weblogger.flush();
-        reindex(entry);
         notifyReviewers(entry);
 
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
@@ -244,7 +240,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         entryContent().restoreChecked(entry, revision, body == null ? null : body.expectedContentHash(),
                 requireAuthenticatedUser(request));
         weblogger.flush();
-        reindex(entry);
 
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
@@ -275,18 +270,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         WeblogEntryRevision revision = content.requireRevision(requireLiveEntry(request, id), revisionId);
         applyKeep(() -> content.setKept(revision, kept));
         return content.summary(revision);
-    }
-
-    /**
-     * As EntryEditController's save: an entry that is no longer published
-     * leaves search, or search keeps offering a permalink that 404s.
-     */
-    private void reindex(WeblogEntry entry) throws WebloggerException {
-        if (entry.isPublished()) {
-            weblogger.getIndexManager().addEntryReIndexOperation(entry);
-        } else {
-            weblogger.getIndexManager().removeEntryIndexOperation(entry);
-        }
     }
 
     /**

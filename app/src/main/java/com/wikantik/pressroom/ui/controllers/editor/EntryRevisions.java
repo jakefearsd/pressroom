@@ -23,7 +23,6 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
-import com.wikantik.pressroom.util.cache.CacheManager;
 
 /** The entry editor's revisions, bound to an entry already resolved for change. */
 final class EntryRevisions implements RevisionActions.Revisions<WeblogEntryRevision> {
@@ -57,10 +56,8 @@ final class EntryRevisions implements RevisionActions.Revisions<WeblogEntryRevis
 
     @Override
     public void afterRestore() throws WebloggerException {
-        if (entry.isPublished()) {
-            weblogger.getIndexManager().addEntryReIndexOperation(entry);
-        }
-        CacheManager.invalidate(entry);
+        // The index and the rendered pages follow the restore's commit, through
+        // the entry manager's change listeners.
     }
 
     @Override

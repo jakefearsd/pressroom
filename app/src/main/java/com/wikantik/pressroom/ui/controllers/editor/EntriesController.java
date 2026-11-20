@@ -45,7 +45,6 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.util.URLUtilities;
 import com.wikantik.pressroom.util.MailUtil;
-import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.ui.controllers.pagers.EntriesPager;
 import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
 import org.springframework.stereotype.Controller;
@@ -252,10 +251,6 @@ public class EntriesController extends BaseController {
                     }
                     weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
 
-                    if (entry.isPublished()) {
-                        weblogger.getIndexManager().addEntryReIndexOperation(entry);
-                    }
-                    CacheManager.invalidate(entry);
                     MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
                 });
     }
@@ -279,7 +274,6 @@ public class EntriesController extends BaseController {
                 entry -> {
                     entry.addTag(tag);
                     weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
-                    CacheManager.invalidate(entry);
                 });
     }
 

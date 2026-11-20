@@ -171,22 +171,13 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void savingANewDraftDoesNotAddItToTheSearchIndex() throws Exception {
-        controller.entryAddSaveDraft(request, model, bean);
-
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
-        verify(weblogger.getIndexManager(), never()).removeEntryIndexOperation(any(WeblogEntry.class));
-    }
-
-    @Test
-    void publishingANewEntryStoresItAsPublishedAndIndexesIt() throws Exception {
+    void publishingANewEntryStoresItAsPublished() throws Exception {
         userMayPost = true;
 
         controller.entryAddPublish(request, model, bean);
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.PUBLISHED, saved.getStatus());
-        verify(weblogger.getIndexManager()).addEntryReIndexOperation(saved);
     }
 
     @Test
@@ -214,7 +205,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.PENDING, saved.getStatus(),
                 "A user without POST permission must land in PENDING, not PUBLISHED");
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
     }
 
     @Test
@@ -226,7 +216,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.SCHEDULED, saved.getStatus());
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
     }
 
     @Test
@@ -683,19 +672,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void unpublishingAnEntryRemovesItFromTheSearchIndex() throws Exception {
-        // If this is skipped, content the author has pulled offline keeps
-        // turning up in site search.
-        existingEntry(PubStatus.PUBLISHED);
-
-        controller.entryEditSaveDraft(request, model, bean);
-
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(any(WeblogEntry.class));
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
-    }
-
-    @Test
-    void publishingAPreviouslyUnpublishedEntryPublishesAndIndexesIt() throws Exception {
+    void publishingAPreviouslyUnpublishedEntryPublishesIt() throws Exception {
         existingEntry(PubStatus.DRAFT);
         userMayPost = true;
 
@@ -703,7 +680,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.PUBLISHED, saved.getStatus());
-        verify(weblogger.getIndexManager()).addEntryReIndexOperation(saved);
     }
 
     @Test
@@ -1084,7 +1060,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(".EntryEdit", view, "A failed save must redisplay the form, not redirect away");
         assertTrue(errors(model).contains("generic.error.check.logs"),
                 "Expected an error to be reported, got: " + errors(model));
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
     }
 
     @Test
@@ -1977,7 +1952,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void restoringAnUnpublishedEntryDoesNotPutItInTheSearchIndex() throws Exception {
+    void restoringAnUnpublishedEntryRestoresTheText() throws Exception {
         WeblogEntry entry = existingEntry(PubStatus.DRAFT);
         WeblogEntryRevision revision = revisionOf(entry, "r1");
         revision.setText("Older text");
@@ -1985,18 +1960,16 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         controller.entryEditRestoreRevision(request, "entry-1", "r1", newRedirectAttributes());
 
         assertEquals("Older text", entry.getText());
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
     }
 
     @Test
-    void restoringAPublishedEntryReindexesIt() throws Exception {
+    void restoringAPublishedEntryFlashesTheRestoredMessage() throws Exception {
         WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
         revisionOf(entry, "r1").setText("Older text");
 
         RedirectAttributes redirect = newRedirectAttributes();
         controller.entryEditRestoreRevision(request, "entry-1", "r1", redirect);
 
-        verify(weblogger.getIndexManager()).addEntryReIndexOperation(entry);
         assertEquals(java.util.List.of("weblogEdit.revisionRestored"), flashMessages(redirect));
     }
 

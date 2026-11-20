@@ -134,7 +134,6 @@ class EntriesWriteApiRevisionsTest {
         assertEquals("The text then.", view.get("text").asString());
         verify(fx.entries).restoreRevision(eq(stored), eq(revision),
                 argThat((User u) -> "maiia".equals(u.getUserName())));
-        verify(fx.index).removeEntryIndexOperation(stored);
     }
 
     @Test

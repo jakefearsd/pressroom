@@ -864,7 +864,7 @@ class EntriesWriteApiControllerTest {
      * search, because create and update saved without touching the index.
      */
     @Test
-    void postWithPublishedStatusQueuesTheEntryForTheSearchIndex() throws Exception {
+    void postWithPublishedStatusSavesAPublishedEntry() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
 
@@ -876,14 +876,12 @@ class EntriesWriteApiControllerTest {
                         .content("{\"title\":\"x\",\"text\":\"y\",\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isCreated());
 
-        ArgumentCaptor<WeblogEntry> captor = ArgumentCaptor.forClass(WeblogEntry.class);
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(captor.capture());
-        verify(weblogger.getIndexManager()).addEntryReIndexOperation(captor.getValue());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(WeblogEntry.class));
     }
 
-    /** A draft is not searchable, so creating one leaves the index alone. */
+    /** Creating a draft answers 201. */
     @Test
-    void postOfADraftLeavesTheSearchIndexAlone() throws Exception {
+    void postOfADraftIsCreated() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
 
@@ -894,13 +892,11 @@ class EntriesWriteApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"x\",\"text\":\"y\",\"status\":\"DRAFT\"}"))
                 .andExpect(status().isCreated());
-
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any());
     }
 
-    /** Publishing (or editing a published entry) through PATCH reindexes it. */
+    /** Publishing through PATCH answers 200 (the index follows the commit, see EntryChangePublicationTest). */
     @Test
-    void patchLeavingTheEntryPublishedQueuesItForTheSearchIndex() throws Exception {
+    void patchToPublishedIsOk() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogEntry entry = new WeblogEntry();
@@ -917,16 +913,14 @@ class EntriesWriteApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isOk());
-
-        verify(weblogger.getIndexManager()).addEntryReIndexOperation(entry);
     }
 
     /**
-     * Taking a published entry back to draft drops it from the index, as the
-     * editor's save does: otherwise search keeps offering a permalink that 404s.
+     * Taking a published entry back to draft answers 200; leaving the index is
+     * the entry manager's change listeners' job (EntryChangePublicationTest).
      */
     @Test
-    void patchUnpublishingAnEntryRemovesItFromTheSearchIndex() throws Exception {
+    void patchToDraftIsOk() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogEntry entry = new WeblogEntry();
@@ -945,9 +939,6 @@ class EntriesWriteApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DRAFT\"}"))
                 .andExpect(status().isOk());
-
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
-        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any());
     }
 
     /**
@@ -1147,7 +1138,7 @@ class EntriesWriteApiControllerTest {
      * method.
      */
     @Test
-    void deleteTrashesALiveEntryAndRemovesItFromTheIndexFirst() throws Exception {
+    void deleteTrashesALiveEntry() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogEntry entry = new WeblogEntry();
@@ -1161,7 +1152,6 @@ class EntriesWriteApiControllerTest {
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isNoContent());
 
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
         verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
         verify(weblogger).flush();
@@ -1209,7 +1199,6 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
-        verify(weblogger.getIndexManager(), never()).removeEntryIndexOperation(any());
         verify(weblogger, never()).flush();
     }
 
@@ -1277,7 +1266,7 @@ class EntriesWriteApiControllerTest {
 
     /** Delete-forever on an already-trashed entry: index removal, then the real delete. */
     @Test
-    void deleteForeverOnATrashedEntryRemovesItFromTheIndexAndCallsRemoveWeblogEntry() throws Exception {
+    void deleteForeverOnATrashedEntryCallsRemoveWeblogEntry() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogEntry entry = new WeblogEntry();
@@ -1291,7 +1280,6 @@ class EntriesWriteApiControllerTest {
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isNoContent());
 
-        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
         verify(weblogger.getWeblogEntryManager()).removeWeblogEntry(entry);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
         verify(weblogger).flush();
@@ -1318,7 +1306,6 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
-        verify(weblogger.getIndexManager(), never()).removeEntryIndexOperation(any());
         verify(weblogger, never()).flush();
     }
 
@@ -1625,7 +1612,6 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).removeWeblogEntry(any());
-        verify(weblogger.getIndexManager(), never()).removeEntryIndexOperation(any());
     }
 
     /** Same IDOR coverage for preview, which had none either. */

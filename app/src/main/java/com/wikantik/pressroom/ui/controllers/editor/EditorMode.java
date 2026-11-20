@@ -23,21 +23,18 @@ package com.wikantik.pressroom.ui.controllers.editor;
  * action's name.
  */
 enum EditorMode {
-    ADD("entryAdd", "weblogEdit.title.newEntry", false, false, true),
-    EDIT("entryEdit", "weblogEdit.title.editEntry", true, true, false);
+    ADD("entryAdd", "weblogEdit.title.newEntry", false, true),
+    EDIT("entryEdit", "weblogEdit.title.editEntry", true, false);
 
     private final String actionName;
     private final String titleKey;
     private final boolean rendersAfterSave;
-    private final boolean deindexesUnpublished;
     private final boolean clearsStatusOnFailure;
 
-    EditorMode(String actionName, String titleKey, boolean rendersAfterSave,
-               boolean deindexesUnpublished, boolean clearsStatusOnFailure) {
+    EditorMode(String actionName, String titleKey, boolean rendersAfterSave, boolean clearsStatusOnFailure) {
         this.actionName = actionName;
         this.titleKey = titleKey;
         this.rendersAfterSave = rendersAfterSave;
-        this.deindexesUnpublished = deindexesUnpublished;
         this.clearsStatusOnFailure = clearsStatusOnFailure;
     }
 
@@ -53,11 +50,6 @@ enum EditorMode {
     /** True: redisplay the editor after a save; false: redirect to the first-save landing page. */
     boolean rendersAfterSave() {
         return rendersAfterSave;
-    }
-
-    /** An edit that leaves the entry unpublished takes it out of the search index. */
-    boolean deindexesUnpublished() {
-        return deindexesUnpublished;
     }
 
     /** A refused first save must not redisplay the status the refused save chose. */

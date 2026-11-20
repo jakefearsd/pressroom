@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.EntryCacheInvalidator;
 import com.wikantik.pressroom.business.EntryChangeListener;
 import com.wikantik.pressroom.business.EntryChanged;
 import com.wikantik.pressroom.business.EntryIndexer;
@@ -180,5 +181,17 @@ class EntryChangePublicationTest {
 
         verify(index, times(1)).addEntryReIndexOperation(entry);
         verify(index, never()).removeEntryIndexOperation(any());
+    }
+
+    /** The suite's real manager carries the two subscribers the bean config registers. */
+    @Test
+    void theWiredManagerCarriesTheIndexerAndTheCacheInvalidator() throws Exception {
+        Field f = JPAWeblogEntryManagerImpl.class.getDeclaredField("listeners");
+        f.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<EntryChangeListener> wired =
+                (List<EntryChangeListener>) f.get(TestUtils.weblogger().getWeblogEntryManager());
+        assertTrue(wired.stream().anyMatch(EntryIndexer.class::isInstance));
+        assertTrue(wired.stream().anyMatch(EntryCacheInvalidator.class::isInstance));
     }
 }
