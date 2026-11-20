@@ -224,8 +224,8 @@ public class WebloggerBeanConfig {
     }
 
     @Bean
-    public PluginManager pluginManager(ShortcodeExpander shortcodeExpander) {
-        return new PluginManagerImpl(shortcodeExpander);
+    public PluginManager pluginManager() {
+        return new PluginManagerImpl();
     }
 
     @Bean

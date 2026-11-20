@@ -27,7 +27,6 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
 import com.wikantik.pressroom.util.Reflection;
 
 
@@ -48,16 +47,6 @@ public class PluginManagerImpl implements PluginManager {
     public PluginManagerImpl() {
         // load weblog entry plugins
         loadPagePluginClasses();
-    }
-
-    /**
-     * Kept so {@code WebloggerBeanConfig} still compiles; the expander is
-     * unused now that rendering lives only in {@code EntryRenderer}.
-     *
-     * @param expander ignored
-     */
-    public PluginManagerImpl(ShortcodeExpander expander) {
-        this();
     }
 
     @Override
