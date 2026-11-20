@@ -42,6 +42,7 @@ import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
+import com.wikantik.pressroom.config.runtime.PropertyType;
 import com.wikantik.pressroom.config.runtime.RuntimeConfigDefs;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
@@ -318,13 +319,13 @@ public class GlobalConfigController extends BaseController {
      */
     private void accept(String propName, PropertyDef propertyDef, String incomingProp,
             Map<String, String> accepted, Model model, HttpServletRequest request) {
-        String type = propertyDef.getType();
+        PropertyType propertyType = PropertyType.of(propertyDef.getType());
         if (DiscoverySettings.REFRESH_SECONDS.equals(propName)) {
             // Edited in minutes, stored in seconds: the form never posts
             // the seconds property itself. Absent leaves it as it is.
             acceptRefreshMinutes(request, propertyDef, accepted, model);
 
-        } else if ("boolean".equals(type)) {
+        } else if (propertyType == PropertyType.BOOLEAN) {
             // an unticked checkbox submits nothing, so absent means false
             accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
 
@@ -337,16 +338,8 @@ public class GlobalConfigController extends BaseController {
                 addError(model, "ConfigForm.invalidProperty", propName, request);
             }
 
-        } else if ("integer".equals(type)) {
-            checkInteger(propName, propertyDef, incomingProp, model, request);
-            accepted.put(propName, incomingProp);
-
-        } else if ("float".equals(type)) {
-            try {
-                Float.parseFloat(incomingProp);
-            } catch (NumberFormatException nfe) {
-                addUnparsedError(model, "ConfigForm.invalidFloatProperty", propertyDef, incomingProp, request);
-            }
+        } else if (propertyType == PropertyType.INTEGER || propertyType == PropertyType.FLOAT) {
+            checkNumber(propertyType, propName, propertyDef, incomingProp, model, request);
             accepted.put(propName, incomingProp);
 
         } else {
@@ -354,20 +347,19 @@ public class GlobalConfigController extends BaseController {
         }
     }
 
-    /** An integer property must parse, and a discovery setting must lie in its range. */
-    private void checkInteger(String propName, PropertyDef propertyDef, String incomingProp, Model model,
-            HttpServletRequest request) {
-        int parsed;
-        try {
-            parsed = Integer.parseInt(incomingProp);
-        } catch (NumberFormatException nfe) {
-            addUnparsedError(model, "ConfigForm.invalidIntegerProperty", propertyDef, incomingProp, request);
-            return;
-        }
-        if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
-            addRangeError(model, propertyDef, DiscoverySettings.min(propName),
-                    DiscoverySettings.max(propName), request);
-        }
+    /** A number must parse, and a discovery setting must lie in its range. */
+    private void checkNumber(PropertyType type, String propName, PropertyDef propertyDef, String incomingProp,
+            Model model, HttpServletRequest request) {
+        type.check(propName, incomingProp).ifPresent(problem -> {
+            switch (problem) {
+                case PropertyType.Range range ->
+                    addRangeError(model, propertyDef, range.min(), range.max(), request);
+                case PropertyType.Unparsed unparsed -> addUnparsedError(model,
+                        type == PropertyType.INTEGER ? "ConfigForm.invalidIntegerProperty"
+                                : "ConfigForm.invalidFloatProperty",
+                        propertyDef, incomingProp, request);
+            }
+        });
     }
 
     private void addUnparsedError(Model model, String key, PropertyDef propertyDef, String incomingProp,

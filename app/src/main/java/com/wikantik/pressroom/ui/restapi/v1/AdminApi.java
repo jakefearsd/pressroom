@@ -23,6 +23,7 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
 import com.wikantik.pressroom.config.runtime.DisplayGroup;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
+import com.wikantik.pressroom.config.runtime.PropertyType;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
@@ -407,36 +408,18 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (value == null) {
             throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' cannot be set to null.");
         }
-        switch (def.getType()) {
-            case "boolean" -> {
-                if (!BOOLEAN.matcher(value).matches()) {
-                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be true or false.");
-                }
-            }
-            case "integer" -> {
-                int parsed;
-                try {
-                    parsed = Integer.parseInt(value);
-                } catch (NumberFormatException e) {
-                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be an integer.", e);
-                }
-                if (DiscoverySettings.rangeError(def.getName(), parsed).isPresent()) {
-                    throw ApiException.invalidField(def.getName(), "'" + def.getName()
-                            + "' must be between " + DiscoverySettings.min(def.getName())
-                            + " and " + DiscoverySettings.max(def.getName()) + ".");
-                }
-            }
-            case "float" -> {
-                try {
-                    Float.parseFloat(value);
-                } catch (NumberFormatException e) {
-                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be a number.", e);
-                }
-            }
-            default -> {
-                // string / text: no format constraint.
-            }
-        }
+        String name = def.getName();
+        PropertyType type = PropertyType.of(def.getType());
+        type.check(name, value).ifPresent(problem -> {
+            throw ApiException.invalidField(name, "'" + name + "' " + switch (problem) {
+                case PropertyType.Range range -> "must be between " + range.min() + " and " + range.max() + ".";
+                case PropertyType.Unparsed unparsed -> switch (type) {
+                    case BOOLEAN -> "must be true or false.";
+                    case INTEGER -> "must be an integer.";
+                    default -> "must be a number.";
+                };
+            });
+        });
     }
 
     @Override
