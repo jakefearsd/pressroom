@@ -30,7 +30,7 @@ import com.wikantik.pressroom.business.shortcodes.ShortcodeContext;
  * comment on {@code V014__weblog_pages.sql} for why. A page has no category,
  * tags, pubtime, comment settings, or locale.
  */
-public class WeblogPage implements ShortcodeContext, Serializable {
+public class WeblogPage implements ShortcodeContext, Serializable, SeoFields {
 
     private static final long serialVersionUID = 1L;
 

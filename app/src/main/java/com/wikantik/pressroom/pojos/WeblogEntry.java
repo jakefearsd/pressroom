@@ -49,7 +49,7 @@ import com.wikantik.pressroom.util.Utilities;
 /**
  * Represents a Weblog Entry.
  */
-public class WeblogEntry implements Serializable, ShortcodeContext {
+public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     private static final Logger log = LoggerFactory.getLogger(WeblogEntry.class);
     
     public static final long serialVersionUID = 2341505386843044125L;

@@ -388,11 +388,9 @@ public class EntryBean {
         entry.setTagsAsString(getTagsAsString() != null
                 ? Utilities.replaceNonAlphanumeric(getTagsAsString(), ' ') : "");
         // Trimmed, blank as null: no <meta ... content="   "> is ever rendered.
-        entry.setSearchDescription(StringUtils.trimToNull(getSearchDescription()));
+        new SeoForm(getMetaTitle(), getSearchDescription(), getCanonicalUrl()).applyTo(entry);
         entry.setFeaturedImageId(getFeaturedImageId());
-        entry.setMetaTitle(StringUtils.trimToNull(getMetaTitle()));
         entry.setOgImageId(getOgImageId());
-        entry.setCanonicalUrl(StringUtils.trimToNull(getCanonicalUrl()));
         entry.setNoindex(getNoindex());
         entry.setCommentsClosed(getCommentsClosed());
         // fromString is lenient by design: null/blank (no dropdown yet) and
