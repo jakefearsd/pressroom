@@ -755,13 +755,37 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 java.time.Instant.now().minus(java.time.Duration.ofDays(retentionDays)));
 
         int purged = 0;
-        for (WeblogEntry entry : getTrashedEntries(weblog)) {
-            if (entry.getTrashedAt() != null && entry.getTrashedAt().before(cutoff)) {
-                removeWeblogEntry(entry);
+        for (WeblogEntry entry : new ArrayList<>(getTrashedEntries(weblog))) {
+            Timestamp trashedAt = entry.getTrashedAt();
+            // Same rule as pages: trashed at or before the cutoff.
+            if (trashedAt != null && !trashedAt.after(cutoff) && removeIfStillTrashed(entry, cutoff)) {
                 purged++;
             }
         }
         return purged;
+    }
+
+    /**
+     * Removes a purge candidate only if its row is still trash and still past
+     * the cutoff now. The sweep holds the entry as it was when listed; a
+     * restore (or a re-trash) can commit before the delete, so the row is read
+     * again under a write lock. An entry that left the trash, or is gone, is
+     * left alone.
+     *
+     * @return whether the entry was removed
+     */
+    boolean removeIfStillTrashed(WeblogEntry entry, Timestamp cutoff) throws WebloggerException {
+        try {
+            strategy.getEntityManager(true).refresh(entry, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        } catch (jakarta.persistence.EntityNotFoundException gone) {
+            return false;
+        }
+        Timestamp trashedAt = entry.getTrashedAt();
+        if (entry.getStatus() != PubStatus.TRASHED || trashedAt == null || trashedAt.after(cutoff)) {
+            return false;
+        }
+        removeWeblogEntry(entry);
+        return true;
     }
 
     private List<WeblogEntry> getNextPrevEntries(WeblogEntry current, String catName,
