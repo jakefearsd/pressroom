@@ -98,18 +98,18 @@ public class PreviewPageModel extends PageModel {
     
     
     /**
-     * Override method that returns pager so that we can introduce a custom
-     * pager for preview pages which can display things that we don't want
-     * available on the "live" weblog, like DRAFT entries.
+     * Override the pager factory so that previews get a custom pager which can
+     * display things that are not available on the "live" weblog, like DRAFT
+     * entries. Every pager getter of {@link PageModel} comes through here.
      */
     @Override
-    public WeblogEntriesPager getWeblogEntriesPager(String catArgument) {
-        
+    protected WeblogEntriesPager newEntriesPager(EntriesPagerQuery query) {
+
         String anchor = previewRequest.getPreviewEntry();
         if(anchor == null) {
             anchor = previewRequest.getWeblogAnchor();
         }
-        
+
         if (anchor != null) {
             return new WeblogEntriesPreviewPager(
                     urlStrategy, weblogger,
@@ -119,7 +119,7 @@ public class PreviewPageModel extends PageModel {
                     anchor,
                     previewRequest.getWeblogDate(),
                     null,
-                    previewRequest.getTags(),
+                    query.tags(),
                     previewRequest.getPageNum());
         } else {
             return new WeblogEntriesLatestPager(
@@ -130,10 +130,9 @@ public class PreviewPageModel extends PageModel {
                     previewRequest.getWeblogAnchor(),
                     previewRequest.getWeblogDate(),
                     null,
-                    previewRequest.getTags(),
+                    query.tags(),
                     previewRequest.getPageNum());
         }
-        
     }
 
 }

@@ -262,6 +262,18 @@ class PreviewModelsTest {
     }
 
     @Test
+    void previewingADraftByTagStillUsesThePagerThatSeesUnpublishedEntries() throws Exception {
+        // The by-tag getter used to bypass the preview override and build the
+        // live pager, which filters a draft out.
+        WeblogPreviewRequest request = previewRequest();
+        request.setPreviewEntry("my-draft");
+
+        assertInstanceOf(WeblogEntriesPreviewPager.class,
+                previewPageModel(request).getWeblogEntriesPagerByTag("travel"),
+                "Every pager getter must go through the preview's pager factory.");
+    }
+
+    @Test
     void previewingTheWholeBlogUsesTheOrdinaryLatestPager() throws Exception {
         assertInstanceOf(WeblogEntriesLatestPager.class,
                 previewPageModel(previewRequest()).getWeblogEntriesPager("nil"),

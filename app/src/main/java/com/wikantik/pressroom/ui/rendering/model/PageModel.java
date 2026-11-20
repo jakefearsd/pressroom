@@ -486,58 +486,52 @@ public class PageModel implements Model {
             tags.add(tagArgument);
         }
         
-        String dateString = pageRequest.getWeblogDate();
-        
-        // determine which mode to use
-        if (pageRequest.getWeblogAnchor() != null) {
-            return new WeblogEntriesPermalinkPager(
-                    urlStrategy, weblogger,
-                    weblog,
-                    pageRequest.getLocale(),
-                    pageRequest.getWeblogPageName(),
-                    pageRequest.getWeblogAnchor(),
-                    pageRequest.getWeblogDate(),
-                    cat,
-                    tags,
-                    pageRequest.getPageNum());
-        } else if (dateString != null && dateString.length() == 8) {
-            return new WeblogEntriesDayPager(
-                    urlStrategy, weblogger,
-                    weblog,
-                    pageRequest.getLocale(),
-                    pageRequest.getWeblogPageName(),
-                    pageRequest.getWeblogAnchor(),
-                    pageRequest.getWeblogDate(),
-                    cat,
-                    tags,
-                    pageRequest.getPageNum());
-        } else if (dateString != null && dateString.length() == 6) {
-            return new WeblogEntriesMonthPager(
-                    urlStrategy, weblogger,
-                    weblog,
-                    pageRequest.getLocale(),
-                    pageRequest.getWeblogPageName(),
-                    pageRequest.getWeblogAnchor(),
-                    pageRequest.getWeblogDate(),
-                    cat,
-                    tags,
-                    pageRequest.getPageNum());
-          
-        } else {
-            return new WeblogEntriesLatestPager(
-                    urlStrategy, weblogger,
-                    weblog,
-                    pageRequest.getLocale(),
-                    pageRequest.getWeblogPageName(),
-                    pageRequest.getWeblogAnchor(),
-                    pageRequest.getWeblogDate(),
-                    cat,
-                    tags,
-                    pageRequest.getPageNum());
-        }
+        return newEntriesPager(new EntriesPagerQuery(cat, tags));
     }
-        
-    
+
+    /**
+     * What a page's entries pager is asked for: the category and tags it is
+     * restricted to, after any template argument has been merged with the
+     * request's own.
+     */
+    protected record EntriesPagerQuery(String category, List<String> tags) {
+    }
+
+    /** The one place a page model builds its pager; a preview overrides it. */
+    protected WeblogEntriesPager newEntriesPager(EntriesPagerQuery query) {
+        String dateString = pageRequest.getWeblogDate();
+
+        // determine which mode to use
+        PagerConstructor mode;
+        if (pageRequest.getWeblogAnchor() != null) {
+            mode = WeblogEntriesPermalinkPager::new;
+        } else if (dateString != null && dateString.length() == 8) {
+            mode = WeblogEntriesDayPager::new;
+        } else if (dateString != null && dateString.length() == 6) {
+            mode = WeblogEntriesMonthPager::new;
+        } else {
+            mode = WeblogEntriesLatestPager::new;
+        }
+        return mode.create(
+                urlStrategy, weblogger,
+                weblog,
+                pageRequest.getLocale(),
+                pageRequest.getWeblogPageName(),
+                pageRequest.getWeblogAnchor(),
+                pageRequest.getWeblogDate(),
+                query.category(),
+                query.tags(),
+                pageRequest.getPageNum());
+    }
+
+    /** The constructor all the entries pagers share. */
+    @FunctionalInterface
+    protected interface PagerConstructor {
+        WeblogEntriesPager create(URLStrategy strat, Weblogger weblogger, Weblog weblog,
+                String locale, String pageLink, String entryAnchor, String dateString,
+                String catName, List<String> tags, int page);
+    }
+
     /**
      * Get request parameter by name.
      */
