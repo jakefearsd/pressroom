@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
-import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;

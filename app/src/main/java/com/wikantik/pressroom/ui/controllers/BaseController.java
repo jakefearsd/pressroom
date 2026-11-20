@@ -51,6 +51,7 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Collections;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -325,6 +326,11 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     /** The mutation a {@link #flashAction} runs; returns the success message to flash. */
     @FunctionalInterface
     protected interface FlashOp {
+        // Broad on purpose: flashAction turns anything the op throws into the generic error flash.
+        @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+        @SuppressFBWarnings(
+                value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
+                justification = "flashAction turns anything an op throws into the generic error flash")
         Flash run() throws Exception;
     }
 

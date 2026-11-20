@@ -485,6 +485,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     /**
      * Get search description for weblog entry.
      */
+    @Override
     public String getSearchDescription() {
         return searchDescription;
     }
@@ -492,6 +493,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     /**
      * Set search description for weblog entry
      */
+    @Override
     public void setSearchDescription(String searchDescription) {
         this.searchDescription = searchDescription;
     }
@@ -512,10 +514,12 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     }
 
     /** SEO {@code <title>} override. Null falls back to the entry's normal title. */
+    @Override
     public String getMetaTitle() {
         return metaTitle;
     }
 
+    @Override
     public void setMetaTitle(String metaTitle) {
         this.metaTitle = metaTitle;
     }
@@ -535,10 +539,12 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     }
 
     /** Canonical URL override. Null falls back to the entry's normal permalink. */
+    @Override
     public String getCanonicalUrl() {
         return canonicalUrl;
     }
 
+    @Override
     public void setCanonicalUrl(String canonicalUrl) {
         this.canonicalUrl = canonicalUrl;
     }

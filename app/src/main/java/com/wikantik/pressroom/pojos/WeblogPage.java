@@ -267,10 +267,12 @@ public class WeblogPage implements ShortcodeContext, Serializable, SeoFields {
     /**
      * SEO title override; null falls back to {@link #getTitle()}.
      */
+    @Override
     public String getMetaTitle() {
         return metaTitle;
     }
 
+    @Override
     public void setMetaTitle(String metaTitle) {
         this.metaTitle = metaTitle;
     }
@@ -278,10 +280,12 @@ public class WeblogPage implements ShortcodeContext, Serializable, SeoFields {
     /**
      * SEO meta description.
      */
+    @Override
     public String getSearchDescription() {
         return searchDescription;
     }
 
+    @Override
     public void setSearchDescription(String searchDescription) {
         this.searchDescription = searchDescription;
     }
@@ -289,10 +293,12 @@ public class WeblogPage implements ShortcodeContext, Serializable, SeoFields {
     /**
      * SEO canonical URL override.
      */
+    @Override
     public String getCanonicalUrl() {
         return canonicalUrl;
     }
 
+    @Override
     public void setCanonicalUrl(String canonicalUrl) {
         this.canonicalUrl = canonicalUrl;
     }
