@@ -18,20 +18,13 @@
 
 package com.wikantik.pressroom.business.discovery;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
-import java.util.stream.Collectors;
 
 /**
- * Fills the slots of one front-page section: the top-ranked items first, then a
- * share of weighted random picks from the whole pool. Pure; no I/O.
+ * The arithmetic behind the slots of one front-page section; the filling
+ * itself is {@link SlotFill}. Pure; no I/O.
  */
 public final class DiscoverySlots {
 
@@ -54,92 +47,7 @@ public final class DiscoverySlots {
         return Math.min(slots, wanted);
     }
 
-    /**
-     * Fills up to {@code slots} slots.
-     *
-     * @param ranked score-descending items that have scores
-     * @param pool every candidate
-     * @param taken cross-section dedupe set; read, and every chosen item is added
-     * @return ranked picks first, then random picks; shorter only if the pool runs out
-     */
-    public static <T> List<T> fill(final List<T> ranked, final List<T> pool, final int slots,
-            final int sharePercent, final Set<T> taken, final Random random,
-            final ToDoubleFunction<T> weight) {
-        return fill(ranked, pool, slots, sharePercent, taken, random, weight, item -> item, Integer.MAX_VALUE);
-    }
-
-    /**
-     * {@link #fill(List, List, int, int, Set, Random, ToDoubleFunction)} with
-     * at most {@code perGroup} picks from any one group: a ranked item whose
-     * group is full is passed over for the next-ranked of another group, and
-     * random picks are drawn only from groups with room. The cap never costs
-     * a slot: when no other group has an item left, the slots still empty go
-     * to the items passed over, ranked ones first in rank order, then random.
-     * Items already in {@code taken} are not counted.
-     *
-     * @param group the group an item belongs to (a post's blog)
-     * @param perGroup the most picks from one group
-     */
-    public static <T> List<T> fill(final List<T> ranked, final List<T> pool, final int slots,
-            final int sharePercent, final Set<T> taken, final Random random,
-            final ToDoubleFunction<T> weight, final Function<T, ?> group, final int perGroup) {
-        return fill(ranked, pool, slots, sharePercent, taken, random, weight, group, perGroup, Map.of());
-    }
-
-    /**
-     * {@link #fill(List, List, int, int, Set, Random, ToDoubleFunction, Function, int)}
-     * for a section shown beside items already picked: each group starts
-     * with the count given, so a group shown once elsewhere gets one pick
-     * fewer here, ranked or random. The cap is relaxed as before when no
-     * other group has an item left.
-     *
-     * @param alreadyShown picks per group made outside this section that count
-     *                     toward the cap (the lead story's blog: 1)
-     */
-    public static <T> List<T> fill(final List<T> ranked, final List<T> pool, final int slots,
-            final int sharePercent, final Set<T> taken, final Random random,
-            final ToDoubleFunction<T> weight, final Function<T, ?> group, final int perGroup,
-            final Map<?, Integer> alreadyShown) {
-        final List<T> chosen = new ArrayList<>();
-        final Map<Object, Integer> picked = new HashMap<>(alreadyShown);
-        final Predicate<T> groupHasRoom = item -> picked.getOrDefault(group.apply(item), 0) < perGroup;
-        final int rankedWanted = slots - randomSlots(slots, sharePercent);
-        for (final T item : ranked) {
-            if (chosen.size() >= rankedWanted) {
-                break;
-            }
-            if (!taken.contains(item) && !chosen.contains(item) && groupHasRoom.test(item)) {
-                chosen.add(item);
-                picked.merge(group.apply(item), 1, Integer::sum);
-            }
-        }
-        final List<T> remaining = pool.stream()
-                .filter(item -> !taken.contains(item) && !chosen.contains(item))
-                .collect(Collectors.toCollection(ArrayList::new));
-        while (chosen.size() < slots) {
-            final List<T> open = remaining.stream().filter(groupHasRoom).toList();
-            if (open.isEmpty()) {
-                break;
-            }
-            final T pick = open.get(drawIndex(open, random, weight));
-            remaining.remove(pick);
-            chosen.add(pick);
-            picked.merge(group.apply(pick), 1, Integer::sum);
-        }
-        // every group with an item left is full: relax the cap rather than leave a slot empty
-        for (final T item : ranked) {
-            if (chosen.size() < slots && remaining.remove(item)) {
-                chosen.add(item);
-            }
-        }
-        while (chosen.size() < slots && !remaining.isEmpty()) {
-            chosen.add(remaining.remove(drawIndex(remaining, random, weight)));
-        }
-        taken.addAll(chosen);
-        return chosen;
-    }
-
-    private static <T> int drawIndex(final List<T> items, final Random random, final ToDoubleFunction<T> weight) {
+    static <T> int drawIndex(final List<T> items, final Random random, final ToDoubleFunction<T> weight) {
         final double[] cumulative = new double[items.size()];
         double total = 0;
         for (int i = 0; i < cumulative.length; i++) {

@@ -24,15 +24,43 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 import org.junit.jupiter.api.Test;
 
-import static com.wikantik.pressroom.business.discovery.DiscoverySlots.fill;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Slot filling: ranked picks first, then a seeded weighted random share. */
 class DiscoverySlotsTest {
+
+    private static List<String> fill(final List<String> ranked, final List<String> pool, final int slots,
+            final int share, final Set<String> taken, final Random random, final ToDoubleFunction<String> weight) {
+        return SlotFill.of(ranked, pool).slots(slots).sharePercent(share).weight(weight).into(taken, random);
+    }
+
+    private static List<String> fill(final List<String> ranked, final List<String> pool, final int slots,
+            final int share, final Set<String> taken, final Random random, final ToDoubleFunction<String> weight,
+            final Function<String, ?> group, final int perGroup) {
+        return SlotFill.of(ranked, pool).slots(slots).sharePercent(share).weight(weight)
+                .capPerGroup(group, perGroup).into(taken, random);
+    }
+
+    private static List<String> fill(final List<String> ranked, final List<String> pool, final int slots,
+            final int share, final Set<String> taken, final Random random, final ToDoubleFunction<String> weight,
+            final Function<String, ?> group, final int perGroup, final Map<?, Integer> shown) {
+        return SlotFill.of(ranked, pool).slots(slots).sharePercent(share).weight(weight)
+                .capPerGroup(group, perGroup, shown).into(taken, random);
+    }
+
+    @Test void anIncompleteFillIsRefused() {
+        final SlotFill<String> fill = SlotFill.of(List.of("a"), List.of("a")).slots(1).sharePercent(0);
+        final Set<String> taken = new HashSet<>();
+        final Random random = new Random(1);
+        assertThrows(IllegalStateException.class, () -> fill.into(taken, random));
+    }
 
     private static List<String> pool(final String from, final String to) {
         final List<String> out = new ArrayList<>();
@@ -185,7 +213,7 @@ class DiscoverySlotsTest {
     }
 
     /**
-     * 0.9.1 criterion 3. A characterisation test for the nine-argument fill:
+     * 0.9.1 criterion 3. A characterisation test for the capped fill without a shown-elsewhere map:
      * it passed before the groups-already-shown overload existed and pins
      * that nothing shown beforehand leaves every pick, ranked and random,
      * as it was.

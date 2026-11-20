@@ -326,25 +326,29 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         }
         // at most POPULAR_PER_BLOG of one blog; the headline sits beside the rail, so its blog starts at one
         Map<String, Integer> besideTheRail = headline == null ? Map.of() : Map.of(headline.weblogId(), 1);
-        List<DiscoveryCandidate> popular = DiscoverySlots.fill(s.ranked, s.pool, POPULAR_SLOTS, share, taken,
-                s.random(SALT_POPULAR), s::weight, DiscoveryCandidate::weblogId, POPULAR_PER_BLOG,
-                besideTheRail);
+        List<DiscoveryCandidate> popular = SlotFill.of(s.ranked, s.pool)
+                .slots(POPULAR_SLOTS).sharePercent(share).weight(s::weight)
+                .capPerGroup(DiscoveryCandidate::weblogId, POPULAR_PER_BLOG, besideTheRail)
+                .into(taken, s.random(SALT_POPULAR));
 
-        List<String> cardWeblogs = DiscoverySlots.fill(
-                withUntaken(s, s.rankedWeblogs, taken), withUntaken(s, s.weblogsWithEntries, taken),
-                BLOG_CARDS, share, new HashSet<>(), s.random(SALT_BLOGS), s::blogWeight);
+        List<String> cardWeblogs = SlotFill.of(
+                withUntaken(s, s.rankedWeblogs, taken), withUntaken(s, s.weblogsWithEntries, taken))
+                .slots(BLOG_CARDS).sharePercent(share).weight(s::blogWeight)
+                .into(new HashSet<>(), s.random(SALT_BLOGS));
         Random cardRandom = s.random(SALT_CARD_ENTRIES);
         List<CardIds> cards = new ArrayList<>();
         for (String weblogId : cardWeblogs) {
-            List<DiscoveryCandidate> entries = DiscoverySlots.fill(
+            List<DiscoveryCandidate> entries = SlotFill.of(
                     s.rankedByWeblog.getOrDefault(weblogId, List.of()),
-                    s.poolByWeblog.getOrDefault(weblogId, List.of()),
-                    CARD_ENTRIES, share, taken, cardRandom, s::weight);
+                    s.poolByWeblog.getOrDefault(weblogId, List.of()))
+                    .slots(CARD_ENTRIES).sharePercent(share).weight(s::weight)
+                    .into(taken, cardRandom);
             cards.add(new CardIds(weblogId, entryIds(entries)));
         }
 
-        List<DiscoveryCandidate> different = DiscoverySlots.fill(List.of(), s.pool, DIFFERENT_SLOTS, ALL_RANDOM,
-                taken, s.random(SALT_DIFFERENT), s::weight);
+        List<DiscoveryCandidate> different = SlotFill.of(List.<DiscoveryCandidate>of(), s.pool)
+                .slots(DIFFERENT_SLOTS).sharePercent(ALL_RANDOM).weight(s::weight)
+                .into(taken, s.random(SALT_DIFFERENT));
 
         // Latest last: the newest posts nothing above took, so it never
         // changes what the other sections show; on a small site it may be empty.
@@ -518,8 +522,9 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             }
         }
         int salt = excluded == null ? 0 : excluded.hashCode();
-        return entryIds(DiscoverySlots.fill(ranked, pool, count, DiscoverySettings.sharePercent(),
-                new HashSet<>(), s.random(salt), s::weight));
+        return entryIds(SlotFill.of(ranked, pool)
+                .slots(count).sharePercent(DiscoverySettings.sharePercent()).weight(s::weight)
+                .into(new HashSet<>(), s.random(salt)));
     }
 
     // ------------------------------------------------------------ resolution
