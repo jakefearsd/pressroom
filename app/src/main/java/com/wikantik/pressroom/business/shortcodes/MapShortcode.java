@@ -228,39 +228,24 @@ public class MapShortcode implements ShortcodeHandler {
      * source order -- the TouristTrip itinerary, built by the same machinery
      * that builds the page.
      *
-     * <p>It walks the text with a real {@link ShortcodeExpander} carrying a
-     * single collecting handler rather than a fourth {@code [map]}-matching
-     * regex: tag grammar, quoted attributes, nesting and the
-     * {@code [[map ...]]} escape form then behave identically on both sides by
-     * construction. The collector returns null so nothing is rewritten; the
-     * expanded text is discarded and only the pins are kept.
+     * <p>It {@linkplain ShortcodeExpander#walk walks} the text rather than
+     * matching {@code [map]} with a regex of its own: tag grammar, quoted
+     * attributes, nesting and the {@code [[map ...]]} escape form then behave
+     * identically on both sides by construction.
      */
     public static List<MapPins.Pin> pinsInEntry(ShortcodeContext content, MediaFileManager mediaFiles) {
         if (content == null || content.getRawText() == null) {
             return List.of();
         }
         List<MapPins.Pin> collected = new ArrayList<>();
-        ShortcodeExpander collector = new ShortcodeExpander(List.of(new ShortcodeHandler() {
-            @Override
-            public String getName() {
-                return "map";
-            }
-
-            @Override
-            public ShortcodeCard getCard() {
-                return CARD;
-            }
-
-            @Override
-            public String render(Map<String, String> attributes, String body, ShortcodeContext c) {
-                List<MapPins.Pin> pins = resolvePins(attributes, body, c, mediaFiles, ShortcodeReads.IGNORED);
-                if (pins != null) {
-                    collected.addAll(pins);
-                }
-                return null;
-            }
-        }));
-        collector.expand(content, content.getRawText());
+        new ShortcodeExpander(List.of(new MapShortcode(mediaFiles))).walk(content, content.getRawText(),
+                (name, attributes, body) -> {
+                    List<MapPins.Pin> pins = resolvePins(attributes, body, content, mediaFiles,
+                            ShortcodeReads.IGNORED);
+                    if (pins != null) {
+                        collected.addAll(pins);
+                    }
+                });
         return List.copyOf(collected);
     }
 

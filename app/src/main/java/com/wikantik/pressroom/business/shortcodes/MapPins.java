@@ -20,10 +20,8 @@ package com.wikantik.pressroom.business.shortcodes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,20 +59,6 @@ public final class MapPins {
     private static final Logger log = LoggerFactory.getLogger(MapPins.class);
 
     /**
-     * A {@code [pin ...]} tag: same attribute-section grammar as
-     * {@link ShortcodeExpander}'s OPEN_TAG (including its possessive runs, so a
-     * long unclosed {@code [pin} cannot overflow the stack), anchored to the {@code pin} name
-     * ({@code [pins ...]} is a different, unknown tag).
-     */
-    private static final Pattern PIN_TAG = Pattern.compile(
-            "\\[pin((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?/?)\\]",
-            Pattern.CASE_INSENSITIVE);
-
-    /** Same attribute grammar as the expander: double-quoted, single-quoted, or bare. */
-    private static final Pattern ATTRIBUTE = Pattern.compile(
-            "([\\w-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\\]]+))");
-
-    /**
      * One map pin, in entry-source order. {@code label} is the author's
      * display text, raw and unescaped -- every emitter escapes for its own
      * context (HTML-encoded into {@code data-pins}, JSON-escaped into the
@@ -97,13 +81,8 @@ public final class MapPins {
             return List.of();
         }
         List<Pin> pins = new ArrayList<>();
-        Matcher matcher = PIN_TAG.matcher(text);
-        while (matcher.find()) {
-            if (matcher.start() > 0 && text.charAt(matcher.start() - 1) == '[') {
-                // [[pin ...]]: an escaped mention of the syntax, not a pin
-                continue;
-            }
-            Pin pin = toPin(matcher.group(1));
+        for (Map<String, String> attributes : ShortcodeSyntax.childTags(text, "pin")) {
+            Pin pin = toPin(attributes);
             if (pin != null) {
                 pins.add(pin);
             }
@@ -111,31 +90,10 @@ public final class MapPins {
         return pins;
     }
 
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Lower-cases an author's attribute names (lat, lng, label) to pick a field of "
-                    + "the pin; it decides only how the author's own map content is parsed.")
-    private static Pin toPin(String attributeText) {
-        String lat = null;
-        String lng = null;
-        String label = null;
-        // strip a self-close slash so it never reads as part of a bare value
-        String section = attributeText == null ? "" : attributeText.stripTrailing();
-        if (section.endsWith("/")) {
-            section = section.substring(0, section.length() - 1);
-        }
-        Matcher attributes = ATTRIBUTE.matcher(section);
-        while (attributes.find()) {
-            String value = attributes.group(2) != null ? attributes.group(2)
-                    : attributes.group(3) != null ? attributes.group(3)
-                    : attributes.group(4);
-            switch (attributes.group(1).toLowerCase(Locale.ROOT)) {
-                case "lat" -> lat = value;
-                case "lng" -> lng = value;
-                case "label" -> label = value;
-                default -> { /* unknown attribute: ignored */ }
-            }
-        }
+    private static Pin toPin(Map<String, String> attributes) {
+        String lat = attributes.get("lat");
+        String lng = attributes.get("lng");
+        String label = attributes.get("label");
 
         Double latitude = parseCoordinate(lat, 90);
         Double longitude = parseCoordinate(lng, 180);

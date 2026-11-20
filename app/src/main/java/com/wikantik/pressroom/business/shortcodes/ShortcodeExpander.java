@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.wikantik.pressroom.business.MediaFileManager;
@@ -92,49 +91,6 @@ public final class ShortcodeExpander {
      */
     private static final int MAX_NESTING_DEPTH = 10;
 
-    /**
-     * An opening (or self-closing) shortcode tag: {@code [name attrs]},
-     * {@code [name attrs /]}, or the escaped {@code [[name attrs]}] prefix
-     * (group 1 captures the doubled bracket). The attribute section is
-     * quote-aware: a {@code ]} inside a complete double- or single-quoted
-     * value stays part of the value ({@code caption="Paris [2023]"}) rather
-     * than ending the tag, while an unquoted (or unterminated-quote)
-     * {@code ]} still ends it -- which is what keeps an unterminated
-     * {@code [name} from swallowing the rest of the text. Group 4 catches
-     * the no-attribute self-close ({@code [name/]}); a trailing {@code /}
-     * after attributes lands inside group 3 and is handled by
-     * {@link #isSelfClosing}.
-     *
-     * <p>Group 3 is written as runs of plain characters between quoted values,
-     * all possessive, rather than as one alternation repeated per character.
-     * {@code java.util.regex} recurses once per iteration of a repeated group,
-     * so the per-character form overflowed a request thread's stack on a
-     * couple of thousand characters of unclosed {@code [word ...} prose. The
-     * two forms match the same text: a quoted value has exactly one possible
-     * end, and nothing after group 3 can match inside it, so the possessive
-     * quantifiers give up no match the greedy ones could have found.
-     */
-    private static final Pattern OPEN_TAG = openTagPattern();
-
-    /**
-     * {@link #OPEN_TAG}, compiled in a method of its own only so that the
-     * REDOS review below is attached to this one pattern rather than to the
-     * whole class: a suppression cannot sit on a static initializer.
-     */
-    @SuppressFBWarnings(
-            value = "REDOS",
-            justification = "Every repetition is possessive and the alternatives start on different "
-                    + "characters (a plain run excludes both quotes), so nothing backtracks for input to "
-                    + "multiply; ShortcodeExpanderTest feeds it 100,000 characters of unclosed prose "
-                    + "and 20,000 quoted values.")
-    private static Pattern openTagPattern() {
-        return Pattern.compile("\\[(\\[?)([a-zA-Z][\\w-]*)"
-                + "((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)(/?)\\]");
-    }
-
-    private static final Pattern ATTRIBUTE = Pattern.compile(
-            "([\\w-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\\]]+))");
-
     private final Map<String, ShortcodeHandler> handlers;
 
     public ShortcodeExpander(List<ShortcodeHandler> handlerList) {
@@ -199,6 +155,40 @@ public final class ShortcodeExpander {
         return expand(content, text, reads, 0);
     }
 
+    /**
+     * Visits every registered shortcode in {@code text} -- the same tags, in
+     * the same grammar (nesting, quoted attributes, the {@code [[name]]}
+     * escape) as {@link #expand} -- without rewriting anything. A nested tag
+     * is visited before the tag that contains it, and its enclosing tag's
+     * body is as it was written. Readers of raw entry text (the JSON-LD
+     * head) use this instead of a regex of their own, so they cannot drift
+     * from the page.
+     */
+    public void walk(ShortcodeContext content, String text, ShortcodeVisitor visitor) {
+        List<ShortcodeHandler> visiting = handlers.values().stream()
+                .<ShortcodeHandler>map(handler -> new Visiting(handler, visitor)).toList();
+        new ShortcodeExpander(visiting).expand(content, text);
+    }
+
+    /** A registered name that reports to a visitor and renders nothing (null: left as written). */
+    private record Visiting(ShortcodeHandler handler, ShortcodeVisitor visitor) implements ShortcodeHandler {
+        @Override
+        public String getName() {
+            return handler.getName();
+        }
+
+        @Override
+        public ShortcodeCard getCard() {
+            return handler.getCard();
+        }
+
+        @Override
+        public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
+            visitor.visit(getName().toLowerCase(Locale.ROOT), attributes, body);
+            return null;
+        }
+    }
+
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
             justification = "Lower-cases a shortcode name to look up one of Pressroom's registered handlers, "
@@ -210,7 +200,7 @@ public final class ShortcodeExpander {
             return text;
         }
 
-        Matcher matcher = OPEN_TAG.matcher(text);
+        Matcher matcher = ShortcodeSyntax.OPEN_TAG.matcher(text);
         StringBuilder out = new StringBuilder(text.length());
         int last = 0;
         boolean expandedAnything = false;
@@ -274,7 +264,7 @@ public final class ShortcodeExpander {
      */
     private Rendered render(ShortcodeContext content, String text, ShortcodeReads reads, int depth,
             Matcher matcher, String name, ShortcodeHandler handler) {
-        boolean selfClosing = isSelfClosing(matcher.group(3), matcher.group(4));
+        boolean selfClosing = ShortcodeSyntax.isSelfClosing(matcher.group(3), matcher.group(4));
         String attributeText = matcher.group(3);
         if (selfClosing) {
             // strip the explicit self-close slash so it never reads as
@@ -294,7 +284,7 @@ public final class ShortcodeExpander {
         }
 
         try {
-            return new Rendered(handler.render(parseAttributes(attributeText), body, content, reads),
+            return new Rendered(handler.render(ShortcodeSyntax.parseAttributes(attributeText), body, content, reads),
                     consumedEnd);
         } catch (Exception e) {
             log.warn("Shortcode [{}] handler failed; leaving the "
@@ -310,7 +300,7 @@ public final class ShortcodeExpander {
      * unescaping {@code [[/name]]} to the literal {@code [/name]} for
      * registered names on the way (the closer counterpart of the
      * {@code [[name ...]]} escape, which the main loop handles because it
-     * matches OPEN_TAG). Returns whether anything was unescaped.
+     * matches ShortcodeSyntax.OPEN_TAG). Returns whether anything was unescaped.
      */
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
@@ -338,15 +328,6 @@ public final class ShortcodeExpander {
         }
         out.append(text, pos, to);
         return changed;
-    }
-
-    /**
-     * A tag is self-closing when it ends {@code /]}: with no attributes the
-     * slash is captured by OPEN_TAG's group 4, after attributes it is the
-     * last non-blank character of group 3.
-     */
-    private static boolean isSelfClosing(String attributeText, String slashGroup) {
-        return !slashGroup.isEmpty() || attributeText.stripTrailing().endsWith("/");
     }
 
     /**
@@ -395,7 +376,7 @@ public final class ShortcodeExpander {
                 pos = scan.closerAt(text, idx, closer.length());
                 continue;
             }
-            Matcher open = OPEN_TAG.matcher(text).region(idx, text.length());
+            Matcher open = ShortcodeSyntax.OPEN_TAG.matcher(text).region(idx, text.length());
             if (!open.lookingAt()) {
                 pos = idx + 1;
                 continue;
@@ -404,7 +385,7 @@ public final class ShortcodeExpander {
             // quoted attribute values are opaque to this scan.
             boolean escapedOpen = !open.group(1).isEmpty() && closesDoubled(text, open.end());
             if (!escapedOpen && open.group(2).equalsIgnoreCase(name)
-                    && !isSelfClosing(open.group(3), open.group(4))) {
+                    && !ShortcodeSyntax.isSelfClosing(open.group(3), open.group(4))) {
                 // a same-name open that has a body
                 if (scan.depth == 0) {
                     // This tag's run of closers is over; the ones that
@@ -439,20 +420,5 @@ public final class ShortcodeExpander {
             }
             return idx + closerLength;
         }
-    }
-
-    private static Map<String, String> parseAttributes(String attributeText) {
-        Map<String, String> attributes = new LinkedHashMap<>();
-        if (attributeText == null || attributeText.isBlank()) {
-            return attributes;
-        }
-        Matcher matcher = ATTRIBUTE.matcher(attributeText);
-        while (matcher.find()) {
-            String value = matcher.group(2) != null ? matcher.group(2)
-                    : matcher.group(3) != null ? matcher.group(3)
-                    : matcher.group(4);
-            attributes.put(matcher.group(1).toLowerCase(Locale.ROOT), value);
-        }
-        return attributes;
     }
 }

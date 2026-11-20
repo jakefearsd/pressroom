@@ -20,8 +20,6 @@ package com.wikantik.pressroom.business.shortcodes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Parses {@code [q]..[/q][a]..[/a]} question/answer pairs into ordered
@@ -53,10 +51,8 @@ import java.util.regex.Pattern;
  */
 public final class FaqBlocks {
 
-    /** A {@code [faq ...]...[/faq]} block (open tag grammar as the expander's) in raw entry text; body-less forms have no pairs. */
-    private static final Pattern FAQ_BLOCK = Pattern.compile(
-            "\\[faq((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)\\](.*?)\\[/faq\\]",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    /** Reads the {@code [faq]} blocks of raw entry text with the expander's own grammar. */
+    private static final ShortcodeExpander WALKER = new ShortcodeExpander(List.of(new FaqShortcode()));
 
     /**
      * One question/answer pair, in entry-source order. Both sides are raw
@@ -85,16 +81,9 @@ public final class FaqBlocks {
             return List.of();
         }
         List<Qa> pairs = new ArrayList<>();
-        Matcher matcher = FAQ_BLOCK.matcher(rawEntryText);
-        while (matcher.find()) {
-            if (matcher.start() > 0 && rawEntryText.charAt(matcher.start() - 1) == '[') {
-                // [[faq]]: an escaped mention of the syntax, not a block
-                continue;
-            }
-            // parsePairs() never returns null (an empty list means
-            // "malformed, or nothing to parse"), so nothing to guard here.
-            pairs.addAll(parsePairs(matcher.group(2)));
-        }
+        // a body-less [faq] has no pairs; parsePairs() never returns null (an
+        // empty list means "malformed, or nothing to parse")
+        WALKER.walk(null, rawEntryText, (name, attributes, body) -> pairs.addAll(parsePairs(body)));
         return pairs;
     }
 
