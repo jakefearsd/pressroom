@@ -169,11 +169,15 @@ class McpIT extends PressroomIT {
             assertEquals(403, foreign.statusCode());
 
             // Sent with no Content-Length (chunked), a little over the cap: the transport reads
-            // up to 2 MiB, refuses with 413, and the few KiB left unread are swallowed by Tomcat, so
-            // the 413 always arrives. (A known oversize Content-Length is refused unread, and Tomcat
-            // closes the connection over more than its 2 MiB maxSwallowSize: a client may see a reset.)
+            // up to the cap, refuses with 413, and the few KiB left unread are swallowed by Tomcat,
+            // so the 413 always arrives. (A known oversize Content-Length is refused unread, and
+            // Tomcat closes the connection over more than its 2 MiB maxSwallowSize: a client may see
+            // a reset.) The cap is McpServerConfig.MAX_REQUEST_BYTES, which is
+            // ApiBodyLimitFilter.MAX_BODY_BYTES (3 * ColumnLimits.ENTRY_TEXT + 1 MiB); this module
+            // cannot import the app's classes, so the value is repeated here: move it with them.
+            int mcpCapBytes = 3 * 1_000_000 + 1024 * 1024;
             byte[] huge = rpcBody("tools/call", Map.of("name", "whoami",
-                    "arguments", Map.of("pad", "x".repeat(2 * 1024 * 1024 + 1024)))).getBytes(UTF_8);
+                    "arguments", Map.of("pad", "x".repeat(mcpCapBytes + 1024)))).getBytes(UTF_8);
             assertEquals(413, post(token.raw(),
                     BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(huge)), Map.of()).statusCode());
         } finally {
