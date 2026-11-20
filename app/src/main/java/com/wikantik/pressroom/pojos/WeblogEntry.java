@@ -153,7 +153,20 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     //---------------------------------------------------------- Initializaion
     
     /**
-     * Set bean properties based on other bean.
+     * A new instance carrying every persistent field of this entry, id
+     * included, and none of the per-load bookkeeping. The tag and attribute
+     * collections are rebuilt, so changing the copy's never touches this
+     * entry's. Used for preview clones.
+     */
+    public WeblogEntry copy() {
+        WeblogEntry copy = EntityIds.materialise(WeblogEntry::new);
+        copy.setData(this);
+        return copy;
+    }
+
+    /**
+     * Set bean properties based on other bean: the copy semantics of
+     * {@link #copy()}, onto this instance.
      */
     public void setData(WeblogEntry other) {
         
@@ -182,6 +195,44 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         this.setStrandPageId(other.getStrandPageId());
         this.setStrandPosition(other.getStrandPosition());
         this.setLocale(other.getLocale());
+        this.setJsonLdType(other.getJsonLdType());
+        this.setGeoLatitude(other.getGeoLatitude());
+        this.setGeoLongitude(other.getGeoLongitude());
+        this.setEventStart(other.getEventStart());
+        this.setEventEnd(other.getEventEnd());
+        this.setEventLocation(other.getEventLocation());
+        this.setNewsletterSentAt(other.getNewsletterSentAt());
+        this.setTrashedAt(other.getTrashedAt());
+        copyCollectionsFrom(other);
+    }
+
+    private void copyCollectionsFrom(WeblogEntry other) {
+        Set<WeblogEntryTag> tags = new HashSet<>();
+        for (WeblogEntryTag t : other.getTags()) {
+            WeblogEntryTag c = new WeblogEntryTag();
+            c.setId(t.getId());
+            c.setWeblog(t.getWeblog());
+            c.setWeblogEntry(this);
+            c.setCreatorUserName(t.getCreatorUserName());
+            c.setName(t.getName());
+            c.setTime(t.getTime());
+            tags.add(c);
+        }
+        this.tagSet = tags;
+        this.removedTags = new HashSet<>();
+        this.addedTags = new HashSet<>();
+        Set<WeblogEntryAttribute> atts = new TreeSet<>();
+        if (other.getEntryAttributes() != null) {
+            for (WeblogEntryAttribute a : other.getEntryAttributes()) {
+                WeblogEntryAttribute c = new WeblogEntryAttribute();
+                c.setId(a.getId());
+                c.setEntry(this);
+                c.setName(a.getName());
+                c.setValue(a.getValue());
+                atts.add(c);
+            }
+        }
+        this.attSet = atts;
     }
 
     // ------------------------------------------------- revision bookkeeping
@@ -280,10 +331,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      *                 anchor is derived from it at save time
      */
     public WeblogEntry copyAsDraft(String newTitle) throws WebloggerException {
-        // Constructed id-less: setData copies the original's id over whatever
-        // the constructor drew, and the copy's own id is drawn just below.
-        WeblogEntry copy = EntityIds.materialise(WeblogEntry::new);
-        copy.setData(this);
+        WeblogEntry copy = copy();
         copy.setId(UUIDGenerator.generateUUID());
         copy.setTitle(newTitle);
         copy.setAnchor(null);
@@ -293,6 +341,12 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         copy.setStrandPosition(null);
         copy.setPubTime(null);
         copy.setUpdateTime(new Timestamp(System.currentTimeMillis()));
+        // a draft has not been mailed or trashed, and owns its own rows:
+        // tags are re-added by name, attributes are not carried over
+        copy.setNewsletterSentAt(null);
+        copy.setTrashedAt(null);
+        copy.setEntryAttributes(new TreeSet<>());
+        copy.setTags(new HashSet<>());
         copy.setTagsAsString(getTagsAsString());
         return copy;
     }

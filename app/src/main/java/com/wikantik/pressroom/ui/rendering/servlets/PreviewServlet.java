@@ -136,8 +136,7 @@ public class PreviewServlet extends HttpServlet {
 
             // construct a temporary Website object for this request
             // and set the EditorTheme to our previewTheme
-            tmpWebsite = new Weblog();
-            tmpWebsite.setData(weblog);
+            tmpWebsite = weblog.copy();
             if(previewTheme != null && previewTheme.isEnabled()) {
                 tmpWebsite.setEditorTheme(previewTheme.getId());
             } else if(WeblogTheme.CUSTOM.equals(previewRequest.getThemeName())) {

@@ -278,7 +278,19 @@ public class Weblog implements Serializable {
     }
 
     /**
-     * Set bean properties based on other bean.
+     * A new instance carrying every persistent field of this weblog, id
+     * included. The category list is a new list, so adding to the copy's never
+     * touches this weblog's. Used for theme-preview clones.
+     */
+    public Weblog copy() {
+        Weblog copy = EntityIds.materialise(Weblog::new);
+        copy.setData(this);
+        return copy;
+    }
+
+    /**
+     * Set bean properties based on other bean: the copy semantics of
+     * {@link #copy()}, onto this instance.
      */
     public void setData(Weblog other) {
         
@@ -303,7 +315,20 @@ public class Weblog implements Serializable {
         this.setEntryOrder(other.getEntryOrder());
         this.setFrontPageId(other.getFrontPageId());
         this.setLastModified(other.getLastModified());
-        this.setWeblogCategories(other.getWeblogCategories());
+        this.setWeblogCategories(new ArrayList<>(other.getWeblogCategories()));
+        this.setSiteSpace(other.isSiteSpace());
+        this.setCustomDomain(other.getCustomDomain());
+        this.setAbout(other.getAbout());
+        this.setIconPath(other.getIconPath());
+        this.setBusiness(other.getBusiness());
+        this.setPlaceType(other.getPlaceType());
+        this.setPlaceLocality(other.getPlaceLocality());
+        this.setPlaceRegion(other.getPlaceRegion());
+        this.setPlaceCountry(other.getPlaceCountry());
+        this.setPlaceLat(other.getPlaceLat());
+        this.setPlaceLng(other.getPlaceLng());
+        this.setBookingUrl(other.getBookingUrl());
+        this.setNewsletterListUuid(other.getNewsletterListUuid());
     }
     
     
