@@ -748,55 +748,37 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 			return Collections.emptyList();
 		}
 
-        WeblogCategory category;
-        
-        List<Object> params = new ArrayList<>();
-        int size = 0;
+        JpqlParameters params = new JpqlParameters();
         StringBuilder whereClause = new StringBuilder(128);
 
-        params.add(size++, current.getWebsite());
-        whereClause.append("e.website = ?").append(size);
-        
-        params.add(size++, PubStatus.PUBLISHED);
-        whereClause.append(" AND e.status = ?").append(size);
-                
+        whereClause.append("e.website = ").append(params.bind(current.getWebsite()));
+        whereClause.append(" AND e.status = ").append(params.bind(PubStatus.PUBLISHED));
+
         if (next) {
-            params.add(size++, current.getPubTime());
-            whereClause.append(" AND e.pubTime > ?").append(size);
-        } else {
+            whereClause.append(" AND e.pubTime > ").append(params.bind(current.getPubTime()));
+        } else if (current.getPubTime() != null) {
             // pub time null if current article not yet published, in Draft view
-            if (current.getPubTime() != null) {
-                params.add(size++, current.getPubTime());
-                whereClause.append(" AND e.pubTime < ?").append(size);
-            }
+            whereClause.append(" AND e.pubTime < ").append(params.bind(current.getPubTime()));
         }
-        
+
         if (catName != null) {
-            category = getWeblogCategoryByName(current.getWebsite(), catName);
-            if (category != null) {
-                params.add(size++, category);
-                whereClause.append(" AND e.category = ?").append(size);
-            } else {
+            WeblogCategory category = getWeblogCategoryByName(current.getWebsite(), catName);
+            if (category == null) {
                 throw new WebloggerException("Cannot find category: " + catName);
-            } 
+            }
+            whereClause.append(" AND e.category = ").append(params.bind(category));
         }
-        
-        if(locale != null) {
-            params.add(size++, locale + '%');
-            whereClause.append(" AND e.locale like ?").append(size);
+
+        if (locale != null) {
+            whereClause.append(" AND e.locale like ").append(params.bind(locale + '%'));
         }
-        
-        if (next) {
-            whereClause.append(" ORDER BY e.pubTime ASC");
-        } else {
-            whereClause.append(" ORDER BY e.pubTime DESC");
-        }
-        String queryString = "SELECT e FROM WeblogEntry e WHERE ";
-        TypedQuery<WeblogEntry> query =
-                strategy.getDynamicQuery(queryString + whereClause.toString(), WeblogEntry.class);
-        bindParams(query, params);
+
+        whereClause.append(next ? " ORDER BY e.pubTime ASC" : " ORDER BY e.pubTime DESC");
+        TypedQuery<WeblogEntry> query = strategy.getDynamicQuery(
+                "SELECT e FROM WeblogEntry e WHERE " + whereClause, WeblogEntry.class);
+        params.setOn(query);
         query.setMaxResults(maxEntries);
-        
+
         return query.getResultList();
     }
     
@@ -938,7 +920,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         TypedQuery<WeblogEntry> query = strategy.getDynamicQuery(queryString.toString(), WeblogEntry.class);
         params.setOn(query);
 
-        setFirstMax( query, wesc.getOffset(), wesc.getMaxResults() );
+        JpqlParameters.page(query, wesc.getOffset(), wesc.getMaxResults());
         if (wesc.getMaxResults() <= 0) {
             return query.getResultList();
         }
@@ -1470,7 +1452,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                         "WeblogEntryTagAggregate.getPopularTagsByWebsiteNull", TagStat.class);
             }
         }
-        setFirstMax( query, offset, limit);
+        JpqlParameters.page(query, offset, limit);
         queryResults = query.getResultList();
         
         double min = Integer.MAX_VALUE;
@@ -1516,29 +1498,26 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         List<?> queryResults;
         boolean sortByName = sortBy == null || !"count".equals(sortBy);
                 
-        List<Object> params = new ArrayList<>();
-        int size = 0;
+        JpqlParameters params = new JpqlParameters();
         StringBuilder queryString = new StringBuilder(192);
         queryString.append("SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE ");
                 
         if (website != null) {
-            params.add(size++, website.getId());
-            queryString.append(" w.weblog.id = ?").append(size);
+            queryString.append(" w.weblog.id = ").append(params.bind(website.getId()));
         } else {
             queryString.append(" w.weblog IS NULL"); 
         }
                        
         if (startsWith != null && startsWith.length() > 0) {
-            params.add(size++, startsWith + '%');
-            queryString.append(" AND w.name LIKE ?").append(size);
+            queryString.append(" AND w.name LIKE ").append(params.bind(startsWith + '%'));
         }
                     
         String orderBy = "count".equals(sortBy) ? "w.total DESC" : "w.name";
         queryString.append(" GROUP BY w.name, w.total ORDER BY ").append(orderBy);
 
         query = strategy.getDynamicQuery(queryString.toString());
-        bindParams(query, params);
-        setFirstMax( query, offset, limit);
+        params.setOn(query);
+        JpqlParameters.page(query, offset, limit);
         queryResults = query.getResultList();
 
         List<TagStat> results = new ArrayList<>();
@@ -1576,33 +1555,20 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // (/tags/a+a) is counted once here too.
         List<String> names = new ArrayList<>(new LinkedHashSet<>(tags));
         
+        JpqlParameters params = new JpqlParameters();
         StringBuilder queryString = new StringBuilder(128);
-        queryString.append("SELECT DISTINCT w.name FROM WeblogEntryTagAggregate w WHERE w.name IN (");
-        // Append tags as parameter markers to avoid potential escaping issues
-        // The IN clause would be of form (?1, ?2, ?3, ..)
-        List<Object> params = new ArrayList<>(names.size() + 1);
-        final String paramSeparator = ", ";
-        int i;
-        for (i=0; i < names.size(); i++) {
-            queryString.append('?').append(i+1).append(paramSeparator);
-            params.add(names.get(i));
-        }
-        
-        // Remove the trailing paramSeparator
-        queryString.delete(queryString.length() - paramSeparator.length(),
-                queryString.length());
-        // Close the brace of IN clause
-        queryString.append(')');
-        
-        if(weblog != null) {
-            queryString.append(" AND w.weblog = ?").append(i+1);
-            params.add(weblog);
+        // Tags as parameter markers, to avoid escaping issues: (?1, ?2, ..)
+        queryString.append("SELECT DISTINCT w.name FROM WeblogEntryTagAggregate w WHERE w.name IN (")
+                .append(params.bindAll(names)).append(')');
+
+        if (weblog != null) {
+            queryString.append(" AND w.weblog = ").append(params.bind(weblog));
         } else {
             queryString.append(" AND w.weblog IS NULL");
         }
-        
+
         TypedQuery<String> q = strategy.getDynamicQuery(queryString.toString(), String.class);
-        bindParams(q, params);
+        params.setOn(q);
         List<String> results = q.getResultList();
         
         //TODO: DatamapperPort: Since we are only interested in knowing whether
@@ -1610,22 +1576,6 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         //instead of objects as done currently
         return results != null && results.size() == names.size();
     }
-
-    private static void setFirstMax( Query query, int offset, int length )  {
-        if (offset != 0) {
-            query.setFirstResult(offset);
-        }
-        if (length != -1) {
-            query.setMaxResults(length);
-        }
-    }
-
-    private static void bindParams(Query query, List<Object> params) {
-        for (int i = 0; i < params.size(); i++) {
-            query.setParameter(i + 1, params.get(i));
-        }
-    }
-
 
     public static Date getStartDateNow(int sinceDays) {
         Calendar cal = Calendar.getInstance();

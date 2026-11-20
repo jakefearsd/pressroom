@@ -626,67 +626,25 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         
         //if (endDate == null) endDate = new Date();
                       
-        List<Object> params = new ArrayList<>();
-        int size = 0;
-        String queryString;
-        StringBuilder whereClause = new StringBuilder(128);
-
-        queryString = "SELECT w FROM Weblog w";
-        // the site space is hidden from every listing
-        whereClause.append(" w.siteSpace = false");
-
+        JpqlParameters params = new JpqlParameters();
+        // the site space is hidden from every listing, so there is always a
+        // predicate for the WHERE keyword to introduce
+        StringBuilder query = new StringBuilder("SELECT w FROM Weblog w WHERE w.siteSpace = false");
         if (startDate != null) {
-            Timestamp start = new Timestamp(startDate.getTime());
-            if (whereClause.length() > 0) {
-                whereClause.append(" AND ");
-            }
-            params.add(size++, start);
-            whereClause.append(" w.dateCreated > ?").append(size);
+            query.append(" AND w.dateCreated > ").append(params.bind(new Timestamp(startDate.getTime())));
         }
         if (endDate != null) {
-            Timestamp end = new Timestamp(endDate.getTime());
-            if (whereClause.length() > 0) {
-                whereClause.append(" AND ");
-            }
-            params.add(size++, end);
-            whereClause.append(" w.dateCreated < ?").append(size);
+            query.append(" AND w.dateCreated < ").append(params.bind(new Timestamp(endDate.getTime())));
         }
-        if (enabled != null) {
-            if (whereClause.length() > 0) {
-                whereClause.append(" AND ");
-            }
-            params.add(size++, enabled);
-            whereClause.append(" w.visible = ?").append(size);
-        }
-        if (active != null) {
-            if (whereClause.length() > 0) {
-                whereClause.append(" AND ");
-            }
-            params.add(size++, active);
-            whereClause.append(" w.active = ?").append(size);
-        }
+        params.andIf(query, " AND w.visible = ", enabled);
+        params.andIf(query, " AND w.active = ", active);
+        query.append(" ORDER BY w.dateCreated DESC, w.handle");
 
-        // The WHERE keyword may only appear when there is an actual predicate
-        // to follow it -- with every filter left null (as VirtualHostRegistry
-        // does, deliberately, to read every weblog regardless of enabled/
-        // active status) whereClause is empty, and "WHERE" with nothing after
-        // it is invalid JPQL that EclipseLink rejects at query-creation time.
-        StringBuilder fullQuery = new StringBuilder(queryString);
-        if (whereClause.length() > 0) {
-            fullQuery.append(" WHERE").append(whereClause);
-        }
-        fullQuery.append(" ORDER BY w.dateCreated DESC, w.handle");
+        TypedQuery<Weblog> typed = strategy.getDynamicQuery(query.toString(), Weblog.class);
+        JpqlParameters.page(typed, offset, length);
+        params.setOn(typed);
 
-        TypedQuery<Weblog> query = strategy.getDynamicQuery(fullQuery.toString(), Weblog.class);
-        if (offset != 0) {
-            query.setFirstResult(offset);
-        }
-        if (length != -1) {
-            query.setMaxResults(length);
-        }
-        bindParams(query, params);
-
-        return query.getResultList();
+        return typed.getResultList();
     }
 
     @Override
@@ -904,12 +862,6 @@ public class JPAWeblogManagerImpl implements WeblogManager {
             }
         }
         return true;
-    }
-
-    private static void bindParams(Query query, List<Object> params) {
-        for (int i = 0; i < params.size(); i++) {
-            query.setParameter(i + 1, params.get(i));
-        }
     }
 
 }

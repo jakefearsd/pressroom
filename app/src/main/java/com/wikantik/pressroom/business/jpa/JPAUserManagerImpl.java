@@ -356,18 +356,15 @@ public class JPAUserManagerImpl implements UserManager {
         // to "now" with a strict "<", which hid any account stamped in the
         // same millisecond as the listing -- and every caller passes null.
         List<String> predicates = new ArrayList<>();
-        List<Object> params = new ArrayList<>();
+        JpqlParameters params = new JpqlParameters();
         if (enabled != null) {
-            params.add(enabled);
-            predicates.add("u.enabled = ?" + params.size());
+            predicates.add("u.enabled = " + params.bind(enabled));
         }
         if (endDate != null) {
-            params.add(new Timestamp(endDate.getTime()));
-            predicates.add("u.dateCreated < ?" + params.size());
+            predicates.add("u.dateCreated < " + params.bind(new Timestamp(endDate.getTime())));
         }
         if (startDate != null) {
-            params.add(new Timestamp(startDate.getTime()));
-            predicates.add("u.dateCreated > ?" + params.size());
+            predicates.add("u.dateCreated > " + params.bind(new Timestamp(startDate.getTime())));
         }
         String where = predicates.isEmpty() ? "" : " WHERE " + String.join(" AND ", predicates);
 
@@ -375,13 +372,8 @@ public class JPAUserManagerImpl implements UserManager {
         // or adjacent pages can repeat or skip a row.
         TypedQuery<User> query = strategy.getDynamicQuery(
                 "SELECT u FROM User u" + where + " ORDER BY u.dateCreated DESC, u.id", User.class);
-        bindParams(query, params.toArray());
-        if (offset != 0) {
-            query.setFirstResult(offset);
-        }
-        if (length != -1) {
-            query.setMaxResults(length);
-        }
+        params.setOn(query);
+        JpqlParameters.page(query, offset, length);
         return query.getResultList();
     }
 

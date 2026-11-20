@@ -18,9 +18,11 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.StringJoiner;
 
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.Query;
 
 /**
  * Positional parameters for a JPQL query built up condition by condition,
@@ -39,6 +41,18 @@ final class JpqlParameters {
     }
 
     /**
+     * Binds every value and returns the placeholders joined for an IN list,
+     * {@code ?1, ?2, ?3}; the caller writes the parentheses.
+     */
+    String bindAll(Collection<?> items) {
+        StringJoiner placeholders = new StringJoiner(", ");
+        for (Object item : items) {
+            placeholders.add(bind(item));
+        }
+        return placeholders.toString();
+    }
+
+    /**
      * Appends {@code condition} followed by the value's placeholder, when
      * there is a value; nothing when it is null. Only for criteria that are
      * genuinely optional (a date bound, a locale): a null here widens the
@@ -52,9 +66,19 @@ final class JpqlParameters {
     }
 
     /** Sets every bound value on the query. */
-    void setOn(TypedQuery<?> query) {
+    void setOn(Query query) {
         for (int i = 0; i < values.size(); i++) {
             query.setParameter(i + 1, values.get(i));
+        }
+    }
+
+    /** Pages the query: no first result for offset 0, no cap for a maximum of -1. */
+    static void page(Query query, int offset, int max) {
+        if (offset != 0) {
+            query.setFirstResult(offset);
+        }
+        if (max != -1) {
+            query.setMaxResults(max);
         }
     }
 }
