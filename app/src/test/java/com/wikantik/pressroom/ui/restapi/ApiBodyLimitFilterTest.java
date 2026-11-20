@@ -178,4 +178,42 @@ class ApiBodyLimitFilterTest {
 
         assertNotNull(chain.getRequest());
     }
+
+    /** The longest entry the column cap accepts, in the 3-byte character CJK text is made of, in a JSON body. */
+    private static MockHttpServletRequest maximumLengthEntry(boolean declared) {
+        String text = "\u4e2d".repeat(ColumnLimits.ENTRY_TEXT);
+        byte[] body = ("{\"title\":\"A normal title\",\"text\":\"" + text + "\"}")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        MockHttpServletRequest request = declared ? new MockHttpServletRequest("POST", "/api/v1/weblogs/myblog/entries")
+                : new MockHttpServletRequest("POST", "/api/v1/weblogs/myblog/entries") {
+                    @Override
+                    public int getContentLength() {
+                        return -1;
+                    }
+
+                    @Override
+                    public long getContentLengthLong() {
+                        return -1;
+                    }
+                };
+        request.setContentType("application/json");
+        request.setContent(body);
+        return request;
+    }
+
+    /** Criterion 1: what the column accepts, the transport accepts. */
+    @Test
+    void aMaximumLengthEntryOfThreeByteCharactersIsNotRefusedForSize() throws Exception {
+        filter.doFilter(maximumLengthEntry(true), response, chain);
+
+        assertNotNull(chain.getRequest(), "refused: " + response.getContentAsString());
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    void aMaximumLengthEntryWithNoDeclaredLengthIsReadInFull() throws Exception {
+        InputStream body = bodySeenDownstream(maximumLengthEntry(false));
+
+        assertTrue(body.readAllBytes().length > 3 * ColumnLimits.ENTRY_TEXT);
+    }
 }

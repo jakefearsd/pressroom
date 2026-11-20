@@ -10,6 +10,7 @@ import java.util.Properties;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiCall;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiDispatcher;
@@ -149,6 +150,29 @@ class McpServerConfigTest {
         JsonNode result = answer.get("result");
         assertTrue(result.get("isError").asBoolean(), answer.toString());
         assertEquals("{\"status\":404}", result.get("content").get(0).get("text").asString());
+    }
+
+    @Test
+    void theTransportLimitIsTheApiBodyLimit() {
+        assertEquals(com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter.MAX_BODY_BYTES,
+                McpServerConfig.MAX_REQUEST_BYTES);
+    }
+
+    /** The transport's own request limit must carry the longest entry the column cap accepts (3 bytes a character). */
+    @Test
+    void aToolCallCarryingAMaximumLengthEntryIsNotRefusedForSize() throws Exception {
+        List<ApiCall> calls = new ArrayList<>();
+        ApiDispatcher dispatcher = (request, call) -> {
+            calls.add(call);
+            return new ApiReply(200, "application/json", "{}");
+        };
+
+        JsonNode answer = post(rpc("tools/call", Map.of("name", "entries", "arguments", Map.of(
+                "action", "create", "weblog", "b", "title", "A normal title",
+                "text", "\u4e2d".repeat(ColumnLimits.ENTRY_TEXT)))), dispatcher);
+
+        assertEquals(1, calls.size(), answer.toString());
+        assertFalse(answer.get("result").path("isError").asBoolean(false), answer.toString());
     }
 
     /** Criterion 7: only the tools that read and never write say so (traffic: spec 2026-11-08, T7). */

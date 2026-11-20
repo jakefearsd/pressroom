@@ -93,12 +93,20 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   HTML page for a pinned token): `ApiScopeInterceptor` writes a refusal of any handler outside
   `ui.restapi` itself, through `ApiProblemWriter` (`OpenApiPinnedTokenDispatchTest`).
 - **Request size (2026-11).** `ApiBodyLimitFilter` (built inline in the API
-  chain, before token sign-in) refuses a `/api/v1` body over 2 MiB with a 413
-  `too-large`, or fails the read past it when no length is declared; uploads
-  (`multipart/*`) and `/api/mcp` keep their own limits. `ColumnLimits.ENTRY_TEXT`
-  (1,000,000 characters) caps entry text in `EntryDtos.applyWrite`, so edits
-  cannot grow an entry past it a request at a time. `TextDiff` caps its table
-  at `MAX_CELLS` after matching the common start and end.
+  chain, before token sign-in) refuses a `/api/v1` body over
+  `MAX_BODY_BYTES` with a 413 `too-large`, or fails the read past it when no
+  length is declared; uploads (`multipart/*`) keep their own limit. The limit
+  is `3 * ColumnLimits.ENTRY_TEXT + HEADROOM_BYTES` (4,048,576 bytes: the
+  longest entry in 3-byte characters, plus 1 MiB for the other fields), and
+  `/api/mcp`'s transport (`McpServerConfig.MAX_REQUEST_BYTES`) uses the same
+  constant. The JSP editor posts urlencoded (a 3-byte character is 9 bytes),
+  so `server.tomcat.max-http-form-post-size` in `application.properties` is
+  `9 * ENTRY_TEXT + HEADROOM_BYTES` (10,048,576); `EntryWriteLimitsTest` pins
+  all three, so raising the column cap means moving that property too.
+  `ColumnLimits.ENTRY_TEXT` (1,000,000 characters) caps entry text in
+  `EntryDtos.applyWrite`, so edits cannot grow an entry past it a request at a
+  time. `TextDiff` caps its table at `MAX_CELLS` after matching the common
+  start and end.
 - **A category name lost to an overlapping create** is a
   `DuplicateCategoryNameException` from the manager's locked check: the API
   answers 409 on `name`, the category screen its duplicate-name error.

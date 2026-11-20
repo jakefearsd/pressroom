@@ -15,6 +15,7 @@ import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransp
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiDispatcher;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiRouteTable;
@@ -47,8 +48,11 @@ public class McpServerConfig {
 
     public static final String ENDPOINT = "/api/mcp";
 
-    /** Request bodies over this many bytes are refused (413) by the transport. */
-    static final int MAX_REQUEST_BYTES = 2 * 1024 * 1024;
+    /**
+     * Request bodies over this many bytes are refused (413) by the transport:
+     * the limit /api/v1 has, so a maximum-length entry fits either way.
+     */
+    static final int MAX_REQUEST_BYTES = ApiBodyLimitFilter.MAX_BODY_BYTES;
 
     @Bean
     public HttpServletStatelessServerTransport mcpTransport() {

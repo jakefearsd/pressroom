@@ -47,8 +47,26 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class ApiBodyLimitFilter extends OncePerRequestFilter {
 
-    /** The largest request body /api/v1 reads, uploads aside: 2 MiB, as {@code /api/mcp}. */
-    public static final int MAX_BODY_BYTES = 2 * 1024 * 1024;
+    /**
+     * What a request carries besides the entry text: the title, summary,
+     * tags and other fields, and the JSON framing. 1 MiB, far above any of
+     * them, so the text is what the limit is sized for.
+     */
+    public static final int HEADROOM_BYTES = 1024 * 1024;
+
+    /**
+     * The largest request body /api/v1 reads, uploads aside, and the one
+     * {@code /api/mcp} accepts: room for the longest entry the column cap
+     * allows ({@link ColumnLimits#ENTRY_TEXT} characters) at the most UTF-8
+     * spends on a character a JSON body does not escape (3 bytes, the rest of
+     * the Basic Multilingual Plane; a supplementary character is 4 bytes for
+     * two Java characters, so cheaper per character), plus
+     * {@link #HEADROOM_BYTES}. Derived, so changing the cap moves it:
+     * 4,048,576 bytes at 1,000,000 characters. Text full of characters JSON
+     * must escape ({@code \u0000} is 6 bytes) can exceed it and is refused
+     * 413, as an oversized body always was.
+     */
+    public static final int MAX_BODY_BYTES = 3 * ColumnLimits.ENTRY_TEXT + HEADROOM_BYTES;
 
     private static final String API_V1 = "/api/v1/";
 
