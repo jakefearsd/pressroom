@@ -53,6 +53,8 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import com.wikantik.pressroom.business.AnchorTakenException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
+import com.wikantik.pressroom.business.EntryChangeListener;
+import com.wikantik.pressroom.business.EntryChanged;
 import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.RevisionSweep;
 import com.wikantik.pressroom.business.Weblogger;
@@ -112,6 +114,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     private final TagAggregateStore tagAggregates;
     private final RevisionLog<WeblogEntry, WeblogEntryRevision> revisions;
     private final TrashLifecycle<WeblogEntry> trash;
+    private final List<EntryChangeListener> listeners;
     
     // cached mapping of entryAnchors -> entryIds
     private final Map<String, String> entryAnchorToIdMap = Collections.synchronizedMap(new HashMap<>());
@@ -123,9 +126,16 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
 
     public JPAWeblogEntryManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strategy) {
+        this(pressroom, strategy, List.of());
+    }
+
+    /** @param listeners told of every committed entry write; see {@link EntryChangeListener} */
+    public JPAWeblogEntryManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strategy,
+            List<EntryChangeListener> listeners) {
         log.debug("Instantiating JPA Weblog Manager");
         this.pressroom = pressroom;
         this.strategy = strategy;
+        this.listeners = List.copyOf(listeners);
         this.tagAggregates = new TagAggregateStore(strategy);
         this.revisions = new RevisionLog<>(strategy, new RevisionLog.Binding<>(
                 RevisionRetention.Kind.ENTRY, WeblogEntry.class, WeblogEntryRevision.class,
@@ -388,7 +398,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             throws WebloggerException {
 
         // Read before the save re-snapshots the loaded status below.
-        boolean wasPublished = entry.getLoadedStatus() == PubStatus.PUBLISHED;
+        PubStatus previousStatus = entry.getLoadedStatus();
+        boolean wasPublished = previousStatus == PubStatus.PUBLISHED;
 
         if (entry.getCategory() == null) {
             // Entry is invalid without category, so use the first one found.
@@ -471,7 +482,30 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         if (entry.isPublished() || wasPublished) {
             pressroom.getWeblogManager().saveWeblog(entry.getWebsite());
         }
-        
+
+        announce(new EntryChanged(entry, previousStatus, entry.getStatus(), false));
+    }
+
+    /**
+     * Tells every {@link EntryChangeListener} once this unit of work has
+     * committed. A write that is rolled back, or never flushed, tells no one.
+     * A listener that fails is logged and the rest still run: the write is
+     * already durable.
+     */
+    private void announce(EntryChanged change) {
+        if (listeners.isEmpty()) {
+            return;
+        }
+        strategy.runAfterCommit(() -> {
+            for (EntryChangeListener listener : listeners) {
+                try {
+                    listener.entryChanged(change);
+                } catch (WebloggerException | RuntimeException e) {
+                    log.error("{} failed for entry {}", listener.getClass().getSimpleName(),
+                            change.entry().getId(), e);
+                }
+            }
+        });
     }
     
     /**
@@ -589,6 +623,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         
         // remove entry from cache mapping
         this.entryAnchorToIdMap.remove(entry.getWebsite().getHandle()+":"+entry.getAnchor());
+
+        announce(new EntryChanged(entry, entry.getStatus(), null, true));
     }
 
     /**

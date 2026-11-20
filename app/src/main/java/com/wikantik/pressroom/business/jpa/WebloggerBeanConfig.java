@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.business.jpa;
 
+import java.util.List;
+
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.ApiTokenManager;
 import com.wikantik.pressroom.business.DatabaseProvider;
@@ -33,6 +35,9 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.VirtualHostRegistry;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.UserTokenManager;
+import com.wikantik.pressroom.business.EntryCacheInvalidator;
+import com.wikantik.pressroom.business.EntryChangeListener;
+import com.wikantik.pressroom.business.EntryIndexer;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.WeblogPageManager;
@@ -135,8 +140,21 @@ public class WebloggerBeanConfig {
     }
 
     @Bean
-    public WeblogEntryManager weblogEntryManager(@Lazy Weblogger weblogger, JPAPersistenceStrategy strategy) {
-        return new JPAWeblogEntryManagerImpl(weblogger, strategy);
+    public WeblogEntryManager weblogEntryManager(@Lazy Weblogger weblogger, JPAPersistenceStrategy strategy,
+                                                 List<EntryChangeListener> entryChangeListeners) {
+        return new JPAWeblogEntryManagerImpl(weblogger, strategy, entryChangeListeners);
+    }
+
+    /** Keeps the search index in step with committed entry writes. */
+    @Bean
+    public EntryChangeListener entryIndexer(@Lazy Weblogger weblogger) {
+        return new EntryIndexer(weblogger);
+    }
+
+    /** Expires the rendered pages that show an entry once a write to it has committed. */
+    @Bean
+    public EntryChangeListener entryCacheInvalidator() {
+        return new EntryCacheInvalidator();
     }
 
     @Bean
