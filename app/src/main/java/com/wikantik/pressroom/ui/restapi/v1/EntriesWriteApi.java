@@ -1,6 +1,5 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,7 +12,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
@@ -77,9 +75,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     @Autowired
     RemoteImageFetcher imageFetcher;
-
-    /** An entry's contentHash: SHA-256 as hex digits, either case accepted. */
-    private static final Pattern CONTENT_HASH = Pattern.compile("[0-9a-fA-F]{64}");
 
     /** The import step's budget is measured on this; a test replaces it. */
     Clock clock = Clock.systemUTC();
@@ -167,7 +162,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         WeblogEntry entry = requireLiveEntry(request, id);
         // Before every other check, and so before the import step can fetch:
         // a caller whose view of the text is stale learns that first.
-        requireUnchanged(entry, sent.expectedContentHash());
+        entryContent().requireUnchanged(entry, sent.expectedContentHash());
         String read = entry.getText();
 
         FieldErrors errors = new FieldErrors();
@@ -196,7 +191,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // applied to the managed entry yet, so nothing of the write goes with it.
         EntryDtos.EntryWrite effective = imports.run(importPlan, weblog, body);
         if (sent.expectedContentHash() != null || EntryEdits.sent(sent.edits())) {
-            requireUnchangedUnderLock(entry, read);
+            entryContent().requireUnchangedUnderLock(entry, read);
         }
         apply(entry, weblog, effective, cleared);
         defaultFeaturedImage(entry, weblog, cleared, imports.importedIds());
@@ -242,17 +237,12 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             @Parameter(description = EntryFields.DESCRIPTION)
             @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         WeblogEntry entry = requireLiveEntry(request, id);
-        WeblogEntryRevision revision = requireRevision(entry, revisionId);
-        String expected = body == null ? null : body.expectedContentHash();
-        requireUnchanged(entry, expected);
+        WeblogEntryRevision revision = entryContent().requireRevision(entry, revisionId);
         EntryFields shown = EntryFields.of(fields);
-        if (expected != null) {
-            requireUnchangedUnderLock(entry, entry.getText());
-        }
-
         // The manager's restore, not a plain save: a restore is never
         // coalesced, so what it replaces always becomes a revision.
-        weblogger.getWeblogEntryManager().restoreRevision(entry, revision, requireAuthenticatedUser(request));
+        entryContent().restoreChecked(entry, revision, body == null ? null : body.expectedContentHash(),
+                requireAuthenticatedUser(request));
         weblogger.flush();
         reindex(entry);
 
@@ -281,9 +271,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     private RevisionDtos.RevisionSummary markKept(HttpServletRequest request, String id, String revisionId,
             boolean kept) throws WebloggerException {
-        WeblogEntryRevision revision = requireRevision(requireLiveEntry(request, id), revisionId);
-        applyKeep(() -> weblogger.getWeblogEntryManager().setRevisionKept(revision, kept));
-        return RevisionDtos.toSummary(revision);
+        RevisionedContent<WeblogEntry, WeblogEntryRevision> content = entryContent();
+        WeblogEntryRevision revision = content.requireRevision(requireLiveEntry(request, id), revisionId);
+        applyKeep(() -> content.setKept(revision, kept));
+        return content.summary(revision);
     }
 
     /**
@@ -377,68 +368,16 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /**
-     * An update's {@code expectedContentHash}, when sent, must be the hash of
-     * the text now stored (spec 2026-10-24, section 4): otherwise someone
-     * changed the entry after the caller read it, and saving would overwrite
-     * that change unseen. Either case of hex matches. A value that is not a
-     * hash at all is the caller's mistake, not a sign the entry changed, so it
-     * is a 400 rather than the 409.
-     */
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Compares case-insensitively only after CONTENT_HASH has confined the value to "
-                    + "ASCII hex digits, which no case mapping can turn into anything else.")
-    private static void requireUnchanged(WeblogEntry entry, String expected) {
-        if (expected == null) {
-            return;
-        }
-        if (!CONTENT_HASH.matcher(expected).matches()) {
-            throw ApiException.invalidField("expectedContentHash",
-                    "expectedContentHash must be the contentHash an entry is read with: 64 hex digits.");
-        }
-        String current = EntryDtos.contentHash(entry.getText());
-        if (!expected.equalsIgnoreCase(current)) {
-            throw ApiException.entryChanged(current);
-        }
-    }
-
-    /**
-     * {@link #requireUnchanged} again, under the entry's row lock, immediately
-     * before the save: the first check is unlocked, and the import step
-     * between it and the save commits and can take a minute. Two agents
-     * sending the same hash both passed it, and the second save discarded
-     * the first unseen. Now the second waits for the first's commit, finds
-     * the text it read gone, and is the 409 {@code entry-changed}. Taken only
-     * by a write that names the text it read (a hash, or edits resolved
-     * against it); any other write is last-writer-wins, as documented.
-     *
-     * @param read the stored text the write was checked or computed against
-     */
-    private void requireUnchangedUnderLock(WeblogEntry entry, String read) throws WebloggerException {
-        String committed = weblogger.getWeblogEntryManager().lockEntryText(entry);
-        if (committed == null) {
-            throw ApiException.notFound("No such entry.");
-        }
-        if (!committed.equals(read)) {
-            throw ApiException.entryChanged(EntryDtos.contentHash(committed));
-        }
-    }
-
-    /**
      * {@code edits} and {@code expectedContentHash} act on stored text, which a
      * create has none of; {@code revisionNote} labels the revision an update
      * leaves, and a create replaces nothing, so it leaves none.
      */
     private static void refuseUpdateOnlyFields(FieldErrors errors, EntryDtos.EntryWrite body) {
-        if (body.revisionNote() != null) {
-            errors.add("revisionNote", "revisionNote applies only to updates; a create leaves no revision.");
-        }
+        RevisionedContent.refuseRevisionNote(errors, body.revisionNote());
         if (EntryEdits.sent(body.edits())) {
             errors.add("edits", "edits apply only to updates; a create sends text.");
         }
-        if (body.expectedContentHash() != null) {
-            errors.add("expectedContentHash", "expectedContentHash applies only to updates.");
-        }
+        RevisionedContent.refuseExpectedHash(errors, body.expectedContentHash());
     }
 
     /**

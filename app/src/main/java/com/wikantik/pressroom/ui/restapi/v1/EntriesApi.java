@@ -9,7 +9,6 @@ import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
@@ -17,7 +16,6 @@ import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
-import com.wikantik.pressroom.util.TextDiff;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -180,17 +178,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             @Parameter(description = "Another revision of the same entry to diff against, in place of the "
                     + "entry's current text.")
             @RequestParam(value = "against", required = false) String against) {
-        WeblogEntry entry = requireEntry(request, id);
-        WeblogEntryRevision revision = requireRevision(entry, revisionId);
-        String from = "revision " + revision.getId();
-        String diff;
-        if (against == null || against.isBlank()) {
-            diff = TextDiff.unified(revision.getText(), entry.getText(), from, "current");
-        } else {
-            WeblogEntryRevision other = requireRevision(entry, against);
-            diff = TextDiff.unified(revision.getText(), other.getText(), from, "revision " + other.getId());
-        }
-        return RevisionDtos.toView(revision, diff);
+        return entryContent().diff(requireEntry(request, id), revisionId, against);
     }
 
     private String permalink(WeblogEntry entry) {

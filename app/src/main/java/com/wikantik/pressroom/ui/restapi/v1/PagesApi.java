@@ -32,14 +32,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.bind.annotation.RequestParam;
 import io.swagger.v3.oas.annotations.Parameter;
 import java.util.Locale;
-import com.wikantik.pressroom.util.TextDiff;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
-import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import org.apache.commons.lang3.StringUtils;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.util.regex.Pattern;
 
 /**
  * Static page CRUD. {@code UISecurityEnforced} declares
@@ -61,9 +57,6 @@ import java.util.regex.Pattern;
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/pages")
 public class PagesApi extends BaseApiController implements UISecurityEnforced {
-
-    /** A page's contentHash: SHA-256 as hex digits, either case accepted. */
-    private static final Pattern CONTENT_HASH = Pattern.compile("[0-9a-fA-F]{64}");
 
     /** The longest parts list {@code set_parts} accepts. */
     static final int MAX_PARTS = 500;
@@ -128,12 +121,8 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             errors.add("clear", "clear applies only to updates.");
         }
         // Both act on stored content, which a create has none of.
-        if (body.revisionNote() != null) {
-            errors.add("revisionNote", "revisionNote applies only to updates; a create leaves no revision.");
-        }
-        if (body.expectedContentHash() != null) {
-            errors.add("expectedContentHash", "expectedContentHash applies only to updates.");
-        }
+        RevisionedContent.refuseRevisionNote(errors, body.revisionNote());
+        RevisionedContent.refuseExpectedHash(errors, body.expectedContentHash());
         String[] slug = new String[1];
         // No slug named: the title's, held to the rules a typed one is.
         String wanted = body.slug() == null || body.slug().isBlank()
@@ -168,7 +157,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         WeblogPage page = requireLivePageForWrite(request, id);
         // Before any field is looked at: a caller working from stale text
         // learns that first, and nothing below is applied.
-        requireUnchanged(page, body.expectedContentHash());
+        pageContent().requireUnchanged(page, body.expectedContentHash());
 
         FieldErrors errors = new FieldErrors();
         String revisionNote = StringUtils.trimToNull(body.revisionNote());
@@ -195,7 +184,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         // so two guarded updates cannot both pass on the same stale read.
         String read = page.getContent();
         if (body.expectedContentHash() != null) {
-            requireUnchangedUnderLock(page, read);
+            pageContent().requireUnchangedUnderLock(page, read);
         }
 
         PageDtos.applyWrite(page, body, cleared);
@@ -236,17 +225,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             @Parameter(description = "Another revision of the same page to diff against, in place of the "
                     + "page's current text.")
             @RequestParam(value = "against", required = false) String against) {
-        WeblogPage page = requirePage(request, id);
-        WeblogPageRevision revision = requireRevision(page, revisionId);
-        String from = "revision " + revision.getId();
-        String diff;
-        if (against == null || against.isBlank()) {
-            diff = TextDiff.unified(revision.getContent(), page.getContent(), from, "current");
-        } else {
-            WeblogPageRevision other = requireRevision(page, against);
-            diff = TextDiff.unified(revision.getContent(), other.getContent(), from, "revision " + other.getId());
-        }
-        return RevisionDtos.toView(revision, diff);
+        return pageContent().diff(requirePage(request, id), revisionId, against);
     }
 
     /**
@@ -263,16 +242,11 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             @PathVariable("revisionId") String revisionId,
             @RequestBody(required = false) PageDtos.RevisionRestore body) throws WebloggerException {
         WeblogPage page = requireLivePageForWrite(request, id);
-        WeblogPageRevision revision = requireRevision(page, revisionId);
-        String expected = body == null ? null : body.expectedContentHash();
-        requireUnchanged(page, expected);
-        if (expected != null) {
-            requireUnchangedUnderLock(page, page.getContent());
-        }
-
+        WeblogPageRevision revision = pageContent().requireRevision(page, revisionId);
         // The manager's restore, not a plain save: a restore is never
         // coalesced, so what it replaces always becomes a revision.
-        weblogger.getWeblogPageManager().restoreRevision(page, revision, requireAuthenticatedUser(request));
+        pageContent().restoreChecked(page, revision, body == null ? null : body.expectedContentHash(),
+                requireAuthenticatedUser(request));
         weblogger.flush();
         return view(page);
     }
@@ -299,56 +273,10 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
 
     private RevisionDtos.RevisionSummary markPageRevisionKept(HttpServletRequest request, String id, String revisionId,
             boolean kept) throws WebloggerException {
-        WeblogPageRevision pageRevision = requireRevision(requireLivePageForWrite(request, id), revisionId);
-        applyKeep(() -> weblogger.getWeblogPageManager().setRevisionKept(pageRevision, kept));
-        return RevisionDtos.toSummary(pageRevision);
-    }
-
-    private WeblogPageRevision requireRevision(WeblogPage page, String revisionId) {
-        WeblogPageRevision revision = WeblogOwnership.pageRevision(weblogger, revisionId, page);
-        if (revision == null) {
-            throw ApiException.notFound("No such revision.");
-        }
-        return revision;
-    }
-
-    /**
-     * A write's {@code expectedContentHash}, when sent, must be the hash of
-     * the content now stored; otherwise someone changed the page after the
-     * caller read it. Either case of hex matches. A value that is not a hash
-     * at all is the caller's mistake, so a 400, not the 409.
-     */
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Compares case-insensitively only after CONTENT_HASH has confined the value to "
-                    + "ASCII hex digits, which no case mapping can turn into anything else.")
-    private static void requireUnchanged(WeblogPage page, String expected) {
-        if (expected == null) {
-            return;
-        }
-        if (!CONTENT_HASH.matcher(expected).matches()) {
-            throw ApiException.invalidField("expectedContentHash",
-                    "expectedContentHash must be the contentHash a page is read with: 64 hex digits.");
-        }
-        String current = EntryDtos.contentHash(page.getContent());
-        if (!expected.equalsIgnoreCase(current)) {
-            throw ApiException.pageChanged(current);
-        }
-    }
-
-    /**
-     * {@link #requireUnchanged} again, under the page's row lock, immediately
-     * before the write: the content committed now must be the content this
-     * request read, or another request saved in between.
-     */
-    private void requireUnchangedUnderLock(WeblogPage page, String read) throws WebloggerException {
-        String committed = weblogger.getWeblogPageManager().lockPageContent(page);
-        if (committed == null) {
-            throw ApiException.notFound("No such page.");
-        }
-        if (!java.util.Objects.equals(committed, read)) {
-            throw ApiException.pageChanged(EntryDtos.contentHash(committed));
-        }
+        RevisionedContent<WeblogPage, WeblogPageRevision> content = pageContent();
+        WeblogPageRevision pageRevision = content.requireRevision(requireLivePageForWrite(request, id), revisionId);
+        applyKeep(() -> content.setKept(pageRevision, kept));
+        return content.summary(pageRevision);
     }
 
     /**

@@ -7,6 +7,8 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
+import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
@@ -152,17 +154,13 @@ public abstract class BaseApiController {
         weblogger.flush();
     }
 
-    /**
-     * The revision with this id of {@code entry}, an entry already looked up
-     * through {@link #requireEntry} or {@link #requireLiveEntry}. Delegates to
-     * {@link WeblogOwnership#revision}: an unknown id and another entry's
-     * revision are the same 404.
-     */
-    protected WeblogEntryRevision requireRevision(WeblogEntry entry, String revisionId) {
-        WeblogEntryRevision revision = WeblogOwnership.revision(weblogger, revisionId, entry);
-        if (revision == null) {
-            throw ApiException.notFound("No such revision.");
-        }
-        return revision;
+    /** An entry's text and revisions: the shared revision guard, diff, restore and keep. */
+    protected RevisionedContent<WeblogEntry, WeblogEntryRevision> entryContent() {
+        return new EntryContent(weblogger);
+    }
+
+    /** A page's text and revisions; see {@link #entryContent}. */
+    protected RevisionedContent<WeblogPage, WeblogPageRevision> pageContent() {
+        return new PageContent(weblogger);
     }
 }
