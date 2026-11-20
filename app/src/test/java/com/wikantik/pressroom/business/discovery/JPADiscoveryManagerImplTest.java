@@ -24,6 +24,7 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.business.runnable.ScheduledEntriesTask;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
@@ -423,7 +424,14 @@ class JPADiscoveryManagerImplTest {
         Weblog d = blog("discod");
         List<WeblogEntry> ineligible = new ArrayList<>();
         ineligible.add(TestUtils.setupWeblogEntry("draft", d, user, PubStatus.DRAFT));
-        ineligible.add(TestUtils.setupWeblogEntry("scheduled", d, user, PubStatus.SCHEDULED));
+        // genuinely in the future: one due now is promoted to PUBLISHED by the
+        // suite's own ScheduledEntriesTask, which made this test flaky
+        WeblogEntry scheduled = TestUtils.setupWeblogEntry("scheduled", d, user, PubStatus.SCHEDULED);
+        WeblogEntry managedScheduled = entries().getWeblogEntry(scheduled.getId());
+        managedScheduled.setPubTime(new Timestamp(System.currentTimeMillis() + 86_400_000L));
+        entries().saveWeblogEntry(managedScheduled);
+        TestUtils.weblogger().flush();
+        ineligible.add(scheduled);
         ineligible.add(TestUtils.setupWeblogEntry("pending", d, user, PubStatus.PENDING));
         WeblogEntry trashed = TestUtils.setupWeblogEntry("trashed", d, user);
         entries().trashWeblogEntry(entries().getWeblogEntry(trashed.getId()));
@@ -466,6 +474,12 @@ class JPADiscoveryManagerImplTest {
         rows.add(row(f, 0, 0, 1));
         source.rows = rows;
         TestUtils.endSession(true);
+
+        // The suite's real task scheduler promotes due SCHEDULED entries once a
+        // minute; run its pass here so the race it made (a flake) is certain.
+        ScheduledEntriesTask promoter = new ScheduledEntriesTask();
+        promoter.init(TestUtils.weblogger());
+        promoter.runTask();
 
         JPADiscoveryManagerImpl manager = manager();
         manager.refresh();
