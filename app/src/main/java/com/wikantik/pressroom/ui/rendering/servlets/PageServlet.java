@@ -21,6 +21,7 @@ package com.wikantik.pressroom.ui.rendering.servlets;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.ui.rendering.model.ModelInitData;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
@@ -304,11 +305,11 @@ public class PageServlet extends WeblogRequestServlet<WeblogPageRequest> {
         // special hack for menu tag
         request.setAttribute("pageRequest", pageRequest);
 
-        Map<String, Object> initData = new HashMap<>();
-        initData.put("requestParameters", request.getParameterMap());
-        initData.put("parsedRequest", pageRequest);
-        initData.put("pageContext", pageContext);
-        initData.put("urlStrategy", weblogger.getUrlStrategy());
+        Map<String, Object> initData = ModelInitData
+                .forRequest(pageRequest, weblogger.getUrlStrategy())
+                .requestParameters(request.getParameterMap())
+                .pageContext(pageContext)
+                .build();
 
         RenderingServletUtils.loadModels("rendering.pageModels", model, initData, isSiteWide,
                 weblogger);

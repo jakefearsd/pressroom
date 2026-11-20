@@ -227,4 +227,47 @@ class ModelLoaderTest {
                 "The underlying reflection failure must be kept so the real reason "
                         + "survives into the log.");
     }
+
+    @Test
+    void requireRequestReturnsTheRequestWhenItHasTheExpectedType() throws WebloggerException {
+        com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest request =
+                mock(com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest.class);
+        Map<String, Object> init = new HashMap<>();
+        init.put("parsedRequest", request);
+        assertEquals(request, ModelLoader.requireRequest(init,
+                com.wikantik.pressroom.ui.rendering.util.WeblogRequest.class, "AnyModel"));
+    }
+
+    @Test
+    void requireRequestNamesTheModelWhenTheRequestIsMissing() {
+        WebloggerException e = assertThrows(WebloggerException.class, () -> ModelLoader.requireRequest(
+                new HashMap<>(), com.wikantik.pressroom.ui.rendering.util.WeblogRequest.class, "AnyModel"));
+        assertTrue(e.getMessage().contains("parsedRequest"), e.getMessage());
+    }
+
+    @Test
+    void requireRequestRefusesTheWrongRequestTypeByName() {
+        Map<String, Object> init = new HashMap<>();
+        init.put("parsedRequest", mock(com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest.class));
+        WebloggerException e = assertThrows(WebloggerException.class, () -> ModelLoader.requireRequest(
+                init, com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest.class, "PageModel"));
+        assertTrue(e.getMessage().contains("WeblogPageRequest") && e.getMessage().contains("PageModel"),
+                e.getMessage());
+    }
+
+    @Test
+    void modelInitDataBuildsTheMapTheServletsAssembledByHand() {
+        com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest request =
+                mock(com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest.class);
+        com.wikantik.pressroom.business.URLStrategy strategy =
+                mock(com.wikantik.pressroom.business.URLStrategy.class);
+        Map<String, String[]> params = new HashMap<>();
+        Map<String, Object> init = ModelInitData.forRequest(request, strategy)
+                .requestParameters(params).with("searchRequest", "s").build();
+        assertEquals(request, init.get("parsedRequest"));
+        assertEquals(strategy, init.get("urlStrategy"));
+        assertEquals(params, init.get("requestParameters"));
+        assertEquals("s", init.get("searchRequest"));
+        assertFalse(init.containsKey("pageContext"));
+    }
 }

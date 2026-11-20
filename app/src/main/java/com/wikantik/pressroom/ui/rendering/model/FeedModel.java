@@ -31,7 +31,6 @@ import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.pagers.Pager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesListPager;
 import com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest;
-import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
 /**
@@ -62,20 +61,7 @@ public class FeedModel implements Model {
     @Override
     public void init(Map<String, Object> initData) throws WebloggerException {
         
-        // we expect the init data to contain a weblogRequest object
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("expected weblogRequest from init data");
-        }
-        
-        // PageModel only works on page requests, so cast weblogRequest
-        // into a WeblogPageRequest and if it fails then throw exception
-        if(weblogRequest instanceof WeblogFeedRequest) {
-            this.feedRequest = (WeblogFeedRequest) weblogRequest;
-        } else {
-            throw new WebloggerException("weblogRequest is not a WeblogFeedRequest."+
-                    "  FeedModel only supports feed requests.");
-        }
+        this.feedRequest = ModelLoader.requireRequest(initData, WeblogFeedRequest.class, "FeedModel");
         
         // Both are required -- no fallback; the pager this model builds takes
         // the facade from here.

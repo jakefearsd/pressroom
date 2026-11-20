@@ -23,7 +23,6 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewRequest;
-import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 /**
  * Special subclass of URLModel which can change some of the urls which are
@@ -39,18 +38,7 @@ public class PreviewURLModel extends URLModel {
     @Override
     public void init(Map<String, Object> initData) throws WebloggerException {
         
-        // need a weblog request so that we can know the weblog and locale
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("Expected 'weblogRequest' init param!");
-        }
-        
-        // PreviewURLModel only works on preview requests, so cast weblogRequest
-        // into a WeblogPreviewRequest and if it fails then throw exception
-        if(!(weblogRequest instanceof WeblogPreviewRequest)) {
-            throw new WebloggerException("weblogRequest is not a WeblogPreviewRequest."+
-                    "  PreviewURLModel only supports preview requests.");
-        }
+        WeblogPreviewRequest weblogRequest = ModelLoader.requireRequest(initData, WeblogPreviewRequest.class, "PreviewURLModel");
         
         this.weblog = weblogRequest.getWeblog();
         this.locale = weblogRequest.getLocale();

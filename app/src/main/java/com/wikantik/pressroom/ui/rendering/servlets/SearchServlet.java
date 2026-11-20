@@ -31,6 +31,7 @@ import jakarta.servlet.jsp.PageContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.ui.rendering.model.ModelInitData;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
@@ -150,12 +151,12 @@ public class SearchServlet extends WeblogRequestServlet<WeblogSearchRequest> {
             pageRequest.setAuthenticUser(searchRequest.getAuthenticUser());
 
             // populate the rendering model
-            Map<String, Object> initData = new HashMap<>();
-            initData.put("request", request);
-            initData.put("pageContext", pageContext);
-            initData.put("parsedRequest", pageRequest);
-            initData.put("searchRequest", searchRequest);
-            initData.put("urlStrategy", weblogger.getUrlStrategy());
+            Map<String, Object> initData = ModelInitData
+                    .forRequest(pageRequest, weblogger.getUrlStrategy())
+                    .request(request)
+                    .pageContext(pageContext)
+                    .with("searchRequest", searchRequest)
+                    .build();
 
             RenderingServletUtils.loadModels("rendering.searchModels", model, initData,
                     WebloggerRuntimeConfig.isSiteWideWeblog(weblog.getHandle()), weblogger);

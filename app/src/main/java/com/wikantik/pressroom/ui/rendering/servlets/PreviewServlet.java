@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import com.wikantik.pressroom.ui.rendering.model.ModelInitData;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.Theme;
@@ -210,12 +211,12 @@ public class PreviewServlet extends WeblogRequestServlet<WeblogPreviewRequest> {
         request.setAttribute("pageRequest", previewRequest);
         
         // populate the rendering model
-        Map<String, Object> initData = new HashMap<>();
-        initData.put("parsedRequest", previewRequest);
-        initData.put("pageContext", pageContext);
-        
-        // define url strategy
-        initData.put("urlStrategy", weblogger.getUrlStrategy().getPreviewURLStrategy(previewRequest.getThemeName()));
+        // the url strategy is the preview's own, carrying the theme being previewed
+        Map<String, Object> initData = ModelInitData
+                .forRequest(previewRequest,
+                        weblogger.getUrlStrategy().getPreviewURLStrategy(previewRequest.getThemeName()))
+                .pageContext(pageContext)
+                .build();
         
         RenderingServletUtils.loadModels("rendering.previewModels", model, initData,
                 WebloggerRuntimeConfig.isSiteWideWeblog(weblog.getHandle()), weblogger);

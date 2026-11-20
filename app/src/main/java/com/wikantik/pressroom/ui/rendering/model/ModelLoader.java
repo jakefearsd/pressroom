@@ -41,6 +41,9 @@ public final class ModelLoader {
     /** The {@code initData} key under which every model receives the business-tier facade. */
     static final String WEBLOGGER = "weblogger";
 
+    /** The {@code initData} key under which every model receives the parsed request. */
+    static final String PARSED_REQUEST = "parsedRequest";
+
     /** The {@code initData} key under which the url-building models receive their strategy. */
     static final String URL_STRATEGY = "urlStrategy";
 
@@ -71,6 +74,24 @@ public final class ModelLoader {
             return strategy;
         }
         throw new WebloggerException("expected '" + URL_STRATEGY + "' (a URLStrategy) from init data");
+    }
+
+    /**
+     * The parsed request a renderer put into {@code initData}, as the type the
+     * calling model works on, or a {@link WebloggerException} naming the key
+     * and the model if it is missing or of another type.
+     */
+    static <T> T requireRequest(Map<String, Object> initData, Class<T> type, String modelName)
+            throws WebloggerException {
+        Object value = initData == null ? null : initData.get(PARSED_REQUEST);
+        if (value == null) {
+            throw new WebloggerException("expected weblogRequest ('" + PARSED_REQUEST + "') from init data");
+        }
+        if (!type.isInstance(value)) {
+            throw new WebloggerException("'" + PARSED_REQUEST + "' is not a " + type.getSimpleName()
+                    + ".  " + modelName + " only supports " + type.getSimpleName() + "s.");
+        }
+        return type.cast(value);
     }
 
     /**

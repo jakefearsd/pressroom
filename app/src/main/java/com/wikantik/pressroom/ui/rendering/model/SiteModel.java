@@ -80,10 +80,7 @@ public class SiteModel implements Model {
     public void init(Map<String, Object> initData) throws WebloggerException {
         
         // we expect the init data to contain a weblogRequest object
-        this.weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(this.weblogRequest == null) {
-            throw new WebloggerException("expected weblogRequest from init data");
-        }
+        this.weblogRequest = ModelLoader.requireRequest(initData, WeblogRequest.class, "SiteModel");
         
         if (weblogRequest instanceof WeblogPageRequest) {
             ThemeTemplate weblogPage = ((WeblogPageRequest)weblogRequest).getWeblogPage();

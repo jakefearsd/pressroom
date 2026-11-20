@@ -29,7 +29,6 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.ui.core.util.menu.Menu;
 import com.wikantik.pressroom.ui.core.util.menu.MenuHelper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
-import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
 /**
@@ -58,20 +57,7 @@ public class MenuModel implements Model {
     @Override
     public void init(Map<String, Object> initData) throws WebloggerException {
 
-        // we expect the init data to contain a weblogRequest object
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("expected weblogRequest from init data");
-        }
-
-        // MenuModel only works on page requests, so cast weblogRequest
-        // into a WeblogPageRequest and if it fails then throw exception
-        if(weblogRequest instanceof WeblogPageRequest) {
-            this.pageRequest = (WeblogPageRequest) weblogRequest;
-        } else {
-            throw new WebloggerException("weblogRequest is not a WeblogPageRequest."+
-                    "  MenuModel only supports page requests.");
-        }
+        this.pageRequest = ModelLoader.requireRequest(initData, WeblogPageRequest.class, "MenuModel");
 
         weblogger = ModelLoader.requireWeblogger(initData);
     }

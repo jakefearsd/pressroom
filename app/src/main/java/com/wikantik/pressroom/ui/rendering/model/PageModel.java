@@ -55,7 +55,6 @@ import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesMonthPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesPermalinkPager;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
-import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
 /**
@@ -115,20 +114,7 @@ public class PageModel implements Model {
     @SuppressWarnings("unchecked")
     public void init(Map<String, Object> initData) throws WebloggerException {
         
-        // we expect the init data to contain a weblogRequest object
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("expected weblogRequest from init data");
-        }
-        
-        // PageModel only works on page requests, so cast weblogRequest
-        // into a WeblogPageRequest and if it fails then throw exception
-        if(weblogRequest instanceof WeblogPageRequest) {
-            this.pageRequest = (WeblogPageRequest) weblogRequest;
-        } else {
-            throw new WebloggerException("weblogRequest is not a WeblogPageRequest."+
-                    "  PageModel only supports page requests.");
-        }
+        this.pageRequest = ModelLoader.requireRequest(initData, WeblogPageRequest.class, "PageModel");
         
         // custom request parameters
         this.requestParameters = (Map<String, String[]>) initData.get("requestParameters");

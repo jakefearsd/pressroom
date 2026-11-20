@@ -76,10 +76,7 @@ public class URLModel implements Model {
     public void init(Map<String, Object> initData) throws WebloggerException {
         
         // need a weblog request so that we can know the weblog and locale
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("Expected 'weblogRequest' init param!");
-        }
+        WeblogRequest weblogRequest = ModelLoader.requireRequest(initData, WeblogRequest.class, "URLModel");
         
         this.weblog = weblogRequest.getWeblog();
         this.locale = weblogRequest.getLocale();

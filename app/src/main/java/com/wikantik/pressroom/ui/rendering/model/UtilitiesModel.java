@@ -105,10 +105,7 @@ public class UtilitiesModel implements Model {
     public void init(Map<String, Object> initData) throws WebloggerException {      
         
         // we expect the init data to contain a parsedRequest object
-        parsedRequest = (ParsedRequest) initData.get("parsedRequest");
-        if(parsedRequest == null) {
-            throw new WebloggerException("expected parsedRequest from init data");
-        }
+        parsedRequest = ModelLoader.requireRequest(initData, ParsedRequest.class, "UtilitiesModel");
         
         // extract weblog object if possible
         if(parsedRequest instanceof WeblogRequest) {

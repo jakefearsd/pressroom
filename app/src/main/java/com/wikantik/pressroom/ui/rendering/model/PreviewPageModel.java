@@ -27,7 +27,6 @@ import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesLatestPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesPreviewPager;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewRequest;
-import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 
 
 /**
@@ -45,20 +44,7 @@ public class PreviewPageModel extends PageModel {
     @Override
     public void init(Map<String, Object> initData) throws WebloggerException {
         
-        // we expect the init data to contain a weblogRequest object
-        WeblogRequest weblogRequest = (WeblogRequest) initData.get("parsedRequest");
-        if(weblogRequest == null) {
-            throw new WebloggerException("expected weblogRequest from init data");
-        }
-        
-        // PreviewPageModel only works on preview requests, so cast weblogRequest
-        // into a WeblogPreviewRequest and if it fails then throw exception
-        if(weblogRequest instanceof WeblogPreviewRequest) {
-            this.previewRequest = (WeblogPreviewRequest) weblogRequest;
-        } else {
-            throw new WebloggerException("weblogRequest is not a WeblogPreviewRequest."+
-                    "  PreviewPageModel only supports preview requests.");
-        }
+        this.previewRequest = ModelLoader.requireRequest(initData, WeblogPreviewRequest.class, "PreviewPageModel");
         
         // required, no fallback: the preview servlet always installs its own
         urlStrategy = ModelLoader.requireUrlStrategy(initData);

@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.ui.rendering.model.ModelInitData;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -208,9 +209,9 @@ public class FeedServlet extends WeblogRequestServlet<WeblogFeedRequest> {
             throws WebloggerException {
 
         Map<String, Object> model = new HashMap<>();
-        Map<String, Object> initData = new HashMap<>();
-        initData.put("parsedRequest", feedRequest);
-        initData.put("urlStrategy", weblogger.getUrlStrategy());
+        Map<String, Object> initData = ModelInitData
+                .forRequest(feedRequest, weblogger.getUrlStrategy())
+                .build();
 
         RenderingServletUtils.loadModels("rendering.feedModels", model, initData, siteWide,
                 weblogger);
