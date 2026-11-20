@@ -19,7 +19,7 @@ package com.wikantik.pressroom.business.discovery;
 
 import java.util.Optional;
 
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.config.ConfigSource;
 
 /**
  * The three site-wide settings behind the discovery front page: how many days
@@ -119,23 +119,14 @@ public final class DiscoverySettings {
      * hand-edited row cannot lock the admin out of the page that fixes it.
      */
     public static int refreshMinutesFrom(String storedSeconds) {
-        int seconds = DEFAULT_REFRESH_SECONDS;
-        if (storedSeconds != null) {
-            try {
-                int parsed = Integer.parseInt(storedSeconds.trim());
-                if (parsed >= min(REFRESH_SECONDS) && parsed <= max(REFRESH_SECONDS)) {
-                    seconds = parsed;
-                }
-            } catch (NumberFormatException e) {
-                seconds = DEFAULT_REFRESH_SECONDS;
-            }
-        }
+        ConfigSource stored = key -> storedSeconds;
+        int seconds = stored.intOr(REFRESH_SECONDS, DEFAULT_REFRESH_SECONDS,
+                v -> v >= min(REFRESH_SECONDS) && v <= max(REFRESH_SECONDS));
         // rounded up, as PopularityRefreshTask schedules it: 90 s runs every 2 minutes
         return (seconds + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE;
     }
 
     private static int read(String name, int fallback) {
-        int value = WebloggerRuntimeConfig.getIntProperty(name);
-        return value < min(name) || value > max(name) ? fallback : value;
+        return ConfigSource.runtimeThenStatic().intOr(name, fallback, v -> v >= min(name) && v <= max(name));
     }
 }

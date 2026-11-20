@@ -29,6 +29,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.startup.StartupException;
+import com.wikantik.pressroom.config.ConfigSource;
 import com.wikantik.pressroom.config.WebloggerConfig;
 
 
@@ -81,14 +82,7 @@ public class MailProvider {
         mailHostname = WebloggerConfig.getProperty("mail.hostname");
         mailUsername = WebloggerConfig.getProperty("mail.username");
         mailPassword = WebloggerConfig.getProperty("mail.password");
-        try {
-            String portString = WebloggerConfig.getProperty("mail.port");
-            if (portString != null) {
-                mailPort = Integer.parseInt(portString);
-            }
-        } catch (NumberFormatException e) {
-            log.warn("mail server port not a valid integer, ignoring");
-        }
+        mailPort = ConfigSource.staticConfig().intOr("mail.port", mailPort, v -> v >= 1 && v <= 65_535);
         
         // init and connect now so we fail early
         if (type == ConfigurationType.JNDI_NAME) {            

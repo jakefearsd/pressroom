@@ -17,11 +17,8 @@
  */
 package com.wikantik.pressroom.business.comments;
 
-import java.util.function.UnaryOperator;
 
-import com.wikantik.pressroom.config.WebloggerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.config.ConfigSource;
 
 /**
  * The per-account rate limit on comments and replies (ruling R9), as ALLOWED
@@ -52,7 +49,6 @@ public record CommentLimits(int windowLimit, int windowSeconds, int dailyLimit) 
     /** The longest window, a day; it also keeps the window's milliseconds inside an int. */
     static final int MAX_WINDOW_SECONDS = 86_400;
 
-    private static final Logger log = LoggerFactory.getLogger("pressroom.comments");
 
     /** @throws IllegalArgumentException unless every value is at least 1 and the window at most a day */
     public CommentLimits {
@@ -64,31 +60,18 @@ public record CommentLimits(int windowLimit, int windowSeconds, int dailyLimit) 
 
     /** The limits pressroom.properties configures. */
     public static CommentLimits fromConfig() {
-        return from(WebloggerConfig::getProperty);
+        return from(ConfigSource.staticConfig());
     }
 
     /** The limits {@code config} (a property lookup, null when unset) configures. */
-    static CommentLimits from(UnaryOperator<String> config) {
+    static CommentLimits from(ConfigSource config) {
         return new CommentLimits(
                 bounded(config, WINDOW_LIMIT, DEFAULTS.windowLimit(), Integer.MAX_VALUE),
                 bounded(config, WINDOW_SECONDS, DEFAULTS.windowSeconds(), MAX_WINDOW_SECONDS),
                 bounded(config, DAILY_LIMIT, DEFAULTS.dailyLimit(), Integer.MAX_VALUE));
     }
 
-    private static int bounded(UnaryOperator<String> config, String name, int fallback, int max) {
-        String value = config.apply(name);
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        try {
-            int parsed = Integer.parseInt(value.trim());
-            if (parsed >= 1 && parsed <= max) {
-                return parsed;
-            }
-        } catch (NumberFormatException e) {
-            log.debug("{} is not a number", name, e);
-        }
-        log.warn("{} must be a whole number from 1 to {}; using {}", name, max, fallback);
-        return fallback;
+    private static int bounded(ConfigSource config, String name, int fallback, int max) {
+        return config.intOr(name, fallback, v -> v >= 1 && v <= max);
     }
 }

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
 
+import com.wikantik.pressroom.config.ConfigSource;
 import com.wikantik.pressroom.config.WebloggerConfig;
 
 /**
@@ -175,10 +176,11 @@ public final class EntryHtmlCache {
         if (!WebloggerConfig.getBooleanProperty(CACHE_ID + ".enabled", true)) {
             return disabled();
         }
-        long budget = Long.parseLong(WebloggerConfig.getProperty(CACHE_ID + ".maxBytes",
-                Long.toString(DEFAULT_MAX_BYTES)).trim());
-        long timeoutSeconds = Long.parseLong(WebloggerConfig.getProperty(CACHE_ID + ".timeout",
-                Long.toString(DEFAULT_TIMEOUT_SECONDS)).trim());
+        // a bad or non-positive value takes the default, logged: a typo costs
+        // the tuning, not the boot, and a zero or negative budget cannot silently disable the cache
+        ConfigSource config = ConfigSource.staticConfig();
+        long budget = config.longOr(CACHE_ID + ".maxBytes", DEFAULT_MAX_BYTES, v -> v > 0);
+        long timeoutSeconds = config.longOr(CACHE_ID + ".timeout", DEFAULT_TIMEOUT_SECONDS, v -> v > 0);
         // An eviction frees a slot's worth below the budget, so a cache at
         // its budget sweeps once per sixteenth of new renders, not per render.
         return new EntryHtmlCache(budget, budget / SLOT_SHARE, budget - budget / SLOT_SHARE,

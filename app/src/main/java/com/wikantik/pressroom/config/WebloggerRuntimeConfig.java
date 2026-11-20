@@ -163,11 +163,7 @@ public final class WebloggerRuntimeConfig {
      * check both rather than reimplementing this fallback each time.
      */
     public static String getPropertyWithConfigFallback(String name) {
-        String value = getProperty(name);
-        if (value == null || value.isBlank()) {
-            value = WebloggerConfig.getProperty(name);
-        }
-        return value;
+        return ConfigSource.runtimeThenStatic().raw(name);
     }
 
 
@@ -176,39 +172,23 @@ public final class WebloggerRuntimeConfig {
      **/
     public static boolean getBooleanProperty(String name) {
 
-        // check runtime config first, then fall through to static config
-        String value = getProperty(name);
-        if (value == null) {
-            value = WebloggerConfig.getProperty(name);
-        }
-
-        return value != null && Boolean.parseBoolean(value);
+        // runtime config first, then static config for what it leaves unset
+        return ConfigSource.runtimeThenStatic().boolOr(name, false);
     }
     
     
     /**
-     * Retrieve a property as an int ... defaults to -1 if there is an error
+     * Retrieve a property as an int, runtime config first, then static config
+     * for what it leaves unset. -1 when unset anywhere or not a number (the
+     * retention and limit callers read -1 as "keep everything" or "no limit",
+     * so an unreadable value never removes or refuses anything); callers for
+     * whom -1 is not safe use {@link ConfigSource#intOr} with their own default.
      **/
     public static int getIntProperty(String name) {
-        
-        // get the value first, then convert
-        String value = getProperty(name);
-        
-        if (value == null) {
-            return -1;
-        }
-        
-        int intval = -1;
-        try {
-            intval = Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            log.warn("Trouble converting to int: {}", name, e);
-        }
-        
-        return intval;
+        return ConfigSource.runtimeThenStatic().intOr(name, -1, v -> true);
     }
-    
-    
+
+
     public static RuntimeConfigDefs getRuntimeConfigDefs() {
 
         // Double-checked locking, correct per JMM because configDefs is

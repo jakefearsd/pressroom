@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.config.ConfigSource;
 import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -98,7 +98,8 @@ public abstract class AbstractWeblogEntriesPager implements WeblogEntriesPager {
         this.tags = tags != null ? tags : Collections.emptyList();
         
         // make sure offset, length, and page are valid
-        int maxLength = WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries");
+        // an unreadable or non-positive limit takes the stock 30, never -1 (which made every page empty)
+        int maxLength = ConfigSource.runtimeThenStatic().intOr("site.pages.maxEntries", 30, v -> v > 0);
         this.length = Math.min(weblog.getEntryDisplayCount(), maxLength);
         
         this.page = Math.max(0, page);

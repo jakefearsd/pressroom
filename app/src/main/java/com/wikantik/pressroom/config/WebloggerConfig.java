@@ -388,14 +388,7 @@ public final class WebloggerConfig {
      * Retrieve a property as a boolean ... with specified default if not present.
      */
     public static boolean getBooleanProperty(String name, boolean defaultValue) {
-        // get the value first, then convert
-        String value = getProperty(name);
-
-        if(value == null) {
-            return defaultValue;
-        }
-
-        return Boolean.parseBoolean(value);
+        return ConfigSource.staticConfig().boolOr(name, defaultValue);
     }
 
     /**
@@ -406,17 +399,14 @@ public final class WebloggerConfig {
     }
 
     /**
-     * Retrieve a property as a int ... with specified default if not present.
+     * Retrieve a property as a int ... with specified default if not present
+     * or blank. A value that is present but not a number throws
+     * {@link NumberFormatException}: a typo in a numeric property is a failed
+     * boot, not a silently wrong setting. Callers that would rather take a
+     * default use {@link ConfigSource#intOr}.
      */
     public static int getIntProperty(String name, int defaultValue) {
-        // get the value first, then convert
-        String value = getProperty(name);
-
-        if (value == null) {
-            return defaultValue;
-        }
-
-        return Integer.parseInt(value);
+        return ConfigSource.staticConfig().intValue(name).orElse(defaultValue);
     }
 
     /**

@@ -1,11 +1,9 @@
 package com.wikantik.pressroom.ui.restapi.auth;
 
 import com.wikantik.pressroom.util.PressroomConstants;
-import com.wikantik.pressroom.config.WebloggerConfig;
+import com.wikantik.pressroom.config.ConfigSource;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.util.GenericThrottle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Wraps {@link GenericThrottle} for the automation API, following the same
@@ -20,7 +18,6 @@ import org.slf4j.LoggerFactory;
  */
 public final class ApiThrottle {
 
-    private static final Logger log = LoggerFactory.getLogger(ApiThrottle.class);
 
     private final GenericThrottle throttle;
 
@@ -85,13 +82,7 @@ public final class ApiThrottle {
     }
 
     private static int intProperty(String name, int fallback) {
-        try {
-            return Integer.parseInt(WebloggerConfig.getProperty(name));
-        } catch (NumberFormatException e) {
-            // A bad value falls back to the default rather than stopping startup; say so,
-            // or a typo in pressroom-custom.properties silently leaves the stock limits in force.
-            log.warn("{} is not a number; using {}", name, fallback);
-            return fallback;
-        }
+        // a bad value takes the default rather than stopping startup, and intOr says so
+        return ConfigSource.staticConfig().intOr(name, fallback, v -> true);
     }
 }
