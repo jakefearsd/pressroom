@@ -331,10 +331,8 @@ class SearchIndexQueryTest {
         entry.setTitle(title);
         entry.setText(text);
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
+        // the commit indexes it (EntryIndexer); no explicit index call
         TestUtils.weblogger().flush();
-
-        TestUtils.weblogger().getIndexManager()
-                .addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
         return entry;
     }
 

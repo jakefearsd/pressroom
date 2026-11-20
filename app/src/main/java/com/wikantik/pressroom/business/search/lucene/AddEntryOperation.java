@@ -86,7 +86,12 @@ public class AddEntryOperation extends WriteToIndexOperation {
         // background thread means whatever the scheduling caller checked can
         // already be stale: an entry trashed or unpublished between
         // scheduling and execution must not be added.
+        //
+        // The add replaces any document already there for this id: every
+        // save also reindexes after commit (EntryIndexer), so an add landing
+        // after that reindex would otherwise leave the entry indexed twice.
         if (data != null && data.isPublished()) {
+            writer.deleteDocuments(IndexUtil.document(FieldConstants.KIND_ENTRY, data.getId()));
             writer.addDocument(IndexDocuments.entry(manager, data));
         }
     }

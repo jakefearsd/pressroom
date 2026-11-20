@@ -148,6 +148,21 @@ class AddEntryOperationTest {
         return searcher.count(query);
     }
 
+    /**
+     * Since saves index after commit (EntryIndexer), an add that lands after
+     * that reindex used to leave two documents for one entry: a search hit
+     * twice, and a weblog delete that removed one still left the other.
+     */
+    @Test
+    void addingAnEntryTwiceLeavesOneDocument(@TempDir Path tmp) throws Exception {
+        WeblogEntry entry = publishedEntry("a heron on the mudflat");
+        indexed(tmp, entry, realRenderer()).getIndexReader().close();
+
+        IndexSearcher searcher = indexed(tmp, entry, realRenderer());
+
+        assertEquals(1, searcher.count(IndexUtil.document(FieldConstants.KIND_ENTRY, entry.getId())));
+    }
+
     @Test
     void wordAfterThe1000thTokenIsFound(@TempDir Path tmp) throws Exception {
         WeblogEntry entry = publishedEntry(FILLER.repeat(1500) + "zanzibar");
