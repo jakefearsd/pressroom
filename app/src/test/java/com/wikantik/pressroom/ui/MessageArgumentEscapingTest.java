@@ -84,7 +84,10 @@ class MessageArgumentEscapingTest {
             "addFlashMessage", 1,
             // (model, fieldId, key, args, request) -- the same sink through
             // addError, one argument further along.
-            "addFieldError", 2);
+            "addFieldError", 2,
+            // Flash.message(key, args...) -- what a flashAction op returns.
+            // No trailing request, so every argument after the key counts.
+            "Flash.message", 0);
 
     /**
      * Arguments that are safe without escaping, each with the mechanism that
@@ -209,13 +212,13 @@ class MessageArgumentEscapingTest {
          */
         List<String> messageArguments() {
             int from = KEY_INDEX.get(method) + 1;
-            int to = arguments.size() - 1;
+            int to = "Flash.message".equals(method) ? arguments.size() : arguments.size() - 1;
             return from >= to ? List.of() : arguments.subList(from, to);
         }
     }
 
     private static final Pattern CALL_START = Pattern.compile(
-            "\\b(addError|addMessage|addFlashError|addFlashMessage|addFieldError)\\s*\\(");
+            "\\b(addError|addMessage|addFlashError|addFlashMessage|addFieldError|Flash\\.message)\\s*\\(");
 
     private static List<Call> callsIn(String src) {
         List<Call> calls = new ArrayList<>();

@@ -35,6 +35,7 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.Flash;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -129,16 +130,12 @@ public class PagesTrashController extends BaseController {
             addFlashError(redirectAttributes, "pageEdit.notFound", request);
             return backToList(request);
         }
-        try {
+        return flashAction(request, redirectAttributes, backToList(request),
+                "restoring page " + page.getId(), () -> {
             weblogger.getWeblogPageManager().restorePage(page);
             weblogger.flush();
-            addFlashMessage(redirectAttributes, "pages.trash.restored",
-                    StringEscapeUtils.escapeHtml4(page.getSlug()), request);
-        } catch (Exception ex) {
-            log.error("Error restoring page {}", page.getId(), ex);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return backToList(request);
+            return Flash.message("pages.trash.restored", StringEscapeUtils.escapeHtml4(page.getSlug()));
+        });
     }
 
     @PostMapping("/pagesTrash!delete.rol")
@@ -150,17 +147,13 @@ public class PagesTrashController extends BaseController {
             addFlashError(redirectAttributes, "pageEdit.notFound", request);
             return backToList(request);
         }
-        try {
+        return flashAction(request, redirectAttributes, backToList(request),
+                "permanently deleting page " + page.getId(), () -> {
             String slug = page.getSlug();
             weblogger.getWeblogPageManager().removePage(page);
             weblogger.flush();
-            addFlashMessage(redirectAttributes, "pages.trash.deletedForever",
-                    StringEscapeUtils.escapeHtml4(slug), request);
-        } catch (Exception ex) {
-            log.error("Error permanently deleting page {}", page.getId(), ex);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return backToList(request);
+            return Flash.message("pages.trash.deletedForever", StringEscapeUtils.escapeHtml4(slug));
+        });
     }
 
     private String backToList(HttpServletRequest request) {

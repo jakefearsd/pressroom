@@ -322,6 +322,31 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         addToFlash(redirectAttributes, "errors", getText(key, new Object[]{param}, request));
     }
 
+    /** The mutation a {@link #flashAction} runs; returns the success message to flash. */
+    @FunctionalInterface
+    protected interface FlashOp {
+        Flash run() throws Exception;
+    }
+
+    /**
+     * The tail every flash-and-redirect action shares: run {@code op}, flash
+     * the {@link Flash} it returns, or log and flash {@code generic.error.check.logs}
+     * when it throws; then redirect. The by-id lookup and its null check stay
+     * at the call site (the one authorization path is {@code lookup*}), and
+     * the op does its own flush. {@code what} names the action in the log.
+     */
+    protected String flashAction(HttpServletRequest request, RedirectAttributes redirectAttributes,
+                                 String redirect, String what, FlashOp op) {
+        try {
+            Flash done = op.run();
+            addToFlash(redirectAttributes, "messages", getText(done.key(), done.args(), request));
+        } catch (Exception e) {
+            log.error("Error {}", what, e);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+        }
+        return redirect;
+    }
+
     @SuppressWarnings("unchecked")
     private void addToModel(Model model, String attrName, String text) {
         List<String> list = (List<String>) model.getAttribute(attrName);

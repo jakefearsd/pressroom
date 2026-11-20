@@ -31,6 +31,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.Flash;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,15 +140,12 @@ public class PagesController extends BaseController {
         if (pageIds == null || pageIds.isEmpty()) {
             return back;
         }
-        try {
+        return flashAction(request, redirectAttributes, back,
+                "saving the page order of weblog " + getActionWeblog(request).getHandle(), () -> {
             weblogger.getWeblogPageManager().setNavOrder(getActionWeblog(request), pageIds);
             weblogger.flush();
-            addFlashMessage(redirectAttributes, "weblogPagesForm.orderSaved", request);
-        } catch (Exception ex) {
-            log.error("Error saving the page order of weblog {}", getActionWeblog(request).getHandle(), ex);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return back;
+            return Flash.message("weblogPagesForm.orderSaved");
+        });
     }
 
     private void loadPagesList(HttpServletRequest request, Model model) {

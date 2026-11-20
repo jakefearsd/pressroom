@@ -32,6 +32,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.Flash;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -126,15 +127,11 @@ public class TrashController extends BaseController {
             return backToList(request);
         }
 
-        try {
+        return flashAction(request, redirectAttributes, backToList(request), "restoring entry " + restoreId, () -> {
             weblogger.getWeblogEntryManager().restoreWeblogEntry(entry);
             weblogger.flush();
-            addFlashMessage(redirectAttributes, "trash.restored", entry.getDisplayTitle(), request);
-        } catch (Exception e) {
-            log.error("Error restoring entry {}", restoreId, e);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return backToList(request);
+            return Flash.message("trash.restored", entry.getDisplayTitle());
+        });
     }
 
     /** Permanently deletes one already-trashed entry -- the "delete forever" row action. */
@@ -148,16 +145,13 @@ public class TrashController extends BaseController {
             return backToList(request);
         }
 
-        try {
+        return flashAction(request, redirectAttributes, backToList(request),
+                "permanently deleting entry " + deleteId, () -> {
             String title = entry.getDisplayTitle();
             deleteEntryForeverWithIndex(entry);
             weblogger.flush();
-            addFlashMessage(redirectAttributes, "trash.deletedForever", title, request);
-        } catch (Exception e) {
-            log.error("Error permanently deleting entry {}", deleteId, e);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return backToList(request);
+            return Flash.message("trash.deletedForever", title);
+        });
     }
 
     /**
@@ -172,19 +166,13 @@ public class TrashController extends BaseController {
      */
     @PostMapping("/trash!empty.rol")
     public String empty(HttpServletRequest request, RedirectAttributes redirectAttributes) {
-        try {
+        return flashAction(request, redirectAttributes, backToList(request), "emptying trash", () -> {
             int purged = weblogger.getWeblogEntryManager().purgeTrash(getActionWeblog(request), 0);
             weblogger.flush();
-            if (purged > 0) {
-                addFlashMessage(redirectAttributes, "trash.emptied", String.valueOf(purged), request);
-            } else {
-                addFlashMessage(redirectAttributes, "trash.alreadyEmpty", request);
-            }
-        } catch (Exception e) {
-            log.error("Error emptying trash", e);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return backToList(request);
+            return purged > 0
+                    ? Flash.message("trash.emptied", String.valueOf(purged))
+                    : Flash.message("trash.alreadyEmpty");
+        });
     }
 
     /**
