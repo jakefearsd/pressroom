@@ -84,9 +84,9 @@ class AdminProblemCodesTest {
 
     @Test
     void theUserCreateFieldRefusalsHaveTheirCodes() throws Exception {
-        oneField(createUser(status().isBadRequest(), "{\"emailAddress\":\"a@example.test\"}"),
+        oneField(createUser(status().isBadRequest(), "{\"emailAddress\":\"a@example.com\"}"),
                 "userName", "field.required", "userName is required.");
-        oneField(createUser(status().isBadRequest(), "{\"userName\":\"a b!\",\"emailAddress\":\"a@example.test\"}"),
+        oneField(createUser(status().isBadRequest(), "{\"userName\":\"a b!\",\"emailAddress\":\"a@example.com\"}"),
                 "userName", "user.nameHasDisallowedCharacters", "userName contains characters that are not allowed.");
         oneField(createUser(status().isBadRequest(), "{\"userName\":\"alice\",\"emailAddress\":\"nope\"}"),
                 "emailAddress", "user.emailRequired", "A valid emailAddress is required.");
@@ -95,13 +95,13 @@ class AdminProblemCodesTest {
     @Test
     void aTakenUserNameIsUserNameInUse() throws Exception {
         user("alice");
-        oneField(createUser(status().isConflict(), "{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\"}"),
+        oneField(createUser(status().isConflict(), "{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\"}"),
                 "userName", "user.nameInUse", "A user named 'alice' already exists.");
     }
 
     @Test
     void theMailRefusalsOfACreateHaveTheirCodes() throws Exception {
-        String alice = "{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\"}";
+        String alice = "{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\"}";
         PasswordEncoder before = PressroomContext.getPasswordEncoder();
         PressroomContext.setPasswordEncoder(new BCryptPasswordEncoder());
         try (MockedStatic<PasswordLinkMailer> mailer = mockStatic(PasswordLinkMailer.class)) {

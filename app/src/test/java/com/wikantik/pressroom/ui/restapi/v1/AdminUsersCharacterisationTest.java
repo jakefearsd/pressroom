@@ -32,6 +32,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@code POST /v1/admin/users} and {@code PATCH /v1/admin/users/{userName}}
  * answer for the username, email address and screen name: the status and,
  * for a refusal, the whole problem body.
+ *
+ * <p>Criterion 4 changed the address answers on purpose, in a commit of its
+ * own, each new expectation seen to fail first: an address is judged by
+ * commons {@code EmailValidator}, as the person and agent screens judge it,
+ * not by the API's old regex. So {@code a@b.c} (a one-letter top-level
+ * domain) and {@code new@example.test} (a reserved name on no top-level-domain
+ * list) are refused, with the details the regex's refusals had, and a quoted
+ * local part such as {@code "a b"@example.com} is accepted.
  */
 class AdminUsersCharacterisationTest {
 
@@ -163,10 +171,21 @@ class AdminUsersCharacterisationTest {
         assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"a b@example.com\"}", 400));
     }
 
-    /** The regex accepts a one-letter top-level domain, so the request reaches the mail check. */
+    /** Criterion 4: the validator knows top-level domains, so these are refused with today's detail. */
     @Test
-    void anAddressWithAOneLetterTopLevelDomainPassesTheAddressCheck() throws Exception {
-        assertEquals(mailNotConfigured(), created("{\"userName\":\"jake\",\"emailAddress\":\"a@b.c\"}", 400));
+    void anAddressOnNoTopLevelDomainIsRequired() throws Exception {
+        String required = invalid("/v1/admin/users", "emailAddress", "A valid emailAddress is required.",
+                "user.emailRequired");
+
+        assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"a@b.c\"}", 400));
+        assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"new@example.test\"}", 400));
+    }
+
+    /** Criterion 4: a quoted local part, which the regex refused for its space, is a valid address. */
+    @Test
+    void aQuotedLocalPartPassesTheAddressCheck() throws Exception {
+        assertEquals(mailNotConfigured(),
+                created("{\"userName\":\"jake\",\"emailAddress\":\"\\\"a b\\\"@example.com\"}", 400));
     }
 
     @Test
@@ -226,12 +245,16 @@ class AdminUsersCharacterisationTest {
         verify(users, never()).saveUser(any());
     }
 
-    /** The regex accepts a one-letter top-level domain. */
+    /** Criterion 4: the validator knows top-level domains, so these are refused with today's detail. */
     @Test
-    void anAddressWithAOneLetterTopLevelDomainIsStoredByAPatch() throws Exception {
-        patched("{\"emailAddress\":\"a@b.c\"}", 200);
+    void anAddressOnNoTopLevelDomainIsInvalidOnAPatch() throws Exception {
+        String invalid = invalid("/v1/admin/users/alice", "emailAddress", "emailAddress is not a valid address.",
+                "user.emailInvalid");
 
-        assertEquals("a@b.c", alice.getEmailAddress());
+        assertEquals(invalid, patched("{\"emailAddress\":\"a@b.c\"}", 400));
+        assertEquals(invalid, patched("{\"emailAddress\":\"new@example.test\"}", 400));
+        assertEquals("alice@example.com", alice.getEmailAddress());
+        verify(users, never()).saveUser(any());
     }
 
     @Test

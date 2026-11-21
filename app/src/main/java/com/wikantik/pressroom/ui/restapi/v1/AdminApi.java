@@ -11,9 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Pattern;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -90,14 +90,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
-    /**
-     * Deliberately permissive (no TLD/domain checking, just "something at
-     * something with a dot") -- rejecting only the inputs that would
-     * otherwise reach {@code MailUtil.sendTextMessage} and fail there in a
-     * way this API could only report as an opaque 500.
-     */
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-
     // ------------------------------------------------------------- users
 
     @Operation(operationId = "usersList")
@@ -133,7 +125,8 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
         errors.check("emailAddress", () -> {
-            if (StringUtils.isBlank(emailAddress) || !EMAIL_PATTERN.matcher(emailAddress).matches()) {
+            // The person and agent screens' check (spec 2026-11-20-jsp-rules-and-view-models-design, Task 2).
+            if (!EmailValidator.getInstance().isValid(emailAddress)) {
                 throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_REQUIRED);
             }
             ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
@@ -225,7 +218,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             String emailAddress = body.emailAddress().trim();
             // Set only when it passes: the user is a managed entity.
             errors.value("emailAddress", () -> {
-                if (!EMAIL_PATTERN.matcher(emailAddress).matches()) {
+                if (!EmailValidator.getInstance().isValid(emailAddress)) {
                     throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_INVALID);
                 }
                 ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);

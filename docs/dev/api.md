@@ -318,6 +318,17 @@ cache touch; several type errors in one 400. Mixed requests now report an unknow
 before any type error, where the first bad entry used to win. `AdminConfigCharacterisationTest` pins
 the wire bodies; `GlobalConfigCharacterisationTest` the screen's.
 
+## Accounts over the API (2026-11-21)
+
+Spec `docs/superpowers/specs/2026-11-20-jsp-rules-and-view-models-design.md`, Task 2.
+`AdminApi.createUser`/`patchUser` judge `emailAddress` with commons `EmailValidator` (trimmed), the
+person and agent screens' check; `EMAIL_PATTERN` is gone. Intended in 0.16.0 (README change note under
+`POST /api/v1/admin/users`): `a@b.c`, reserved TLDs (`.test`, `.example`, `.invalid`, `.localhost`) and
+local parts over 64 characters are refused; quoted local parts are accepted. The codes and details are
+the old ones (`user.emailRequired` on create, `user.emailInvalid` on patch). Test fixtures that post an
+address use `example.com`: `example.test` is refused now. `AdminUsersCharacterisationTest` pins the wire
+bodies.
+
 ## The OpenAPI document (2026-11-20)
 
 Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 4. `/api/v1/openapi.json` is

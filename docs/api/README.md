@@ -1736,6 +1736,19 @@ set-password link" action uses. No plaintext password ever crosses this
 API, and the call fails outright (400) if mail is not configured, rather
 than creating an account with no way to ever reach a usable password.
 
+> **Changed in 0.16.0: `emailAddress` is judged as the admin UI judges it.**
+> `POST /api/v1/admin/users` and `PATCH /api/v1/admin/users/{userName}`
+> check an address with the same validator as the person and agent screens
+> (Apache Commons `EmailValidator`), after trimming, where earlier versions
+> accepted anything shaped like `something@something.something`. The validator
+> knows the top-level domains, so `a@b.c` (no such domain) and reserved names
+> such as `you@example.test`, `.example`, `.invalid` and `.localhost` are now
+> refused, as is a local part longer than 64 characters; a quoted local part
+> (`"a b"@example.com`) is now accepted. A refused address answers as before:
+> `user.emailRequired` on create, `user.emailInvalid` on update, both on
+> `emailAddress`. An address on a top-level domain newer than the server's
+> validator is refused until Pressroom is upgraded.
+
 The user view (`UserView`) carries these fields:
 
 | Field | Meaning |

@@ -63,7 +63,7 @@ class AdminApiBranchesTest {
     void createWithNoUserNameAtAllIsBadRequest() throws Exception {
         Weblogger weblogger = weblogger();
 
-        String body = postUser(mvc(weblogger), "{\"emailAddress\":\"a@example.test\"}", 400);
+        String body = postUser(mvc(weblogger), "{\"emailAddress\":\"a@example.com\"}", 400);
 
         assertTrue(body.contains("userName is required"), body);
         verify(weblogger.getUserManager(), never()).addUser(any());
@@ -87,7 +87,7 @@ class AdminApiBranchesTest {
         existing.setUserName("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(existing);
 
-        String body = postUser(mvc(weblogger), "{\"userName\":\"ALICE\",\"emailAddress\":\"a@example.test\"}", 409);
+        String body = postUser(mvc(weblogger), "{\"userName\":\"ALICE\",\"emailAddress\":\"a@example.com\"}", 409);
 
         assertTrue(body.contains("already exists"), body);
         verify(weblogger.getUserManager(), never()).addUser(any());
@@ -99,7 +99,7 @@ class AdminApiBranchesTest {
             config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("  ");
             Weblogger weblogger = weblogger();
 
-            String body = postUser(mvc(weblogger), "{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.test\"}", 400);
+            String body = postUser(mvc(weblogger), "{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.com\"}", 400);
 
             assertTrue(body.contains("characters that are not allowed"), body);
         }
@@ -301,7 +301,7 @@ class AdminApiBranchesTest {
 
     @Test
     void aCreateWithNoUserNameNamesTheUserNameField() throws Exception {
-        String body = postUser(mvc(weblogger()), "{\"emailAddress\":\"a@example.test\"}", 400);
+        String body = postUser(mvc(weblogger()), "{\"emailAddress\":\"a@example.com\"}", 400);
         assertEquals("userName", firstErrorField(body));
     }
 
@@ -316,7 +316,7 @@ class AdminApiBranchesTest {
         try (var config = mockStatic(WebloggerConfig.class)) {
             config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("  ");
             String body = postUser(mvc(weblogger()),
-                    "{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.test\"}", 400);
+                    "{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.com\"}", 400);
             assertEquals("userName", firstErrorField(body));
         }
     }

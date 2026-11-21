@@ -187,7 +187,7 @@ class AdminApiTest {
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userName\":\" \",\"emailAddress\":\"a@example.test\"}"))
+                        .content("{\"userName\":\" \",\"emailAddress\":\"a@example.com\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
@@ -245,7 +245,7 @@ class AdminApiTest {
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.test\"}"))
+                        .content("{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.com\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
@@ -265,7 +265,7 @@ class AdminApiTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userName\":\"" + tooLong + "\",\"emailAddress\":\"a@example.test\"}"))
+                        .content("{\"userName\":\"" + tooLong + "\",\"emailAddress\":\"a@example.com\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andReturn().getResponse().getContentAsString();
@@ -289,7 +289,7 @@ class AdminApiTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\","
+                        .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\","
                                 + "\"screenName\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
@@ -302,9 +302,9 @@ class AdminApiTest {
     @Test
     void postRejectsAnEmailAddressLongerThanTheColumn() throws Exception {
         Weblogger weblogger = mockedWeblogger();
-        // Still matches EMAIL_PATTERN (local@domain.tld) but overflows
-        // pressroom_user.emailaddress's 255 characters.
-        String tooLong = "a".repeat(250) + "@example.test";
+        // A valid address (a 64-character local part at most, labels of 63)
+        // that overflows pressroom_user.emailaddress's 255 characters.
+        String tooLong = "abcdefghij@" + ("x".repeat(60) + ".").repeat(4) + "com";
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
@@ -347,7 +347,7 @@ class AdminApiTest {
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\"}"))
+                        .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(errorFieldIs("userName"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
@@ -387,7 +387,7 @@ class AdminApiTest {
             mockMvc(controllerFor(weblogger))
                     .perform(post("/v1/admin/users")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\"}"))
+                            .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\"}"))
                     .andExpect(status().isCreated());
 
             mailer.verify(() -> PasswordLinkMailer.sendLink(any(User.class), eq("raw-token-value"), any()));
@@ -520,14 +520,14 @@ class AdminApiTest {
                 .perform(patch("/v1/admin/users/{userName}", "alice")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":false,\"screenName\":\"New Name\","
-                                + "\"emailAddress\":\"new@example.test\"}"))
+                                + "\"emailAddress\":\"new@example.com\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         verify(weblogger.getUserManager()).saveUser(user);
         assertFalse(user.getEnabled());
         assertEquals("New Name", user.getScreenName());
-        assertEquals("new@example.test", user.getEmailAddress());
+        assertEquals("new@example.com", user.getEmailAddress());
         verify(weblogger).flush();
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertFalse(json.get("enabled").asBoolean());
@@ -571,7 +571,7 @@ class AdminApiTest {
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
-        String tooLong = "a".repeat(250) + "@example.test";
+        String tooLong = "abcdefghij@" + ("x".repeat(60) + ".").repeat(4) + "com";
 
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/admin/users/{userName}", "alice")
@@ -937,7 +937,7 @@ class AdminApiTest {
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userName\":\"" + userName + "\","
-                                + "\"emailAddress\":\"mailnotready@example.test\"}"))
+                                + "\"emailAddress\":\"mailnotready@example.com\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
@@ -974,7 +974,7 @@ class AdminApiTest {
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userName\":\"" + userName + "\","
-                                + "\"emailAddress\":\"newadminuser@example.test\"}"))
+                                + "\"emailAddress\":\"newadminuser@example.com\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         createdUserName = userName;
@@ -1021,7 +1021,7 @@ class AdminApiTest {
                 .perform(post("/v1/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userName\":\"" + userName + "\","
-                                + "\"emailAddress\":\"sendfail@example.test\"}"))
+                                + "\"emailAddress\":\"sendfail@example.com\"}"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andReturn().getResponse();
         createdUserName = userName;
