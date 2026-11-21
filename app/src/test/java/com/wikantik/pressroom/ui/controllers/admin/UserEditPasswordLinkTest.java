@@ -89,6 +89,23 @@ class UserEditPasswordLinkTest {
 
     // --- sending a link for an existing user ---
 
+    /**
+     * The stored address is echoed into the banner, which {@code tiles/messages.jsp}
+     * renders bare, so it is HTML-escaped there ({@code &} is legal in an address).
+     */
+    @Test
+    void theEchoedAddressIsEscapedInTheBanner() throws Exception {
+        User user = user("jake", "tom&jerry@example.com");
+        when(weblogger.getUserManager().getUserByUserName("jake", null)).thenReturn(user);
+        when(weblogger.getUserTokenManager().issueToken(user, UserToken.Purpose.PASSWORD_SET))
+                .thenReturn("raw-token-abc");
+
+        controller.sendPasswordLink(ControllerTestFixture.requestFor(null), model, "jake");
+
+        assertEquals(List.of("userAdmin.passwordLinkSent[tom&amp;jerry@example.com]"),
+                ControllerTestFixture.messages(model));
+    }
+
     @Test
     void sendingForAnExistingUserIssuesAPasswordSetTokenAndMailsTheResetUrl() throws Exception {
         User user = user("jake", "jake@example.com");

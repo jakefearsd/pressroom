@@ -24,6 +24,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
@@ -86,14 +87,15 @@ public class CategoryEditController extends BaseController {
                 weblogger.flush();
 
                 CacheManager.invalidate(getActionWeblog(request));
-                addFlashMessage(redirectAttributes, "categoryForm.created", category.getName(), request);
+                addFlashMessage(redirectAttributes, "categoryForm.created",
+                        StringEscapeUtils.escapeHtml4(category.getName()), request);
 
                 return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
             } catch (DuplicateCategoryNameException ex) {
                 // An overlapping add took the name after myValidate's check.
                 addFieldError(model, "category_bean_name", "categoryForm.error.duplicateName",
-                        new Object[]{bean.getName()}, request);
+                        new Object[]{StringEscapeUtils.escapeHtml4(bean.getName())}, request);
             } catch (Exception ex) {
                 log.error("Error saving category", ex);
                 addError(model, "generic.error.check.logs", request);
@@ -142,7 +144,8 @@ public class CategoryEditController extends BaseController {
                 weblogger.flush();
 
                 CacheManager.invalidate(getActionWeblog(request));
-                addFlashMessage(redirectAttributes, "categoryForm.changesSaved", category.getName(), request);
+                addFlashMessage(redirectAttributes, "categoryForm.changesSaved",
+                        StringEscapeUtils.escapeHtml4(category.getName()), request);
 
                 return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
@@ -189,15 +192,18 @@ public class CategoryEditController extends BaseController {
     private void myValidate(CategoryBean bean, boolean isAdd, HttpServletRequest request, Model model) {
         RuleViolation problem = CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
                 isAdd ? null : bean.getId(), weblogger.getWeblogEntryManager());
-        if (problem == null) {
-            return;
-        }
-        if (problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
+        if (problem != null && problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
             // Fail closed. A uniqueness check that could not run is not a check that passed: the
             // caller's hasErrors() gate would otherwise read the empty error list as "this name is free".
             addError(model, problem, request);
-        } else {
+        } else if (problem != null) {
             addFieldError(model, "category_bean_name", problem, request);
+        }
+        // The API's rule too: an over-long description is the author's to fix, not a column
+        // overflow the save reports as "check the logs".
+        RuleViolation description = CategoryRules.descriptionProblem(bean.getDescription());
+        if (description != null) {
+            addFieldError(model, "category_bean_description", description, request);
         }
     }
 

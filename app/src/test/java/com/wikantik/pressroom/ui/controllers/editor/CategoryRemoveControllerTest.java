@@ -102,6 +102,26 @@ class CategoryRemoveControllerTest extends EditorControllerTestSupport {
         assertEquals(java.util.List.of("removed:Travel"), flashMessages(redirectAttributes));
     }
 
+    /**
+     * {@code tiles/messages.jsp} renders a flash message bare ({@code ${msg}}),
+     * so the name must arrive escaped. The screens refuse such a name, but the
+     * API took any name before 0.16.0, so a stored one can still hold markup.
+     * {@code WeblogCategory.setName} strips whole tags, but keeps a {@code <}
+     * never closed, and the page's own markup closes it: {@code Category "<img
+     * src=x onerror=alert(1) " deleted</li>} is an image with a handler.
+     */
+    @Test
+    void aHostileCategoryNameIsEscapedInTheRemovalFlash() throws Exception {
+        registerMessage("categoryForm.removed", "removed:{0}");
+        doomed.setName("<img src=x onerror=alert(1) ");
+        assertEquals("<img src=x onerror=alert(1)", doomed.getName(), "the unclosed tag survives setName");
+
+        controller.remove(request, model, "cat-1", null, redirectAttributes);
+
+        assertEquals(java.util.List.of("removed:&lt;img src=x onerror=alert(1)"),
+                flashMessages(redirectAttributes));
+    }
+
     @Test
     void removingAnUnknownCategoryIsReportedAndDeletesNothing() throws Exception {
         when(weblogger.getWeblogEntryManager().getWeblogCategory("gone")).thenReturn(null);

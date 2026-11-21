@@ -428,6 +428,30 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
                 "the field marker must survive the redirect too: " + flashInvalidFields(redirectAttributes));
     }
 
+    /**
+     * An over-long description is the screen's own field error, as the API's
+     * {@code field.tooLong} is (CategoryRules.descriptionProblem, final review M4),
+     * not the column overflow the save used to fail on as "check the logs".
+     * Intended change (0.16.0).
+     */
+    @Test
+    void anOverLongDescriptionIsAFieldErrorOnAddAndEdit() throws Exception {
+        bean.setName("Travel");
+        bean.setDescription("d".repeat(256));
+
+        controller.categoryAddSave(request, model, bean, redirectAttributes);
+
+        assertEquals(List.of("categoryForm.error.descriptionTooLong"), flashErrors(redirectAttributes));
+        assertEquals(List.of("category_bean_description"), flashInvalidFields(redirectAttributes));
+
+        RedirectAttributes editRedirect = newRedirectAttributes();
+        bean.setId("cat-1");
+        controller.categoryEditSave(request, newModel(), bean, editRedirect);
+
+        assertEquals(List.of("categoryForm.error.descriptionTooLong"), flashErrors(editRedirect));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
+    }
+
     /** B5: the rail is built from the action being served, not the controller's null default. */
     @Test
     void categoryAddAndEditSelectTheirRailItem() throws Exception {

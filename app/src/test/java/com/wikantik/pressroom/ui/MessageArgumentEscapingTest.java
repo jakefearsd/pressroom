@@ -104,12 +104,10 @@ class MessageArgumentEscapingTest {
             // Utilities.removeHTML(); its blank-title fallback excerpts the
             // entry text with the same tag strip.
             "editor/TrashController.java -> entry.getDisplayTitle()",
-            // CategoryEditController.myValidate refuses any name that differs
-            // from its own escapeHtml4 of itself, so a stored category name
-            // cannot contain <, >, &, " or ' at all.
-            "editor/CategoryEditController.java -> category.getName()",
-            "editor/CategoryEditController.java -> new Object[]{bean.getName()}",
-            "editor/CategoryRemoveController.java -> category.getName()",
+            // (No category name is listed: the screens refuse a name escaping
+            // would change, but the API took any name before 0.16.0, so a
+            // stored one can hold markup. A valid name is a fixed point of
+            // escapeHtml4, so escaping it costs nothing.)
             // A theme's display name is read from its own theme.xml on disk:
             // deployer-authored file content, never request input.
             "editor/ThemeEditController.java -> t.getName()",

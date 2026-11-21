@@ -384,7 +384,9 @@ public class UserEditController extends BaseController {
             return ".UserEdit";
         }
 
-        issueAndMailPasswordSetLink(user, model, request, "userAdmin.passwordLinkSent", user.getEmailAddress());
+        // The stored address is echoed into a banner messages.jsp renders bare.
+        issueAndMailPasswordSetLink(user, model, request, "userAdmin.passwordLinkSent",
+                StringEscapeUtils.escapeHtml4(user.getEmailAddress()));
         return ".UserEdit";
     }
 

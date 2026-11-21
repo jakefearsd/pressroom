@@ -23,6 +23,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -113,7 +114,12 @@ public class CategoryRemoveController extends BaseController {
                 wmgr.removeWeblogCategory(category);
                 weblogger.flush();
 
-                addFlashMessage(redirectAttributes, "categoryForm.removed", category.getName(), request);
+                // Escaped although the screens refuse such a name: the API took any name
+                // before 0.16.0, and WeblogCategory.setName strips whole tags but keeps a
+                // '<' never closed, which messages.jsp (it renders the flash bare) lets the
+                // page's own markup close. A valid name is unchanged by escaping.
+                addFlashMessage(redirectAttributes, "categoryForm.removed",
+                        StringEscapeUtils.escapeHtml4(category.getName()), request);
 
                 return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
