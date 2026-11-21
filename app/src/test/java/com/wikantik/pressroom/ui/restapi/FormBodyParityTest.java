@@ -15,9 +15,6 @@ import java.util.stream.Stream;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
-import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
-import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
-import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -25,22 +22,27 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The field-parity gate (spec 2026-11-08 agent API parity, G1-G4): every
- * property of an admin form bean reaches the API body that mirrors it, under
- * its own name, an explicit rename, or an exclusion with a reason. The MCP
- * tools are generated from {@code /api/v1} and {@code McpCoverageTest} holds
- * every route to a tool, but nothing held a request body to its form, so the
- * page editor's SEO card never reached the API. A field added to a form now
- * fails here until the API body carries it or this table says why not.
- *
- * <p>A bean property is a public getter ({@code getX}/{@code isX}) with a
+ * The field-parity gate (spec 2026-11-08 agent API parity, G1-G4; re-anchored
+ * by spec 2026-11-20 jsp-rules-and-view-models, Task 7). The anchor is
+ * {@link EditableFieldManifest}, which names no form bean:
+ * <ul>
+ * <li>A (outlives the JSP): every manifest field is a component of the API
+ * body, so an API field cannot be dropped silently.</li>
+ * <li>B (outlives the JSP): every body component is a manifest field or an
+ * API-only field with a reason, so an API field cannot be added without
+ * deciding whether the screen offers it.</li>
+ * <li>C (the JSP half; delete a row with its JSP): each form bean's
+ * properties map onto the manifest through renames and exclusions, and every
+ * manifest field is reached by some bean property.</li>
+ * </ul>
+ * A bean property is a public getter ({@code getX}/{@code isX}) with a
  * matching public one-argument setter: what a form binds. Read-only helpers
  * ({@code EntryBean.isDraft}) are not form fields.
  */
 class FormBodyParityTest {
 
-    /** One form and the body that mirrors it. Renames map a bean property to its body name. */
-    record Parity(String name, Class<?> bean, Class<? extends Record> body,
+    /** The JSP half for one resource. Renames map a bean property to its manifest name. */
+    record Parity(String name, Class<?> bean, EditableFieldManifest.Resource resource,
                   Map<String, String> renames, Map<String, String> exclusions) {
         @Override
         public String toString() {
@@ -50,7 +52,7 @@ class FormBodyParityTest {
 
     static Stream<Parity> parities() {
         return Stream.of(
-                new Parity("EntryBean -> EntryWrite", EntryBean.class, EntryDtos.EntryWrite.class,
+                new Parity("EntryBean -> entry", EntryBean.class, EditableFieldManifest.entry(),
                         Map.of("tagsAsString", "tags",
                                 "categoryId", "category",
                                 "pubTimeLocal", "pubTime",
@@ -62,10 +64,11 @@ class FormBodyParityTest {
                                         + "an entry's locale.",
                                 "pinnedToMain", "The legacy pin to the main page, which the front page "
                                         + "ignores; promotion will be designed separately.")),
-                new Parity("WeblogConfigBean -> WeblogPatch", WeblogConfigBean.class, AdminDtos.WeblogPatch.class,
+                new Parity("WeblogConfigBean -> weblogSettings", WeblogConfigBean.class,
+                        EditableFieldManifest.weblogSettings(),
                         Map.of("frontPageId", "frontPage"),
                         Map.of("handle", "The weblog's handle is the route's path variable and never changes.")),
-                new Parity("PageBean -> PageWrite", PageBean.class, PageDtos.PageWrite.class,
+                new Parity("PageBean -> page", PageBean.class, EditableFieldManifest.page(),
                         Map.of("content", "text"),
                         Map.of("id", "The page's id is the update route's path variable; create assigns one.",
                                 "partIds", "The Parts panel's ordered list reaches the API as its own route, "
@@ -76,10 +79,30 @@ class FormBodyParityTest {
     }
 
     @ParameterizedTest(name = "{0}")
+    @MethodSource("com.wikantik.pressroom.ui.restapi.EditableFieldManifest#resources")
+    void everyManifestFieldIsABodyField(EditableFieldManifest.Resource resource) {
+        assertEquals(List.of(), droppedFromBody(resource),
+                resource + ": manifest fields the API body no longer carries");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("com.wikantik.pressroom.ui.restapi.EditableFieldManifest#resources")
+    void everyBodyFieldIsDecided(EditableFieldManifest.Resource resource) {
+        assertEquals(List.of(), undecided(resource),
+                resource + ": body fields neither on the manifest nor API-only with a reason");
+    }
+
+    @ParameterizedTest(name = "{0}")
     @MethodSource("parities")
-    void everyFormFieldReachesTheApiBody(Parity parity) {
+    void everyFormFieldReachesTheManifest(Parity parity) {
         assertEquals(List.of(), missing(parity),
-                parity + ": form properties with no body field, rename or exclusion");
+                parity + ": form properties with no manifest field, rename or exclusion");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("parities")
+    void everyManifestFieldIsReachedByTheForm(Parity parity) {
+        assertEquals(List.of(), unreached(parity), parity + ": manifest fields no form property reaches");
     }
 
     @ParameterizedTest(name = "{0}")
@@ -120,15 +143,18 @@ class FormBodyParityTest {
     record FakeBody(String kept) {
     }
 
+    private static final EditableFieldManifest.Resource FAKE = new EditableFieldManifest.Resource("fake",
+            FakeBody.class, Set.of("kept"), Map.of());
+
     @Test
-    void aFormFieldTheBodyLacksIsReported() {
-        Parity parity = new Parity("fake", FakeBean.class, FakeBody.class, Map.of(), Map.of());
+    void aFormFieldTheManifestLacksIsReported() {
+        Parity parity = new Parity("fake", FakeBean.class, FAKE, Map.of(), Map.of());
         assertEquals(List.of("forgotten"), missing(parity));
     }
 
     @Test
     void aStaleRenameOrExclusionIsReported() {
-        Parity parity = new Parity("fake", FakeBean.class, FakeBody.class,
+        Parity parity = new Parity("fake", FakeBean.class, FAKE,
                 Map.of("gone", "kept", "forgotten", "nowhere"),
                 Map.of("vanished", "a property since removed", "kept", "but the body has it"));
         assertEquals(List.of(
@@ -139,24 +165,80 @@ class FormBodyParityTest {
                 stale(parity));
     }
 
+    @Test
+    void aManifestFieldMissingFromTheBodyFailsA() {
+        var resource = new EditableFieldManifest.Resource("fake", FakeBody.class, Set.of("kept", "promised"),
+                Map.of());
+        assertEquals(List.of("promised"), droppedFromBody(resource));
+    }
+
+    @Test
+    void anUnexplainedBodyFieldFailsB() {
+        var resource = new EditableFieldManifest.Resource("fake", FakeBodyPlus.class, Set.of("kept"), Map.of());
+        assertEquals(List.of("extra"), undecided(resource));
+        var explained = new EditableFieldManifest.Resource("fake", FakeBodyPlus.class, Set.of("kept"),
+                Map.of("extra", "an agent-only convenience"));
+        assertEquals(List.of(), undecided(explained));
+    }
+
+    @Test
+    void aBeanPropertyOutsideTheManifestAndAnUnreachedManifestFieldEachFailC() {
+        var resource = new EditableFieldManifest.Resource("fake", FakeBody.class, Set.of("kept", "orphan"),
+                Map.of());
+        Parity parity = new Parity("fake", FakeBean.class, resource, Map.of(), Map.of());
+        assertEquals(List.of("forgotten"), missing(parity));
+        assertEquals(List.of("orphan"), unreached(parity));
+    }
+
+    @Test
+    void droppingTheBeanRowLeavesAAndBRunningForThatResource() {
+        var resource = new EditableFieldManifest.Resource("fake", FakeBodyPlus.class, Set.of("kept", "promised"),
+                Map.of());
+        // No Parity row exists for it (the JSP is gone): A and B still see the resource.
+        assertEquals(List.of("promised"), droppedFromBody(resource));
+        assertEquals(List.of("extra"), undecided(resource));
+    }
+
+    record FakeBodyPlus(String kept, String extra) {
+    }
+
     // ---------------------------------------------------------- the rules
 
+    static List<String> droppedFromBody(EditableFieldManifest.Resource resource) {
+        Set<String> body = components(resource.body());
+        return resource.fields().stream().filter(f -> !body.contains(f)).sorted().toList();
+    }
+
+    static List<String> undecided(EditableFieldManifest.Resource resource) {
+        return components(resource.body()).stream()
+                .filter(c -> !resource.fields().contains(c) && !resource.apiOnly().containsKey(c))
+                .sorted().toList();
+    }
+
     static List<String> missing(Parity parity) {
-        Set<String> body = components(parity.body());
+        Set<String> fields = parity.resource().fields();
         return properties(parity.bean()).stream()
                 .filter(p -> !parity.exclusions().containsKey(p))
-                .filter(p -> !body.contains(parity.renames().getOrDefault(p, p)))
+                .filter(p -> !fields.contains(parity.renames().getOrDefault(p, p)))
                 .toList();
+    }
+
+    static List<String> unreached(Parity parity) {
+        Set<String> reached = properties(parity.bean()).stream()
+                .filter(p -> !parity.exclusions().containsKey(p))
+                .map(p -> parity.renames().getOrDefault(p, p)).collect(Collectors.toSet());
+        return parity.resource().fields().stream().filter(f -> !reached.contains(f)).sorted().toList();
     }
 
     static List<String> stale(Parity parity) {
         Set<String> bean = properties(parity.bean());
-        Set<String> body = components(parity.body());
+        Set<String> body = components(parity.resource().body());
+        Set<String> fields = parity.resource().fields();
         List<String> problems = new ArrayList<>();
         parity.renames().forEach((from, to) -> {
             if (!bean.contains(from)) {
                 problems.add("rename '" + from + "' names no bean property");
-            } else if (!body.contains(to)) {
+            } else if (!fields.contains(to)) {
                 problems.add("rename '" + from + "' -> '" + to + "' names no body field");
             }
         });

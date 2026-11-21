@@ -402,13 +402,24 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
 - **Adding an `/api/v1` route means deciding its MCP action in the same change**: an `ActionDecl` in
   `McpToolCatalog`, or an `Exclusion` with a reason. `McpCoverageTest` fails until you do, and
   `McpDocsTest` until the README's MCP table matches.
-- **Adding a field to an admin form bean means deciding its API field in the same change.**
-  `FormBodyParityTest` (spec `docs/superpowers/specs/2026-11-08-agent-api-parity-design.md`, G1-G4)
-  holds `EntryBean` to `EntryWrite`, `WeblogConfigBean` to `WeblogPatch` and `PageBean` to
-  `PageWrite`: every property with a getter and a setter is a body field of the same name, an entry
-  in the test's rename table (`content` -> `text`), or an exclusion with a reason (`pinnedToMain`).
-  A rename or exclusion naming nothing live fails it too. `McpCoverageTest` holds routes to tools;
-  this holds bodies to forms, which is how the page SEO card went missing from the API.
+- **Adding an editing field means deciding its API field in the same change, in `EditableFieldManifest`.**
+  `FormBodyParityTest` (spec `docs/superpowers/specs/2026-11-08-agent-api-parity-design.md`, G1-G4,
+  re-anchored by `2026-11-20-jsp-rules-and-view-models-design.md`, Task 7) is anchored on the manifest
+  (test code, `ui.restapi`), which lists per resource (`entry`, `weblogSettings`, `page`) the fields an
+  editing screen offers, in API vocabulary, plus the body fields no screen offers, each with a reason
+  (`edits`, `expectedContentHash`, `clear`...). It names no form bean. Check A: every manifest field is a
+  component of the body record (`EntryWrite`, `WeblogPatch`, `PageWrite`). Check B: every body component
+  is a manifest field or an API-only field with a reason, so a new API field cannot arrive undecided.
+  Check C, the JSP half: each form bean's properties (getter plus setter) map onto the manifest through
+  the test's rename table (`content` -> `text`) or an exclusion with a reason (`pinnedToMain`), and every
+  manifest field is reached by a bean property. A new editing field goes into the manifest and the body;
+  removing a JSP removes only its C row, and A and B keep running. The manifest is what a future React
+  form is held to (no React work exists yet). `McpCoverageTest` holds routes to tools; this holds bodies
+  to screens, which is how the page SEO card went missing from the API.
+- **Rules and view models stay screen-independent** (`ScreenIndependenceTest`): every class in `ui.view`
+  and each named rule class imports no `jakarta.servlet`, `org.springframework.ui`/`web`, `ui.restapi`
+  (except `ProblemCode`) or `*Bean` under `ui.controllers`; a class added to the list that does not
+  exist fails it. Add a new rule class to the test's list.
 - **One rule per shared field, one home each**: `SeoFields` (meta title, search description,
   canonical URL, og image id length) serves `EntryDtos` and `PageDtos`;
   `BaseApiController.checkImageId` is the public-image check for both; `SharedThemeRules` is the
