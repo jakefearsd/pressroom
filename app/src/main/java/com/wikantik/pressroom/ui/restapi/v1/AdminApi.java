@@ -52,6 +52,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.wikantik.pressroom.business.RevisionSweep;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Site-wide user administration and runtime configuration -- {@code
@@ -133,7 +134,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
         errors.check("emailAddress", () -> {
             if (StringUtils.isBlank(emailAddress) || !EMAIL_PATTERN.matcher(emailAddress).matches()) {
-                throw ApiException.invalidField("emailAddress", "A valid emailAddress is required.");
+                throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_REQUIRED);
             }
             ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
         });
@@ -150,13 +151,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // reach addUser and fail as a bare, unguarded WebloggerException.
         if (mgr.getUserByUserName(userName, null) != null
                 || mgr.getUserByUserName(userName.toLowerCase(Locale.ROOT), null) != null) {
-            throw ApiException.conflictOnField("userName", "A user named '" + userName + "' already exists.");
+            throw ApiException.problemOnField("userName", ProblemCode.USER_NAME_IN_USE, userName);
         }
 
         if (!PasswordLinkMailer.isReady()) {
-            throw ApiException.badRequest(
-                    "Mail is not configured, so a set-password link cannot be delivered. "
-                            + "An account with no way to reach a usable password must not be created.");
+            throw ApiException.problem(ProblemCode.USER_MAIL_NOT_CONFIGURED);
         }
 
         User user = new User();
@@ -197,9 +196,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             // hide that the one thing this endpoint exists to do -- get a
             // usable link to the new account -- did not happen.
             log.error("Set-password link could not be sent for new user {}", userName, e);
-            throw ApiException.badGateway(
-                    "The account was created (disabled), but the set-password link could not be sent. "
-                            + "Resend it from the UserAdmin screen's \"send set-password link\" action.", e);
+            throw ApiException.problem(ProblemCode.USER_PASSWORD_LINK_NOT_SENT, e);
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
@@ -210,12 +207,12 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             @PathVariable("userName") String userName, @RequestBody AdminDtos.UserPatch body)
             throws WebloggerException {
         if (StringUtils.isBlank(userName)) {
-            throw ApiException.notFound("No such user.");
+            throw ApiException.problem(ProblemCode.USER_NOT_FOUND);
         }
         UserManager mgr = weblogger.getUserManager();
         User user = mgr.getUserByUserName(userName, null);
         if (user == null) {
-            throw ApiException.notFound("No such user.");
+            throw ApiException.problem(ProblemCode.USER_NOT_FOUND);
         }
         Caller caller = Caller.current();
         AdminAccountGuard.requireNotAgent(caller, user);
@@ -228,7 +225,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             // Set only when it passes: the user is a managed entity.
             errors.value("emailAddress", () -> {
                 if (!EMAIL_PATTERN.matcher(emailAddress).matches()) {
-                    throw ApiException.invalidField("emailAddress", "emailAddress is not a valid address.");
+                    throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_INVALID);
                 }
                 ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
                 return emailAddress;
@@ -238,7 +235,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             String screenName = body.screenName().trim();
             errors.value("screenName", () -> {
                 if (screenName.isBlank()) {
-                    throw ApiException.invalidField("screenName", "screenName cannot be blank.");
+                    throw ApiException.problemOnField("screenName", ProblemCode.FIELD_BLANK, "screenName");
                 }
                 ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
                 return screenName;
@@ -261,7 +258,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
     private static void requireValidUserName(String userName) {
         if (StringUtils.isBlank(userName)) {
-            throw ApiException.invalidField("userName", "userName is required.");
+            throw ApiException.problemOnField("userName", ProblemCode.FIELD_REQUIRED, "userName");
         }
         ColumnLimits.requireMaxLength("userName", userName, ColumnLimits.USERNAME);
         String allowed = WebloggerConfig.getProperty("username.allowedChars");
@@ -269,7 +266,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
         }
         if (!CharSetUtils.keep(userName, allowed).equals(userName)) {
-            throw ApiException.invalidField("userName", "userName contains characters that are not allowed.");
+            throw ApiException.problemOnField("userName", ProblemCode.USER_NAME_CHARACTERS);
         }
     }
 
@@ -338,7 +335,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     public List<AdminDtos.ConfigEntry> patchConfig(@RequestBody Map<String, String> body)
             throws WebloggerException {
         if (body == null || body.isEmpty()) {
-            throw ApiException.badRequest("At least one property is required.");
+            throw ApiException.problem(ProblemCode.CONFIG_PROPERTIES_REQUIRED);
         }
         AdminAccountGuard.requireApiManageable(Caller.current(), body.keySet());
 
@@ -402,19 +399,20 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      */
     private static void requireValidType(PropertyDef def, String value) {
         if (value == null) {
-            throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' cannot be set to null.");
+            throw ApiException.problemOnField(def.getName(), ProblemCode.CONFIG_VALUE_NULL, def.getName());
         }
         String name = def.getName();
         PropertyType type = PropertyType.of(def.getType());
         type.check(name, value).ifPresent(problem -> {
-            throw ApiException.invalidField(name, "'" + name + "' " + switch (problem) {
-                case PropertyType.Range range -> "must be between " + range.min() + " and " + range.max() + ".";
-                case PropertyType.Unparsed _ -> switch (type) {
-                    case BOOLEAN -> "must be true or false.";
-                    case INTEGER -> "must be an integer.";
-                    default -> "must be a number.";
-                };
-            });
+            throw switch (problem) {
+                case PropertyType.Range range -> ApiException.problemOnField(name, ProblemCode.CONFIG_OUT_OF_RANGE,
+                        name, Integer.toString(range.min()), Integer.toString(range.max()));
+                case PropertyType.Unparsed _ -> ApiException.problemOnField(name, switch (type) {
+                    case BOOLEAN -> ProblemCode.CONFIG_NOT_BOOLEAN;
+                    case INTEGER -> ProblemCode.CONFIG_NOT_INTEGER;
+                    default -> ProblemCode.CONFIG_NOT_NUMBER;
+                }, name);
+            };
         });
     }
 

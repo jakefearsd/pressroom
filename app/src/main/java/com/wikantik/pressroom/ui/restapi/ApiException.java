@@ -1,24 +1,33 @@
 package com.wikantik.pressroom.ui.restapi;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.http.HttpHeaders;
 
 /**
  * The one exception the API layer throws for an expected failure. Every
  * response body is built from it by ApiExceptionHandler; no controller
  * assembles its own.
  *
- * <p>Every problem carries a {@link ProblemCode}. A <em>keyed</em> problem
- * ({@link #problem}, {@link #problemOnField}, and the fixed-text factories)
- * renders its {@code detail} from the code's text, in the caller's language
- * when ApiExceptionHandler writes it. A factory taking a literal {@code
- * detail} makes an <em>unkeyed</em> problem: the generic code for its type,
- * and the literal, in English whatever the caller asked for.
+ * <p>Every problem carries a {@link ProblemCode} and renders its {@code
+ * detail} from the code's text, in the caller's language when
+ * ApiExceptionHandler or ApiProblemWriter writes it ({@link #problem},
+ * {@link #problemOnField}, and the fixed-text factories).
  * {@link #getMessage()} is always the English, for logs.
+ *
+ * <p>No public factory takes a free-text detail (spec
+ * 2026-11-20-api-contract-design, Task 3), so outside this package the
+ * compiler refuses an unkeyed problem. The literal factories that remain are
+ * package-private: they are the mechanism's own unit tests' fixtures, and
+ * {@code ApiProblemSourceScanTest} fails on any call to one from this
+ * package's main code. An unkeyed problem carries the generic code for its
+ * type and stays English whatever the caller asked for.
  */
 public final class ApiException extends RuntimeException {
 
@@ -144,11 +153,12 @@ public final class ApiException extends RuntimeException {
      * its English.
      */
     private static List<String> arguments(ProblemCode code, String... given) {
-        if (given.length != code.arity()) {
+        String[] args = given == null ? new String[0] : given.clone();
+        if (args.length != code.arity()) {
             log.warn("Problem code {} takes {} argument(s) but was given {}; its text renders with what it has",
-                    code.code(), code.arity(), given.length);
+                    code.code(), code.arity(), args.length);
         }
-        return Collections.unmodifiableList(Arrays.asList(given.clone()));
+        return Collections.unmodifiableList(Arrays.asList(args));
     }
 
     private static ProblemCode byCode(String wire) {
@@ -161,10 +171,9 @@ public final class ApiException extends RuntimeException {
     /**
      * A keyed problem: {@code code}'s status, type and title, and its text
      * with {@code args} as the detail. Arguments are strings, so the call
-     * site formats a number exactly as it should read.
-     *
-     * @throws IllegalArgumentException for {@link ProblemCode#HTTP_ERROR},
-     *         whose status is not fixed: use {@link #httpError}
+     * site formats a number exactly as it should read. A code with no fixed
+     * status ({@link ProblemCode#HTTP_ERROR}, which only {@link #httpError}
+     * means) is the opaque 500 and a WARN: building an error never throws.
      */
     public static ApiException problem(ProblemCode code, String... args) {
         return new Builder(typed(code)).keyed(args).build();
@@ -175,7 +184,8 @@ public final class ApiException extends RuntimeException {
      * names {@code field} and carries the same text and code.
      */
     public static ApiException problemOnField(String field, ProblemCode code, String... args) {
-        return new Builder(typed(code)).fields(List.of(FieldProblem.keyed(field, code, args)), true).build();
+        ProblemCode typed = typed(code);
+        return new Builder(typed).fields(List.of(FieldProblem.keyed(field, typed, args)), true).build();
     }
 
     /** As {@link #problem}, chaining {@code cause} for the log (a business-tier refusal this answers). */
@@ -185,13 +195,17 @@ public final class ApiException extends RuntimeException {
 
     /** As {@link #problemOnField}, chaining {@code cause} for the log. */
     public static ApiException problemOnField(String field, ProblemCode code, Throwable cause, String... args) {
-        return new Builder(typed(code)).fields(List.of(FieldProblem.keyed(field, code, args)), true)
+        ProblemCode typed = typed(code);
+        return new Builder(typed).fields(List.of(FieldProblem.keyed(field, typed, args)), true)
                 .cause(cause).build();
     }
 
+    /** {@code code}, or the opaque 500's for a code with no fixed status: an error path never throws. */
     private static ProblemCode typed(ProblemCode code) {
         if (code.type() == null) {
-            throw new IllegalArgumentException(code.code() + " has no fixed status; it is not a keyed problem");
+            log.warn("Problem code {} has no fixed status, so it is not a keyed problem; answering the opaque 500",
+                    code.code());
+            return ProblemCode.SERVER_INTERNAL_ERROR;
         }
         return code;
     }
@@ -205,13 +219,32 @@ public final class ApiException extends RuntimeException {
         return new Builder(status, ABOUT_BLANK, title, ProblemCode.HTTP_ERROR).build();
     }
 
-    // ----- unkeyed problems: a literal detail under the generic code for the type -----
+    /**
+     * The 404 for a request naming no weblog the caller may see. Here, not
+     * as {@code problem(ProblemCode.WEBLOG_NOT_FOUND)}, so that
+     * PressroomHandlerInterceptor keeps its two permitted ui.restapi imports.
+     */
+    public static ApiException weblogNotFound() {
+        return problem(ProblemCode.WEBLOG_NOT_FOUND);
+    }
 
-    public static ApiException notFound(String detail) {
+    /**
+     * The 403 for a caller lacking the role a route needs; fixed text that
+     * never names the weblog, the permission or the user. For
+     * PressroomHandlerInterceptor, as {@link #weblogNotFound} is.
+     */
+    public static ApiException permissionDenied() {
+        return problem(ProblemCode.AUTH_NO_PERMISSION);
+    }
+
+    // ----- unkeyed problems: a literal detail under the generic code for the type. -----
+    // Package-private: the fixtures of this mechanism's unit tests, never main code (ApiProblemSourceScanTest).
+
+    static ApiException notFound(String detail) {
         return new Builder(ProblemCode.RESOURCE_NOT_FOUND).literal(detail).build();
     }
 
-    public static ApiException unauthorized(String detail) {
+    static ApiException unauthorized(String detail) {
         return new Builder(ProblemCode.AUTH_UNAUTHORIZED).literal(detail).build();
     }
 
@@ -224,11 +257,11 @@ public final class ApiException extends RuntimeException {
         return problem(ProblemCode.AUTH_UNAUTHORIZED);
     }
 
-    public static ApiException forbidden(String detail) {
+    static ApiException forbidden(String detail) {
         return new Builder(ProblemCode.AUTH_FORBIDDEN).literal(detail).build();
     }
 
-    public static ApiException badRequest(String detail) {
+    static ApiException badRequest(String detail) {
         return new Builder(ProblemCode.REQUEST_INVALID).literal(detail).build();
     }
 
@@ -238,7 +271,7 @@ public final class ApiException extends RuntimeException {
      * in application logs even though the client only ever sees the problem
      * detail.
      */
-    public static ApiException badRequest(String detail, Throwable cause) {
+    static ApiException badRequest(String detail, Throwable cause) {
         return new Builder(ProblemCode.REQUEST_INVALID).literal(detail).cause(cause).build();
     }
 
@@ -246,7 +279,7 @@ public final class ApiException extends RuntimeException {
      * A 400 listing {@code errors}, with a literal {@code detail}. Its code
      * is the one error's code, or {@code request.invalidFields} for several.
      */
-    public static ApiException validation(String detail, List<ApiProblem.FieldError> errors) {
+    static ApiException validation(String detail, List<ApiProblem.FieldError> errors) {
         return new Builder(ProblemCode.REQUEST_INVALID).literal(detail)
                 .fields(errors.stream().map(FieldProblem::of).toList(), false).build();
     }
@@ -257,22 +290,22 @@ public final class ApiException extends RuntimeException {
     }
 
     /** A 400 about one request field: its detail, and an {@code errors} entry naming the field. */
-    public static ApiException invalidField(String field, String detail) {
+    static ApiException invalidField(String field, String detail) {
         return invalidField(field, detail, null);
     }
 
     /** As above, chaining {@code cause} -- see {@link #badRequest(String, Throwable)}. */
-    public static ApiException invalidField(String field, String detail, Throwable cause) {
+    static ApiException invalidField(String field, String detail, Throwable cause) {
         return onField(ProblemCode.REQUEST_INVALID, field, detail, cause);
     }
 
     /** A 409 about one request field, such as an entry anchor another entry already holds. */
-    public static ApiException conflictOnField(String field, String detail) {
+    static ApiException conflictOnField(String field, String detail) {
         return conflictOnField(field, detail, null);
     }
 
     /** As above, chaining {@code cause} -- see {@link #badRequest(String, Throwable)}. */
-    public static ApiException conflictOnField(String field, String detail, Throwable cause) {
+    static ApiException conflictOnField(String field, String detail, Throwable cause) {
         return onField(ProblemCode.RESOURCE_CONFLICT, field, detail, cause);
     }
 
@@ -281,12 +314,12 @@ public final class ApiException extends RuntimeException {
                 .fields(List.of(FieldProblem.literal(field, code, detail)), false).cause(cause).build();
     }
 
-    public static ApiException conflict(String detail) {
+    static ApiException conflict(String detail) {
         return new Builder(ProblemCode.RESOURCE_CONFLICT).literal(detail).build();
     }
 
     /** A 409 raised from a business-tier refusal, which is kept as the cause for the log. */
-    public static ApiException conflict(String detail, Throwable cause) {
+    static ApiException conflict(String detail, Throwable cause) {
         return new Builder(ProblemCode.RESOURCE_CONFLICT).literal(detail).cause(cause).build();
     }
 
@@ -320,16 +353,8 @@ public final class ApiException extends RuntimeException {
         return problem(ProblemCode.SERVER_INTERNAL_ERROR);
     }
 
-    /**
-     * A transient refusal the caller should retry after a short wait: the
-     * server is healthy, but the work collided with other work in progress.
-     */
-    public static ApiException busy(String detail) {
-        return new Builder(ProblemCode.SERVER_BUSY).literal(detail).build();
-    }
-
     /** 413: the request body is over {@link ApiBodyLimitFilter#MAX_BODY_BYTES}. */
-    public static ApiException tooLarge(String detail) {
+    static ApiException tooLarge(String detail) {
         return new Builder(ProblemCode.REQUEST_TOO_LARGE).literal(detail).build();
     }
 
@@ -343,7 +368,7 @@ public final class ApiException extends RuntimeException {
         return problem(ProblemCode.REQUEST_NOT_ACCEPTABLE);
     }
 
-    public static ApiException throttled(String detail) {
+    static ApiException throttled(String detail) {
         return new Builder(ProblemCode.REQUEST_THROTTLED).literal(detail).build();
     }
 
@@ -355,12 +380,12 @@ public final class ApiException extends RuntimeException {
      * will not retry with a different body and misread the resulting 409 as
      * proof the original request never took effect.
      */
-    public static ApiException badGateway(String detail) {
+    static ApiException badGateway(String detail) {
         return badGateway(detail, null);
     }
 
     /** As above, chaining {@code cause} -- see {@link #badRequest(String, Throwable)}. */
-    public static ApiException badGateway(String detail, Throwable cause) {
+    static ApiException badGateway(String detail, Throwable cause) {
         return new Builder(ProblemCode.UPSTREAM_FAILURE).literal(detail).cause(cause).build();
     }
 
@@ -384,9 +409,20 @@ public final class ApiException extends RuntimeException {
         return new FieldProblem(field, code, args, getMessage());
     }
 
-    /** The problem in English: what MCP and the writers outside ApiExceptionHandler send. */
+    /** The problem in English: what MCP sends, whatever its client's language. */
     public ApiProblem toProblem(String instance) {
         return toProblem(instance, ProblemMessages::english);
+    }
+
+    /**
+     * The problem for {@code request}: keyed text in the language its {@code
+     * Accept-Language} header asks for, through {@code messages}. The header
+     * itself, never {@code request.getLocale()}, which Tomcat answers with
+     * the JVM default when the header is absent.
+     */
+    ApiProblem toProblem(HttpServletRequest request, MessageSource messages) {
+        return toProblem(request.getRequestURI(), ProblemMessages.renderer(messages,
+                ProblemMessages.localeFor(request.getHeader(HttpHeaders.ACCEPT_LANGUAGE))));
     }
 
     /** The problem with its keyed text rendered by {@code renderer}; literal text stays as it is. */

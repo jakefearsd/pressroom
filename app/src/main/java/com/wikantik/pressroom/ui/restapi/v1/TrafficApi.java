@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * A blog's traffic: the numbers its Traffic page shows, for an agent deciding which posts to update or
@@ -35,8 +36,8 @@ public class TrafficApi extends BaseApiController implements UISecurityEnforced 
             @Parameter(description = "One of 24h, 7d, 30d (the default) or 90d.")
             @RequestParam(value = "period", defaultValue = "30d") String period) {
         if (!TrafficView.PERIODS.contains(period)) {
-            throw ApiException.invalidField("period",
-                    "period must be one of " + String.join(", ", TrafficView.PERIODS) + ".");
+            throw ApiException.problemOnField("period", ProblemCode.TRAFFIC_PERIOD_UNKNOWN,
+                    String.join(", ", TrafficView.PERIODS));
         }
         Weblog weblog = requireActionWeblog(request);
         BlogTraffic traffic = weblogger.getAnalyticsManager().getBlogTraffic(weblog.getId(), period);

@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 /**
  * Renders a keyed problem's text: in English from the base bundle (what
@@ -31,6 +32,19 @@ public final class ProblemMessages {
     private static final String ENGLISH = "en";
 
     private ProblemMessages() {
+    }
+
+    /**
+     * A message source on {@code ApplicationResources}, as the application's
+     * own {@code messageSource} bean is: what a writer built without one
+     * (a unit test, a static writer) renders from, so it localises as
+     * production does.
+     */
+    public static MessageSource applicationResources() {
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("ApplicationResources");
+        source.setDefaultEncoding("UTF-8");
+        return source;
     }
 
     /** One text, rendered for one request. */

@@ -68,11 +68,16 @@ public final class WeblogSettingsRules {
      * One broken rule. {@code fields} are bean property names, the first the
      * one the form marks; {@code labelKey} and {@code max} are set only for a
      * too-long value, whose message takes the field's label and the limit.
+     * {@code detail} is the API's English, and {@code reason} with {@code
+     * args} what the API keys it by (spec 2026-11-20-api-contract-design,
+     * Task 3): each reason is one meaning, its args the values its text
+     * names, as they read in {@code detail}.
      */
     public record Violation(List<String> fields, String messageKey, String labelKey, Integer max,
-                            String detail, boolean conflict) {
+                            String detail, boolean conflict, Reason reason, List<String> args) {
         public Violation {
             fields = List.copyOf(fields);
+            args = List.copyOf(args);
         }
 
         public String field() {
@@ -82,6 +87,14 @@ public final class WeblogSettingsRules {
         public boolean involvesAny(Set<String> names) {
             return fields.stream().anyMatch(names::contains);
         }
+    }
+
+    /** What a {@link Violation} means, for the API's problem code. */
+    public enum Reason {
+        ENTRY_DISPLAY_COUNT, LOCALE_INVALID, TIME_ZONE_INVALID, ENTRY_ORDER, TOO_LONG, NOT_UUID,
+        BUSINESS_UNKNOWN, FRONT_PAGE, PLACE_TYPE, PLACE_LOCALITY_REQUIRED, PLACE_COUNTRY, PLACE_LAT,
+        PLACE_LNG, BOOKING_URL, CUSTOM_DOMAIN_MALFORMED, CUSTOM_DOMAIN_SITE_HOST, CUSTOM_DOMAIN_TAKEN,
+        CUSTOM_DOMAIN_UNCHECKABLE
     }
 
     /** What the rules need beyond the bean: the weblog itself, the site, and three lookups. */
@@ -108,21 +121,22 @@ public final class WeblogSettingsRules {
         int count = bean.getEntryDisplayCount();
         if (count < 1 || (context.maxEntries() > 0 && count > context.maxEntries())) {
             found.add(simple("entryDisplayCount", "websiteSettings.error.entryDisplayCount",
-                    "entryDisplayCount must be between 1 and " + context.maxEntries() + "."));
+                    "entryDisplayCount must be between 1 and " + context.maxEntries() + ".",
+                    Reason.ENTRY_DISPLAY_COUNT, Integer.toString(context.maxEntries())));
         }
         String locale = StringUtils.trimToNull(bean.getLocale());
         if (locale != null && UIUtils.getLocales().stream().map(Locale::toString).noneMatch(locale::equals)) {
             found.add(simple("locale", "websiteSettings.locale.invalid",
-                    "locale must be one the settings form offers, for example en_US."));
+                    "locale must be one the settings form offers, for example en_US.", Reason.LOCALE_INVALID));
         }
         String zone = StringUtils.trimToNull(bean.getTimeZone());
         if (zone != null && !UIUtils.getTimeZones().contains(zone)) {
             found.add(simple("timeZone", "websiteSettings.timeZone.invalid",
-                    "timeZone must be a time zone id, for example Europe/Berlin."));
+                    "timeZone must be a time zone id, for example Europe/Berlin.", Reason.TIME_ZONE_INVALID));
         }
         if (EntryOrder.parse(bean.getEntryOrder()).isEmpty()) {
             found.add(simple("entryOrder", "weblogSettings.error.entryOrder",
-                    "entryOrder must be NEWEST or OLDEST."));
+                    "entryOrder must be NEWEST or OLDEST.", Reason.ENTRY_ORDER));
         }
         tooLong("copyright", "websiteSettings.copyright", bean.getCopyright(), MAX_TEXT, found);
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);
@@ -149,7 +163,8 @@ public final class WeblogSettingsRules {
             known = false;
         }
         if (!known) {
-            found.add(simple("businessId", "websiteSettings.business.invalid", "No such business."));
+            found.add(simple("businessId", "websiteSettings.business.invalid", "No such business.",
+                    Reason.BUSINESS_UNKNOWN));
         }
     }
 
@@ -177,7 +192,7 @@ public final class WeblogSettingsRules {
         }
         if (!usable) {
             found.add(simple("frontPageId", "weblogSettings.error.frontDoor",
-                    "frontPage must be the id of a published page of this blog."));
+                    "frontPage must be the id of a published page of this blog.", Reason.FRONT_PAGE));
         }
     }
 
@@ -185,32 +200,35 @@ public final class WeblogSettingsRules {
         String placeType = StringUtils.trimToNull(bean.getPlaceType());
         if (placeType != null && !LODGING_BUSINESS.equals(placeType)) {
             found.add(simple("placeType", "websiteSettings.placeType.invalid",
-                    "placeType must be LodgingBusiness."));
+                    "placeType must be LodgingBusiness.", Reason.PLACE_TYPE));
         } else if (placeType != null && StringUtils.isBlank(bean.getPlaceLocality())) {
             found.add(new Violation(List.of("placeLocality", "placeType"), "websiteSettings.placeLocality.required",
-                    null, null, "A place needs a placeLocality (a town or city).", false));
+                    null, null, "A place needs a placeLocality (a town or city).", false,
+                    Reason.PLACE_LOCALITY_REQUIRED, List.of()));
         }
         String country = StringUtils.trimToNull(bean.getPlaceCountry());
         if (country != null && !COUNTRY.matcher(country).matches()) {
             found.add(simple("placeCountry", "websiteSettings.placeCountry.invalid",
-                    "placeCountry must be a two-letter country code."));
+                    "placeCountry must be a two-letter country code.", Reason.PLACE_COUNTRY));
         }
         String lat = StringUtils.trimToNull(bean.getPlaceLat());
         String lng = StringUtils.trimToNull(bean.getPlaceLng());
         if (!withinRange(lat, MAX_LAT) || (lat == null && lng != null)) {
             found.add(new Violation(List.of("placeLat", "placeLng"), "websiteSettings.placeLat.invalid", null, null,
-                    "placeLat must be between -90 and 90, given together with placeLng.", false));
+                    "placeLat must be between -90 and 90, given together with placeLng.", false,
+                    Reason.PLACE_LAT, List.of()));
         }
         if (!withinRange(lng, MAX_LNG) || (lng == null && lat != null)) {
             found.add(new Violation(List.of("placeLng", "placeLat"), "websiteSettings.placeLng.invalid", null, null,
-                    "placeLng must be between -180 and 180, given together with placeLat.", false));
+                    "placeLng must be between -180 and 180, given together with placeLat.", false,
+                    Reason.PLACE_LNG, List.of()));
         }
         tooLong("placeLocality", "websiteSettings.placeLocality", bean.getPlaceLocality(), MAX_PLACE_TEXT, found);
         tooLong("placeRegion", "websiteSettings.placeRegion", bean.getPlaceRegion(), MAX_PLACE_TEXT, found);
         String bookingUrl = StringUtils.trimToNull(bean.getBookingUrl());
         if (bookingUrl != null && !BusinessRules.isHttpUrl(bookingUrl)) {
             found.add(simple("bookingUrl", "websiteSettings.bookingUrl.invalid",
-                    "bookingUrl must be an http or https URL."));
+                    "bookingUrl must be an http or https URL.", Reason.BOOKING_URL));
         } else {
             tooLong("bookingUrl", "websiteSettings.bookingUrl", bookingUrl, MAX_TEXT, found);
         }
@@ -224,22 +242,23 @@ public final class WeblogSettingsRules {
         }
         if (!CustomDomainRules.isWellFormed(customDomain)) {
             found.add(simple("customDomain", "websiteSettings.customDomain.invalid",
-                    "customDomain must be a well-formed hostname."));
+                    "customDomain must be a well-formed hostname.", Reason.CUSTOM_DOMAIN_MALFORMED));
         } else if (CustomDomainRules.isSiteHost(customDomain, context.siteAbsoluteUrl())) {
             // Resolving the site's own host to one weblog loops every request (see WeblogsApi's history).
             found.add(simple("customDomain", "websiteSettings.customDomain.isSiteHost",
-                    "customDomain must not be the site's own hostname."));
+                    "customDomain must not be the site's own hostname.", Reason.CUSTOM_DOMAIN_SITE_HOST));
         } else {
             try {
                 Weblog claimant = context.weblogs().getWeblogByCustomDomain(customDomain);
                 if (claimant != null && !claimant.getHandle().equals(context.ownHandle())) {
                     found.add(new Violation(List.of("customDomain"), "websiteSettings.customDomain.taken",
-                            null, null, "customDomain is already in use by another weblog.", true));
+                            null, null, "customDomain is already in use by another weblog.", true,
+                            Reason.CUSTOM_DOMAIN_TAKEN, List.of()));
                 }
             } catch (WebloggerException e) {
                 log.error("Error checking custom domain", e);
                 found.add(simple("customDomain", "websiteSettings.customDomain.invalid",
-                        "customDomain could not be checked; try again."));
+                        "customDomain could not be checked; try again.", Reason.CUSTOM_DOMAIN_UNCHECKABLE));
             }
         }
     }
@@ -247,7 +266,7 @@ public final class WeblogSettingsRules {
     private static void mustBeUuid(String field, String messageKey, String raw, List<Violation> found) {
         String value = StringUtils.trimToNull(raw);
         if (value != null && !UUID.matcher(value).matches()) {
-            found.add(simple(field, messageKey, field + " must be a UUID."));
+            found.add(simple(field, messageKey, field + " must be a UUID.", Reason.NOT_UUID, field));
         }
     }
 
@@ -255,7 +274,8 @@ public final class WeblogSettingsRules {
         String value = StringUtils.trimToNull(raw);
         if (value != null && value.length() > max) {
             found.add(new Violation(List.of(field), "businesses.error.tooLong", labelKey, max,
-                    "'" + field + "' must be " + max + " characters or fewer.", false));
+                    "'" + field + "' must be " + max + " characters or fewer.", false,
+                    Reason.TOO_LONG, List.of(field, Integer.toString(max))));
         }
     }
 
@@ -268,7 +288,7 @@ public final class WeblogSettingsRules {
         return value != null && value.abs().compareTo(limit) <= 0;
     }
 
-    private static Violation simple(String field, String messageKey, String detail) {
-        return new Violation(List.of(field), messageKey, null, null, detail, false);
+    private static Violation simple(String field, String messageKey, String detail, Reason reason, String... args) {
+        return new Violation(List.of(field), messageKey, null, null, detail, false, reason, List.of(args));
     }
 }

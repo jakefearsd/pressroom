@@ -5,8 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.ApiProblem;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
@@ -48,67 +48,70 @@ import org.springframework.security.web.AuthenticationEntryPoint;
  * {@code BasicAuthenticationEntryPoint} answered that case with a bare
  * {@code sendError(401)} (Boot's {@code /error} JSON, not problem+json) until
  * 0.16.0. Off the token resource nothing challenges.
+ *
+ * <p>Each answer is a keyed problem ({@code auth.unauthorized},
+ * {@code auth.passwordNotAcceptedHere}, {@code auth.passwordRejected}), its
+ * detail in the caller's {@code Accept-Language} (spec
+ * 2026-11-20-api-contract-design, Task 3).
  */
 public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    /** The detail for a password sent anywhere but the token resource. */
+    /** The English detail for a password sent anywhere but the token resource. */
     public static final String PASSWORD_REFUSED_DETAIL =
-            "Password authentication is accepted only on /api/v1/tokens. "
-                    + "Mint a token there and send it as a bearer token.";
+            ApiException.problem(ProblemCode.AUTH_PASSWORD_NOT_ACCEPTED_HERE).getMessage();
 
-    /** The detail for a password the token resource's Basic filter turned away. */
-    public static final String PASSWORD_REJECTED_DETAIL = "The username or password was not accepted.";
+    /** The English detail for a password the token resource's Basic filter turned away. */
+    public static final String PASSWORD_REJECTED_DETAIL =
+            ApiException.problem(ProblemCode.AUTH_PASSWORD_REJECTED).getMessage();
 
     /** The challenge every 401 on the token resource carries. */
     public static final String BASIC_CHALLENGE = "Basic realm=\"Pressroom\"";
-
-    private static final String AUTHENTICATION_REQUIRED = "Authentication required.";
 
     /** The scheme as Spring's own Basic filter reads it: case-insensitive, after a trim. */
     private static final String BASIC = "Basic";
 
     private final ApiProblemWriter problemWriter;
     private final boolean refusesPasswords;
-    private final String detail;
+    private final ProblemCode code;
     private final boolean challenges;
 
     /** The plain entry point: the one fixed detail, no challenge. */
     public ApiAuthenticationEntryPoint(ApiProblemWriter problemWriter) {
-        this(problemWriter, false, AUTHENTICATION_REQUIRED, false);
+        this(problemWriter, false, ProblemCode.AUTH_UNAUTHORIZED, false);
     }
 
     private ApiAuthenticationEntryPoint(ApiProblemWriter problemWriter, boolean refusesPasswords,
-                                        String detail, boolean challenges) {
+                                        ProblemCode code, boolean challenges) {
         this.problemWriter = problemWriter;
         this.refusesPasswords = refusesPasswords;
-        this.detail = detail;
+        this.code = code;
         this.challenges = challenges;
     }
 
     /** The general API chain's entry point: it names the token resource to a password caller. */
     public static ApiAuthenticationEntryPoint refusingPasswords(ApiProblemWriter problemWriter) {
-        return new ApiAuthenticationEntryPoint(problemWriter, true, AUTHENTICATION_REQUIRED, false);
+        return new ApiAuthenticationEntryPoint(problemWriter, true, ProblemCode.AUTH_UNAUTHORIZED, false);
     }
 
     /** The token resource chain's entry point: the one fixed detail, and a Basic challenge. */
     public static ApiAuthenticationEntryPoint challengingForPassword(ApiProblemWriter problemWriter) {
-        return new ApiAuthenticationEntryPoint(problemWriter, false, AUTHENTICATION_REQUIRED, true);
+        return new ApiAuthenticationEntryPoint(problemWriter, false, ProblemCode.AUTH_UNAUTHORIZED, true);
     }
 
     /** The token resource's Basic filter's entry point: a password it turned away, and a challenge. */
     public static ApiAuthenticationEntryPoint rejectingPassword(ApiProblemWriter problemWriter) {
-        return new ApiAuthenticationEntryPoint(problemWriter, false, PASSWORD_REJECTED_DETAIL, true);
+        return new ApiAuthenticationEntryPoint(problemWriter, false, ProblemCode.AUTH_PASSWORD_REJECTED, true);
     }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
-        String text = refusesPasswords && sentAPassword(request) ? PASSWORD_REFUSED_DETAIL : detail;
+        ProblemCode answer = refusesPasswords && sentAPassword(request)
+                ? ProblemCode.AUTH_PASSWORD_NOT_ACCEPTED_HERE : code;
         if (challenges) {
             response.setHeader("WWW-Authenticate", BASIC_CHALLENGE);
         }
-        ApiProblem problem = ApiException.unauthorized(text).toProblem(request.getRequestURI());
-        problemWriter.write(response, problem);
+        problemWriter.write(request, response, ApiException.problem(answer));
     }
 
     private static boolean sentAPassword(HttpServletRequest request) {

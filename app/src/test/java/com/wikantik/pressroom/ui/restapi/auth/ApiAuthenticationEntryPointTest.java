@@ -139,7 +139,8 @@ class ApiAuthenticationEntryPointTest {
         JsonNode body = OBJECT_MAPPER.readTree(rejected.getContentAsByteArray());
         assertEquals(ApiAuthenticationEntryPoint.PASSWORD_REJECTED_DETAIL, body.get("detail").asString());
         assertEquals("The username or password was not accepted.", body.get("detail").asString());
-        assertEquals("auth.unauthorized", body.get("code").asString());
+        // Task 3 gave the turned-away password a code of its own (auth.unauthorized before it).
+        assertEquals("auth.passwordRejected", body.get("code").asString());
 
         MockHttpServletResponse anonymous = new MockHttpServletResponse();
         ApiAuthenticationEntryPoint.challengingForPassword(writer).commence(

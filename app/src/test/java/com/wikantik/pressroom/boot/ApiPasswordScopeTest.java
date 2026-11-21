@@ -452,7 +452,10 @@ class ApiPasswordScopeTest {
         JsonNode problem = JSON.readTree(body(result));
         assertEquals(detail, problem.get("detail").asString(), body(result));
         assertEquals(401, problem.get("status").asInt());
-        assertEquals("auth.unauthorized", problem.get("code").asString(), body(result));
+        // Task 3 gave the two password answers codes of their own.
+        String code = PASSWORD_REJECTED.equals(detail) ? "auth.passwordRejected"
+                : PASSWORD_REFUSED.equals(detail) ? "auth.passwordNotAcceptedHere" : "auth.unauthorized";
+        assertEquals(code, problem.get("code").asString(), body(result));
     }
 
     private static void assertChallenged(MvcResult result) throws Exception {

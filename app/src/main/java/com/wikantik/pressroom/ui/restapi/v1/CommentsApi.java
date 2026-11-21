@@ -50,6 +50,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Moderation of signed-in readers' comments. Authorization is the handler
@@ -112,11 +113,11 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         ReaderComment comment = requireComment(request, id);
         Status wanted = body == null || StringUtils.isBlank(body.status()) ? null : parse(body.status());
         if (wanted != Status.PUBLISHED && wanted != Status.HIDDEN) {
-            throw ApiException.invalidField("status", "status must be PUBLISHED or HIDDEN.");
+            throw ApiException.problemOnField("status", ProblemCode.COMMENT_STATUS_NOT_SETTABLE);
         }
         if (!commentService.changeStatus(comment, wanted, requireAuthenticatedUser(request))) {
             // The service's one refusal: a reader-deleted tombstone is never published.
-            throw ApiException.conflict("Its author deleted this comment; it cannot be published.");
+            throw ApiException.problem(ProblemCode.COMMENT_DELETED_BY_AUTHOR);
         }
         return CommentDtos.toView(comment);
     }
@@ -137,7 +138,7 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         User actor = requireAuthenticatedUser(request);
         CommentOutcome outcome = commentService.reply(actor, parent, body == null ? null : body.body());
         if (!outcome.ok()) {
-            throw ApiException.badRequest("The reply was refused: " + outcome.refusal().name());
+            throw ApiException.problem(ProblemCode.COMMENT_REPLY_REFUSED, outcome.refusal().name());
         }
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .replacePath(request.getRequestURI().replaceFirst("/[^/]+/replies$", "/" + outcome.comment().getId()))
@@ -149,14 +150,14 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         try {
             return Status.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw ApiException.invalidField("status", "status must be one of PENDING, PUBLISHED or HIDDEN.", ex);
+            throw ApiException.problemOnField("status", ProblemCode.COMMENT_STATUS_UNKNOWN, ex);
         }
     }
 
     private ReaderComment requireComment(HttpServletRequest request, String id) {
         ReaderComment comment = WeblogOwnership.comment(weblogger, id, requireActionWeblog(request));
         if (comment == null) {
-            throw ApiException.notFound("No such comment.");
+            throw ApiException.problem(ProblemCode.COMMENT_NOT_FOUND);
         }
         return comment;
     }

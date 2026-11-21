@@ -33,8 +33,12 @@ public record ApiProblem(
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record FieldError(String field, String message, String code) {
 
-        /** An unkeyed 400 field error: a literal message, the generic {@code request.invalid} code. */
-        public FieldError(String field, String message) {
+        /**
+         * An unkeyed 400 field error: a literal message, the generic {@code
+         * request.invalid} code. Package-private: no route builds one (spec
+         * 2026-11-20-api-contract-design, Task 3).
+         */
+        FieldError(String field, String message) {
             this(field, message, ProblemCode.REQUEST_INVALID.code());
         }
     }

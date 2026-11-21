@@ -1,14 +1,11 @@
 package com.wikantik.pressroom.ui.restapi;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Locale;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
-import org.springframework.context.support.ResourceBundleMessageSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
@@ -37,19 +34,12 @@ public class ApiExceptionHandler {
 
     /** Renders from {@code ApplicationResources}, as the application's own message source does. */
     public ApiExceptionHandler() {
-        this(applicationResources());
+        this(ProblemMessages.applicationResources());
     }
 
     @Autowired
     public ApiExceptionHandler(MessageSource messages) {
         this.messages = messages;
-    }
-
-    private static MessageSource applicationResources() {
-        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
-        source.setBasename("ApplicationResources");
-        source.setDefaultEncoding("UTF-8");
-        return source;
     }
 
     @ExceptionHandler(ApiException.class)
@@ -65,8 +55,7 @@ public class ApiExceptionHandler {
      * with the JVM default when the header is absent.
      */
     private ApiProblem problem(ApiException ex, HttpServletRequest request) {
-        Locale locale = ProblemMessages.localeFor(request.getHeader(HttpHeaders.ACCEPT_LANGUAGE));
-        return ex.toProblem(request.getRequestURI(), ProblemMessages.renderer(messages, locale));
+        return ex.toProblem(request, messages);
     }
 
     /**

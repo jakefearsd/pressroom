@@ -21,12 +21,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.RedirectRefusedException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.WeblogRedirect;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.RedirectDtos;
 import org.springframework.http.ResponseEntity;
@@ -72,10 +74,10 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
         Weblog weblog = requireActionWeblog(request);
 
         if (body.source() == null || body.source().isBlank()) {
-            throw ApiException.invalidField("source", "source is required.");
+            throw ApiException.problemOnField("source", ProblemCode.FIELD_REQUIRED, "source");
         }
         if (body.target() == null || body.target().isBlank()) {
-            throw ApiException.invalidField("target", "target is required.");
+            throw ApiException.problemOnField("target", ProblemCode.FIELD_REQUIRED, "target");
         }
         ColumnLimits.requireMaxLength("source", body.source(), ColumnLimits.REDIRECT_PATH);
         ColumnLimits.requireMaxLength("target", body.target(), ColumnLimits.REDIRECT_PATH);
@@ -89,10 +91,14 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
         // Every saveRedirect refusal -- off-site target, chaining, duplicate
         // source -- is validation with a readable message; surfaced as a 400
         // rather than falling through the generic handler as an opaque 500.
+        // A refusal with a reason has its own code; any other is passed
+        // through whole, as it always was (redirect.refused).
         try {
             weblogger.getWeblogRedirectManager().saveRedirect(rule);
+        } catch (RedirectRefusedException refusal) {
+            throw ApiException.problem(code(refusal.reason()), refusal, refusal.args().toArray(String[]::new));
         } catch (WebloggerException refusal) {
-            throw ApiException.badRequest(refusal.getMessage(), refusal);
+            throw ApiException.problem(ProblemCode.REDIRECT_REFUSED, refusal, refusal.getMessage());
         }
         weblogger.flush();
 
@@ -121,9 +127,23 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
         WeblogRedirect rule = WeblogOwnership.redirect(
                 weblogger, id, requireActionWeblog(request));
         if (rule == null) {
-            throw ApiException.notFound("No such redirect.");
+            throw ApiException.problem(ProblemCode.REDIRECT_NOT_FOUND);
         }
         return rule;
+    }
+
+    /** The code of a refusal's reason: exhaustive, so a new reason does not compile without one. */
+    private static ProblemCode code(RedirectRefusedException.Reason reason) {
+        return switch (reason) {
+            case PATH_NOT_RELATIVE -> ProblemCode.REDIRECT_PATH_NOT_RELATIVE;
+            case PATH_HAS_QUERY -> ProblemCode.REDIRECT_PATH_HAS_QUERY;
+            case PATH_HAS_BACKSLASH -> ProblemCode.REDIRECT_PATH_HAS_BACKSLASH;
+            case PATH_HAS_CONTROL_CHARACTERS -> ProblemCode.REDIRECT_PATH_HAS_CONTROL;
+            case TARGET_IS_SOURCE -> ProblemCode.REDIRECT_TARGET_IS_SOURCE;
+            case SOURCE_EXISTS -> ProblemCode.REDIRECT_SOURCE_EXISTS;
+            case SOURCE_IS_TARGET -> ProblemCode.REDIRECT_SOURCE_IS_TARGET;
+            case TARGET_REDIRECTED -> ProblemCode.REDIRECT_TARGET_REDIRECTED;
+        };
     }
 
     @Override

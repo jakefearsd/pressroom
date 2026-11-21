@@ -43,7 +43,6 @@ class ApiExceptionCodeTest {
         assertEquals("auth.forbidden", code(ApiException.forbidden("f")));
         assertEquals("resource.conflict", code(ApiException.conflict("c")));
         assertEquals("resource.conflict", code(ApiException.conflict("c", cause)));
-        assertEquals("server.busy", code(ApiException.busy("b")));
         assertEquals("request.tooLarge", code(ApiException.tooLarge("t")));
         assertEquals("request.throttled", code(ApiException.throttled("t")));
         assertEquals("upstream.failure", code(ApiException.badGateway("g")));
@@ -94,10 +93,14 @@ class ApiExceptionCodeTest {
                 e.getMessage(), "arity 0 is not run through MessageFormat: the apostrophe stays single");
     }
 
-    /** about:blank has no fixed status, so http.error cannot be raised as a keyed problem. */
+    /**
+     * about:blank has no fixed status, so http.error is not a keyed problem:
+     * asked for as one, it is the opaque 500, never a throw on an error path
+     * (Task 3; ApiExceptionSurfaceTest has the rest).
+     */
     @Test
     void httpErrorIsNotAKeyedProblem() {
-        assertThrows(IllegalArgumentException.class, () -> ApiException.problem(ProblemCode.HTTP_ERROR));
+        assertEquals("server.internalError", code(ApiException.problem(ProblemCode.HTTP_ERROR)));
     }
 
     @Test

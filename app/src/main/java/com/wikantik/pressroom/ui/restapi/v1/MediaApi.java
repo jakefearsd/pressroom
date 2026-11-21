@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Media read, patch, delete and directory listing/creation.
@@ -149,7 +150,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             @RequestParam(value = "directoryId", required = false) String directoryId) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (files == null || files.length == 0) {
-            throw ApiException.invalidField("file", "At least one file is required.");
+            throw ApiException.problemOnField("file", ProblemCode.MEDIA_FILE_REQUIRED);
         }
 
         MediaFileManager mfm = weblogger.getMediaFileManager();
@@ -194,7 +195,8 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             imported = MediaImports.importImage(weblogger, imageFetcher, weblog, directory,
                     body.url(), body.name(), body.altText());
         } catch (MediaImports.ImportRefused e) {
-            throw ApiException.invalidField("url", e.getMessage(), e);
+            // The import step's own text, passed through whole (ImportRefused: safe to show).
+            throw ApiException.problemOnField("url", ProblemCode.MEDIA_IMPORT_REFUSED, e, e.getMessage());
         }
         MediaFile file = imported.file();
         MediaDtos.MediaView view = MediaDtos.toView(file, url(weblog, file));
@@ -215,14 +217,14 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     private MediaFileDirectory importDirectory(HttpServletRequest request, Weblog weblog,
             MediaDtos.MediaImport body, MediaFileManager mfm) throws WebloggerException {
         if (StringUtils.isBlank(body.url())) {
-            throw ApiException.invalidField("url", "url is required.");
+            throw ApiException.problemOnField("url", ProblemCode.FIELD_REQUIRED, "url");
         }
         ColumnLimits.requireMaxLength("altText", body.altText(), ColumnLimits.MEDIA_ALT_TEXT);
         MediaFileDirectory directory = StringUtils.isNotBlank(body.directoryId())
                 ? requireDirectory(request, body.directoryId())
                 : MediaUploads.defaultDirectory(weblog, mfm);
         if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
-            throw ApiException.badRequest("File upload is disabled for this site.");
+            throw ApiException.problem(ProblemCode.UPLOAD_DISABLED);
         }
         return directory;
     }
@@ -321,19 +323,19 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         Weblog weblog = requireActionWeblog(request);
         String name = body.name() == null ? null : body.name().trim();
         if (name == null || name.isBlank()) {
-            throw ApiException.invalidField("name", "name is required.");
+            throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
         }
 
         String normalized = name.startsWith("/") ? name.substring(1) : name;
         if (normalized.isEmpty()) {
-            throw ApiException.invalidField("name", "name is required.");
+            throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
         }
         if ("default".equals(normalized)) {
-            throw ApiException.invalidField("name", "'default' is a reserved directory name.");
+            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_RESERVED);
         }
         ColumnLimits.requireMaxLength("name", normalized, ColumnLimits.DIRECTORY_NAME);
         if (weblog.hasMediaFileDirectory(normalized)) {
-            throw ApiException.conflictOnField("name", "A directory named '" + normalized + "' already exists.");
+            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_IN_USE, normalized);
         }
         if (body.description() != null) {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.DIRECTORY_DESCRIPTION);
@@ -357,11 +359,11 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     private MediaFile requireMedia(HttpServletRequest request, String id) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (StringUtils.isBlank(id)) {
-            throw ApiException.notFound("No such media file.");
+            throw ApiException.problem(ProblemCode.MEDIA_NOT_FOUND);
         }
         MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
         if (file == null) {
-            throw ApiException.notFound("No such media file.");
+            throw ApiException.problem(ProblemCode.MEDIA_NOT_FOUND);
         }
         return file;
     }
@@ -375,12 +377,12 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     private MediaFileDirectory requireDirectory(HttpServletRequest request, String id) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (StringUtils.isBlank(id)) {
-            throw ApiException.notFound("No such directory.");
+            throw ApiException.problem(ProblemCode.DIRECTORY_NOT_FOUND);
         }
         MediaFileDirectory directory = weblogger.getMediaFileManager().getMediaFileDirectory(id);
         if (directory == null || directory.getWeblog() == null
                 || !directory.getWeblog().getId().equals(weblog.getId())) {
-            throw ApiException.notFound("No such directory.");
+            throw ApiException.problem(ProblemCode.DIRECTORY_NOT_FOUND);
         }
         return directory;
     }

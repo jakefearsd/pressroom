@@ -64,8 +64,12 @@ public final class FieldErrors {
         errors.addAll(named.isEmpty() ? List.of(e.asFieldProblem(field)) : named);
     }
 
-    /** An unkeyed problem: a literal message, under the generic {@code request.invalid} code. */
-    public void add(String field, String message) {
+    /**
+     * An unkeyed problem: a literal message, under the generic {@code
+     * request.invalid} code. Package-private, as ApiException's literal
+     * factories are: the unit tests' fixture, never main code.
+     */
+    void add(String field, String message) {
         errors.add(ApiException.FieldProblem.literal(field, ProblemCode.REQUEST_INVALID, message));
     }
 
@@ -80,7 +84,7 @@ public final class FieldErrors {
      * rule over the range check) never lists the field twice. {@link #add}
      * itself repeats a field on purpose (one error per bad id in a list).
      */
-    public void addIfAbsent(String field, String message) {
+    void addIfAbsent(String field, String message) {
         if (absent(field)) {
             add(field, message);
         }

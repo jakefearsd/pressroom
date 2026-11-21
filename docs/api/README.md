@@ -372,6 +372,16 @@ stable, case-sensitive string of dotted lowerCamel segments
 - **Branch on `code`, never on `detail`.** A code is never renamed or
   removed. New codes are added as the API learns to name more of its
   refusals precisely, so treat one you do not know by its `type` and status.
+- **Every refusal has a code of its own.** The generic codes
+  (`request.invalid`, `resource.notFound`, `resource.conflict`,
+  `upstream.failure`) stay in the table, but no route answers with them any
+  more: before 0.16.0 they stood for any refusal not yet given its own.
+  `auth.notAuthenticated` means the same as `auth.unauthorized`; treat them alike.
+- **A few `detail`s are not the API's own text** but the message of the step
+  that refused (an image import, a redirect rule the manager refused without
+  a reason of its own). Their codes are `image.scanRefused`,
+  `image.importFailed`, `media.importRefused` and `redirect.refused`; such
+  text is English whatever the caller asks for.
 - **`detail` is plain text for a person, and may be localised.** Send
   `Accept-Language` and a problem whose text the server holds in that
   language reads in it; anything else reads in English. No translations
@@ -386,7 +396,7 @@ stable, case-sensitive string of dotted lowerCamel segments
 
 | Code | Status | Type | Meaning |
 |------|--------|------|---------|
-| `request.invalid` | 400 | `invalid-request` | The request is not valid. The generic code for a 400 not yet given its own: `detail` says what is wrong. |
+| `request.invalid` | 400 | `invalid-request` | The request is not valid. The generic 400: before 0.16.0, a 400 not yet given its own code; no route answers it now. |
 | `request.invalidFields` | 400 | `invalid-request` | More than one field is invalid; each `errors` entry carries its own code. |
 | `request.malformedBody` | 400 | `invalid-request` | The body could not be parsed as JSON (or was missing where one is required). |
 | `parameter.notWholeNumber` | 400 | `invalid-request` | A query parameter or path variable that must be a whole number is not one. |
@@ -411,7 +421,7 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `page.notFound` | 404 | `not-found` | No live page has this id in the weblog. |
 | `revision.notFound` | 404 | `not-found` | The entry or page has no revision with this id. |
 | `weblog.notFound` | 404 | `not-found` | No weblog is addressed by this request. |
-| `auth.notAuthenticated` | 401 | `unauthorized` | A write reached the controller with no signed-in user. |
+| `auth.notAuthenticated` | 401 | `unauthorized` | A write reached the controller with no signed-in user. The same meaning as `auth.unauthorized` (an older check, nearer the route, with its own sentence): treat the two alike. |
 | `entry.trashed` | 409 | `conflict` | The entry is in the trash; restore it before editing or previewing it. |
 | `entry.alreadyTrashed` | 409 | `conflict` | Trash was asked for an entry already in the trash. |
 | `entry.notInTrash` | 409 | `conflict` | Restore was asked for an entry that is not in the trash. |
@@ -484,6 +494,102 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `slug.heldByTrashedPage` | 409 | `conflict` | A trashed page holds the `slug`. |
 | `slug.inUse` | 409 | `conflict` | Another page holds the `slug`. |
 | `parameter.aliasConflict` | 400 | `invalid-request` | A deprecated parameter alias (`{0}`) was sent with a different value than its current name (`{1}`). |
+| `auth.passwordNotAcceptedHere` | 401 | `unauthorized` | A password (HTTP Basic) was sent anywhere but the token resource, which is the only place one is accepted. |
+| `auth.passwordRejected` | 401 | `unauthorized` | The token resource turned the password away: wrong, a disabled account, an agent or an unknown user, told alike. |
+| `auth.noPermission` | 403 | `forbidden` | The caller lacks the role this route needs (on the site, or on a weblog it is a member of). |
+| `auth.apiNotAllowed` | 403 | `forbidden` | The account (a reader signed in with SSO) holds no login permission, so it may not use the API. |
+| `token.notAdminScoped` | 403 | `forbidden` | An administration route was called with a token whose role is not ADMIN. |
+| `token.readOnly` | 403 | `forbidden` | A write was sent with a READ token. |
+| `token.weblogScopedRoute` | 404 | `not-found` | A token limited to one weblog called a route that belongs to no weblog. |
+| `token.cannotMintToken` | 403 | `forbidden` | A token was used to mint a token; minting takes a password. |
+| `token.managementNeedsPassword` | 403 | `forbidden` | A token was used to list or revoke tokens; that takes a password. |
+| `token.notFound` | 404 | `not-found` | The caller has no token with this id. |
+| `token.weblogNotMember` | 400 | `invalid-request` | A token's `weblog` names a weblog the caller is not a member of. |
+| `token.expiryNotInFuture` | 400 | `invalid-request` | A token's `expiresAt` is not in the future. |
+| `token.roleUnknown` | 400 | `invalid-request` | A token's `role` is not READ, POST or ADMIN. |
+| `mcp.tokenRequired` | 401 | `unauthorized` | The MCP endpoint was called with anything but an API token. |
+| `mcp.actionMissing` | 400 | `invalid-request` | MCP only: a tool with several actions was called without `action`. |
+| `mcp.actionUnknown` | 400 | `invalid-request` | MCP only: `action` names no action of the tool. |
+| `mcp.argumentNotApplicable` | 400 | `invalid-request` | MCP only: an argument the tool or action does not take. |
+| `mcp.argumentMissing` | 400 | `invalid-request` | MCP only: a required argument is missing. |
+| `mcp.argumentNotObject` | 400 | `invalid-request` | MCP only: an argument that must be a JSON object is not one. |
+| `mcp.argumentNotPathSegment` | 400 | `invalid-request` | MCP only: a value that becomes one path segment is empty, a dot segment, or holds `/`, `\` or `;`. |
+| `account.adminManagedInAdminUi` | 403 | `forbidden` | The API may not change a site administrator's account. |
+| `account.agentManagedInAdminUi` | 403 | `forbidden` | The API may not change an agent account. |
+| `setting.managedInAdminUi` | 403 | `forbidden` | A runtime setting the API reads but never writes (`site.absoluteurl`). |
+| `user.notFound` | 404 | `not-found` | No user has this user name. |
+| `user.nameInUse` | 409 | `conflict` | `userName` is taken (by an account of any status). |
+| `user.nameHasDisallowedCharacters` | 400 | `invalid-request` | `userName` holds a character the site does not allow in user names. |
+| `user.emailRequired` | 400 | `invalid-request` | A user create has no `emailAddress`, or one that is not an address. |
+| `user.emailInvalid` | 400 | `invalid-request` | A user update's `emailAddress` is not an address. |
+| `user.mailNotConfigured` | 400 | `invalid-request` | A user create on a site with no mail set up: the set-password link could not be sent. |
+| `user.passwordLinkNotSent` | 502 | `upstream-failure` | The account was created, disabled, but its set-password mail failed. |
+| `config.propertiesRequired` | 400 | `invalid-request` | A settings PATCH named no setting. |
+| `config.propertyNameRequired` | 400 | `invalid-request` | A settings PATCH named a setting with a blank name. |
+| `config.propertyUnknown` | 400 | `invalid-request` | A setting that is not runtime-settable. |
+| `config.valueNull` | 400 | `invalid-request` | A setting was sent as null. |
+| `config.outOfRange` | 400 | `invalid-request` | An integer setting outside the range it allows. |
+| `config.notBoolean` | 400 | `invalid-request` | A boolean setting that is not `true` or `false`. |
+| `config.notInteger` | 400 | `invalid-request` | An integer setting that is not an integer. |
+| `config.notNumber` | 400 | `invalid-request` | A number setting that is not a number. |
+| `field.notFinite` | 400 | `invalid-request` | A number field is not finite. |
+| `field.notUuid` | 400 | `invalid-request` | A field that holds a UUID does not. |
+| `media.fileRequired` | 400 | `invalid-request` | A media upload carried no file. |
+| `media.importRefused` | 400 | `invalid-request` | A media import could not fetch or store the image; `detail` says why. Text from the import step. |
+| `media.notFound` | 404 | `not-found` | No media file of the weblog has this id. |
+| `directory.notFound` | 404 | `not-found` | No media directory of the weblog has this id. |
+| `directory.nameReserved` | 400 | `invalid-request` | A directory may not be named `default`. |
+| `directory.nameInUse` | 409 | `conflict` | The weblog already has a directory with this `name`. |
+| `focal.outOfRange` | 400 | `invalid-request` | `focalX` or `focalY` is outside 0 to 1. |
+| `focal.pairOnly` | 400 | `invalid-request` | One focal coordinate was sent for a file with no focal point. |
+| `category.notFound` | 404 | `not-found` | No category of the weblog has this id. |
+| `category.nameInUse` | 409 | `conflict` | The weblog already has a category with this `name`. |
+| `category.lastOne` | 409 | `conflict` | The weblog's last category cannot be deleted. |
+| `category.moveToSelf` | 400 | `invalid-request` | A category delete's `moveTo` names the category itself. |
+| `category.moveTargetNotFound` | 404 | `not-found` | A category delete's `moveTo` names no category of the weblog. |
+| `category.hasEntries` | 409 | `conflict` | The category has entries and no `moveTo` was given. |
+| `comment.notFound` | 404 | `not-found` | No comment on the weblog's entries has this id. |
+| `comment.statusNotSettable` | 400 | `invalid-request` | A comment's `status` may be set only to PUBLISHED or HIDDEN. |
+| `comment.statusUnknown` | 400 | `invalid-request` | A comment `status` that is not a status. |
+| `comment.deletedByAuthor` | 409 | `conflict` | A comment its author deleted cannot be published. |
+| `comment.replyRefused` | 400 | `invalid-request` | The reply was not stored; `{0}` is the refusal's name (`BAD_REPLY`, `EMPTY_BODY`, `BODY_TOO_LONG`, ...). |
+| `redirect.notFound` | 404 | `not-found` | No redirect of the weblog has this id. |
+| `redirect.pathNotRelative` | 400 | `invalid-request` | A redirect's `source` or `target` (`{0}`) is not a path starting with one `/`. |
+| `redirect.pathHasQuery` | 400 | `invalid-request` | A redirect path carries a query string. |
+| `redirect.pathHasBackslash` | 400 | `invalid-request` | A redirect path contains a backslash. |
+| `redirect.pathHasControlCharacters` | 400 | `invalid-request` | A redirect path contains a control character. |
+| `redirect.targetIsSource` | 400 | `invalid-request` | A redirect's `target` is its `source`. |
+| `redirect.sourceExists` | 400 | `invalid-request` | The weblog already redirects this `source`. |
+| `redirect.sourceIsTarget` | 400 | `invalid-request` | The `source` is another redirect's target: redirects are one hop. |
+| `redirect.targetRedirected` | 400 | `invalid-request` | The `target` is itself redirected: redirects are one hop. |
+| `redirect.refused` | 400 | `invalid-request` | The redirect could not be saved for a reason with no code of its own; `detail` says why. Text from the business tier. |
+| `audit.trashedNotCovered` | 400 | `invalid-request` | The SEO audit was asked for trashed entries. |
+| `traffic.periodUnknown` | 400 | `invalid-request` | `period` is not one of the traffic periods. |
+| `theme.customNotAllowed` | 400 | `invalid-request` | `theme` is `custom`, which only the admin UI sets. |
+| `theme.notOffered` | 400 | `invalid-request` | `theme` is not one of the themes offered to this weblog. |
+| `weblog.creationDisabled` | 403 | `forbidden` | The site does not let users create weblogs. |
+| `weblog.oneBlogLimit` | 403 | `forbidden` | The caller already has a weblog, and the site allows one. |
+| `weblog.emailRequired` | 400 | `invalid-request` | An agent created a weblog with no `emailAddress` on a site with no address to stand in. |
+| `locale.invalid` | 400 | `invalid-request` | `locale` is not one the settings form offers. |
+| `timeZone.invalid` | 400 | `invalid-request` | `timeZone` is not a time zone id. |
+| `handle.invalid` | 400 | `invalid-request` | `handle` uses a character the site does not allow, or is too long. |
+| `handle.reserved` | 400 | `invalid-request` | `handle` is a path the site reserves for its own pages. |
+| `handle.inUse` | 409 | `conflict` | Another weblog (of any status) has this `handle`. |
+| `handle.heldBySitePage` | 409 | `conflict` | A site page (live or in the trash) is served at this `handle`. |
+| `entryDisplayCount.outOfRange` | 400 | `invalid-request` | `entryDisplayCount` is below 1 or above the site's limit. |
+| `entryOrder.invalid` | 400 | `invalid-request` | `entryOrder` is not NEWEST or OLDEST. |
+| `business.unknown` | 400 | `invalid-request` | `businessId` names no business profile. |
+| `frontPage.invalid` | 400 | `invalid-request` | `frontPage` is not a published page of this weblog. |
+| `placeType.invalid` | 400 | `invalid-request` | `placeType` is not LodgingBusiness. |
+| `placeLocality.required` | 400 | `invalid-request` | A `placeType` was set with no `placeLocality`. |
+| `placeCountry.invalid` | 400 | `invalid-request` | `placeCountry` is not a two-letter country code. |
+| `placeLat.invalid` | 400 | `invalid-request` | `placeLat` is off the globe, or was given without `placeLng`. |
+| `placeLng.invalid` | 400 | `invalid-request` | `placeLng` is off the globe, or was given without `placeLat`. |
+| `bookingUrl.invalid` | 400 | `invalid-request` | `bookingUrl` is not an http(s) URL. |
+| `customDomain.malformed` | 400 | `invalid-request` | `customDomain` is not a hostname. |
+| `customDomain.siteHost` | 400 | `invalid-request` | `customDomain` is the site's own host. |
+| `customDomain.inUse` | 409 | `conflict` | Another weblog has this `customDomain`. |
+| `customDomain.uncheckable` | 400 | `invalid-request` | Whether `customDomain` is taken could not be checked; retry. |
 | `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
 
 A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where

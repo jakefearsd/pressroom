@@ -35,8 +35,26 @@ public final class WeblogCreationRules {
     /** The $site-wide aggregator theme; it breaks any weblog that adopts it. */
     private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
 
-    /** One refusal; status is the API's (400, 403 or 409); field is the form field id, null for the page. */
-    public record Violation(String field, String messageKey, String detail, int status) { }
+    /**
+     * One refusal; status is the API's (400, 403 or 409); field is the form
+     * field id, null for the page. {@code messageKey} is the form's text;
+     * {@code detail} is the API's English, and {@code reason} with {@code
+     * args} what the API keys it by (spec 2026-11-20-api-contract-design,
+     * Task 3): each reason is one meaning, its args the values its text
+     * names, as they read in {@code detail}.
+     */
+    public record Violation(String field, String messageKey, String detail, int status, Reason reason,
+                            List<String> args) {
+        public Violation {
+            args = List.copyOf(args);
+        }
+    }
+
+    /** What a {@link Violation} means, for the API's problem code. */
+    public enum Reason {
+        CREATION_DISABLED, ONE_BLOG_LIMIT, REQUIRED, TOO_LONG, THEME_NOT_OFFERED, LOCALE_INVALID,
+        TIME_ZONE_INVALID, HANDLE_INVALID, HANDLE_RESERVED, HANDLE_IN_USE, HANDLE_HELD_BY_SITE_PAGE
+    }
 
     /** The site's settings and managers the rules consult. */
     public record Context(boolean creationAllowed, boolean groupBlogging, String allowedChars,
@@ -70,10 +88,12 @@ public final class WeblogCreationRules {
     /** Null when this user may create a weblog, else the 403 refusal. A lookup that fails throws. */
     public static Violation mayCreate(User user, Context context) throws WebloggerException {
         if (!context.creationAllowed()) {
-            return new Violation(null, "createWebsite.disabled", "Weblog creation is turned off on this site.", 403);
+            return new Violation(null, "createWebsite.disabled", "Weblog creation is turned off on this site.", 403,
+                    Reason.CREATION_DISABLED, List.of());
         }
         if (!context.groupBlogging() && !context.users().getWeblogPermissions(user).isEmpty()) {
-            return new Violation(null, "createWebsite.oneBlogLimit", "This site allows one weblog per user.", 403);
+            return new Violation(null, "createWebsite.oneBlogLimit", "This site allows one weblog per user.", 403,
+                    Reason.ONE_BLOG_LIMIT, List.of());
         }
         return null;
     }
@@ -83,35 +103,43 @@ public final class WeblogCreationRules {
         List<Violation> found = new ArrayList<>();
         checkHandle(bean.getHandle(), context, found);
         if (StringUtils.isBlank(bean.getName())) {
-            found.add(new Violation("name", "createWeblog.error.nameRequired", "name is required.", 400));
+            found.add(new Violation("name", "createWeblog.error.nameRequired", "name is required.", 400,
+                    Reason.REQUIRED, List.of("name")));
         } else if (bean.getName().trim().length() > MAX_TEXT) {
-            found.add(new Violation("name", "createWeblog.error.tooLong",
-                    "'name' must be " + MAX_TEXT + " characters or fewer.", 400));
+            found.add(tooLong("name", "name"));
         }
         if (bean.getDescription() != null && bean.getDescription().length() > MAX_TEXT) {
-            found.add(new Violation("description", "createWeblog.error.tooLong",
-                    "'tagline' must be " + MAX_TEXT + " characters or fewer.", 400));
+            found.add(tooLong("description", "tagline"));
         }
         if (StringUtils.trimToNull(bean.getCopyright()) != null
                 && bean.getCopyright().trim().length() > MAX_TEXT) {
-            found.add(new Violation("copyright", "createWeblog.error.tooLong",
-                    "'copyright' must be " + MAX_TEXT + " characters or fewer.", 400));
+            found.add(tooLong("copyright", "copyright"));
         }
         if (bean.getTheme() == null || !context.themeIds().contains(bean.getTheme())) {
+            String themes = String.join(", ", context.themeIds());
             found.add(new Violation("theme", "createWeblog.error.invalidTheme",
-                    "theme must be one of: " + String.join(", ", context.themeIds()) + ".", 400));
+                    "theme must be one of: " + themes + ".", 400, Reason.THEME_NOT_OFFERED, List.of(themes)));
         }
         String locale = StringUtils.trimToNull(bean.getLocale());
         if (locale != null && UIUtils.getLocales().stream().map(Locale::toString).noneMatch(locale::equals)) {
             found.add(new Violation("locale", "websiteSettings.locale.invalid",
-                    "locale must be one the settings form offers, for example en_US.", 400));
+                    "locale must be one the settings form offers, for example en_US.", 400,
+                    Reason.LOCALE_INVALID, List.of()));
         }
         String zone = StringUtils.trimToNull(bean.getTimeZone());
         if (zone != null && !UIUtils.getTimeZones().contains(zone)) {
             found.add(new Violation("timeZone", "websiteSettings.timeZone.invalid",
-                    "timeZone must be a time zone id, for example Europe/Berlin.", 400));
+                    "timeZone must be a time zone id, for example Europe/Berlin.", 400,
+                    Reason.TIME_ZONE_INVALID, List.of()));
         }
         return found;
+    }
+
+    /** A text field over {@link #MAX_TEXT}; {@code label} is the name its message gives it. */
+    private static Violation tooLong(String field, String label) {
+        return new Violation(field, "createWeblog.error.tooLong",
+                "'" + label + "' must be " + MAX_TEXT + " characters or fewer.", 400,
+                Reason.TOO_LONG, List.of(label, Integer.toString(MAX_TEXT)));
     }
 
     @SuppressFBWarnings(
@@ -122,25 +150,29 @@ public final class WeblogCreationRules {
     private static void checkHandle(String handle, Context context, List<Violation> found)
             throws WebloggerException {
         if (StringUtils.isBlank(handle)) {
-            found.add(new Violation("handle", "createWeblog.error.invalidHandle", "handle is required.", 400));
+            found.add(new Violation("handle", "createWeblog.error.invalidHandle", "handle is required.", 400,
+                    Reason.REQUIRED, List.of("handle")));
         } else if (!CharSetUtils.keep(handle, context.allowedChars()).equals(handle)
                 || handle.length() > MAX_TEXT) {
             found.add(new Violation("handle", "createWeblog.error.invalidHandle",
                     "handle may use only " + context.allowedChars() + ", at most " + MAX_TEXT + " characters.",
-                    400));
+                    400, Reason.HANDLE_INVALID,
+                    List.of(String.valueOf(context.allowedChars()), Integer.toString(MAX_TEXT))));
         } else if (context.reservedPaths().contains(handle.toLowerCase(Locale.ROOT))) {
             found.add(new Violation("handle", "createWeblog.error.reservedHandle",
-                    "handle \"" + handle + "\" is reserved for the site's own pages.", 400));
+                    "handle \"" + handle + "\" is reserved for the site's own pages.", 400,
+                    Reason.HANDLE_RESERVED, List.of(handle)));
         } else if (context.weblogs().getWeblogByHandle(handle, null) != null) {
             // null, not the one-argument lookup: that answers only for visible
             // weblogs, and a disabled one still holds its handle (ws_handle_uq).
             found.add(new Violation("handle", "createWeblog.error.handleExists",
-                    "A weblog with that handle already exists.", 409));
+                    "A weblog with that handle already exists.", 409, Reason.HANDLE_IN_USE, List.of()));
         } else if (holdsSitePage(handle, context)) {
             // A site page is served at /<slug>; a draft holds its slug too,
             // or publishing it later would collide with a blog made meanwhile.
             found.add(new Violation("handle", "createWeblog.error.handleIsSitePage",
-                    "A page of the site already uses that address.", 409));
+                    "A page of the site already uses that address.", 409, Reason.HANDLE_HELD_BY_SITE_PAGE,
+                    List.of()));
         }
     }
 

@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 
@@ -46,8 +47,9 @@ public final class McpEndpointServlet extends HttpServlet {
         // already refuses Basic here (only the token resource accepts it);
         // this check does not depend on that.
         if (Caller.current().kind() != Caller.Kind.TOKEN) {
+            // English, as every MCP error is (spec 2026-11-20-api-contract-design, decision 8).
             problemWriter.write(response,
-                    ApiException.unauthorized("MCP accepts API tokens only.").toProblem(request.getRequestURI()));
+                    ApiException.problem(ProblemCode.MCP_TOKEN_REQUIRED).toProblem(request.getRequestURI()));
             return;
         }
         transport.service((ServletRequest) request, (ServletResponse) response);

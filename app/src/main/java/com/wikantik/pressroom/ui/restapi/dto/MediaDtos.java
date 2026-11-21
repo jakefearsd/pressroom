@@ -12,6 +12,7 @@ import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.util.PressroomMessages;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Views of a media file and a media file directory, for the automation API.
@@ -187,13 +188,13 @@ public final class MediaDtos {
         boolean hasY = patch.focalY() != null || file.getFocalY() != null;
         if (hasX != hasY) {
             String field = patch.focalX() != null ? "focalX" : "focalY";
-            errors.addIfAbsent(field, "focalX and focalY are set together; this file has no focal point yet.");
+            errors.addIfAbsent(field, ProblemCode.FOCAL_PAIR_ONLY);
         }
     }
 
     private static void requireFraction(String field, Double value) {
         if (value != null && !(value >= 0.0 && value <= 1.0)) {
-            throw ApiException.invalidField(field, field + " must be between 0 and 1.");
+            throw ApiException.problemOnField(field, ProblemCode.FOCAL_OUT_OF_RANGE, field);
         }
     }
 
@@ -221,7 +222,7 @@ public final class MediaDtos {
         if (name != null) {
             errors.check("name", () -> {
                 if (name.isEmpty()) {
-                    throw ApiException.invalidField("name", "name cannot be blank.");
+                    throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
                 }
                 ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
             });

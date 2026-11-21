@@ -108,7 +108,7 @@ class ContentProblemSourceScanTest {
         return found;
     }
 
-    private static List<String> violations(String source) {
+    static List<String> violations(String source) {
         List<String> found = new ArrayList<>();
         Matcher factory = UNKEYED_FACTORY.matcher(source);
         while (factory.find()) {

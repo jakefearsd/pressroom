@@ -17,6 +17,7 @@ import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Views for the admin surface: user accounts, weblog administration, and
@@ -222,7 +223,7 @@ public final class AdminDtos {
             String name = patch.name().trim();
             errors.check("name", () -> {
                 if (name.isBlank()) {
-                    throw ApiException.invalidField("name", "name cannot be blank.");
+                    throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
                 }
                 ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
             });
@@ -315,7 +316,7 @@ public final class AdminDtos {
     /** The column is numeric(5,2)/(6,2): store what the database would keep, as the form's value would be. */
     private static String twoDecimals(String field, Double value) {
         if (!Double.isFinite(value)) {
-            throw ApiException.invalidField(field, field + " must be a finite number.");
+            throw ApiException.problemOnField(field, ProblemCode.FIELD_NOT_FINITE, field);
         }
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
@@ -329,11 +330,10 @@ public final class AdminDtos {
      */
     public static void requireRuntimeProperty(String name) {
         if (name == null || name.isBlank()) {
-            throw ApiException.badRequest("A property name is required.");
+            throw ApiException.problem(ProblemCode.CONFIG_PROPERTY_NAME_REQUIRED);
         }
         if (findPropertyDef(name) == null) {
-            throw ApiException.invalidField(name,
-                    "'" + name + "' is not a runtime-settable property.");
+            throw ApiException.problemOnField(name, ProblemCode.CONFIG_PROPERTY_UNKNOWN, name);
         }
     }
 

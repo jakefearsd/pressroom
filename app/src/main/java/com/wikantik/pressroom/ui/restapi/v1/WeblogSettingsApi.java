@@ -3,7 +3,6 @@ package com.wikantik.pressroom.ui.restapi.v1;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.pojos.GlobalPermission;
@@ -15,7 +14,7 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogSettingsRules;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.ApiProblem;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.util.cache.CacheManager;
@@ -75,17 +74,8 @@ public class WeblogSettingsApi extends BaseApiController implements UISecurityEn
                 WeblogSettingsRules.Context.current(weblog, weblogger)).stream()
                 .filter(v -> v.involvesAny(touched))
                 .toList();
-        if (!broken.isEmpty()) {
-            String detail = broken.stream().map(WeblogSettingsRules.Violation::detail)
-                    .collect(Collectors.joining(" "));
-            if (broken.stream().allMatch(WeblogSettingsRules.Violation::conflict)) {
-                throw broken.size() == 1
-                        ? ApiException.conflictOnField(broken.get(0).field(), detail)
-                        : ApiException.conflict(detail);
-            }
-            throw ApiException.validation(detail, broken.stream()
-                    .map(v -> new ApiProblem.FieldError(apiField(v.field()), v.detail())).toList());
-        }
+        RuleProblems.refuse(broken.stream().map(v -> new RuleProblems.Broken(apiField(v.field()),
+                RuleProblems.code(v.reason()), v.args(), v.conflict())).toList());
 
         bean.copyTo(weblog, weblogger.getBusinessManager());
         if (body.theme() != null) {
@@ -113,12 +103,12 @@ public class WeblogSettingsApi extends BaseApiController implements UISecurityEn
      */
     private void requireOfferedTheme(Weblog weblog, String theme) {
         if (WeblogTheme.CUSTOM.equals(theme)) {
-            throw ApiException.invalidField("theme", "Custom themes are managed in the admin UI.");
+            throw ApiException.problemOnField("theme", ProblemCode.THEME_CUSTOM_NOT_ALLOWED);
         }
         List<String> offered = SharedThemeRules.offeredThemes(weblogger.getThemeManager(), weblog,
                 weblog.getEditorTheme()).stream().map(SharedTheme::getId).toList();
         if (!offered.contains(theme)) {
-            throw ApiException.invalidField("theme", "theme must be one of: " + String.join(", ", offered) + ".");
+            throw ApiException.problemOnField("theme", ProblemCode.THEME_NOT_OFFERED, String.join(", ", offered));
         }
     }
 

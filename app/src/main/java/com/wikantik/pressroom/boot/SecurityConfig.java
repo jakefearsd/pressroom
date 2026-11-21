@@ -37,6 +37,7 @@ import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -491,11 +492,12 @@ public class SecurityConfig {
 
     /**
      * Shared by every writer outside {@code ApiExceptionHandler}'s reach --
-     * see {@link ApiProblemWriter}'s own javadoc for the full why.
+     * see {@link ApiProblemWriter}'s own javadoc for the full why. It renders
+     * through the application's {@code messageSource}, as the advice does.
      */
     @Bean
-    public ApiProblemWriter apiProblemWriter(ObjectMapper objectMapper) {
-        return new ApiProblemWriter(objectMapper);
+    public ApiProblemWriter apiProblemWriter(ObjectMapper objectMapper, MessageSource messageSource) {
+        return new ApiProblemWriter(objectMapper, messageSource);
     }
 
     /**

@@ -13,8 +13,8 @@ import com.wikantik.pressroom.business.ApiTokenManager;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.ApiProblem;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -92,20 +92,17 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
     /**
      * A ServletFilter runs before, and entirely outside, DispatcherServlet --
      * so {@code ApiExceptionHandler}'s {@code @RestControllerAdvice} can never
-     * see an exception thrown from here. Building the body via {@code
-     * ApiException.throttled(...).toProblem(...)} and handing it to the
-     * shared {@link ApiProblemWriter} (also used by {@link
+     * see an exception thrown from here. Handing the keyed {@code
+     * request.throttled} problem to the shared {@link ApiProblemWriter}
+     * (which renders it in the caller's language) (also used by {@link
      * ApiAuthenticationEntryPoint} and {@link ApiAccessDeniedHandler}, the
      * other two writers that run outside this same reach) is what keeps this
      * error shape from drifting from {@code ApiExceptionHandler}'s.
      */
     private void writeThrottled(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        ApiProblem problem = ApiException
-                .throttled("Too many requests. Slow down and retry.")
-                .toProblem(request.getRequestURI());
         response.setHeader("Retry-After", Integer.toString(throttle.retryAfterSeconds()));
-        problemWriter.write(response, problem);
+        problemWriter.write(request, response, ApiException.problem(ProblemCode.REQUEST_THROTTLED));
     }
 
     /**

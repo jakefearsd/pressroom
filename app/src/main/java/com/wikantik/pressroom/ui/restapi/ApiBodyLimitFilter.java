@@ -92,8 +92,8 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-            problemWriter.write(response, ApiException.tooLarge(
-                    "The request body is over " + MAX_BODY_BYTES + " bytes.").toProblem(request.getRequestURI()));
+            problemWriter.write(request, response,
+                    ApiException.problem(ProblemCode.REQUEST_TOO_LARGE, Integer.toString(MAX_BODY_BYTES)));
             return;
         }
         chain.doFilter(new HttpServletRequestWrapper(request) {

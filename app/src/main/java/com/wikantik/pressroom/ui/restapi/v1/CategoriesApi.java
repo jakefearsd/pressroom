@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Category CRUD and the tag list, both blog-wide structure rather than a
@@ -61,14 +62,14 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         Weblog weblog = requireActionWeblog(request);
         String name = body.name() == null ? null : body.name().trim();
         if (name == null || name.isBlank()) {
-            throw ApiException.invalidField("name", "name is required.");
+            throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
         }
         ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
         if (body.description() != null) {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.CATEGORY_DESCRIPTION);
         }
         if (weblog.hasCategory(name)) {
-            throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.");
+            throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_IN_USE, name);
         }
 
         WeblogCategory category = new WeblogCategory(weblog, name, body.description(), null);
@@ -76,7 +77,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             weblogger.getWeblogEntryManager().saveWeblogCategory(category);
         } catch (DuplicateCategoryNameException e) {
             // An overlapping create took the name after the check above.
-            throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.", e);
+            throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_IN_USE, e, name);
         }
         weblogger.flush();
 
@@ -90,13 +91,13 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         Weblog weblog = requireActionWeblog(request);
         WeblogCategory category = WeblogOwnership.category(weblogger, id, weblog);
         if (category == null) {
-            throw ApiException.notFound("No such category.");
+            throw ApiException.problem(ProblemCode.CATEGORY_NOT_FOUND);
         }
 
         if (body.name() != null) {
             String name = body.name().trim();
             if (name.isBlank()) {
-                throw ApiException.invalidField("name", "name cannot be blank.");
+                throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
             if (!name.equals(category.getName())) {
@@ -107,7 +108,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
                 WeblogCategory existing =
                         weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, name);
                 if (existing != null && !existing.getId().equals(category.getId())) {
-                    throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.");
+                    throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_IN_USE, name);
                 }
                 category.setName(name);
             }
@@ -138,7 +139,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         Weblog weblog = requireActionWeblog(request);
         WeblogCategory category = WeblogOwnership.category(weblogger, id, weblog);
         if (category == null) {
-            throw ApiException.notFound("No such category.");
+            throw ApiException.problem(ProblemCode.CATEGORY_NOT_FOUND);
         }
 
         if (weblog.getWeblogCategories().size() <= 1) {
@@ -147,7 +148,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             // no longer accept a save at all -- same guard
             // CategoryRemoveController applies before removeWeblogCategory
             // (which would otherwise refuse with a bare WebloggerException).
-            throw ApiException.conflict("A weblog must keep at least one category.");
+            throw ApiException.problem(ProblemCode.CATEGORY_LAST_ONE);
         }
 
         WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
@@ -160,17 +161,16 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             // shape the last-category and in-use guards above exist to
             // intercept.
             if (moveTo.equals(id)) {
-                throw ApiException.invalidField("moveTo", "moveTo cannot name the category being deleted.");
+                throw ApiException.problemOnField("moveTo", ProblemCode.CATEGORY_MOVE_TO_SELF);
             }
             WeblogCategory target = WeblogOwnership.category(weblogger, moveTo, weblog);
             if (target == null) {
-                throw ApiException.notFound("No such category to move entries to.");
+                throw ApiException.problem(ProblemCode.CATEGORY_MOVE_TARGET_NOT_FOUND);
             }
             // One unit of work: a removal that fails rolls the move back too.
             wmgr.removeWeblogCategory(category, target);
         } else if (wmgr.isWeblogCategoryInUse(category)) {
-            throw ApiException.conflict(
-                    "Category has entries; pass moveTo to move them to another category first.");
+            throw ApiException.problem(ProblemCode.CATEGORY_HAS_ENTRIES);
         } else {
             wmgr.removeWeblogCategory(category);
         }

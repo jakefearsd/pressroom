@@ -127,7 +127,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
             if (!umgr.checkPermission(perm, authenticatedUser)) {
                 log.debug("DENIED: user {} does not have global permission = {}",
                         authenticatedUser.getUserName(), perm);
-                return deny(apiHandler, PressroomHandlerInterceptor::forbidden,
+                return deny(apiHandler, ApiException::permissionDenied,
                         ACCESS_DENIED_URL, request, response);
             }
         }
@@ -144,7 +144,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
             // permission against, so there is nothing to be "forbidden" from --
             // matches BaseApiController.requireActionWeblog's identical
             // contract for the same condition.
-            return deny(apiHandler, () -> ApiException.notFound("No such weblog."),
+            return deny(apiHandler, ApiException::weblogNotFound,
                     ACCESS_DENIED_URL, request, response);
         }
 
@@ -162,7 +162,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
                         new WeblogPermission(actionWeblog, List.of(WeblogPermission.EDIT_DRAFT)),
                         authenticatedUser));
                 return deny(apiHandler,
-                        member ? PressroomHandlerInterceptor::forbidden : () -> ApiException.notFound("No such weblog."),
+                        member ? ApiException::permissionDenied : ApiException::weblogNotFound,
                         ACCESS_DENIED_URL, request, response);
             }
         }
@@ -447,16 +447,6 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         // sibling package that merely shares the string prefix (e.g. a
         // hypothetical "ui.restapiv2") must not be misclassified.
         return API_PACKAGE_PREFIX.equals(pkg) || pkg.startsWith(API_PACKAGE_PREFIX + ".");
-    }
-
-    /**
-     * A permission failure's detail is intentionally generic -- it must
-     * never name the weblog, the permission, or the user, any of which
-     * would tell an unauthorized caller more than "no" about a resource
-     * they cannot act on.
-     */
-    private static ApiException forbidden() {
-        return ApiException.forbidden("You do not have permission to perform this action.");
     }
 
     /**

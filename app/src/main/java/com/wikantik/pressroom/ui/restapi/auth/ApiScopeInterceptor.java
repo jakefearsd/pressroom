@@ -8,6 +8,7 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -67,7 +68,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
             if (isAdvised(handler)) {
                 throw refused;
             }
-            PROBLEMS.write(response, refused.toProblem(request.getRequestURI()));
+            PROBLEMS.write(request, response, refused);
             return false;
         }
     }
@@ -92,10 +93,10 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
 
         ApiToken.Role role = principal.scopeRole();
         if (isAdminScoped(handler) && role != ApiToken.Role.ADMIN) {
-            throw ApiException.forbidden("This token is not scoped for administration.");
+            throw ApiException.problem(ProblemCode.TOKEN_NOT_ADMIN_SCOPED);
         }
         if (isWrite(request) && !mayWrite(role)) {
-            throw ApiException.forbidden("This token is read-only.");
+            throw ApiException.problem(ProblemCode.TOKEN_READ_ONLY);
         }
         return true;
     }
@@ -113,7 +114,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
     private static void checkWeblogScope(HttpServletRequest request, Object handler, String scopeWeblog) {
         if (request.getAttribute("actionWeblog") instanceof Weblog weblog) {
             if (!scopeWeblog.equals(weblog.getHandle())) {
-                throw ApiException.notFound("No such weblog.");
+                throw ApiException.weblogNotFound();
             }
             return;
         }
@@ -122,10 +123,9 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
             // existing weblog outside the pin gets, or the wording would tell
             // which handles exist. Only a route with no {handle} at all, decided
             // by its shape rather than by stored data, may say why.
-            throw ApiException.notFound(namesAWeblog(request)
-                    ? "No such weblog."
-                    : "This token is limited to the weblog '" + scopeWeblog + "', and this route is not "
-                            + "part of one weblog. Use a token with no weblog limit.");
+            throw namesAWeblog(request)
+                    ? ApiException.weblogNotFound()
+                    : ApiException.problem(ProblemCode.TOKEN_WEBLOG_SCOPED_ROUTE, scopeWeblog);
         }
     }
 

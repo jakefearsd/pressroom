@@ -26,6 +26,7 @@ import jakarta.persistence.TypedQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.RedirectRefusedException;
 import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogRedirect;
@@ -59,8 +60,8 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
         String source = validatedPath("source", redirect.getSourcePath());
         String target = validatedPath("target", redirect.getTargetPath());
         if (target.equals(source)) {
-            throw new WebloggerException(
-                    "redirect target equals its source: " + source);
+            throw new RedirectRefusedException("redirect target equals its source: " + source,
+                    RedirectRefusedException.Reason.TARGET_IS_SOURCE, source);
         }
         redirect.setSourcePath(source);
         redirect.setTargetPath(target);
@@ -68,8 +69,8 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
         Weblog weblog = redirect.getWeblog();
         for (WeblogRedirect existing : bySource(weblog, source)) {
             if (!existing.getId().equals(redirect.getId())) {
-                throw new WebloggerException(
-                        "a redirect for " + source + " already exists");
+                throw new RedirectRefusedException("a redirect for " + source + " already exists",
+                        RedirectRefusedException.Reason.SOURCE_EXISTS, source);
             }
         }
         // One hop, enforced from both ends: the new rule may neither begin
@@ -78,14 +79,16 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
         // follow without simulating anything.
         for (WeblogRedirect existing : byTarget(weblog, source)) {
             if (!existing.getId().equals(redirect.getId())) {
-                throw new WebloggerException("redirect source " + source
-                        + " is already the target of " + existing.getSourcePath());
+                throw new RedirectRefusedException("redirect source " + source
+                        + " is already the target of " + existing.getSourcePath(),
+                        RedirectRefusedException.Reason.SOURCE_IS_TARGET, source, existing.getSourcePath());
             }
         }
         for (WeblogRedirect existing : bySource(weblog, target)) {
             if (!existing.getId().equals(redirect.getId())) {
-                throw new WebloggerException("redirect target " + target
-                        + " is itself redirected (to " + existing.getTargetPath() + ")");
+                throw new RedirectRefusedException("redirect target " + target
+                        + " is itself redirected (to " + existing.getTargetPath() + ")",
+                        RedirectRefusedException.Reason.TARGET_REDIRECTED, target, existing.getTargetPath());
             }
         }
 
@@ -239,22 +242,26 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
             throw new WebloggerException("redirect " + label + " is required");
         }
         if (!normalized.startsWith("/") || normalized.startsWith("//")) {
-            throw new WebloggerException("redirect " + label
-                    + " must be a weblog-relative path starting with '/': " + normalized);
+            throw new RedirectRefusedException("redirect " + label
+                    + " must be a weblog-relative path starting with '/': " + normalized,
+                    RedirectRefusedException.Reason.PATH_NOT_RELATIVE, label, normalized);
         }
         if (normalized.indexOf('?') >= 0) {
-            throw new WebloggerException("redirect " + label
-                    + " may not carry a query string: " + normalized);
+            throw new RedirectRefusedException("redirect " + label
+                    + " may not carry a query string: " + normalized,
+                    RedirectRefusedException.Reason.PATH_HAS_QUERY, label, normalized);
         }
         if (normalized.indexOf('\\') >= 0) {
-            throw new WebloggerException("redirect " + label
-                    + " may not contain a backslash: " + normalized);
+            throw new RedirectRefusedException("redirect " + label
+                    + " may not contain a backslash: " + normalized,
+                    RedirectRefusedException.Reason.PATH_HAS_BACKSLASH, label, normalized);
         }
         for (int i = 0; i < normalized.length(); i++) {
             char c = normalized.charAt(i);
             if (c < 0x20 || c == 0x7f) {
-                throw new WebloggerException("redirect " + label
-                        + " may not contain control characters");
+                throw new RedirectRefusedException("redirect " + label
+                        + " may not contain control characters",
+                        RedirectRefusedException.Reason.PATH_HAS_CONTROL_CHARACTERS, label);
             }
         }
         return normalized;

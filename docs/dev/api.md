@@ -207,9 +207,16 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   number at the call site exactly as it should read, or `MessageFormat` would print `1,000`. A wrong
   argument count logs a WARN naming the code and renders with what it has; the status stands (the
   status is the decision, the text is display).
-- **Unkeyed problems**: every factory taking a literal `detail` (`badRequest`, `notFound`, ...) attaches
-  the generic code for its type and stays English whatever the caller asks for. Tasks 2 and 3 key the
-  call sites and then delete those factories.
+- **Unkeyed problems are gone from the public surface (Task 3)**: `ApiException` has no public factory or
+  constructor taking a free-text detail (`ApiExceptionSurfaceTest` pins its public factories by signature),
+  so outside `ui.restapi` an unkeyed problem does not compile. The literal factories (`badRequest`,
+  `notFound`, ...), `FieldErrors.add(field, message)` and `ApiProblem.FieldError(field, message)` are
+  package-private, kept as fixtures of the mechanism's own unit tests (whose assertions the spec forbids
+  editing); `ApiProblemSourceScanTest` scans every main file under `ui.restapi` and
+  `PressroomHandlerInterceptor` and fails on a call to one, a literal `FieldErrors.add`, or a wire
+  `FieldError`. `busy(String)` is deleted. A code with no fixed status (`http.error`) asked for as a keyed
+  problem is the opaque 500 and a WARN, and a null argument array is no arguments: an error path never
+  throws.
 - **Codes on the wire**: one field error lends the problem its code; several make it
   `request.invalidFields`, whose `detail` is the rendered field messages joined by one space, as
   `FieldErrors.throwIfAny` always joined them.
@@ -223,10 +230,16 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   default locale (`ProblemLocalisationTest` runs with German as the default). No `Content-Language` or
   `Vary`: a matched language can fall back to English key by key. `title` is not localised. No
   translations of `api.problem.*` ship yet.
-- **English-only paths**: `toProblem(instance)` (`ApiProblemWriter` and its callers in `auth/`,
-  `ApiBodyLimitFilter`, `ApiScopeInterceptor`'s direct write, MCP). Task 3 gives `ApiProblemWriter` a
-  locale-aware overload. MCP is always English: `DispatchedRequest` exposes no `Accept-Language`
-  (`DispatchedRequestTest` pins it).
+- **Writers outside the advice localise too (Task 3)**: `ApiProblemWriter.write(request, response,
+  ApiException)` renders as `ApiExceptionHandler` does (both go through `ApiException.toProblem(request,
+  messages)`); the bean takes the application's `messageSource`, and the one-argument constructor builds
+  the same source on `ApplicationResources` (`ProblemMessages.applicationResources`). The entry points
+  (`auth.unauthorized`, `auth.passwordNotAcceptedHere`, `auth.passwordRejected`), the access-denied
+  handler (`auth.forbidden`), the throttle (`request.throttled`), the body limit (`request.tooLarge`)
+  and `ApiScopeInterceptor`'s direct write use it (`SecurityChainProblemCodesTest`, French from the test
+  bundle). English only: `toProblem(instance)` for MCP, its tool errors and the endpoint's own 401
+  (`mcp.tokenRequired`, decision 8). MCP is always English: `DispatchedRequest` exposes no
+  `Accept-Language` (`DispatchedRequestTest` pins it).
 - **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`; it exists so
   `PressroomHandlerInterceptor` keeps its two permitted `ui.restapi` imports (above).
 - **Content routes are fully keyed (Task 2)**: `EntriesApi`, `EntriesWriteApi`, `EntryContent`,
@@ -242,6 +255,18 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `ProblemCode.PASSTHROUGH_CODES`, which `ProblemCodeCatalogTest` pins and which may only shrink. A
   code that has a REST test asserts its `code` (and `errors[].code`): `EntryProblemCodesTest`,
   `EntryImportProblemCodesTest`, `PageProblemCodesTest`.
+- **The rest of the API is keyed (Task 3)**: media, categories, comments, redirects, tokens, admin, weblog
+  create and settings, audit, traffic, `AdminAccountGuard`, MCP (codes under `mcp.`), the `auth/` writers
+  and `PressroomHandlerInterceptor`'s refusals (`ApiException.weblogNotFound()` and `permissionDenied()`,
+  so it keeps its two imports). Each has a REST test asserting `code` beside the old English
+  (`*ProblemCodesTest`; their English half passed on the code before Task 3). The weblog rules shared with
+  the forms (`WeblogCreationRules`, `WeblogSettingsRules`) give each `Violation` a `Reason` and `args`
+  beside its form key and English; `v1/RuleProblems` maps reason to code with an exhaustive switch, so a
+  new rule does not compile without a code. A redirect refusal is `RedirectRefusedException` (a
+  `WebloggerException` with a `Reason`); any other `saveRedirect` refusal is passed through as
+  `redirect.refused`. `PASSTHROUGH_CODES` is final at four: `image.scanRefused`, `image.importFailed`,
+  `media.importRefused` (an import's own refusal text) and `redirect.refused`; it may only shrink.
+  `auth.notAuthenticated` and `auth.unauthorized` mean the same (README says so); both stay published.
 - **Cross-product check** (2026-11-20): `SimpleAgilityDecisionLog` (SA-1 to SA-17) holds no suite-wide
   error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.
   If one is decided later, it supersedes this.

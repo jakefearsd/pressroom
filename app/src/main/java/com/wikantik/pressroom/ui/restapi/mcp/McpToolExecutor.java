@@ -13,6 +13,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ApiProblem;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import org.slf4j.Logger;
@@ -94,9 +95,10 @@ public final class McpToolExecutor {
             Object named = args.remove(ACTION);
             action = named instanceof String s ? tool.actions().get(s) : null;
             if (action == null) {
-                return refusal(instance, "-", weblog, tool.name() + " has no action "
-                        + (named == null ? "(none given)" : "'" + named + "'")
-                        + "; it is one of " + String.join(", ", tool.actions().keySet()) + ".");
+                String valid = String.join(", ", tool.actions().keySet());
+                return refusal(instance, "-", weblog, named == null
+                        ? ApiException.problem(ProblemCode.MCP_ACTION_MISSING, tool.name(), valid)
+                        : ApiException.problem(ProblemCode.MCP_ACTION_UNKNOWN, tool.name(), String.valueOf(named), valid));
             }
         }
         String label = tool.singleAction() ? "`" + tool.name() + "`" : "`" + tool.name() + "` `" + action.name() + "`";
@@ -104,19 +106,20 @@ public final class McpToolExecutor {
                 .filter(given -> !action.argumentNames().contains(given)).findFirst().orElse(null);
         if (inapplicable != null) {
             return refusal(instance, action.name(), weblog,
-                    "`" + inapplicable + "` does not apply to " + label + ".");
+                    ApiException.problem(ProblemCode.MCP_ARGUMENT_NOT_APPLICABLE, inapplicable, label));
         }
         ResolvedAction.Variant variant = action.select(args);
         ArgumentSpec missing = variant.arguments().stream()
                 .filter(spec -> spec.required() && !args.containsKey(spec.name())).findFirst().orElse(null);
         if (missing != null) {
-            return refusal(instance, action.name(), weblog, label + " needs " + missingHint(action, missing) + ".");
+            return refusal(instance, action.name(), weblog,
+                    ApiException.problem(ProblemCode.MCP_ARGUMENT_MISSING, label, missingHint(action, missing)));
         }
         ApiCall call;
         try {
             call = toCall(variant, args);
-        } catch (IllegalArgumentException e) {
-            return refusal(instance, action.name(), weblog, e.getMessage());
+        } catch (ApiException refused) {
+            return refusal(instance, action.name(), weblog, refused);
         }
         try {
             ApiReply reply = dispatcher.dispatch(mcpRequest, call);
@@ -144,7 +147,7 @@ public final class McpToolExecutor {
                 case BODY -> body.put(spec.sourceName(), value);
                 case BODY_MAP -> {
                     if (!(value instanceof Map)) {
-                        throw new IllegalArgumentException("`" + spec.name() + "` must be an object.");
+                        throw ApiException.problem(ProblemCode.MCP_ARGUMENT_NOT_OBJECT, spec.name());
                     }
                     settings = value;
                 }
@@ -168,8 +171,7 @@ public final class McpToolExecutor {
         String segment = scalar(value);
         if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)
                 || segment.indexOf('/') >= 0 || segment.indexOf('\\') >= 0 || segment.indexOf(';') >= 0) {
-            throw new IllegalArgumentException("`" + name
-                    + "` must be a single path segment: not empty, \".\" or \"..\", and without \"/\", \"\\\" or \";\".");
+            throw ApiException.problem(ProblemCode.MCP_ARGUMENT_NOT_PATH_SEGMENT, name);
         }
         return segment;
     }
@@ -215,8 +217,8 @@ public final class McpToolExecutor {
     }
 
     /** A refusal MCP makes itself: the same 400 problem a REST route answers, never a bare status. */
-    private Outcome refusal(String instance, String action, String weblog, String detail) {
-        return new Outcome(error(problem(ApiException.badRequest(detail), instance)), 400, action, weblog);
+    private Outcome refusal(String instance, String action, String weblog, ApiException refused) {
+        return new Outcome(error(problem(refused, instance)), refused.getStatus(), action, weblog);
     }
 
     private static void logCall(String tool, Outcome outcome, long started) {

@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Issues and manages the automation API's own long-lived credentials.
@@ -87,7 +88,7 @@ public class TokensApi {
             throws WebloggerException {
         // A token cannot be used to mint another token: that would turn any
         // leaked token into a permanent one, with a scope the thief picks.
-        requireCredentialCaller("A token cannot be used to mint another token.");
+        requireCredentialCaller(ProblemCode.TOKEN_CANNOT_MINT);
 
         ApiToken.Role role = parseRole(request.role());
         // pressroom_api_token.label is VARCHAR(255) NOT NULL (V026) and
@@ -117,7 +118,7 @@ public class TokensApi {
         // The whole /v1/tokens resource is Basic-only, the same as issue():
         // a leaked, merely-POST-scoped token must not be able to enumerate
         // every token its owner holds.
-        requireCredentialCaller("Token management requires Basic authentication.");
+        requireCredentialCaller(ProblemCode.TOKEN_MANAGEMENT_NEEDS_PASSWORD);
         User user = requireUser();
         return weblogger.getApiTokenManager().getTokens(user).stream()
                 .map(TokenDtos::toView)
@@ -128,7 +129,7 @@ public class TokensApi {
     public ResponseEntity<Void> revoke(@PathVariable("id") String id) throws WebloggerException {
         // Same as list(): a leaked token must not be able to revoke any of
         // its owner's other tokens, including an ADMIN one.
-        requireCredentialCaller("Token management requires Basic authentication.");
+        requireCredentialCaller(ProblemCode.TOKEN_MANAGEMENT_NEEDS_PASSWORD);
         User user = requireUser();
         // Read first: the log line names the token as the UI's does. A token that is
         // not the caller's is refused below and never logged.
@@ -137,7 +138,7 @@ public class TokensApi {
         if (!revoked) {
             // Not 403: that would confirm the id exists and let one user
             // enumerate another's tokens.
-            throw ApiException.notFound("No such token.");
+            throw ApiException.problem(ProblemCode.TOKEN_NOT_FOUND);
         }
         weblogger.flush();
         AdminLog.record("token.revoked", user, described == null ? "id=" + id : AdminLog.tokenDetails(described));
@@ -151,8 +152,7 @@ public class TokensApi {
      */
     private void requirePinnable(User user, String weblog) throws WebloggerException {
         if (!TokenPins.allows(weblogger, user, weblog)) {
-            throw ApiException.invalidField("weblog",
-                    "weblog must name a weblog you are a member of; '" + weblog + "' is not one.");
+            throw ApiException.problemOnField("weblog", ProblemCode.TOKEN_WEBLOG_NOT_MEMBER, weblog);
         }
     }
 
@@ -162,14 +162,14 @@ public class TokensApi {
             return null;
         }
         if (!expiresAt.isAfter(Instant.now())) {
-            throw ApiException.invalidField("expiresAt", "expiresAt must be in the future.");
+            throw ApiException.problemOnField("expiresAt", ProblemCode.TOKEN_EXPIRY_NOT_IN_FUTURE);
         }
         return Timestamp.from(expiresAt);
     }
 
     private static void requireLabel(String label) {
         if (label == null || label.isBlank()) {
-            throw ApiException.invalidField("label", "label is required.");
+            throw ApiException.problemOnField("label", ProblemCode.FIELD_REQUIRED, "label");
         }
     }
 
@@ -177,7 +177,7 @@ public class TokensApi {
         try {
             return ApiToken.Role.valueOf(role.toUpperCase(Locale.ROOT));
         } catch (RuntimeException e) {
-            throw ApiException.invalidField("role", "Unknown role: " + role, e);
+            throw ApiException.problemOnField("role", ProblemCode.TOKEN_ROLE_UNKNOWN, e, String.valueOf(role));
         }
     }
 
@@ -190,7 +190,7 @@ public class TokensApi {
         // the API, and so may not mint, list or revoke tokens.
         if (!weblogger.getUserManager().checkPermission(
                 new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)) {
-            throw ApiException.forbidden("This account cannot use the API.");
+            throw ApiException.problem(ProblemCode.AUTH_API_NOT_ALLOWED);
         }
         return user;
     }
@@ -219,15 +219,15 @@ public class TokensApi {
 
     /**
      * No token may manage tokens: a TOKEN caller is refused with {@code
-     * tokenDetail}. A PASSWORD caller (Basic) and a SESSION caller (the admin
+     * tokenRefusal}. A PASSWORD caller (Basic) and a SESSION caller (the admin
      * UI's login, which cannot reach /api today) are allowed. Fail closed: a
      * caller nobody authenticated, or one authenticated by a mechanism
      * {@link Caller} does not recognise, is a 401 and never reaches the user
      * lookup.
      */
-    private static void requireCredentialCaller(String tokenDetail) {
+    private static void requireCredentialCaller(ProblemCode tokenRefusal) {
         switch (Caller.current().kind()) {
-            case TOKEN -> throw ApiException.forbidden(tokenDetail);
+            case TOKEN -> throw ApiException.problem(tokenRefusal);
             case ANONYMOUS, UNRECOGNISED -> throw ApiException.authenticationRequired();
             case PASSWORD, SESSION -> { }
         }

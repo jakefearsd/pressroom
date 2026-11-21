@@ -206,6 +206,198 @@ public enum ProblemCode {
     SLUG_IN_USE("slug.inUse", ProblemType.CONFLICT, 1),
     /** A deprecated parameter alias (`{0}`) was sent with a different value than its current name (`{1}`). */
     PARAMETER_ALIAS_CONFLICT("parameter.aliasConflict", ProblemType.INVALID_REQUEST, 2),
+    /** A password (HTTP Basic) was sent anywhere but the token resource, which is the only place one is accepted. */
+    AUTH_PASSWORD_NOT_ACCEPTED_HERE("auth.passwordNotAcceptedHere", ProblemType.UNAUTHORIZED, 0),
+    /** The token resource turned the password away: wrong, a disabled account, an agent or an unknown user, told alike. */
+    AUTH_PASSWORD_REJECTED("auth.passwordRejected", ProblemType.UNAUTHORIZED, 0),
+    /** The caller lacks the role this route needs (on the site, or on a weblog it is a member of). */
+    AUTH_NO_PERMISSION("auth.noPermission", ProblemType.FORBIDDEN, 0),
+    /** The account (a reader signed in with SSO) holds no login permission, so it may not use the API. */
+    AUTH_API_NOT_ALLOWED("auth.apiNotAllowed", ProblemType.FORBIDDEN, 0),
+    /** An administration route was called with a token whose role is not ADMIN. */
+    TOKEN_NOT_ADMIN_SCOPED("token.notAdminScoped", ProblemType.FORBIDDEN, 0),
+    /** A write was sent with a READ token. */
+    TOKEN_READ_ONLY("token.readOnly", ProblemType.FORBIDDEN, 0),
+    /** A token limited to one weblog called a route that belongs to no weblog. */
+    TOKEN_WEBLOG_SCOPED_ROUTE("token.weblogScopedRoute", ProblemType.NOT_FOUND, 1),
+    /** A token was used to mint a token; minting takes a password. */
+    TOKEN_CANNOT_MINT("token.cannotMintToken", ProblemType.FORBIDDEN, 0),
+    /** A token was used to list or revoke tokens; that takes a password. */
+    TOKEN_MANAGEMENT_NEEDS_PASSWORD("token.managementNeedsPassword", ProblemType.FORBIDDEN, 0),
+    /** The caller has no token with this id. */
+    TOKEN_NOT_FOUND("token.notFound", ProblemType.NOT_FOUND, 0),
+    /** A token's {@code weblog} names a weblog the caller is not a member of. */
+    TOKEN_WEBLOG_NOT_MEMBER("token.weblogNotMember", ProblemType.INVALID_REQUEST, 1),
+    /** A token's {@code expiresAt} is not in the future. */
+    TOKEN_EXPIRY_NOT_IN_FUTURE("token.expiryNotInFuture", ProblemType.INVALID_REQUEST, 0),
+    /** A token's {@code role} is not READ, POST or ADMIN. */
+    TOKEN_ROLE_UNKNOWN("token.roleUnknown", ProblemType.INVALID_REQUEST, 1),
+    /** The MCP endpoint was called with anything but an API token. */
+    MCP_TOKEN_REQUIRED("mcp.tokenRequired", ProblemType.UNAUTHORIZED, 0),
+    /** MCP only: a tool with several actions was called without {@code action}. */
+    MCP_ACTION_MISSING("mcp.actionMissing", ProblemType.INVALID_REQUEST, 2),
+    /** MCP only: {@code action} names no action of the tool. */
+    MCP_ACTION_UNKNOWN("mcp.actionUnknown", ProblemType.INVALID_REQUEST, 3),
+    /** MCP only: an argument the tool or action does not take. */
+    MCP_ARGUMENT_NOT_APPLICABLE("mcp.argumentNotApplicable", ProblemType.INVALID_REQUEST, 2),
+    /** MCP only: a required argument is missing. */
+    MCP_ARGUMENT_MISSING("mcp.argumentMissing", ProblemType.INVALID_REQUEST, 2),
+    /** MCP only: an argument that must be a JSON object is not one. */
+    MCP_ARGUMENT_NOT_OBJECT("mcp.argumentNotObject", ProblemType.INVALID_REQUEST, 1),
+    /** MCP only: a value that becomes one path segment is empty, a dot segment, or holds {@code /}, a backslash or {@code ;}. */
+    MCP_ARGUMENT_NOT_PATH_SEGMENT("mcp.argumentNotPathSegment", ProblemType.INVALID_REQUEST, 1),
+    /** The API may not change a site administrator's account. */
+    ACCOUNT_ADMIN_UI_ONLY("account.adminManagedInAdminUi", ProblemType.FORBIDDEN, 0),
+    /** The API may not change an agent account. */
+    ACCOUNT_AGENT_UI_ONLY("account.agentManagedInAdminUi", ProblemType.FORBIDDEN, 0),
+    /** A runtime setting the API reads but never writes ({@code site.absoluteurl}). */
+    SETTING_UI_ONLY("setting.managedInAdminUi", ProblemType.FORBIDDEN, 1),
+    /** No user has this user name. */
+    USER_NOT_FOUND("user.notFound", ProblemType.NOT_FOUND, 0),
+    /** {@code userName} is taken (by an account of any status). */
+    USER_NAME_IN_USE("user.nameInUse", ProblemType.CONFLICT, 1),
+    /** {@code userName} holds a character the site does not allow in user names. */
+    USER_NAME_CHARACTERS("user.nameHasDisallowedCharacters", ProblemType.INVALID_REQUEST, 0),
+    /** A user create has no {@code emailAddress}, or one that is not an address. */
+    USER_EMAIL_REQUIRED("user.emailRequired", ProblemType.INVALID_REQUEST, 0),
+    /** A user update's {@code emailAddress} is not an address. */
+    USER_EMAIL_INVALID("user.emailInvalid", ProblemType.INVALID_REQUEST, 0),
+    /** A user create on a site with no mail set up: the set-password link could not be sent. */
+    USER_MAIL_NOT_CONFIGURED("user.mailNotConfigured", ProblemType.INVALID_REQUEST, 0),
+    /** The account was created, disabled, but its set-password mail failed. */
+    USER_PASSWORD_LINK_NOT_SENT("user.passwordLinkNotSent", ProblemType.UPSTREAM_FAILURE, 0),
+    /** A settings PATCH named no setting. */
+    CONFIG_PROPERTIES_REQUIRED("config.propertiesRequired", ProblemType.INVALID_REQUEST, 0),
+    /** A settings PATCH named a setting with a blank name. */
+    CONFIG_PROPERTY_NAME_REQUIRED("config.propertyNameRequired", ProblemType.INVALID_REQUEST, 0),
+    /** A setting that is not runtime-settable. */
+    CONFIG_PROPERTY_UNKNOWN("config.propertyUnknown", ProblemType.INVALID_REQUEST, 1),
+    /** A setting was sent as null. */
+    CONFIG_VALUE_NULL("config.valueNull", ProblemType.INVALID_REQUEST, 1),
+    /** An integer setting outside the range it allows. */
+    CONFIG_OUT_OF_RANGE("config.outOfRange", ProblemType.INVALID_REQUEST, 3),
+    /** A boolean setting that is not {@code true} or {@code false}. */
+    CONFIG_NOT_BOOLEAN("config.notBoolean", ProblemType.INVALID_REQUEST, 1),
+    /** An integer setting that is not an integer. */
+    CONFIG_NOT_INTEGER("config.notInteger", ProblemType.INVALID_REQUEST, 1),
+    /** A number setting that is not a number. */
+    CONFIG_NOT_NUMBER("config.notNumber", ProblemType.INVALID_REQUEST, 1),
+    /** A number field is not finite. */
+    FIELD_NOT_FINITE("field.notFinite", ProblemType.INVALID_REQUEST, 1),
+    /** A field that holds a UUID does not. */
+    FIELD_NOT_UUID("field.notUuid", ProblemType.INVALID_REQUEST, 1),
+    /** A media upload carried no file. */
+    MEDIA_FILE_REQUIRED("media.fileRequired", ProblemType.INVALID_REQUEST, 0),
+    /** A media import could not fetch or store the image; {@code detail} says why. Text from the import step. */
+    MEDIA_IMPORT_REFUSED("media.importRefused", ProblemType.INVALID_REQUEST, 1),
+    /** No media file of the weblog has this id. */
+    MEDIA_NOT_FOUND("media.notFound", ProblemType.NOT_FOUND, 0),
+    /** No media directory of the weblog has this id. */
+    DIRECTORY_NOT_FOUND("directory.notFound", ProblemType.NOT_FOUND, 0),
+    /** A directory may not be named {@code default}. */
+    DIRECTORY_NAME_RESERVED("directory.nameReserved", ProblemType.INVALID_REQUEST, 0),
+    /** The weblog already has a directory with this {@code name}. */
+    DIRECTORY_NAME_IN_USE("directory.nameInUse", ProblemType.CONFLICT, 1),
+    /** {@code focalX} or {@code focalY} is outside 0 to 1. */
+    FOCAL_OUT_OF_RANGE("focal.outOfRange", ProblemType.INVALID_REQUEST, 1),
+    /** One focal coordinate was sent for a file with no focal point. */
+    FOCAL_PAIR_ONLY("focal.pairOnly", ProblemType.INVALID_REQUEST, 0),
+    /** No category of the weblog has this id. */
+    CATEGORY_NOT_FOUND("category.notFound", ProblemType.NOT_FOUND, 0),
+    /** The weblog already has a category with this {@code name}. */
+    CATEGORY_NAME_IN_USE("category.nameInUse", ProblemType.CONFLICT, 1),
+    /** The weblog's last category cannot be deleted. */
+    CATEGORY_LAST_ONE("category.lastOne", ProblemType.CONFLICT, 0),
+    /** A category delete's {@code moveTo} names the category itself. */
+    CATEGORY_MOVE_TO_SELF("category.moveToSelf", ProblemType.INVALID_REQUEST, 0),
+    /** A category delete's {@code moveTo} names no category of the weblog. */
+    CATEGORY_MOVE_TARGET_NOT_FOUND("category.moveTargetNotFound", ProblemType.NOT_FOUND, 0),
+    /** The category has entries and no {@code moveTo} was given. */
+    CATEGORY_HAS_ENTRIES("category.hasEntries", ProblemType.CONFLICT, 0),
+    /** No comment on the weblog's entries has this id. */
+    COMMENT_NOT_FOUND("comment.notFound", ProblemType.NOT_FOUND, 0),
+    /** A comment's {@code status} may be set only to PUBLISHED or HIDDEN. */
+    COMMENT_STATUS_NOT_SETTABLE("comment.statusNotSettable", ProblemType.INVALID_REQUEST, 0),
+    /** A comment {@code status} that is not a status. */
+    COMMENT_STATUS_UNKNOWN("comment.statusUnknown", ProblemType.INVALID_REQUEST, 0),
+    /** A comment its author deleted cannot be published. */
+    COMMENT_DELETED_BY_AUTHOR("comment.deletedByAuthor", ProblemType.CONFLICT, 0),
+    /** The reply was not stored; {0} is the refusal's name ({@code BAD_REPLY}, {@code EMPTY_BODY}, {@code BODY_TOO_LONG}, ...). */
+    COMMENT_REPLY_REFUSED("comment.replyRefused", ProblemType.INVALID_REQUEST, 1),
+    /** No redirect of the weblog has this id. */
+    REDIRECT_NOT_FOUND("redirect.notFound", ProblemType.NOT_FOUND, 0),
+    /** A redirect's {@code source} or {@code target} ({0}) is not a path starting with one {@code /}. */
+    REDIRECT_PATH_NOT_RELATIVE("redirect.pathNotRelative", ProblemType.INVALID_REQUEST, 2),
+    /** A redirect path carries a query string. */
+    REDIRECT_PATH_HAS_QUERY("redirect.pathHasQuery", ProblemType.INVALID_REQUEST, 2),
+    /** A redirect path contains a backslash. */
+    REDIRECT_PATH_HAS_BACKSLASH("redirect.pathHasBackslash", ProblemType.INVALID_REQUEST, 2),
+    /** A redirect path contains a control character. */
+    REDIRECT_PATH_HAS_CONTROL("redirect.pathHasControlCharacters", ProblemType.INVALID_REQUEST, 1),
+    /** A redirect's {@code target} is its {@code source}. */
+    REDIRECT_TARGET_IS_SOURCE("redirect.targetIsSource", ProblemType.INVALID_REQUEST, 1),
+    /** The weblog already redirects this {@code source}. */
+    REDIRECT_SOURCE_EXISTS("redirect.sourceExists", ProblemType.INVALID_REQUEST, 1),
+    /** The {@code source} is another redirect's target: redirects are one hop. */
+    REDIRECT_SOURCE_IS_TARGET("redirect.sourceIsTarget", ProblemType.INVALID_REQUEST, 2),
+    /** The {@code target} is itself redirected: redirects are one hop. */
+    REDIRECT_TARGET_REDIRECTED("redirect.targetRedirected", ProblemType.INVALID_REQUEST, 2),
+    /** The redirect could not be saved for a reason with no code of its own; {@code detail} says why. Text from the business tier. */
+    REDIRECT_REFUSED("redirect.refused", ProblemType.INVALID_REQUEST, 1),
+    /** The SEO audit was asked for trashed entries. */
+    AUDIT_TRASHED_NOT_COVERED("audit.trashedNotCovered", ProblemType.INVALID_REQUEST, 0),
+    /** {@code period} is not one of the traffic periods. */
+    TRAFFIC_PERIOD_UNKNOWN("traffic.periodUnknown", ProblemType.INVALID_REQUEST, 1),
+    /** {@code theme} is {@code custom}, which only the admin UI sets. */
+    THEME_CUSTOM_NOT_ALLOWED("theme.customNotAllowed", ProblemType.INVALID_REQUEST, 0),
+    /** {@code theme} is not one of the themes offered to this weblog. */
+    THEME_NOT_OFFERED("theme.notOffered", ProblemType.INVALID_REQUEST, 1),
+    /** The site does not let users create weblogs. */
+    WEBLOG_CREATION_DISABLED("weblog.creationDisabled", ProblemType.FORBIDDEN, 0),
+    /** The caller already has a weblog, and the site allows one. */
+    WEBLOG_ONE_BLOG_LIMIT("weblog.oneBlogLimit", ProblemType.FORBIDDEN, 0),
+    /** An agent created a weblog with no {@code emailAddress} on a site with no address to stand in. */
+    WEBLOG_EMAIL_REQUIRED("weblog.emailRequired", ProblemType.INVALID_REQUEST, 0),
+    /** {@code locale} is not one the settings form offers. */
+    LOCALE_INVALID("locale.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code timeZone} is not a time zone id. */
+    TIME_ZONE_INVALID("timeZone.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code handle} uses a character the site does not allow, or is too long. */
+    HANDLE_INVALID("handle.invalid", ProblemType.INVALID_REQUEST, 2),
+    /** {@code handle} is a path the site reserves for its own pages. */
+    HANDLE_RESERVED("handle.reserved", ProblemType.INVALID_REQUEST, 1),
+    /** Another weblog (of any status) has this {@code handle}. */
+    HANDLE_IN_USE("handle.inUse", ProblemType.CONFLICT, 0),
+    /** A site page (live or in the trash) is served at this {@code handle}. */
+    HANDLE_HELD_BY_SITE_PAGE("handle.heldBySitePage", ProblemType.CONFLICT, 0),
+    /** {@code entryDisplayCount} is below 1 or above the site's limit. */
+    ENTRY_DISPLAY_COUNT_OUT_OF_RANGE("entryDisplayCount.outOfRange", ProblemType.INVALID_REQUEST, 1),
+    /** {@code entryOrder} is not NEWEST or OLDEST. */
+    ENTRY_ORDER_INVALID("entryOrder.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code businessId} names no business profile. */
+    BUSINESS_UNKNOWN("business.unknown", ProblemType.INVALID_REQUEST, 0),
+    /** {@code frontPage} is not a published page of this weblog. */
+    FRONT_PAGE_INVALID("frontPage.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code placeType} is not LodgingBusiness. */
+    PLACE_TYPE_INVALID("placeType.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** A {@code placeType} was set with no {@code placeLocality}. */
+    PLACE_LOCALITY_REQUIRED("placeLocality.required", ProblemType.INVALID_REQUEST, 0),
+    /** {@code placeCountry} is not a two-letter country code. */
+    PLACE_COUNTRY_INVALID("placeCountry.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code placeLat} is off the globe, or was given without {@code placeLng}. */
+    PLACE_LAT_INVALID("placeLat.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code placeLng} is off the globe, or was given without {@code placeLat}. */
+    PLACE_LNG_INVALID("placeLng.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code bookingUrl} is not an http(s) URL. */
+    BOOKING_URL_INVALID("bookingUrl.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code customDomain} is not a hostname. */
+    CUSTOM_DOMAIN_MALFORMED("customDomain.malformed", ProblemType.INVALID_REQUEST, 0),
+    /** {@code customDomain} is the site's own host. */
+    CUSTOM_DOMAIN_SITE_HOST("customDomain.siteHost", ProblemType.INVALID_REQUEST, 0),
+    /** Another weblog has this {@code customDomain}. */
+    CUSTOM_DOMAIN_IN_USE("customDomain.inUse", ProblemType.CONFLICT, 0),
+    /** Whether {@code customDomain} is taken could not be checked; retry. */
+    CUSTOM_DOMAIN_UNCHECKABLE("customDomain.uncheckable", ProblemType.INVALID_REQUEST, 0),
     /**
      * RFC 9457's {@code about:blank}, which MCP answers for an error reply
      * that brought no problem body of its own: the status is the reply's and
@@ -218,12 +410,17 @@ public enum ProblemCode {
      * The codes whose text is not wholly ours: the last placeholder of its
      * English is a business exception's own message, passed through whole
      * because the business tier's messages are not a finite set this API can
-     * key. This set may only shrink: a code leaves it when its source is
+     * key. Task 3 fixed its final members (spec 2026-11-20): an image import's
+     * refusal ({@code image.scanRefused}, {@code image.importFailed} and the
+     * media route's {@code media.importRefused}) and a redirect refusal the
+     * manager raised with no reason of its own ({@code redirect.refused}).
+     * This set may only shrink: a code leaves it when its source is
      * keyed. {@code ProblemCodeCatalogTest} pins it, holds each member's English
      * to ending in its last placeholder, and every code whose English is just
      * {@code {0}} to being a member.
      */
-    public static final Set<ProblemCode> PASSTHROUGH_CODES = Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED);
+    public static final Set<ProblemCode> PASSTHROUGH_CODES =
+            Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED, MEDIA_IMPORT_REFUSED, REDIRECT_REFUSED);
 
     private static final String KEY_PREFIX = "api.problem.";
 

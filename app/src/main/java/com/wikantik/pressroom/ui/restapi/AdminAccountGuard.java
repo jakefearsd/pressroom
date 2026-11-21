@@ -26,10 +26,11 @@ import com.wikantik.pressroom.ui.restapi.auth.Caller;
  */
 public final class AdminAccountGuard {
 
-    public static final String DETAIL = "Admin accounts are managed in the admin UI.";
+    /** What an API route that would change a site administrator's account answers, in English. */
+    public static final String DETAIL = ApiException.problem(ProblemCode.ACCOUNT_ADMIN_UI_ONLY).getMessage();
 
-    /** What an API route that would change an agent account answers (spec 2026-10-13, section 5). */
-    public static final String AGENT_DETAIL = "Agent accounts are managed in the admin UI.";
+    /** What an API route that would change an agent account answers (spec 2026-10-13, section 5), in English. */
+    public static final String AGENT_DETAIL = ApiException.problem(ProblemCode.ACCOUNT_AGENT_UI_ONLY).getMessage();
 
     private AdminAccountGuard() {
     }
@@ -45,7 +46,7 @@ public final class AdminAccountGuard {
         }
         GlobalPermission admin = new GlobalPermission(List.of(GlobalPermission.ADMIN));
         if (users.checkPermission(admin, user)) {
-            throw ApiException.forbidden(DETAIL);
+            throw ApiException.problem(ProblemCode.ACCOUNT_ADMIN_UI_ONLY);
         }
     }
 
@@ -57,7 +58,7 @@ public final class AdminAccountGuard {
      */
     public static void requireNotAgent(Caller caller, User user) {
         if (!isSession(caller) && user.isAgent()) {
-            throw ApiException.forbidden(AGENT_DETAIL);
+            throw ApiException.problem(ProblemCode.ACCOUNT_AGENT_UI_ONLY);
         }
     }
 
@@ -78,7 +79,7 @@ public final class AdminAccountGuard {
         }
         for (String name : settingNames) {
             if (UI_ONLY_SETTINGS.contains(name)) {
-                throw ApiException.forbidden(name + " is managed in the admin UI.");
+                throw ApiException.problem(ProblemCode.SETTING_UI_ONLY, name);
             }
         }
     }
