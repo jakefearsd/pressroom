@@ -139,7 +139,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // A lookup that fails throws: the opaque 500.
         RuleViolation taken = AccountRules.userNameTaken(userName, mgr);
         if (taken != null) {
-            RuleProblems.refuseViolations(List.of(taken));
+            throw ApiException.problemOnField(taken.field(), taken.code(), taken.codeArgs().toArray(String[]::new));
         }
 
         if (!PasswordLinkMailer.isReady()) {

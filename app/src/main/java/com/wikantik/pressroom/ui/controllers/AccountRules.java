@@ -21,7 +21,6 @@ package com.wikantik.pressroom.ui.controllers;
 import java.util.List;
 import java.util.Locale;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -101,11 +100,6 @@ public final class AccountRules {
      * conflict, or null. A lookup that fails throws, so the caller refuses;
      * the API answers it as its opaque 500.
      */
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Lower-cases a username only after userNameProblem has confined it to "
-                    + "username.allowedChars (A-Za-z0-9 unless the operator widens it), to find an "
-                    + "existing account that differs only in case.")
     public static RuleViolation userNameTaken(String userName, UserManager users) throws WebloggerException {
         boolean taken = users.getUserByUserName(userName, null) != null
                 || users.getUserByUserName(userName.toLowerCase(Locale.ROOT), null) != null;
