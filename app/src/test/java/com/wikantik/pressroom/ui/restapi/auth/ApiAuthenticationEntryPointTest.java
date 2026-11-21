@@ -119,4 +119,47 @@ class ApiAuthenticationEntryPointTest {
         assertEquals("Authentication required.",
                 OBJECT_MAPPER.readTree(response.getContentAsByteArray()).get("detail").asString());
     }
+    /**
+     * On the token resource every 401 challenges for Basic (RFC 9110), and a
+     * password the Basic filter turned away is told so, in one fixed text: a
+     * wrong password, a disabled account and an agent read alike.
+     */
+    @Test
+    void theTokenResourceChallengesAndNamesARejectedPassword() throws Exception {
+        ApiProblemWriter writer = new ApiProblemWriter(OBJECT_MAPPER);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/tokens");
+        request.addHeader("Authorization", "Basic YWxpY2U6d3Jvbmc=");
+
+        MockHttpServletResponse rejected = new MockHttpServletResponse();
+        ApiAuthenticationEntryPoint.rejectingPassword(writer)
+                .commence(request, rejected, new BadCredentialsException("bad"));
+        assertEquals(401, rejected.getStatus());
+        assertEquals("application/problem+json", rejected.getContentType());
+        assertEquals("Basic realm=\"Pressroom\"", rejected.getHeader("WWW-Authenticate"));
+        JsonNode body = OBJECT_MAPPER.readTree(rejected.getContentAsByteArray());
+        assertEquals(ApiAuthenticationEntryPoint.PASSWORD_REJECTED_DETAIL, body.get("detail").asString());
+        assertEquals("The username or password was not accepted.", body.get("detail").asString());
+        assertEquals("auth.unauthorized", body.get("code").asString());
+
+        MockHttpServletResponse anonymous = new MockHttpServletResponse();
+        ApiAuthenticationEntryPoint.challengingForPassword(writer).commence(
+                new MockHttpServletRequest("GET", "/api/v1/tokens"), anonymous,
+                new InsufficientAuthenticationException("anonymous"));
+        assertEquals(401, anonymous.getStatus());
+        assertEquals("Basic realm=\"Pressroom\"", anonymous.getHeader("WWW-Authenticate"));
+        assertEquals("Authentication required.",
+                OBJECT_MAPPER.readTree(anonymous.getContentAsByteArray()).get("detail").asString());
+    }
+
+    /** Off the token resource nothing challenges: a password is not the credential there. */
+    @Test
+    void theOtherEntryPointsDoNotChallenge() throws Exception {
+        for (ApiAuthenticationEntryPoint point : new ApiAuthenticationEntryPoint[] {
+                entryPoint, ApiAuthenticationEntryPoint.refusingPasswords(new ApiProblemWriter(OBJECT_MAPPER))}) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            point.commence(new MockHttpServletRequest("GET", "/api/v1/me"), response,
+                    new InsufficientAuthenticationException("anonymous"));
+            assertNull(response.getHeader("WWW-Authenticate"));
+        }
+    }
 }

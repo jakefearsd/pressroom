@@ -56,6 +56,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
@@ -86,6 +87,9 @@ class ApiPasswordScopeTest {
     private static final String PASSWORD_REFUSED =
             "Password authentication is accepted only on /api/v1/tokens. "
                     + "Mint a token there and send it as a bearer token.";
+    /** The detail a password the token resource's Basic filter turned away gets. */
+    private static final String PASSWORD_REJECTED = "The username or password was not accepted.";
+    private static final String CHALLENGE = "Basic realm=\"Pressroom\"";
     private static final String RAW_TOKEN = "prs_apipasswordscopetest";
 
     private static AnnotationConfigWebApplicationContext context;
@@ -253,14 +257,21 @@ class ApiPasswordScopeTest {
             "robot:" + TestUtils.TEST_PASSWORD, "nobody:" + TestUtils.TEST_PASSWORD})
     void aBadPasswordIs401OnTheTokenResource(String credentials) throws Exception {
         MvcResult result = perform(get("/api/v1/tokens").header("Authorization", basic(credentials)));
-        assertEquals(401, result.getResponse().getStatus(), body(result));
         assertFalse(body(result).contains("TokensApi"), body(result));
+        assertProblem(result, PASSWORD_REJECTED);
+        assertChallenged(result);
     }
 
+    /**
+     * Every 401 on the token resource challenges for Basic, so a client that
+     * sends a password only when challenged (RFC 9110) can still mint.
+     */
     @Test
     void noCredentialIs401OnTheTokenResourceWithTheUsualDetail() throws Exception {
         MvcResult result = perform(get("/api/v1/tokens"));
         assertProblem(result, "Authentication required.");
+        assertChallenged(result);
+        assertChallenged(perform(bearerWith(get("/api/v1/tokens"), "prs_unknown")));
     }
 
     // ------------------------------------------------------- everywhere else
@@ -280,7 +291,10 @@ class ApiPasswordScopeTest {
             "GET /api/pressroom-ui/menu.rol",
     })
     void aCorrectPasswordIsRefusedEverywhereElse(String route) throws Exception {
-        assertProblem(perform(withAlice(request(route))), PASSWORD_REFUSED);
+        MvcResult result = perform(withAlice(request(route)));
+        assertProblem(result, PASSWORD_REFUSED);
+        assertNull(result.getResponse().getHeader("WWW-Authenticate"),
+                "only the token resource challenges for a password");
     }
 
     /** Criterion 2: a wrong password elsewhere is the same 401: the password is never checked there. */
@@ -408,7 +422,11 @@ class ApiPasswordScopeTest {
     }
 
     private static MockHttpServletRequestBuilder bearer(MockHttpServletRequestBuilder request) {
-        return request.header("Authorization", "Bearer " + RAW_TOKEN);
+        return bearerWith(request, RAW_TOKEN);
+    }
+
+    private static MockHttpServletRequestBuilder bearerWith(MockHttpServletRequestBuilder request, String token) {
+        return request.header("Authorization", "Bearer " + token);
     }
 
     private static String basic(String credentials) {
@@ -434,5 +452,11 @@ class ApiPasswordScopeTest {
         JsonNode problem = JSON.readTree(body(result));
         assertEquals(detail, problem.get("detail").asString(), body(result));
         assertEquals(401, problem.get("status").asInt());
+        assertEquals("auth.unauthorized", problem.get("code").asString(), body(result));
+    }
+
+    private static void assertChallenged(MvcResult result) throws Exception {
+        assertEquals(401, result.getResponse().getStatus(), body(result));
+        assertEquals(CHALLENGE, result.getResponse().getHeader("WWW-Authenticate"));
     }
 }

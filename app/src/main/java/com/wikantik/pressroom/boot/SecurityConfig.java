@@ -356,9 +356,14 @@ public class SecurityConfig {
      * leaked token must never mint, list or revoke tokens
      * ({@code TokensApiTest#aBearerAuthenticatedCallerCannotMintAToken}).
      *
-     * <p>A wrong password is refused by the Basic filter's own entry point,
-     * as it always was; the chain's {@link ApiAuthenticationEntryPoint} answers
-     * a request with no usable credential at all.
+     * <p>Every 401 here is problem+json and challenges for Basic
+     * ({@code WWW-Authenticate: Basic realm="Pressroom"}): the Basic filter's
+     * entry point ({@link ApiAuthenticationEntryPoint#rejectingPassword})
+     * answers a password it turned away, and the chain's
+     * ({@link ApiAuthenticationEntryPoint#challengingForPassword}) a request
+     * with no usable credential at all. Spring's own
+     * {@code BasicAuthenticationEntryPoint} answered the first with a bare
+     * {@code sendError(401)}, Boot's {@code /error} JSON, until 0.16.0.
      */
     @Bean
     @Order(0)
@@ -375,7 +380,9 @@ public class SecurityConfig {
         apiChain(http.securityMatcher(TOKEN_RESOURCE), apiTokenAuthFilter, apiAuthenticationEntryPoint,
                 apiAccessDeniedHandler, authenticationManager, apiProblemWriter)
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-            .httpBasic(basic -> basic.authenticationDetailsSource(PasswordCallerDetails.SOURCE));
+            .httpBasic(basic -> basic
+                .authenticationDetailsSource(PasswordCallerDetails.SOURCE)
+                .authenticationEntryPoint(ApiAuthenticationEntryPoint.rejectingPassword(apiProblemWriter)));
 
         return http.build();
     }
@@ -549,9 +556,10 @@ public class SecurityConfig {
         return registration;
     }
 
+    /** The token resource chain's entry point: see {@link #apiTokenResourceSecurityFilterChain}. */
     @Bean
     public ApiAuthenticationEntryPoint apiAuthenticationEntryPoint(ApiProblemWriter apiProblemWriter) {
-        return new ApiAuthenticationEntryPoint(apiProblemWriter);
+        return ApiAuthenticationEntryPoint.challengingForPassword(apiProblemWriter);
     }
 
     @Bean

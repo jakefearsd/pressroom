@@ -35,8 +35,19 @@ import org.springframework.security.web.AuthenticationEntryPoint;
  * anonymous. That chain's entry point ({@link #refusingPasswords}) says where
  * a password is accepted instead. It reads the header's scheme only, never
  * the credential, so a right and a wrong password are told the same thing.
- * The token chain uses the plain entry point, so a password is never called
- * the wrong credential where it is the right one.
+ * The token chain never calls a password the wrong credential where it is
+ * the right one.
+ *
+ * <p>On the token resource every 401 also challenges for Basic
+ * ({@code WWW-Authenticate: Basic realm="Pressroom"}), so a client that sends
+ * a password only once challenged can still mint: the chain's entry point
+ * ({@link #challengingForPassword}) for a request with no usable credential,
+ * and the Basic filter's own ({@link #rejectingPassword}) for a password it
+ * turned away. That one has its own fixed detail, the same for a wrong
+ * password, a disabled account, an agent and an unknown user. Spring's
+ * {@code BasicAuthenticationEntryPoint} answered that case with a bare
+ * {@code sendError(401)} (Boot's {@code /error} JSON, not problem+json) until
+ * 0.16.0. Off the token resource nothing challenges.
  */
 public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
@@ -45,6 +56,12 @@ public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
             "Password authentication is accepted only on /api/v1/tokens. "
                     + "Mint a token there and send it as a bearer token.";
 
+    /** The detail for a password the token resource's Basic filter turned away. */
+    public static final String PASSWORD_REJECTED_DETAIL = "The username or password was not accepted.";
+
+    /** The challenge every 401 on the token resource carries. */
+    public static final String BASIC_CHALLENGE = "Basic realm=\"Pressroom\"";
+
     private static final String AUTHENTICATION_REQUIRED = "Authentication required.";
 
     /** The scheme as Spring's own Basic filter reads it: case-insensitive, after a trim. */
@@ -52,27 +69,45 @@ public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ApiProblemWriter problemWriter;
     private final boolean refusesPasswords;
+    private final String detail;
+    private final boolean challenges;
 
+    /** The plain entry point: the one fixed detail, no challenge. */
     public ApiAuthenticationEntryPoint(ApiProblemWriter problemWriter) {
-        this(problemWriter, false);
+        this(problemWriter, false, AUTHENTICATION_REQUIRED, false);
     }
 
-    private ApiAuthenticationEntryPoint(ApiProblemWriter problemWriter, boolean refusesPasswords) {
+    private ApiAuthenticationEntryPoint(ApiProblemWriter problemWriter, boolean refusesPasswords,
+                                        String detail, boolean challenges) {
         this.problemWriter = problemWriter;
         this.refusesPasswords = refusesPasswords;
+        this.detail = detail;
+        this.challenges = challenges;
     }
 
     /** The general API chain's entry point: it names the token resource to a password caller. */
     public static ApiAuthenticationEntryPoint refusingPasswords(ApiProblemWriter problemWriter) {
-        return new ApiAuthenticationEntryPoint(problemWriter, true);
+        return new ApiAuthenticationEntryPoint(problemWriter, true, AUTHENTICATION_REQUIRED, false);
+    }
+
+    /** The token resource chain's entry point: the one fixed detail, and a Basic challenge. */
+    public static ApiAuthenticationEntryPoint challengingForPassword(ApiProblemWriter problemWriter) {
+        return new ApiAuthenticationEntryPoint(problemWriter, false, AUTHENTICATION_REQUIRED, true);
+    }
+
+    /** The token resource's Basic filter's entry point: a password it turned away, and a challenge. */
+    public static ApiAuthenticationEntryPoint rejectingPassword(ApiProblemWriter problemWriter) {
+        return new ApiAuthenticationEntryPoint(problemWriter, false, PASSWORD_REJECTED_DETAIL, true);
     }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
-        String detail = refusesPasswords && sentAPassword(request)
-                ? PASSWORD_REFUSED_DETAIL : AUTHENTICATION_REQUIRED;
-        ApiProblem problem = ApiException.unauthorized(detail).toProblem(request.getRequestURI());
+        String text = refusesPasswords && sentAPassword(request) ? PASSWORD_REFUSED_DETAIL : detail;
+        if (challenges) {
+            response.setHeader("WWW-Authenticate", BASIC_CHALLENGE);
+        }
+        ApiProblem problem = ApiException.unauthorized(text).toProblem(request.getRequestURI());
         problemWriter.write(response, problem);
     }
 
