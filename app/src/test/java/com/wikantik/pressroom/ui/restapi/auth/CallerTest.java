@@ -72,19 +72,54 @@ class CallerTest {
     @Test
     void theBasicFilterWithTheMarkerSourceProducesAPasswordCaller() throws Exception {
         AuthenticationManager manager = mock(AuthenticationManager.class);
-        when(manager.authenticate(any())).thenReturn(
-                UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of()));
+        // Like a real ProviderManager: the result carries the request token's details.
+        when(manager.authenticate(any())).thenAnswer(inv -> {
+            Authentication in = inv.getArgument(0);
+            UsernamePasswordAuthenticationToken out =
+                    UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
+            out.setDetails(in.getDetails());
+            return out;
+        });
         BasicAuthenticationFilter filter = new BasicAuthenticationFilter(manager);
         filter.setAuthenticationDetailsSource(PasswordCallerDetails.SOURCE);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/tokens");
-        request.addHeader("Authorization", "Basic YWxpY2U6c2VjcmV0");
 
-        filter.doFilter(request, new MockHttpServletResponse(), mock(FilterChain.class));
+        filter.doFilter(basicRequest(), new MockHttpServletResponse(), mock(FilterChain.class));
 
         Caller caller = Caller.current();
         assertEquals(Caller.Kind.PASSWORD, caller.kind());
         assertNull(caller.principal());
         assertNull(caller.pin());
+    }
+
+    /** The counterpart: without the marker source the same Basic login is indistinguishable from a session. */
+    @Test
+    void theSameBasicFilterWithTheDefaultDetailsSourceIsNotMarked() throws Exception {
+        AuthenticationManager manager = mock(AuthenticationManager.class);
+        when(manager.authenticate(any())).thenAnswer(inv -> {
+            Authentication in = inv.getArgument(0);
+            UsernamePasswordAuthenticationToken out =
+                    UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
+            out.setDetails(in.getDetails());
+            return out;
+        });
+
+        new BasicAuthenticationFilter(manager)
+                .doFilter(basicRequest(), new MockHttpServletResponse(), mock(FilterChain.class));
+
+        assertEquals(Caller.Kind.SESSION, Caller.current().kind());
+    }
+
+    @Test
+    void detailsCarryingTheMarkerResolveToPassword() {
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("alice", "x", "r");
+        auth.setDetails(PasswordCallerDetails.SOURCE.buildDetails(new MockHttpServletRequest()));
+        assertEquals(Caller.Kind.PASSWORD, Caller.of(auth).kind());
+    }
+
+    private static MockHttpServletRequest basicRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/tokens");
+        request.addHeader("Authorization", "Basic YWxpY2U6c2VjcmV0");
+        return request;
     }
 
     @Test
@@ -117,23 +152,23 @@ class CallerTest {
     /**
      * The fail-closed rule: an authenticated Authentication whose details this
      * class does not recognise is never a SESSION, so a future login mechanism
-     * cannot silently gain session powers; it reads as the most restrictive
-     * authenticated kind, PASSWORD.
+     * cannot silently gain session powers; it is UNRECOGNISED, a kind distinct
+     * from PASSWORD (which only the Basic marker earns).
      */
     @Test
     void unrecognisedDetailsOnAnAuthenticatedCallerNeverResolveToSession() {
         TestingAuthenticationToken noDetails = new TestingAuthenticationToken("alice", "x", "r");
-        assertEquals(Caller.Kind.PASSWORD, Caller.of(noDetails).kind());
+        assertEquals(Caller.Kind.UNRECOGNISED, Caller.of(noDetails).kind());
 
         TestingAuthenticationToken odd = new TestingAuthenticationToken("alice", "x", "r");
         odd.setDetails(new Object());
-        assertEquals(Caller.Kind.PASSWORD, Caller.of(odd).kind());
+        assertEquals(Caller.Kind.UNRECOGNISED, Caller.of(odd).kind());
     }
 
     @Test
     void currentReadsTheSecurityContext() {
         Authentication auth = new TestingAuthenticationToken("alice", "x", "r");
         SecurityContextHolder.getContext().setAuthentication(auth);
-        assertSame(Caller.Kind.PASSWORD, Caller.current().kind());
+        assertSame(Caller.Kind.UNRECOGNISED, Caller.current().kind());
     }
 }

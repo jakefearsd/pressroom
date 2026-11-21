@@ -33,7 +33,14 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         /** An interactive login: the admin UI's form login, or reader SSO. */
         SESSION,
         /** Nobody. */
-        ANONYMOUS
+        ANONYMOUS,
+        /**
+         * Authenticated by a mechanism this class does not recognise. Never
+         * {@link #SESSION}, so a future login mechanism gains no session powers;
+         * Task 3's guards (AdminAccountGuard, TokensApi) refuse it, as they
+         * refuse TOKEN. No such caller exists today.
+         */
+        UNRECOGNISED
     }
 
     private static final Caller NOBODY = new Caller(Kind.ANONYMOUS, null);
@@ -45,9 +52,10 @@ public record Caller(Kind kind, ApiPrincipal principal) {
 
     /**
      * Resolves {@code auth}. An authenticated caller whose details are not
-     * recognised is read as {@link Kind#PASSWORD}, the most restrictive
-     * authenticated kind and never {@link Kind#SESSION}, so a login mechanism
-     * added later gains no session powers until it is recognised here.
+     * recognised is {@link Kind#UNRECOGNISED}, never {@link Kind#SESSION},
+     * so a login mechanism added later gains no session powers until it is
+     * recognised here. PASSWORD is recognised positively, by
+     * {@link PasswordCallerDetails}.
      */
     public static Caller of(Authentication auth) {
         if (auth == null) {
@@ -60,11 +68,14 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         if (!auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             return NOBODY;
         }
-        // Exact class: PasswordCallerDetails (a subclass) is the Basic filter's mark.
+        if (details instanceof PasswordCallerDetails) {
+            return new Caller(Kind.PASSWORD, null);
+        }
+        // Exact class: PasswordCallerDetails (a subclass) was handled above.
         if (details != null && details.getClass() == WebAuthenticationDetails.class) {
             return new Caller(Kind.SESSION, null);
         }
-        return new Caller(Kind.PASSWORD, null);
+        return new Caller(Kind.UNRECOGNISED, null);
     }
 
     /** The handle of the one weblog a token caller is pinned to, or null. */
