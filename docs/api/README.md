@@ -574,14 +574,14 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `comment.replyEmptyBody` | 400 | `invalid-request` | The reply was not stored: the body is empty (`detail` ends in `EMPTY_BODY`). |
 | `comment.replyBodyTooLong` | 400 | `invalid-request` | The reply was not stored: the body is over 4000 code points (`detail` ends in `BODY_TOO_LONG`). |
 | `comment.replyNotAccepted` | 400 | `invalid-request` | The reply was not stored: not a member's reply to a published, unanswered top-level comment, or the store refused it (`detail` ends in `BAD_REPLY`). |
-| `comment.replyRateLimited` | 400 | `invalid-request` | The reply was not stored: the account has posted its share for now (`detail` ends in `RATE_LIMITED`). |
+| `comment.replyRateLimited` | 429 | `throttled` | The reply was not stored: the account has posted its share for now (`detail` ends in `RATE_LIMITED`). Unlike `request.throttled` it carries no `Retry-After`: the comment limiter does not know how long the wait is. |
 | `redirect.notFound` | 404 | `not-found` | No redirect of the weblog has this id. |
 | `redirect.pathNotRelative` | 400 | `invalid-request` | A redirect's `source` or `target` (`{0}`) is not a path starting with one `/`. |
 | `redirect.pathHasQuery` | 400 | `invalid-request` | A redirect path carries a query string. |
 | `redirect.pathHasBackslash` | 400 | `invalid-request` | A redirect path contains a backslash. |
 | `redirect.pathHasControlCharacters` | 400 | `invalid-request` | A redirect path contains a control character. |
 | `redirect.targetIsSource` | 400 | `invalid-request` | A redirect's `target` is its `source`. |
-| `redirect.sourceInUse` | 400 | `invalid-request` | The weblog already redirects this `source`. |
+| `redirect.sourceInUse` | 409 | `conflict` | The weblog already redirects this `source`. |
 | `redirect.sourceIsTarget` | 400 | `invalid-request` | The `source` is another redirect's target: redirects are one hop. |
 | `redirect.targetRedirected` | 400 | `invalid-request` | The `target` is itself redirected: redirects are one hop. |
 | `redirect.weblogRequired` | 400 | `invalid-request` | The rule names no weblog. The API always sets one, so no route answers it today. |
@@ -1424,9 +1424,13 @@ A rule is `{"source": "/old-path", "target": "/new-path"}` — both
 weblog-relative (no handle, no context path, no query string; the request's
 query string is preserved on the 301 automatically). Off-site targets,
 query strings in either path, duplicate sources, and anything that would
-chain two rules together are refused as 400s with the reason in the body,
-each with its own `code` (`redirect.pathNotRelative`, `redirect.sourceInUse`,
+chain two rules together are refused as 400s (a duplicate source, `redirect.sourceInUse`, as a 409)
+with the reason in the body, each with its own `code` (`redirect.pathNotRelative`, `redirect.sourceInUse`,
 ...; see [Errors](#errors)). There is no update verb: delete and recreate.
+
+> **Changed in 0.16.0: a duplicate source is a 409, not a 400.**
+> `redirect.sourceInUse` now answers 409 Conflict, like every other `*.inUse`
+> code; its `type` is `/conflict`. The `detail` is unchanged.
 
 > **Changed in 0.16.0: a failure to store a rule is a 500, not a 400.**
 > Earlier versions answered any failure of the save with a 400 whose
@@ -1489,11 +1493,16 @@ Publishing a comment its author deleted (a `HIDDEN` comment with an empty
 `DELETE` removes the comment and its reply (204). A reply is written as the
 token's user, published at once, and answers 201 with its view; a reply the
 service refuses (for example the comment already has one, or the body is empty
-or over 4000 code points) is a 400 whose `code` names the refusal, such as
+or over 4000 code points) is a 400 (429 for `comment.replyRateLimited`, see below) whose `code` names the refusal, such as
 `comment.replyNotAccepted`, `comment.replyEmptyBody`, `comment.replyBodyTooLong`
 or `comment.replyRateLimited` (replies count toward the per-account comment
 rate limit); its `detail` ends in the refusal's name (`BAD_REPLY`,
-`EMPTY_BODY`, ...), as it always has. Replies are for the weblog's members: a
+`EMPTY_BODY`, ...), as it always has.
+
+> **Changed in 0.16.0: a rate-limited reply is a 429, not a 400.**
+> `comment.replyRateLimited` now answers 429 with `type` `/throttled`. The
+> `detail` is unchanged. There is no `Retry-After`: the comment limiter counts
+> recent posts and does not know how long the wait is. Replies are for the weblog's members: a
 global admin whose token reaches a weblog they are not a member of gets
 `comment.replyNotAccepted`.
 

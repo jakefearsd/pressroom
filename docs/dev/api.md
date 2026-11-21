@@ -218,7 +218,7 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `<resource or field>.<condition>`, exactly two lowerCamel segments. `notFound` (or a condition
   ending in `NotFound`) is a 404 and only a 404 says it; a 400 for text that is not there says what
   did not match (`edits.findNotMatched`). `inUse` is a uniqueness conflict (`slug.inUse`,
-  `redirect.sourceInUse`). `tooMany` is a count over a cap (`edits.tooMany`, `pinned.tooMany`,
+  `redirect.sourceInUse`, a 409 since 0.16.0; every `*.inUse` code is, `ProblemCodeCatalogTest`). `tooMany` is a count over a cap (`edits.tooMany`, `pinned.tooMany`,
   `revision.tooMany`, `strand.tooMany`), `tooMany<Thing>` only where one resource has two caps.
   Before the 0.16.0 tag the final review renamed the codes that broke this (old to new:
   `edits.notFound` `edits.findNotMatched`, `strand.notAStrandPage` `strand.idNotStrandPage` (an

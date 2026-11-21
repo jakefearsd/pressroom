@@ -360,7 +360,7 @@ public enum ProblemCode {
      */
     COMMENT_REPLY_NOT_ACCEPTED("comment.replyNotAccepted", ProblemType.INVALID_REQUEST, 0),
     /** A reply refused: the account has posted its share for now ({@code RATE_LIMITED}). */
-    COMMENT_REPLY_RATE_LIMITED("comment.replyRateLimited", ProblemType.INVALID_REQUEST, 0),
+    COMMENT_REPLY_RATE_LIMITED("comment.replyRateLimited", ProblemType.THROTTLED, 0),
     /** No redirect of the weblog has this id. */
     REDIRECT_NOT_FOUND("redirect.notFound", ProblemType.NOT_FOUND, 0),
     /** A redirect's {@code source} or {@code target} ({0}) is not a path starting with one {@code /}. */
@@ -374,7 +374,7 @@ public enum ProblemCode {
     /** A redirect's {@code target} is its {@code source}. */
     REDIRECT_TARGET_IS_SOURCE("redirect.targetIsSource", ProblemType.INVALID_REQUEST, 1),
     /** The weblog already redirects this {@code source}. */
-    REDIRECT_SOURCE_IN_USE("redirect.sourceInUse", ProblemType.INVALID_REQUEST, 1),
+    REDIRECT_SOURCE_IN_USE("redirect.sourceInUse", ProblemType.CONFLICT, 1),
     /** The {@code source} is another redirect's target: redirects are one hop. */
     REDIRECT_SOURCE_IS_TARGET("redirect.sourceIsTarget", ProblemType.INVALID_REQUEST, 2),
     /** The {@code target} is itself redirected: redirects are one hop. */

@@ -108,7 +108,7 @@ class CommentProblemCodesTest {
      * Each refusal of a reply has its own code (final review, 2026-11-21: one
      * code per {@link CommentRefusal}, so a client branches on {@code code}
      * rather than parsing the name out of {@code detail}). The English and the
-     * 400 are what the one {@code comment.replyRefused} answered before.
+     * 400 (429 for the rate limit, since 0.16.0) are what the one {@code comment.replyRefused} answered before.
      */
     @Test
     void eachRefusedReplyHasItsOwnCode() throws Exception {
@@ -127,7 +127,9 @@ class CommentProblemCodesTest {
         assertEquals(EnumSet.allOf(CommentRefusal.class), codes.keySet(), "every refusal is pinned here");
         for (Map.Entry<CommentRefusal, String> refusal : codes.entrySet()) {
             when(service.reply(owner, comment, "x")).thenReturn(CommentOutcome.refused(refusal.getKey()));
-            problem(answer(status().isBadRequest(), post(BASE + "/c1/replies").content("{\"body\":\"x\"}")),
+            var expected = refusal.getKey() == CommentRefusal.RATE_LIMITED
+                    ? status().isTooManyRequests() : status().isBadRequest();
+            problem(answer(expected, post(BASE + "/c1/replies").content("{\"body\":\"x\"}")),
                     refusal.getValue(), "The reply was refused: " + refusal.getKey().name());
         }
     }

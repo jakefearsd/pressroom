@@ -301,6 +301,26 @@ class ProblemCodeCatalogTest {
         assertEquals(Set.of(), offenders, "codes that are not <resource>.<condition>");
     }
 
+    /** A condition that says "in use" is a conflict with what exists, and only a 409 says it. */
+    @Test
+    void everyInUseCodeIsA409() {
+        Set<String> offenders = new TreeSet<>();
+        for (ProblemCode code : ProblemCode.values()) {
+            String condition = code.code().substring(code.code().indexOf('.') + 1);
+            boolean saysInUse = "inUse".equals(condition) || condition.endsWith("InUse");
+            if (saysInUse && (code.type() == null || code.type().status() != 409)) {
+                offenders.add(code.code());
+            }
+        }
+        assertEquals(Set.of(), offenders, "a *.inUse code that is not a 409");
+    }
+
+    /** A reply refused for rate is a 429 like the throttle, not a 400 about the request. */
+    @Test
+    void theReplyRateLimitIsA429() {
+        assertEquals(429, ProblemCode.COMMENT_REPLY_RATE_LIMITED.type().status());
+    }
+
     /** A condition that says "not found" is a 404, and only a 404 says it. */
     @Test
     void everyNotFoundCodeIsA404() {

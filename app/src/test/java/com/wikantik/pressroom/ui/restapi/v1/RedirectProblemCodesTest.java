@@ -97,8 +97,12 @@ class RedirectProblemCodesTest {
     }
 
     private JsonNode create(String source, String target) throws Exception {
+        return create(source, target, status().isBadRequest());
+    }
+
+    private JsonNode create(String source, String target, ResultMatcher expected) throws Exception {
         String body = new ObjectMapper().writeValueAsString(Map.of("source", source, "target", target));
-        return answer(mvc, status().isBadRequest(), post(REDIRECTS).content(body));
+        return answer(mvc, expected, post(REDIRECTS).content(body));
     }
 
     private static WeblogRedirect rule(String id, String source, String target) {
@@ -133,7 +137,7 @@ class RedirectProblemCodesTest {
     @Test
     void aRuleThatWouldDuplicateOrChainHasItsCode() throws Exception {
         rulesFrom.put("/a", List.of(rule("r1", "/a", "/z")));
-        problem(create("/a", "/b"), "redirect.sourceInUse", "a redirect for /a already exists");
+        problem(create("/a", "/b", status().isConflict()), "redirect.sourceInUse", "a redirect for /a already exists");
 
         rulesFrom.clear();
         rulesTo.put("/a", List.of(rule("r2", "/old", "/a")));
