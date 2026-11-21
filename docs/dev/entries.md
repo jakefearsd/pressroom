@@ -248,6 +248,7 @@ as one: `EntryListView.Filters.any()` reads the status through
 `EntryListQuery.lenientStatus`, so an empty list under a stale status says "no
 entries yet", not "nothing matched". The API answers 400 for the same value.
 
+A negative `bean.page` on `entries.rol` is page 0 (clamped in `EntriesController`; it was a 500 from `setFirstResult`); the API still validates its own `offset`.
 ## Tag counts
 
 A tag's count (`pressroom_weblogentrytagagg`, see `database.md`) is the number

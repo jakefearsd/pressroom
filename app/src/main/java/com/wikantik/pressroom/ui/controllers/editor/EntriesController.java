@@ -97,6 +97,8 @@ public class EntriesController extends BaseController {
                           @ModelAttribute("bean") EntriesBean bean) {
         populateCommonModel(request, model);
 
+        // A negative page is page 0: setFirstResult refuses a negative offset (a 500).
+        int pageNumber = Math.max(0, bean.getPage());
         EntryListPage page = null;
         try {
             // A blank status means the same thing as "ALL" (EntriesSidebar.jsp
@@ -107,13 +109,13 @@ public class EntriesController extends BaseController {
                     new EntryListQuery.Filters(EntryListQuery.lenientStatus(bean.getStatus()),
                             bean.getCategoryName(), bean.getTags(), bean.getText(), null,
                             bean.getStartDate(), bean.getEndDate(), bean.getSortBy()),
-                    bean.getPage() * COUNT, COUNT);
+                    pageNumber * COUNT, COUNT);
         } catch (WebloggerException ex) {
             log.error("Error looking up entries", ex);
             addError(model, "generic.error.check.logs", request);
         }
 
-        EntryListView view = EntryListView.of(page, bean.getPage(),
+        EntryListView view = EntryListView.of(page, pageNumber,
                 EntryListView.Views.read(weblogger.getAnalyticsManager(), getActionWeblog(request).getId(),
                         page != null),
                 request.getLocale(), getCategories(request), key -> getText(key, request),

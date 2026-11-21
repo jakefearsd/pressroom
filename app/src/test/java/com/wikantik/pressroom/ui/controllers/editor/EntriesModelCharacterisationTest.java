@@ -249,6 +249,20 @@ class EntriesModelCharacterisationTest extends EditorControllerTestSupport {
         assertTrue(pager().getPrevLink().contains("bean.page=1"), pager().getPrevLink());
     }
 
+    /** A negative bean.page is page 0 (Jake, 2026-11-21); it used to reach setFirstResult as a negative offset and answer a 500. */
+    @Test
+    void aNegativePageIsPageZeroAndLinksNoPreviousPage() throws Exception {
+        bean.setPage(-1);
+        entries(COUNT + 1);
+
+        WeblogEntrySearchCriteria wesc = run();
+
+        assertEquals(0, wesc.getOffset());
+        assertEquals(COUNT + 1, wesc.getMaxResults());
+        assertTrue(pager().getNextLink().contains("bean.page=1"), pager().getNextLink());
+        assertNull(pager().getPrevLink());
+    }
+
     @Test
     void exactlyOnePageOfEntriesHasNoMore() throws Exception {
         entries(COUNT);
