@@ -1,6 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.List;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.WeblogCreationRules;
 import com.wikantik.pressroom.ui.controllers.WeblogSettingsRules;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -57,6 +58,12 @@ final class RuleProblems {
             case CUSTOM_DOMAIN_TAKEN -> ProblemCode.CUSTOM_DOMAIN_IN_USE;
             case CUSTOM_DOMAIN_UNCHECKABLE -> ProblemCode.CUSTOM_DOMAIN_UNCHECKABLE;
         };
+    }
+
+    /** {@code violation} as the problem it is on its field: a 400, or a 409 for a conflict. */
+    static ApiException problem(RuleViolation violation) {
+        return ApiException.problemOnField(violation.field(), violation.code(),
+                violation.codeArgs().toArray(String[]::new));
     }
 
     /** One broken rule, keyed: its field (as the API names it), code and args. */

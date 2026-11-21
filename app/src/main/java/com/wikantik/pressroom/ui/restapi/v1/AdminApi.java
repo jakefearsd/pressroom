@@ -25,12 +25,12 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
 import com.wikantik.pressroom.config.runtime.DisplayGroup;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
-import com.wikantik.pressroom.config.runtime.PropertyType;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
+import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
@@ -408,24 +408,15 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * A property value of the wrong shape for its declared type (an
      * unparsable integer/float, or anything but true/false for a boolean)
      * is a 400 here rather than whatever downstream code first tries to
-     * parse the stored string and throws an unguarded exception.
+     * parse the stored string and throws an unguarded exception. The type
+     * rule is {@link SiteSettingsRules#checkValue}'s, shared with Global Config.
      */
     private static void requireValidType(PropertyDef def, String value) {
         if (value == null) {
             throw ApiException.problemOnField(def.getName(), ProblemCode.CONFIG_VALUE_NULL, def.getName());
         }
-        String name = def.getName();
-        PropertyType type = PropertyType.of(def.getType());
-        type.check(name, value).ifPresent(problem -> {
-            throw switch (problem) {
-                case PropertyType.Range range -> ApiException.problemOnField(name, ProblemCode.CONFIG_OUT_OF_RANGE,
-                        name, Integer.toString(range.min()), Integer.toString(range.max()));
-                case PropertyType.Unparsed _ -> ApiException.problemOnField(name, switch (type) {
-                    case BOOLEAN -> ProblemCode.CONFIG_NOT_BOOLEAN;
-                    case INTEGER -> ProblemCode.CONFIG_NOT_INTEGER;
-                    default -> ProblemCode.CONFIG_NOT_NUMBER;
-                }, name);
-            };
+        SiteSettingsRules.checkValue(def, value).ifPresent(violation -> {
+            throw RuleProblems.problem(violation);
         });
     }
 

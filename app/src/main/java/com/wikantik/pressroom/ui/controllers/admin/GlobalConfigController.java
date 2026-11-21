@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.ui.controllers.admin;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -27,8 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ResourceBundle;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.text.StringEscapeUtils;
@@ -36,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.discovery.DiscoverySettings;
-import com.wikantik.pressroom.business.PageReference;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -49,7 +45,9 @@ import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.util.cache.CacheManager;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
+import com.wikantik.pressroom.ui.controllers.SiteSettingsEffects;
+import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,25 +65,13 @@ public class GlobalConfigController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);
 
-    private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
-    /** The front door's site page; the front-door select writes it (see {@link #applyFrontDoorChoice}). */
-    private static final String FRONTPAGE_PAGE = "site.frontpage.page";
     private static final String REFRESH_MINUTES_ATTR = "discoveryRefreshMinutes";
     private static final int MINUTES_MIN =
             DiscoverySettings.min(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
     private static final int MINUTES_MAX =
             DiscoverySettings.max(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
-    private static final String PRIVACY_PAGE = "site.privacy.page";
-    private static final String ABSOLUTE_URL = "site.absoluteurl";
     /** The front-door select's value prefix for a site page; a blog's option is its bare handle. */
     private static final String PAGE_CHOICE = "page:";
-    /**
-     * The settings a rendered page's footer link, header or the front door
-     * depend on: a change to any of them must expire every cached page.
-     */
-    private static final List<String> RENDERED_PAGE_INPUTS =
-            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, FRONTPAGE_PAGE, ABSOLUTE_URL,
-                    "site.name", "site.shortName", "site.description", "site.verification.bing");
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
@@ -214,7 +200,12 @@ public class GlobalConfigController extends BaseController {
     }
 
     /**
-     * Save global properties.
+     * Save global properties. The rules are {@link SiteSettingsRules}'s and
+     * what a stored save does next is {@link SiteSettingsEffects}'s, shared
+     * with {@code PATCH /api/v1/admin/config}; this method keeps the form's
+     * own concerns: the minutes field, the unticked checkbox, the front-door
+     * select's encoding, a field missing from the form, and showing a refused
+     * form back as typed.
      */
     @PostMapping("/globalConfig!save.rol")
     public String save(HttpServletRequest request, Model model) {
@@ -236,6 +227,7 @@ public class GlobalConfigController extends BaseController {
         // by whichever commit comes next (JPAPropertiesManagerImpl), so a
         // refused form that had set values as it went would still change the
         // site. Only properties that are already defined are processed.
+        Map<String, String> before = values(properties);
         Map<String, String> accepted = new LinkedHashMap<>();
         for (Map.Entry<String, RuntimeConfigProperty> propEntry : properties.entrySet()) {
             String propName = propEntry.getKey();
@@ -247,14 +239,26 @@ public class GlobalConfigController extends BaseController {
             }
         }
 
-        applyFrontDoorChoice(accepted, properties, model, request);
+        String typedPage = accepted.get(SiteSettingsRules.FRONT_DOOR_PAGE);
+        boolean frontDoorRefused = decodeFrontDoorChoice(accepted, model, request);
         showRefreshMinutes(model, accepted.getOrDefault(DiscoverySettings.REFRESH_SECONDS, storedValue(properties)));
 
-        // Only a change to the reference is validated, so a privacy page that
-        // was later unpublished never blocks an unrelated save: Global Config
+        // Only a changed reference is looked up, so a privacy page that was
+        // later unpublished never blocks an unrelated save: Global Config
         // never blocks.
-        if (changed(PRIVACY_PAGE, accepted, properties)) {
-            validatePrivacyPage(accepted, model, request);
+        for (RuleViolation violation : SiteSettingsRules.checkReferences(accepted, before,
+                SiteSettingsRules.publishedPages(weblogger))) {
+            addViolation(model, violation, request);
+            frontDoorRefused |= SiteSettingsRules.FRONT_DOOR_BLOG.equals(violation.field())
+                    || SiteSettingsRules.FRONT_DOOR_PAGE.equals(violation.field());
+        }
+        if (frontDoorRefused) {
+            // A refused front-door choice leaves both settings as stored.
+            accepted.remove(SiteSettingsRules.FRONT_DOOR_BLOG);
+            accepted.remove(SiteSettingsRules.FRONT_DOOR_PAGE);
+            if (typedPage != null) {
+                accepted.put(SiteSettingsRules.FRONT_DOOR_PAGE, typedPage);
+            }
         }
 
         if (hasErrors(model)) {
@@ -267,15 +271,16 @@ public class GlobalConfigController extends BaseController {
             return ".GlobalConfig";
         }
 
-        boolean renderedPageInputChanged = RENDERED_PAGE_INPUTS.stream()
-                .anyMatch(name -> changed(name, accepted, properties));
         boolean revisionLimitChanged = REVISION_LIMITS.stream()
-                .anyMatch(name -> changed(name, accepted, properties));
-        boolean discoveryChanged = accepted.keySet().stream()
-                .anyMatch(name -> name.startsWith(DiscoverySettings.PREFIX) && changed(name, accepted, properties));
+                .anyMatch(name -> SiteSettingsRules.changed(name, accepted, before));
         for (Map.Entry<String, String> change : accepted.entrySet()) {
-            properties.get(change.getKey()).setValue(change.getValue());
-            log.debug("Set {} = {}", change.getKey(), change.getValue());
+            RuntimeConfigProperty property = properties.get(change.getKey());
+            // The front-door page is decoded from the select even when it has
+            // no row to store it in (rows are seeded at startup).
+            if (property != null) {
+                property.setValue(change.getValue());
+                log.debug("Set {} = {}", change.getKey(), change.getValue());
+            }
         }
 
         try {
@@ -284,19 +289,7 @@ public class GlobalConfigController extends BaseController {
             mgr.saveProperties(properties);
             weblogger.flush();
 
-            // Rendered pages expire only through weblog.lastModified, and a
-            // Global Config save does not move it, so a changed privacy link
-            // would stay out of every cached page. Touch every weblog, and
-            // clear the site-wide cache, which ignores lastModified.
-            if (renderedPageInputChanged) {
-                touchEveryWeblog();
-            }
-
-            // The discovery snapshot holds the share and window it was built
-            // with until the next scheduled refresh, up to an hour away.
-            if (discoveryChanged) {
-                weblogger.getDiscoveryManager().refresh();
-            }
+            SiteSettingsEffects.afterSave(weblogger, accepted, before);
 
             // notify user of our success
             addMessage(model, "generic.changes.saved", request);
@@ -310,6 +303,13 @@ public class GlobalConfigController extends BaseController {
         }
 
         return ".GlobalConfig";
+    }
+
+    /** Name to stored value, for the rules (a stored null stays null). */
+    private static Map<String, String> values(Map<String, RuntimeConfigProperty> properties) {
+        Map<String, String> values = new LinkedHashMap<>();
+        properties.forEach((name, property) -> values.put(name, property.getValue()));
+        return values;
     }
 
     /**
@@ -330,7 +330,8 @@ public class GlobalConfigController extends BaseController {
             accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
 
         } else if (incomingProp == null) {
-            if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName) && !FRONTPAGE_PAGE.equals(propName)) {
+            if (!SiteSettingsRules.FRONT_DOOR_BLOG.equals(propName)
+                    && !SiteSettingsRules.FRONT_DOOR_PAGE.equals(propName)) {
                 // Missing from the form. The front-page weblog is exempt: it is
                 // a content choice, so absent it is left as it is rather than
                 // blocking every other setting. So is the front-page page,
@@ -338,80 +339,50 @@ public class GlobalConfigController extends BaseController {
                 addError(model, "ConfigForm.invalidProperty", propName, request);
             }
 
-        } else if (propertyType == PropertyType.INTEGER || propertyType == PropertyType.FLOAT) {
-            checkNumber(propertyType, propName, propertyDef, incomingProp, model, request);
-            accepted.put(propName, incomingProp);
-
         } else {
-            accepted.put(propName, incomingProp.trim());
+            String value = SiteSettingsRules.normalise(propertyDef, incomingProp);
+            SiteSettingsRules.checkValue(propertyDef, value)
+                    .ifPresent(violation -> addViolation(model, violation, request));
+            accepted.put(propName, value);
         }
     }
 
-    /** A number must parse, and a discovery setting must lie in its range. */
-    private void checkNumber(PropertyType type, String propName, PropertyDef propertyDef, String incomingProp,
-            Model model, HttpServletRequest request) {
-        type.check(propName, incomingProp).ifPresent(problem -> {
-            switch (problem) {
-                case PropertyType.Range range ->
-                    addRangeError(model, propertyDef, range.min(), range.max(), request);
-                case PropertyType.Unparsed _ -> addUnparsedError(model,
-                        type == PropertyType.INTEGER ? "ConfigForm.invalidIntegerProperty"
-                                : "ConfigForm.invalidFloatProperty",
-                        propertyDef, incomingProp, request);
-            }
-        });
-    }
-
-    private void addUnparsedError(Model model, String key, PropertyDef propertyDef, String incomingProp,
-            HttpServletRequest request) {
-        String propDesc = bundle.getString(propertyDef.getKey());
-        addError(model, key, new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
+    /**
+     * Shows a rule's message, every argument HTML-escaped: they are raw
+     * values, the typed one among them, and {@code tiles/messages.jsp} does
+     * not escape.
+     */
+    private void addViolation(Model model, RuleViolation violation, HttpServletRequest request) {
+        if (violation.args().isEmpty()) {
+            addError(model, violation.messageKey(), request);
+        } else {
+            addError(model, violation.messageKey(), violation.args().stream()
+                    .map(arg -> StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
+        }
     }
 
     /**
      * The front-door select carries one of three things under the blog
      * setting's name: "" (the site directory), a blog handle, or
-     * {@code page:<slug>} (a site page). The page setting is derived from it,
-     * so exactly one of the two is ever set. Both a draft page and the site
-     * space itself are refused here, not merely left out of the select: the
-     * form can be posted by hand. A refused choice leaves both as stored.
+     * {@code page:<slug>} (a site page). Decodes it into the two settings, so
+     * exactly one is ever set; {@link SiteSettingsRules} then judges them
+     * (the site space, a draft page: the form can be posted by hand). A
+     * {@code page:} naming no page is refused here. True when refused.
      */
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Refuses the site space's handle in any case. Handles are ASCII "
-                    + "alphanumerics, so a miss could only fail to refuse here; the lookups "
-                    + "behind it refuse the site space anyway.")
-    private void applyFrontDoorChoice(Map<String, String> accepted,
-            Map<String, RuntimeConfigProperty> properties, Model model, HttpServletRequest request) {
-        String choice = accepted.get(FRONTPAGE_WEBLOG_HANDLE);
+    private boolean decodeFrontDoorChoice(Map<String, String> accepted, Model model, HttpServletRequest request) {
+        String choice = accepted.get(SiteSettingsRules.FRONT_DOOR_BLOG);
         if (choice == null) {
-            return;
+            return false;
         }
-        String handle = choice;
-        String slug = "";
-        boolean refused = false;
-        if (choice.startsWith(PAGE_CHOICE)) {
-            handle = "";
-            slug = choice.substring(PAGE_CHOICE.length()).trim();
-            RuntimeConfigProperty stored = properties.get(FRONTPAGE_PAGE);
-            boolean unchanged = stored != null && !slug.isEmpty()
-                    && slug.equals(Objects.toString(stored.getValue(), ""));
-            if (!unchanged && !isPublishedSitePage(slug)) {
-                addError(model, "configForm.error.frontpagePage.notFound", request);
-                refused = true;
-            }
-        } else if (Weblog.SITE_SPACE_HANDLE.equalsIgnoreCase(choice)) {
-            addError(model, "ConfigForm.invalidProperty", FRONTPAGE_WEBLOG_HANDLE, request);
-            refused = true;
+        boolean pageChoice = choice.startsWith(PAGE_CHOICE);
+        String slug = pageChoice ? choice.substring(PAGE_CHOICE.length()).trim() : "";
+        accepted.put(SiteSettingsRules.FRONT_DOOR_BLOG, pageChoice ? "" : choice);
+        accepted.put(SiteSettingsRules.FRONT_DOOR_PAGE, slug);
+        if (pageChoice && slug.isEmpty()) {
+            addError(model, "configForm.error.frontpagePage.notFound", request);
+            return true;
         }
-        if (refused) {
-            accepted.remove(FRONTPAGE_WEBLOG_HANDLE);
-            return;
-        }
-        accepted.put(FRONTPAGE_WEBLOG_HANDLE, handle);
-        if (properties.containsKey(FRONTPAGE_PAGE)) {
-            accepted.put(FRONTPAGE_PAGE, slug);
-        }
+        return false;
     }
 
     /**
@@ -422,78 +393,10 @@ public class GlobalConfigController extends BaseController {
      */
     private static String staleFrontDoorPage(Map<String, RuntimeConfigProperty> properties,
             List<WeblogPage> sitePages) {
-        RuntimeConfigProperty stored = properties.get(FRONTPAGE_PAGE);
+        RuntimeConfigProperty stored = properties.get(SiteSettingsRules.FRONT_DOOR_PAGE);
         String slug = stored == null ? "" : Objects.toString(stored.getValue(), "").trim();
         return slug.isEmpty() || sitePages.stream().anyMatch(page -> slug.equals(page.getSlug()))
                 ? "" : slug;
-    }
-
-    /** A decision path: a lookup that could not run is not a page that exists. */
-    private boolean isPublishedSitePage(String slug) {
-        if (slug.isEmpty()) {
-            return false;
-        }
-        try {
-            return new PageReference(null, slug).resolvePublished(weblogger).isPresent();
-        } catch (WebloggerException ex) {
-            log.error("Error checking the front door's site page", ex);
-            return false;
-        }
-    }
-
-    /**
-     * The privacy setting must be a {@link PageReference} to a published page:
-     * {@code slug} on the site, or {@code handle/slug} on a blog. A decision
-     * path: a lookup that could not run is an error, not a pass.
-     */
-    private void validatePrivacyPage(Map<String, String> accepted, Model model, HttpServletRequest request) {
-        String value = accepted.get(PRIVACY_PAGE);
-        if (value == null || value.isEmpty()) {
-            return;
-        }
-        if (PageReference.parse(value).filter(this::publishedOrFalse).isEmpty()) {
-            addError(model, "configForm.error.privacyPage.notFound", request);
-        }
-    }
-
-    private boolean publishedOrFalse(PageReference ref) {
-        try {
-            return ref.resolvePublished(weblogger).isPresent();
-        } catch (WebloggerException ex) {
-            log.error("Error checking the privacy page", ex);
-            return false;
-        }
-    }
-
-    /** True when the form submitted this property and it differs from the stored value. */
-    private static boolean changed(String name, Map<String, String> accepted,
-            Map<String, RuntimeConfigProperty> properties) {
-        RuntimeConfigProperty stored = properties.get(name);
-        return stored != null && accepted.containsKey(name)
-                && !Objects.toString(stored.getValue(), "").equals(accepted.get(name));
-    }
-
-    private void touchEveryWeblog() throws WebloggerException {
-        WeblogManager mgr = weblogger.getWeblogManager();
-        List<Weblog> touched = new ArrayList<>();
-        // The site space is no weblog to the listing, yet its pages carry the
-        // same footer and are the front door, so it is touched explicitly.
-        List<Weblog> everything = new ArrayList<>(mgr.getWeblogs(null, null, null, null, 0, -1));
-        Weblog site = mgr.getSiteSpace();
-        if (site != null) {
-            everything.add(site);
-        }
-        for (Weblog weblog : everything) {
-            weblog.touchLastModified();
-            mgr.saveWeblog(weblog);
-            touched.add(weblog);
-        }
-        weblogger.flush();
-        // SiteWideCache ignores lastModified and is dropped only here; one
-        // call clears it wholesale.
-        for (Weblog weblog : touched) {
-            CacheManager.invalidate(weblog);
-        }
     }
 
     private Map<String, RuntimeConfigProperty> loadProperties() {

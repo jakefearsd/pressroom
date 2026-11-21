@@ -157,7 +157,8 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Global Config validates `site.privacy.page` at save** as a page
   reference (`PageReference`): `slug` is a *published* site page, `handle/slug`
   a published Page on that blog (`site-space/x` as a blog form resolves to
-  nothing). Checked in `GlobalConfigController` only when the value changed.
+  nothing). Checked by `SiteSettingsRules` (shared with `PATCH /api/v1/admin/config`)
+  only when the value changed.
   Fail closed: an unknown or draft page, or a lookup that throws, adds a field
   error, nothing is saved and the form re-renders what was typed. Because it
   runs only on a change, a page unpublished later (or a deleted blog) never
@@ -176,6 +177,17 @@ resolves through the index at the end of `CLAUDE.md`.
   privacy page or `site.absoluteurl` touches every weblog and the site space and
   clears the site-wide cache (see `themes-and-templates.md`, render-cache
   expiry).
+- **Site settings rules live in `ui.controllers`, not the controller** (spec
+  2026-11-20-jsp-rules-and-view-models-design, Task 1). `SiteSettingsRules`
+  judges values (type and range via `PropertyType.check`, strings trimmed, the
+  front door, the privacy page) and returns `RuleViolation`s; `SiteSettingsEffects.afterSave`
+  touches every weblog when a `RENDERED_PAGE_INPUTS` value changed and refreshes
+  discovery when a `site.discovery.*` value changed. `GlobalConfigController` keeps
+  only the form's concerns (minutes field, unticked checkbox, the `page:<slug>`
+  encoding and a bare `page:`, "missing from the form", re-rendering typed values)
+  and shows each violation with `addError`, every argument `escapeHtml4`'d; it marks
+  no field, as before. Error order is unchanged: each property's own, in stored
+  order, then the front door's, then the privacy page's (`GlobalConfigCharacterisationTest`).
 - **The Site section (global admins only).** The main menu (`MainMenuController`
   adds `siteSpace`, creating the hidden `site-space` weblog on first use; null
   for everyone else) shows a Site row with Pages, Media and Theme, the only

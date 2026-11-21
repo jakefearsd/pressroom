@@ -537,6 +537,10 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `config.notBoolean` | 400 | `invalid-request` | A boolean setting that is not `true` or `false`. |
 | `config.notInteger` | 400 | `invalid-request` | An integer setting that is not an integer. |
 | `config.notNumber` | 400 | `invalid-request` | A number setting that is not a number. |
+| `config.frontDoorSiteSpace` | 400 | `invalid-request` | `site.frontpage.weblog.handle` names the site space, which holds the site's pages and is no blog. |
+| `config.frontDoorPageUnpublished` | 400 | `invalid-request` | `site.frontpage.page` changed to a slug that is not a published site page. |
+| `config.frontDoorBothSet` | 400 | `invalid-request` | Both front-door settings would be non-empty after the patch. |
+| `config.privacyPageUnpublished` | 400 | `invalid-request` | `site.privacy.page` changed to a reference that is not a published page. |
 | `field.notFinite` | 400 | `invalid-request` | A number field is not finite. |
 | `field.notUuid` | 400 | `invalid-request` | A field that holds a UUID does not. |
 | `media.fileRequired` | 400 | `invalid-request` | A media upload carried no file. |

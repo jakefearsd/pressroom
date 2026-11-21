@@ -282,6 +282,14 @@ public enum ProblemCode {
     CONFIG_NOT_INTEGER("config.notInteger", ProblemType.INVALID_REQUEST, 1),
     /** A number setting that is not a number. */
     CONFIG_NOT_NUMBER("config.notNumber", ProblemType.INVALID_REQUEST, 1),
+    /** {@code site.frontpage.weblog.handle} names the site space, which holds the site's pages and is no blog. */
+    CONFIG_FRONT_DOOR_SITE_SPACE("config.frontDoorSiteSpace", ProblemType.INVALID_REQUEST, 0),
+    /** {@code site.frontpage.page} changed to a slug that is not a published site page. */
+    CONFIG_FRONT_DOOR_PAGE_UNPUBLISHED("config.frontDoorPageUnpublished", ProblemType.INVALID_REQUEST, 0),
+    /** Both front-door settings would be non-empty after the patch. */
+    CONFIG_FRONT_DOOR_BOTH_SET("config.frontDoorBothSet", ProblemType.INVALID_REQUEST, 0),
+    /** {@code site.privacy.page} changed to a reference that is not a published page. */
+    CONFIG_PRIVACY_PAGE_UNPUBLISHED("config.privacyPageUnpublished", ProblemType.INVALID_REQUEST, 0),
     /** A number field is not finite. */
     FIELD_NOT_FINITE("field.notFinite", ProblemType.INVALID_REQUEST, 1),
     /** A field that holds a UUID does not. */
