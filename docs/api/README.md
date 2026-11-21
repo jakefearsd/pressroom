@@ -443,7 +443,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `entry.notInTrash` | 409 | `conflict` | Restore was asked for an entry that is not in the trash. |
 | `entry.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for an entry that is not in the trash. |
 | `entry.notChangeable` | 403 | `forbidden` | A member without publish rights (a contributor) asked to change an entry that is not their own draft or pending entry. |
-| `entry.needsPublishRights` | 403 | `forbidden` | A member without publish rights asked to change `pinned` or `strand`; the field is named in `errors`. |
+| `entry.needsPublishRights` | 403 | `forbidden` | A member without publish rights asked to change `pinned` or `strand`, or to import an image (`featuredImageUrl`, `importExternalImages: true`); the field is named in `errors`. |
 | `page.trashed` | 409 | `conflict` | The page is in the trash; restore it before changing it. |
 | `page.alreadyTrashed` | 409 | `conflict` | Trash was asked for a page already in the trash. |
 | `page.notInTrash` | 409 | `conflict` | Restore was asked for a page that is not in the trash. |
@@ -732,6 +732,10 @@ writes drafts, as the editor lets them:
 - changing `pinned` or `strand` (joining, or `clear: ["strand"]`) is a 403
   `entry.needsPublishRights` naming the field; sending back the stored value
   changes nothing and passes;
+- importing images is a publisher's, as adding media is: `featuredImageUrl`
+  or `importExternalImages: true` is a 403 `entry.needsPublishRights` naming
+  the field, and the import a text write otherwise gets by default does not
+  run, so images from other sites stay linked;
 - preview works against any entry of the weblog;
 - restore from the trash and delete-forever need publish rights, as the Trash
   page does (403 `auth.noPermission`).

@@ -88,13 +88,17 @@ final class EntryImports {
      * import. The uploads switch and the site's own hosts are read only when
      * the write asks for an import. {@code storedText} is the entry's current
      * text, scanned when an update asks for an import without sending text.
+     * {@code defaultImport} false makes the import a write gets without asking
+     * a no-op (a contributor's: adding media is a publisher's, spec 2026-11-21
+     * owner decisions, Task 3, fix round 1), so its external images stay linked.
      */
-    Plan plan(FieldErrors errors, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared, String storedText) {
+    Plan plan(FieldErrors errors, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared, String storedText,
+              boolean defaultImport) {
         // Spec 2026-11-07: a write that sends text imports unless it says
         // false. One that sends no text does not, unless asked: a status
         // change must not start fetching. An update's edits arrive here
         // already resolved into text.
-        boolean defaulted = body.importExternalImages() == null && body.text() != null;
+        boolean defaulted = defaultImport && body.importExternalImages() == null && body.text() != null;
         boolean importBody = Boolean.TRUE.equals(body.importExternalImages()) || defaulted;
         String featuredUrl = body.featuredImageUrl();
         if (body.featuredImageAlt() != null) {

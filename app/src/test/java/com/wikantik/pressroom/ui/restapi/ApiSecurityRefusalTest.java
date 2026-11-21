@@ -196,7 +196,7 @@ class ApiSecurityRefusalTest {
      * every entry write needed POST.
      */
     @Test
-    void aDraftOnlyMemberReachesAnEntryWriteAndTheHandlerHoldsThemToTheEditorsRules() throws Exception {
+    void aDraftOnlyMemberPassesTheInterceptorToAnEntryWrite() throws Exception {
         signInAsAlice();
         nameWeblogInPath("aliceblog");
         when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))

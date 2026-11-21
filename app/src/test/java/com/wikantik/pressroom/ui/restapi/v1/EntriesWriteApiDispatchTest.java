@@ -243,6 +243,20 @@ class EntriesWriteApiDispatchTest {
         assertEquals("PENDING", body(result).get("status").asString());
     }
 
+    /** Importing an image is adding media, a publisher's on the JSP side: refused before anything is fetched. */
+    @Test
+    void aContributorsWriteCannotImportAnImage() throws Exception {
+        signIn("dora", ApiToken.Role.POST);
+
+        MvcResult result = send("POST", ENTRIES,
+                "{\"title\":\"T\",\"text\":\"x\",\"featuredImageUrl\":\"https://img.example.com/a.jpg\"}");
+
+        assertEquals(403, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertEquals("entry.needsPublishRights", body(result).get("code").asString());
+        assertEquals("featuredImageUrl", body(result).get("errors").get(0).get("field").asString());
+        verify(tier.weblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
     @Test
     void aPublishersTokenStillPublishes() throws Exception {
         signIn("abe", ApiToken.Role.POST);

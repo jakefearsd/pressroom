@@ -66,6 +66,23 @@ class EntriesWriteApiPendingNoticeTest {
         assertNotNull(mail.onlyMessage());
     }
 
+    /**
+     * maiia holds no POST here (the permission stub answers yes only for the
+     * reviewer), so her publish is submitted for review by the contributor
+     * ceiling (spec 2026-11-21 owner decisions, Task 3), and the reviewers are
+     * told as for an explicit PENDING.
+     */
+    @Test
+    void aContributorsPublishSubmittedForReviewNotifiesReviewers() throws Exception {
+        f.mayPost = false;
+
+        f.send(post("/v1/weblogs/myblog/entries")
+                .content("{\"title\":\"t\",\"text\":\"x\",\"category\":\"Food\",\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isCreated());
+
+        assertNotNull(mail.onlyMessage());
+    }
+
     @Test
     void updatingAnEntryToPendingNotifiesReviewers() throws Exception {
         WeblogEntry entry = new WeblogEntry();

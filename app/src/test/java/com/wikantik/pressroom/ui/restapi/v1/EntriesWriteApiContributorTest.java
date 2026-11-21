@@ -1,18 +1,28 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.List;
+import com.wikantik.pressroom.business.MediaFileManager;
+import com.wikantik.pressroom.business.fetch.FetchedImage;
+import com.wikantik.pressroom.business.fetch.ImageKind;
+import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import tools.jackson.databind.JsonNode;
 
 import static com.wikantik.pressroom.ui.restapi.v1.EntriesWriteApiFixture.json;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -129,6 +139,109 @@ class EntriesWriteApiContributorTest {
     void sendingTheUnchangedPinIsNoRefusal() throws Exception {
         fx.send(post(ENTRIES).content("{\"title\":\"T\",\"text\":\"x\",\"pinned\":false}"))
                 .andExpect(status().isCreated());
+    }
+
+    /** As the editor's Publish with a blank time: submitted for review, not a 400 for the missing pubTime. */
+    @Test
+    void aCreateAskingToScheduleWithNoPubTimeIsSubmittedForReview() throws Exception {
+        JsonNode created = json(fx.send(post(ENTRIES)
+                        .content("{\"title\":\"T\",\"text\":\"x\",\"status\":\"SCHEDULED\"}"))
+                .andExpect(status().isCreated()));
+
+        assertEquals("PENDING", created.get("status").asString());
+    }
+
+    // ------------------------------------------------------------ images from other sites (fix round 1)
+
+    private static final String FAR_IMAGE = "https://img.example.com/pier.jpg";
+    private static final String TEXT_WITH_FAR_IMAGE = "A pier. ![pier](" + FAR_IMAGE + ")";
+
+    /**
+     * Stands up an import that would succeed: uploads on, the image served,
+     * a media library to store it in. A contributor must still fetch nothing:
+     * adding media takes POST on the JSP side, and the editor's save imports
+     * nothing.
+     */
+    private RemoteImageFetcher importsWouldSucceed() throws Exception {
+        RemoteImageFetcher fetcher = org.mockito.Mockito.mock(RemoteImageFetcher.class);
+        fx.controller.imageFetcher = fetcher;
+        MediaFileManager media = org.mockito.Mockito.mock(MediaFileManager.class);
+        when(fx.weblogger.getMediaFileManager()).thenReturn(media);
+        when(media.getDefaultMediaFileDirectory(fx.weblog))
+                .thenReturn(new MediaFileDirectory(fx.weblog, "default", null));
+        when(fx.urls.getWeblogURL(fx.weblog, null, true)).thenReturn("https://blog.example.com/myblog/");
+        when(fx.urls.getMediaFileURL(eq(fx.weblog), any(String.class), eq(true)))
+                .thenAnswer(inv -> "https://blog.example.com/myblog/mediaresource/" + inv.getArgument(1));
+        when(fetcher.fetch(eq(FAR_IMAGE), anyLong(), any())).thenReturn(new FetchedImage("pier.jpg", ImageKind.JPEG,
+                new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3}));
+        return fetcher;
+    }
+
+    private static MockedStatic<WebloggerRuntimeConfig> uploadsOn() {
+        MockedStatic<WebloggerRuntimeConfig> runtime = mockStatic(WebloggerRuntimeConfig.class);
+        runtime.when(() -> WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")).thenReturn(true);
+        runtime.when(() -> WebloggerRuntimeConfig.getProperty("uploads.file.maxsize")).thenReturn("2.00");
+        runtime.when(WebloggerRuntimeConfig::getAbsoluteContextURL).thenReturn("https://blog.example.com");
+        return runtime;
+    }
+
+    /** The default import is a no-op for a contributor: their text keeps linking the other site's image. */
+    @Test
+    void aContributorsTextKeepsExternalImagesLinkedAndNothingIsFetched() throws Exception {
+        MockedStatic<WebloggerRuntimeConfig> runtime = uploadsOn();
+        try {
+            RemoteImageFetcher fetcher = importsWouldSucceed();
+            stored("maiia", PubStatus.DRAFT);
+
+            JsonNode created = json(fx.send(post(ENTRIES).content("{\"title\":\"T\",\"text\":\""
+                    + TEXT_WITH_FAR_IMAGE + "\"}")).andExpect(status().isCreated()));
+            JsonNode updated = json(fx.send(patch(ENTRIES + "/e1").content("{\"text\":\""
+                    + TEXT_WITH_FAR_IMAGE + "\"}")).andExpect(status().isOk()));
+
+            assertEquals(TEXT_WITH_FAR_IMAGE, created.get("text").asString());
+            assertEquals(TEXT_WITH_FAR_IMAGE, updated.get("text").asString());
+            verify(fetcher, never()).fetch(any(), anyLong(), any());
+        } finally {
+            runtime.close();
+        }
+    }
+
+    /** Asking to import is asking to add media: refused, naming the field, before anything is fetched. */
+    @Test
+    void aContributorAskingToImportIsRefusedNamingTheField() throws Exception {
+        MockedStatic<WebloggerRuntimeConfig> runtime = uploadsOn();
+        try {
+            RemoteImageFetcher fetcher = importsWouldSucceed();
+            stored("maiia", PubStatus.DRAFT);
+            String featured = "\"featuredImageUrl\":\"" + FAR_IMAGE + "\"";
+            String explicit = "\"importExternalImages\":true";
+
+            for (String[] write : List.of(
+                    new String[] {"featuredImageUrl", "{\"title\":\"T\",\"text\":\"x\"," + featured + "}"},
+                    new String[] {"importExternalImages", "{\"title\":\"T\",\"text\":\""
+                            + TEXT_WITH_FAR_IMAGE + "\"," + explicit + "}"})) {
+                JsonNode created = forbidden(post(ENTRIES).content(write[1]));
+                assertEquals("entry.needsPublishRights", created.get("code").asString(), write[0]);
+                assertEquals(write[0], created.get("errors").get(0).get("field").asString());
+            }
+            for (String[] write : List.of(new String[] {"featuredImageUrl", "{" + featured + "}"},
+                    new String[] {"importExternalImages", "{" + explicit + "}"})) {
+                JsonNode updated = forbidden(patch(ENTRIES + "/e1").content(write[1]));
+                assertEquals("entry.needsPublishRights", updated.get("code").asString(), write[0]);
+                assertEquals(write[0], updated.get("errors").get(0).get("field").asString());
+            }
+            verify(fetcher, never()).fetch(any(), anyLong(), any());
+            nothingSaved();
+        } finally {
+            runtime.close();
+        }
+    }
+
+    /** Saying no to the import changes nothing a contributor may not change. */
+    @Test
+    void aContributorMayTurnTheImportOff() throws Exception {
+        fx.send(post(ENTRIES).content("{\"title\":\"T\",\"text\":\"" + TEXT_WITH_FAR_IMAGE
+                + "\",\"importExternalImages\":false}")).andExpect(status().isCreated());
     }
 
     // ------------------------------------------------------------ update

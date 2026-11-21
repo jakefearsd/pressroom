@@ -123,7 +123,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   scratch copy and again on the entry); update, trash and revision restore/keep need the caller's own
   `DRAFT`/`PENDING` entry (`requireChangeable`, a 403 `entry.notChangeable`: the caller can read the
   entry, so a 404 would hide nothing); changing `pinned` or `strand` is a 403
-  `entry.needsPublishRights` (`refusePublishersFields`, thrown before the import step). Preview needs
+  `entry.needsPublishRights` (`refusePublishersFields`, thrown before the import step), and so is
+  asking to import an image (`featuredImageUrl`, `importExternalImages: true`: adding media takes
+  POST on the JSP side); the default import is off for them (`EntryImports.plan`'s `defaultImport`),
+  so their external images stay linked. Preview needs
   only the weblog, as the editor's preview. `mayPublish` asks `UserManager` for `POST` and reads a
   failed check as no (fail closed). **One controller, not a draft-only twin**: the editor is one
   controller gated on `EDIT_DRAFT` deciding the status from the caller's permission, and a second

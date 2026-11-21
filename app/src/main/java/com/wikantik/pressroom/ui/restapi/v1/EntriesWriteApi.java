@@ -73,7 +73,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * (PENDING, as the editor's Publish button does for them); an update, a trash,
  * or a revision restore or keep needs an entry that is their own draft or
  * pending entry ({@code entry.notChangeable}, 403); and pinning or a strand
- * stays a publisher's ({@code entry.needsPublishRights}, 403). Preview renders
+ * stays a publisher's ({@code entry.needsPublishRights}, 403), as does importing
+ * an image (no default import for them: external images stay linked). Preview renders
  * text and changes nothing, so it needs only the entry's weblog, as the
  * editor's preview does. Restore and delete-forever take {@code POST}, as the
  * Trash page does, so they live in {@link EntriesTrashApi}: the declared
@@ -126,7 +127,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         checkWrite(errors, weblog, entry, body, Set.of(), mayPublish);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
-        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, Set.of(), null);
+        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, Set.of(), null, mayPublish);
         errors.throwIfAny();
 
         if (body.anchor() != null) {
@@ -203,7 +204,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         checkWrite(errors, weblog, entry, body, cleared, mayPublish);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
-        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, cleared, entry.getText());
+        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, cleared, entry.getText(), mayPublish);
         errors.throwIfAny();
 
         // The import step commits each image it stores; nothing has been
@@ -517,9 +518,22 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * contributor, and keeps what is stored. Over the API a contributor's
      * write that would change either is refused, naming the field; one that
      * sends the stored value back (a view read and returned) changes nothing
-     * and passes. Thrown, not collected: it is a 403, not a field problem.
+     * and passes. So is asking to import an image ({@code featuredImageUrl},
+     * {@code importExternalImages: true}): that adds media, which takes POST
+     * on the JSP side, and the editor's save imports nothing; the import a
+     * write gets without asking is a no-op for them instead
+     * ({@link EntryImports#plan}). Thrown, not collected: it is a 403, not a
+     * field problem, and it comes before anything is fetched.
      */
     private static void refusePublishersFields(WeblogEntry entry, EntryDtos.EntryWrite body, Set<String> cleared) {
+        if (body.featuredImageUrl() != null) {
+            throw ApiException.problemOnField("featuredImageUrl", ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS,
+                    "featuredImageUrl");
+        }
+        if (Boolean.TRUE.equals(body.importExternalImages())) {
+            throw ApiException.problemOnField("importExternalImages", ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS,
+                    "importExternalImages");
+        }
         if (body.pinned() != null && !body.pinned().equals(entry.getPinned())) {
             throw ApiException.problemOnField(EntryPinRules.PINNED, ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS,
                     EntryPinRules.PINNED);

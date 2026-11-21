@@ -75,7 +75,7 @@ public enum ProblemCode {
      * or pending entry, as the entry editor refuses.
      */
     ENTRY_NOT_CHANGEABLE("entry.notChangeable", ProblemType.FORBIDDEN, 0),
-    /** A member without publish rights asked to change field {@code {0}} (pinned, strand), a publisher's. */
+    /** A member without publish rights asked for field {@code {0}} (pinned, strand, an image import), a publisher's. */
     ENTRY_NEEDS_PUBLISH_RIGHTS("entry.needsPublishRights", ProblemType.FORBIDDEN, 1),
     /** The page is in the trash; restore it before changing it. */
     PAGE_IN_TRASH("page.trashed", ProblemType.CONFLICT, 0),
