@@ -184,7 +184,7 @@ public class TokensApi {
     private User requireUser() throws WebloggerException {
         User user = currentUser();
         if (user == null) {
-            throw ApiException.unauthorized("Authentication required.");
+            throw ApiException.authenticationRequired();
         }
         // A reader (SSO sign-in) holds no global login action: it may not use
         // the API, and so may not mint, list or revoke tokens.
@@ -228,7 +228,7 @@ public class TokensApi {
     private static void requireCredentialCaller(String tokenDetail) {
         switch (Caller.current().kind()) {
             case TOKEN -> throw ApiException.forbidden(tokenDetail);
-            case ANONYMOUS, UNRECOGNISED -> throw ApiException.unauthorized("Authentication required.");
+            case ANONYMOUS, UNRECOGNISED -> throw ApiException.authenticationRequired();
             case PASSWORD, SESSION -> { }
         }
     }

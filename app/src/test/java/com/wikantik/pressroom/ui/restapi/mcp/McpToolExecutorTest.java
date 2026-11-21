@@ -246,7 +246,8 @@ class McpToolExecutorTest {
      * (README, Errors), not a bare {status,title} with an HTTP reason phrase.
      */
     private static final String OPAQUE_500 = "{\"type\":\"https://pressroom.invalid/problems/internal-error\","
-            + "\"title\":\"Internal error\",\"status\":500,\"detail\":\"The request could not be completed.\"}";
+            + "\"title\":\"Internal error\",\"status\":500,\"detail\":\"The request could not be completed.\","
+            + "\"code\":\"server.internalError\"}";
 
     /** A refusal MCP makes itself is the same problem shape a REST 400 is: a type, its title, the instance. */
     @Test
@@ -371,7 +372,7 @@ class McpToolExecutorTest {
         CallToolResult result = call("entries", Map.of("action", "list", "weblog", "b"));
 
         assertTrue(result.isError());
-        assertEquals("{\"type\":\"about:blank\",\"title\":\"Method Not Allowed\",\"status\":405}", text(result));
+        assertEquals("{\"type\":\"about:blank\",\"title\":\"Method Not Allowed\",\"status\":405,\"code\":\"http.error\"}", text(result));
     }
 
     @Test
@@ -536,7 +537,7 @@ class McpToolExecutorTest {
 
         nextReply = new ApiReply(404, "application/json", "  ");
         CallToolResult blank = call("entries", Map.of("action", "list", "weblog", "b"));
-        assertEquals("{\"type\":\"about:blank\",\"title\":\"Not Found\",\"status\":404}", text(blank));
+        assertEquals("{\"type\":\"about:blank\",\"title\":\"Not Found\",\"status\":404,\"code\":\"http.error\"}", text(blank));
     }
 
     @Test

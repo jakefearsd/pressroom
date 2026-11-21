@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * The problems of several independent checks, reported together: a write
@@ -20,7 +19,7 @@ public final class FieldErrors {
         void run() throws E;
     }
 
-    private final List<ApiProblem.FieldError> errors = new ArrayList<>();
+    private final List<ApiException.FieldProblem> errors = new ArrayList<>();
 
     /**
      * Runs {@code check} and records a 400 it throws. Errors the exception
@@ -34,8 +33,7 @@ public final class FieldErrors {
             if (e.getStatus() != 400) {
                 throw e;
             }
-            List<ApiProblem.FieldError> named = e.getFieldErrors();
-            errors.addAll(named.isEmpty() ? List.of(new ApiProblem.FieldError(field, e.getMessage())) : named);
+            record(field, e);
         }
     }
 
@@ -55,14 +53,25 @@ public final class FieldErrors {
             if (e.getStatus() != 400) {
                 throw e;
             }
-            List<ApiProblem.FieldError> named = e.getFieldErrors();
-            errors.addAll(named.isEmpty() ? List.of(new ApiProblem.FieldError(field, e.getMessage())) : named);
+            record(field, e);
             return Optional.empty();
         }
     }
 
+    /** Keeps the problems a 400 names, or the 400 itself against {@code field} when it names none. */
+    private void record(String field, ApiException e) {
+        List<ApiException.FieldProblem> named = e.fieldProblems();
+        errors.addAll(named.isEmpty() ? List.of(e.asFieldProblem(field)) : named);
+    }
+
+    /** An unkeyed problem: a literal message, under the generic {@code request.invalid} code. */
     public void add(String field, String message) {
-        errors.add(new ApiProblem.FieldError(field, message));
+        errors.add(ApiException.FieldProblem.literal(field, ProblemCode.REQUEST_INVALID, message));
+    }
+
+    /** A keyed problem: {@code code}'s text with {@code args}, rendered in the caller's language. */
+    public void add(String field, ProblemCode code, String... args) {
+        errors.add(ApiException.FieldProblem.keyed(field, code, args));
     }
 
     /**
@@ -72,21 +81,35 @@ public final class FieldErrors {
      * itself repeats a field on purpose (one error per bad id in a list).
      */
     public void addIfAbsent(String field, String message) {
-        if (errors.stream().noneMatch(known -> field.equals(known.field()))) {
+        if (absent(field)) {
             add(field, message);
         }
+    }
+
+    /** As {@link #addIfAbsent(String, String)}, for a keyed problem. */
+    public void addIfAbsent(String field, ProblemCode code, String... args) {
+        if (absent(field)) {
+            add(field, code, args);
+        }
+    }
+
+    private boolean absent(String field) {
+        return errors.stream().noneMatch(known -> field.equals(known.field()));
     }
 
     public boolean isEmpty() {
         return errors.isEmpty();
     }
 
-    /** One 400 carrying every recorded problem, its detail their messages joined; nothing when there are none. */
+    /**
+     * One 400 carrying every recorded problem, its detail their messages
+     * joined by one space, each rendered in the caller's language; nothing
+     * when there are none. Its code is the one problem's code, or {@code
+     * request.invalidFields} for several.
+     */
     public void throwIfAny() {
         if (!errors.isEmpty()) {
-            throw ApiException.validation(
-                    errors.stream().map(ApiProblem.FieldError::message).collect(Collectors.joining(" ")),
-                    List.copyOf(errors));
+            throw ApiException.fieldsProblem(errors);
         }
     }
 }

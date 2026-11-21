@@ -245,7 +245,7 @@ public final class McpToolExecutor {
             return ApiException.internalError();
         }
         HttpStatus known = HttpStatus.resolve(status);
-        return new ApiException(status, "about:blank", known == null ? "Error" : known.getReasonPhrase(), null);
+        return ApiException.httpError(status, known == null ? "Error" : known.getReasonPhrase());
     }
 
     /** The MCP request's own path, as REST's {@code instance} is the path the client called; null when unknown. */

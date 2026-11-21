@@ -69,6 +69,25 @@ class DispatchedRequestTest {
         assertEquals(-1, req.getIntHeader("Content-Length"));
     }
 
+    /**
+     * An MCP tool error is always English (spec 2026-11-20-api-contract-design,
+     * Task 1, criterion 7): ApiExceptionHandler localises a problem from the
+     * Accept-Language header alone, and the forwarded request never carries
+     * the MCP client's. A pin on what the code already does, so it passed
+     * when written.
+     */
+    @Test
+    void theMcpClientsAcceptLanguageNeverReachesTheRoute() {
+        MockHttpServletRequest mcp = mcpRequest();
+        mcp.addHeader("Accept-Language", "fr-CA,fr;q=0.9");
+        DispatchedRequest req = new DispatchedRequest(mcp, call("GET", null));
+
+        assertNull(req.getHeader("Accept-Language"));
+        assertFalse(req.getHeaders("Accept-Language").hasMoreElements());
+        assertTrue(Collections.list(req.getHeaderNames()).stream()
+                .noneMatch(h -> h.equalsIgnoreCase("Accept-Language")));
+    }
+
     @Test
     void theHeadersItDoesCarryDescribeTheBody() {
         DispatchedRequest req = new DispatchedRequest(mcpRequest(), call("POST", "{\"title\":\"é\"}"));

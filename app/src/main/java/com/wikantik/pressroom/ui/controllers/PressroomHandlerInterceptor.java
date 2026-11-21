@@ -115,7 +115,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
 
         if (authenticatedUser == null) {
             log.debug("DENIED: required user not found, redirecting to login");
-            return deny(apiHandler, () -> ApiException.unauthorized("Authentication required."),
+            return deny(apiHandler, ApiException::authenticationRequired,
                     LOGIN_URL, request, response);
         }
 

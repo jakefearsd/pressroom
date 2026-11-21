@@ -17,6 +17,7 @@
 */
 package com.wikantik.pressroom.ui;
 
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -217,6 +218,10 @@ public class MessageKeyTest {
      *       {@code MenuTab}/{@code MenuTabItem} {@code key}, which the JSPs render
      *       as {@code <spring:message code="${tab.key}">} -- see {@code
      *       tiles/bannerStatus.jsp} and {@code admin/GlobalConfig.jsp}.</li>
+     *   <li>{@code ProblemCode}: each API problem code names its {@code
+     *       api.problem.*} key, which the API renders by the code, never by
+     *       a literal key ({@code ProblemCodeCatalogTest} holds every such key
+     *       to a code, so none is orphaned unseen).</li>
      * </ul>
      */
     @Test
@@ -354,6 +359,9 @@ public class MessageKeyTest {
         collectAttribute(keys, Paths.get(RESOURCE_ROOT, "config/runtimeConfigDefs.xml"), "key");
         collectAttribute(keys, Paths.get(RESOURCE_ROOT, "ui/menu/admin-menu.xml"), "name");
         collectAttribute(keys, Paths.get(RESOURCE_ROOT, "ui/menu/editor-menu.xml"), "name");
+        for (ProblemCode code : ProblemCode.values()) {
+            keys.add(code.key());
+        }
         return keys;
     }
 

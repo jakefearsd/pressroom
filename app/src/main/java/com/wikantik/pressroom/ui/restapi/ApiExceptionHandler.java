@@ -1,9 +1,14 @@
 package com.wikantik.pressroom.ui.restapi;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Locale;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
@@ -16,17 +21,52 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 /**
  * The only place an API error body is built. Scoped to the restapi package so
  * it cannot change how the JSP controllers report failures.
+ *
+ * <p>A keyed problem's text is rendered in the language the request's
+ * {@code Accept-Language} header asks for, when a bundle has it
+ * ({@link ProblemMessages#localeFor}); a literal detail stays English. No
+ * {@code Content-Language} is sent: a matched language can still fall back
+ * to English key by key, so it would sometimes be false.
  */
 @RestControllerAdvice(basePackageClasses = ApiExceptionHandler.class)
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
+    private final MessageSource messages;
+
+    /** Renders from {@code ApplicationResources}, as the application's own message source does. */
+    public ApiExceptionHandler() {
+        this(applicationResources());
+    }
+
+    @Autowired
+    public ApiExceptionHandler(MessageSource messages) {
+        this.messages = messages;
+    }
+
+    private static MessageSource applicationResources() {
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("ApplicationResources");
+        source.setDefaultEncoding("UTF-8");
+        return source;
+    }
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiProblem> handleApiException(ApiException ex, HttpServletRequest request) {
         return ResponseEntity.status(ex.getStatus())
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                .body(ex.toProblem(request.getRequestURI()));
+                .body(problem(ex, request));
+    }
+
+    /**
+     * {@code ex} for this request: keyed text in the header's language. The
+     * header itself, never {@code request.getLocale()}, which Tomcat answers
+     * with the JVM default when the header is absent.
+     */
+    private ApiProblem problem(ApiException ex, HttpServletRequest request) {
+        Locale locale = ProblemMessages.localeFor(request.getHeader(HttpHeaders.ACCEPT_LANGUAGE));
+        return ex.toProblem(request.getRequestURI(), ProblemMessages.renderer(messages, locale));
     }
 
     /**
@@ -43,8 +83,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiProblem> handleMalformedBody(HttpMessageNotReadableException ex,
                                                            HttpServletRequest request) {
         log.info("Malformed request body at {}: {}", request.getRequestURI(), ex.getMessage());
-        return handleApiException(
-                ApiException.badRequest("The request body could not be parsed as JSON."), request);
+        return handleApiException(ApiException.problem(ProblemCode.REQUEST_MALFORMED_BODY), request);
     }
 
     /**
@@ -68,22 +107,21 @@ public class ApiExceptionHandler {
                                                           HttpServletRequest request) {
         log.info("Type mismatch for parameter '{}' at {}", ex.getName(), request.getRequestURI());
         return handleApiException(
-                ApiException.invalidField(ex.getName(), ex.getName() + " has an invalid value" + takes(ex.getRequiredType())),
-                request);
+                ApiException.problemOnField(ex.getName(), takes(ex.getRequiredType()), ex.getName()), request);
     }
 
-    /** The rest of the type-mismatch sentence: what the parameter takes, when its type says so. */
-    private static String takes(Class<?> type) {
+    /** The type-mismatch sentence: what the parameter takes, when its type says so. */
+    private static ProblemCode takes(Class<?> type) {
         if (type == int.class || type == Integer.class || type == long.class || type == Long.class) {
-            return "; it must be a whole number.";
+            return ProblemCode.PARAMETER_NOT_WHOLE_NUMBER;
         }
         if (type == double.class || type == Double.class || type == float.class || type == Float.class) {
-            return "; it must be a number.";
+            return ProblemCode.PARAMETER_NOT_NUMBER;
         }
         if (type == boolean.class || type == Boolean.class) {
-            return "; it must be true or false.";
+            return ProblemCode.PARAMETER_NOT_BOOLEAN;
         }
-        return ".";
+        return ProblemCode.PARAMETER_INVALID_VALUE;
     }
 
     /**
@@ -102,8 +140,7 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(503)
                 .header("Retry-After", Integer.toString(Math.max(1, ex.getTimeoutSeconds())))
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                .body(ApiException.busy("Another save of this weblog is in progress; retry shortly.")
-                        .toProblem(request.getRequestURI()));
+                .body(problem(ApiException.problem(ProblemCode.SERVER_BUSY), request));
     }
 
     /**

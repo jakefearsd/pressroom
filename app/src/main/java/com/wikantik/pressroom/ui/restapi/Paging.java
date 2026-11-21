@@ -11,12 +11,11 @@ public final class Paging {
      * or as "no limit", naming the field that is wrong: limit first when both are.
      */
     public static void requireRange(int limit, int offset) {
-        String message = "limit must be at least 1 and offset must not be negative.";
         if (limit < 1) {
-            throw ApiException.invalidField("limit", message);
+            throw ApiException.problemOnField("limit", ProblemCode.PAGING_INVALID_RANGE);
         }
         if (offset < 0) {
-            throw ApiException.invalidField("offset", message);
+            throw ApiException.problemOnField("offset", ProblemCode.PAGING_INVALID_RANGE);
         }
     }
 }

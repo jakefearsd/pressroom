@@ -69,7 +69,7 @@ public class MetaApi {
     public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) throws WebloggerException {
         User user = (User) request.getAttribute("authenticatedUser");
         if (user == null) {
-            throw ApiException.unauthorized("Authentication required.");
+            throw ApiException.authenticationRequired();
         }
         ApiPrincipal principal = Caller.current().principal();
         Map<String, Object> body = new LinkedHashMap<>();
