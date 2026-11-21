@@ -460,6 +460,28 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
         assertEquals("photo.jpg", bean.getName());
     }
 
+    /**
+     * Characterisation (passes against the old code too): the manager now
+     * signals a refusal it can name with a {@code CropRefusedException}, and
+     * the editor still answers every crop failure with the one message.
+     */
+    @Test
+    void aCropTheManagerRefusesWithAReasonIsReportedWithTheSameMessage() throws Exception {
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.CropRefusedException("off the image",
+                        com.wikantik.pressroom.business.CropRefusedException.Reason.OUTSIDE_IMAGE, 300, 200, null))
+                .when(weblogger.getMediaFileManager())
+                .cropMediaFile(any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt());
+
+        String view = controller.crop(request, model, bean, "file-1", 600, 400, 100, 100);
+
+        assertEquals(".MediaFileEdit", view);
+        assertTrue(errors(model).contains("mediaFileEdit.crop.error"), "Got: " + errors(model));
+        assertTrue(messages(model).isEmpty());
+    }
+
     @Test
     void croppingAFileFromAnotherWeblogIsRefusedBeforeAnyWorkOrLeak() throws Exception {
         // getMediaFile is a global by-id lookup; a weblog-A editor supplying

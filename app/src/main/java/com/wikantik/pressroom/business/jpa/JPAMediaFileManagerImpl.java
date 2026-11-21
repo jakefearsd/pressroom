@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.ContentHashes;
+import com.wikantik.pressroom.business.CropRefusedException;
 import com.wikantik.pressroom.business.ExifSupport;
 import com.wikantik.pressroom.business.FileContentManager;
 import com.wikantik.pressroom.business.ImageDecoding;
@@ -804,9 +805,10 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
         if (!mediaFile.isImageFile()
                 || !RenditionSupport.isLadderEligible(mediaFile.getContentType())) {
-            throw new WebloggerException("Media file " + mediaFile.getId()
+            throw new CropRefusedException("Media file " + mediaFile.getId()
                     + " cannot be cropped: content type " + mediaFile.getContentType()
-                    + " has no server-side re-encode path");
+                    + " has no server-side re-encode path",
+                    CropRefusedException.Reason.NOT_CROPPABLE, 0, 0, null);
         }
 
         FileContentManager cmgr = pressroom.getFileContentManager();
@@ -829,8 +831,17 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             int orientedWidth = img.getWidth();
             int orientedHeight = img.getHeight();
 
-            Rectangle rect = RenditionSupport.clampCropRect(
-                    orientedWidth, orientedHeight, x, y, width, height);
+            Rectangle rect;
+            try {
+                rect = RenditionSupport.clampCropRect(
+                        orientedWidth, orientedHeight, x, y, width, height);
+            } catch (IllegalArgumentException e) {
+                // The image decoded to a positive size, so the only way in is a
+                // rectangle that does not overlap it: the caller's mistake.
+                throw new CropRefusedException("Media file " + mediaFile.getId()
+                        + ": " + e.getMessage(), CropRefusedException.Reason.OUTSIDE_IMAGE,
+                        orientedWidth, orientedHeight, e);
+            }
             BufferedImage cropped = RenditionSupport.crop(img, rect);
             byte[] encoded = RenditionSupport.encode(cropped, mediaFile.getContentType());
 

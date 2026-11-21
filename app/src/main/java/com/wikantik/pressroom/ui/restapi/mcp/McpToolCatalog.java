@@ -87,6 +87,9 @@ public final class McpToolCatalog {
                             + "featuredImageId.", "POST " + W + "/media/imports"),
                     action("update", "Change alt text, focal point, name or directory.",
                             "PATCH " + W + "/media/{id}"),
+                    action("crop", "Crop an image to a rectangle (x, y, width, height). It cannot be undone: the "
+                            + "original is replaced. Send expectedWidth and expectedHeight from media get.",
+                            "POST " + W + "/media/{id}/crop"),
                     action("delete", "Delete a media file.", "DELETE " + W + "/media/{id}"),
                     action("list_directories", "List media directories.", "GET " + W + "/media/directories"),
                     action("create_directory", "Create a media directory.", "POST " + W + "/media/directories")),

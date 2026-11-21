@@ -221,8 +221,12 @@ public interface MediaFileManager {
      * EXIF block. A focal point, if set, is remapped into the cropped
      * coordinate space.
      *
-     * @throws WebloggerException when the file is not a croppable image,
-     *         the rectangle lies outside the image, or storage fails.
+     * <p>The weblog's {@code lastModified} moves, so rendered pages carrying
+     * the old rendition sizes expire.
+     *
+     * @throws CropRefusedException when the file is not a croppable image or
+     *         the rectangle lies outside it (the caller's mistakes, each with a reason)
+     * @throws WebloggerException when storage fails or the image cannot be read.
      */
     void cropMediaFile(Weblog weblog, MediaFile mediaFile,
             int x, int y, int width, int height) throws WebloggerException;

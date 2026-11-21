@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.CropRefusedException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -27,6 +28,7 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.MediaImports;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import com.wikantik.pressroom.util.PressroomMessages;
@@ -234,6 +236,68 @@ public class MediaApi extends MediaApiBase implements UISecurityEnforced {
 
         weblogger.flush();
         return MediaDtos.toView(file, url(weblog, file));
+    }
+
+    /**
+     * Crops an image destructively, as the media editor does: the stored
+     * original is re-encoded to the rectangle and every derivative rebuilt.
+     * The file is looked up through the ownership check before anything else;
+     * the body is validated whole (every missing field named) and the size the
+     * caller last saw compared with the stored one BEFORE the manager runs, so
+     * a retried or stale crop changes nothing. The manager's typed refusals
+     * ({@link CropRefusedException}) are the caller's mistakes; any other
+     * failure is a 500 through the generic handler, its cause only in the log.
+     */
+    @Operation(operationId = "mediaCrop", description = "Crops an image to a rectangle. It cannot be undone: the "
+            + "original is replaced. Send expectedWidth and expectedHeight from the file's last read.")
+    @PostMapping("/{id}/crop")
+    public MediaDtos.MediaView crop(HttpServletRequest request, @PathVariable("id") String id,
+            @RequestBody MediaDtos.MediaCrop body) throws WebloggerException {
+        Weblog weblog = requireActionWeblog(request);
+        MediaFile file = requireMedia(request, id);
+        requireCropRectangle(body);
+        if (body.expectedWidth() != null && body.expectedWidth() != file.getWidth()
+                || body.expectedHeight() != null && body.expectedHeight() != file.getHeight()) {
+            throw ApiException.problem(ProblemCode.MEDIA_CROP_STALE,
+                    String.valueOf(file.getWidth()), String.valueOf(file.getHeight()));
+        }
+        try {
+            weblogger.getMediaFileManager().cropMediaFile(
+                    weblog, file, body.x(), body.y(), body.width(), body.height());
+        } catch (CropRefusedException refused) {
+            throw cropProblem(refused, file, body);
+        }
+        weblogger.flush();
+        return MediaDtos.toView(file, url(weblog, file));
+    }
+
+    /** Every required rectangle field present and every size at least 1, all problems at once. */
+    private static void requireCropRectangle(MediaDtos.MediaCrop body) {
+        FieldErrors errors = new FieldErrors();
+        requireCropField(errors, "x", body.x(), false);
+        requireCropField(errors, "y", body.y(), false);
+        requireCropField(errors, "width", body.width(), true);
+        requireCropField(errors, "height", body.height(), true);
+        errors.throwIfAny();
+    }
+
+    private static void requireCropField(FieldErrors errors, String field, Integer value, boolean size) {
+        if (value == null) {
+            errors.add(field, ProblemCode.FIELD_REQUIRED, field);
+        } else if (size && value < 1) {
+            errors.add(field, ProblemCode.MEDIA_CROP_SIZE_INVALID, field);
+        }
+    }
+
+    private static ApiException cropProblem(CropRefusedException refused, MediaFile file, MediaDtos.MediaCrop body) {
+        return switch (refused.reason()) {
+            case NOT_CROPPABLE -> ApiException.problem(ProblemCode.MEDIA_NOT_CROPPABLE, refused,
+                    StringUtils.defaultIfBlank(file.getContentType(), "of an unknown type"));
+            case OUTSIDE_IMAGE -> ApiException.problem(ProblemCode.MEDIA_CROP_OUTSIDE, refused,
+                    String.valueOf(body.x()), String.valueOf(body.y()), String.valueOf(body.width()),
+                    String.valueOf(body.height()), String.valueOf(refused.imageWidth()),
+                    String.valueOf(refused.imageHeight()));
+        };
     }
 
     @Operation(operationId = "mediaDelete")

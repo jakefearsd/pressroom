@@ -85,6 +85,9 @@ Additive or narrower changes:
   [Categories and tags](#categories-and-tags).
 - Media names are judged more strictly: no slash inside a directory name, no
   two files of one name in a directory. See [Media](#media).
+- New: `POST /api/v1/weblogs/{handle}/media/{id}/crop` and the MCP `media`
+  `crop` action. It cannot be undone. See [Cropping an image](#cropping-an-image).
+- The media editor's crop now expires the weblog's rendered pages, as the API's does.
 - `emailAddress` on the admin user routes is judged as the admin UI judges
   it, and `PATCH /api/v1/admin/config` applies the Global Config screen's
   rules. See [Site administration](#site-administration).
@@ -608,6 +611,10 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `media.importRefused` | 400 | `invalid-request` | A media import could not fetch or store the image; `detail` says why. Text from the import step. |
 | `media.notFound` | 404 | `not-found` | No media file of the weblog has this id. |
 | `media.nameInUse` | 409 | `conflict` | A media file's new `name` is held by another file in the directory it will be in. |
+| `media.notCroppable` | 409 | `conflict` | A crop was asked of a file that is not a JPEG or PNG image. |
+| `media.cropOutside` | 400 | `invalid-request` | The crop rectangle does not overlap the image. |
+| `media.cropSizeInvalid` | 400 | `invalid-request` | A crop's `width` or `height` is below 1. |
+| `media.cropStale` | 409 | `conflict` | The `expectedWidth`/`expectedHeight` sent is not the image's size now. |
 | `directory.nameInvalid` | 400 | `invalid-request` | A directory `name` contains a slash (one leading slash is dropped). |
 | `directory.notFound` | 404 | `not-found` | No media directory of the weblog has this id. |
 | `directory.nameReserved` | 400 | `invalid-request` | A directory may not be named `default`. |
@@ -709,7 +716,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). Also the entry write's own refusals of a member without publish rights: `entry.notChangeable` (not their own DRAFT or PENDING entry) and `entry.needsPublishRights` (a field only a publisher may set; see [Entries](#entries)). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)), a redirect whose source another rule holds (`redirect.sourceInUse`), a media file `name` another file of the directory holds (`media.nameInUse`). |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)), a redirect whose source another rule holds (`redirect.sourceInUse`), a media file `name` another file of the directory holds (`media.nameInUse`), a crop of a file that is not a JPEG or PNG (`media.notCroppable`) or of a size the file no longer has (`media.cropStale`). |
 | 413 | A JSON request body that declares a length over 4,048,576 bytes (room for a 1,000,000-character entry in 3-byte characters plus 1 MiB for the other fields; `/api/mcp` has the same limit): a problem body whose `type` ends in `/too-large`, sent before anything reads the body. A body that declares no length (chunked) is read up to the same cap and then refused as an unreadable body (400). Uploads are not held to it. A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB) is also a 413, but plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 406 | An `Accept` the API cannot answer (`text/html`, say). A problem body (`type` ending in `/not-acceptable`), written as `application/problem+json` regardless. |
 | 415 | A JSON route sent a body in another media type (`application/x-www-form-urlencoded`, `text/plain`): a problem body whose `type` ends in `/unsupported-media-type`. `POST .../media` without a `multipart/form-data` body is also 415, but that one is plain `application/json`, not a problem body — see the note above. |
@@ -1290,6 +1297,7 @@ GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
 PATCH  /api/v1/weblogs/{handle}/media/{id}
+POST   /api/v1/weblogs/{handle}/media/{id}/crop   crop an image (cannot be undone)
 DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
@@ -1374,6 +1382,34 @@ existing focal point and is a 400 on a file that has none), `name` (present-but-
 stored — unlike `altText`, there is no legitimate "deliberately unnamed"
 file), and `directoryId` (moves the file; a foreign or unknown directory id
 is a 404, checked before anything else in the request is applied).
+
+### Cropping an image
+
+`POST .../media/{id}/crop` crops an image to a rectangle, as the media editor's
+crop does. **It cannot be undone:** the stored original is re-encoded to the
+rectangle and every thumbnail and rendition is rebuilt, so the pixels outside
+it are gone. Rendered pages expire at once, so they show the new sizes.
+
+```json
+{"x": 10, "y": 20, "width": 800, "height": 600, "expectedWidth": 1600, "expectedHeight": 1200}
+```
+
+`x`, `y`, `width` and `height` are required whole pixels of the image as it
+is displayed (rotated as its EXIF orientation says, as a browser shows it);
+`width` and `height` are at least 1. A rectangle that overshoots the image is
+trimmed to it. **Send `expectedWidth` and `expectedHeight` from `media get`**:
+the crop runs only if the file is still that size, so a retried or stale
+request cannot crop a file twice (409 `media.cropStale`, whose `detail` gives
+the current size). The answer is the file's `MediaView` after the crop: new
+`width`, `height`, `length`, `blurhash`, and a focal point moved to keep
+pointing at the same pixels.
+
+Only JPEG and PNG files can be cropped; a GIF, a WebP or anything else is a 409
+`media.notCroppable` naming its type, and nothing changes. A rectangle that
+does not overlap the image is a 400 `media.cropOutside` naming the rectangle
+and the image's size, a missing field a 400 `field.required` on each, and a
+size below 1 a 400 `media.cropSizeInvalid`. A failure to store the result is a
+500. In the MCP endpoint this is `media` with `action: "crop"`.
 
 ## Pages
 
@@ -2168,7 +2204,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `weblogs` | `list`, `get`, `create`, `update`, `list_members` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
-| `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
+| `media` | `list`, `get`, `import`, `update`, `crop`, `delete`, `list_directories`, `create_directory` |
 | `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |

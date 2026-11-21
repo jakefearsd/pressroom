@@ -687,3 +687,15 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
   secret out by construction; a controller never holds a second logger (`MoreThanOneLogger`).
 - **The API never changes an agent** (`AdminAccountGuard.requireNotAgent`); `kind` is reported by
   `/me` and the admin users list.
+
+## Cropping an image (2026-11-21)
+
+`POST /v1/weblogs/{handle}/media/{id}/crop` is `MediaApi.crop` (`MediaDtos.MediaCrop`; matrix row equal
+to `PATCH .../media/{id}`). The manager signals the two caller mistakes with `CropRefusedException`
+(`Reason.NOT_CROPPABLE` -> 409 `media.notCroppable`, `OUTSIDE_IMAGE` -> 400 `media.cropOutside`, which
+carries the displayed image size); every other `WebloggerException` stays the opaque 500. Never map by
+message. The size guard (`expectedWidth`/`expectedHeight`, 409 `media.cropStale`) runs in the controller
+before the manager, as does the rectangle validation. Spec decision 13 was overruled: a crop touches
+the weblog (`saveWeblog` -> `lastModified`) so rendered pages expire. `cropMediaFile` already did this for
+both surfaces, so the JSP crop needed no change; `MediaFileCropTest.aCropMovesTheWeblogsLastModified...`
+pins it (red when the `saveWeblog` call is removed).

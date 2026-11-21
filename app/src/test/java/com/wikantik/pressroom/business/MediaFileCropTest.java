@@ -352,6 +352,55 @@ public class MediaFileCropTest {
     }
 
     /**
+     * Owner ruling 2026-11-21: a crop expires the rendered pages by moving the
+     * weblog's lastModified, on every surface that crops (the JSP editor and
+     * the API both go through this method). Pages carry the old rendition
+     * sizes until the stamp moves.
+     */
+    @Test
+    public void aCropMovesTheWeblogsLastModifiedSoRenderedPagesExpire() throws Exception {
+        MediaFile mediaFile = uploadResource("crop-stamp.jpg", "/hawk-exif.jpg");
+        weblog = TestUtils.getManagedWebsite(weblog);
+        java.util.Date before = weblog.getLastModified();
+
+        MediaFile managed = mfMgr.getMediaFile(mediaFile.getId());
+        mfMgr.cropMediaFile(weblog, managed, 5, 5, 488, 300);
+        TestUtils.endSession(true);
+
+        java.util.Date after = TestUtils.getManagedWebsite(weblog).getLastModified();
+        assertTrue(after.after(before), "the weblog's lastModified must move: " + before + " -> " + after);
+    }
+
+    /** A GIF is refused as NOT_CROPPABLE, a typed refusal the API keys on (never the message). */
+    @Test
+    public void aFormatWithoutAReencodePathIsARefusalWithAReason() throws Exception {
+        BufferedImage img = new BufferedImage(300, 200, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "gif", baos);
+        MediaFile gif = upload("crop-reason.gif", "image/gif", new ByteArrayInputStream(baos.toByteArray()));
+
+        weblog = TestUtils.getManagedWebsite(weblog);
+        MediaFile managed = mfMgr.getMediaFile(gif.getId());
+        CropRefusedException refused = assertThrows(CropRefusedException.class,
+                () -> mfMgr.cropMediaFile(weblog, managed, 0, 0, 100, 100));
+        assertEquals(CropRefusedException.Reason.NOT_CROPPABLE, refused.reason());
+    }
+
+    /** A rectangle off the image is OUTSIDE_IMAGE and carries the displayed size. */
+    @Test
+    public void aRectangleOffTheImageIsARefusalThatCarriesTheImageSize() throws Exception {
+        MediaFile mediaFile = uploadResource("crop-off.jpg", "/hawk-exif.jpg");
+
+        weblog = TestUtils.getManagedWebsite(weblog);
+        MediaFile managed = mfMgr.getMediaFile(mediaFile.getId());
+        CropRefusedException refused = assertThrows(CropRefusedException.class,
+                () -> mfMgr.cropMediaFile(weblog, managed, 600, 400, 100, 100));
+        assertEquals(CropRefusedException.Reason.OUTSIDE_IMAGE, refused.reason());
+        assertEquals(500, refused.imageWidth());
+        assertEquals(373, refused.imageHeight());
+    }
+
+    /**
      * Explicit cross-weblog authorization boundary (the same one f9e3e8143
      * added to MediaResourceServlet): cropping must be refused because the
      * file belongs to another weblog -- by the ownership check itself, not

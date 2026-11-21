@@ -71,6 +71,23 @@ public final class MediaDtos {
     }
 
     /**
+     * The body of POST /media/{id}/crop. The rectangle is in pixels of the
+     * displayed (orientation-corrected) image, as the editor draws it; one that
+     * overshoots the image is clamped. Components are boxed so a missing one is
+     * a named 400, not a silent 0.
+     */
+    public record MediaCrop(
+            @Schema(description = "Left edge of the crop, in pixels of the displayed image. Required.") Integer x,
+            @Schema(description = "Top edge of the crop, in pixels of the displayed image. Required.") Integer y,
+            @Schema(description = "Width of the crop in pixels; at least 1. Required.") Integer width,
+            @Schema(description = "Height of the crop in pixels; at least 1. Required.") Integer height,
+            @Schema(description = "The file's width as media get reported it. When sent, the crop runs only if it "
+                    + "still matches, so a retry cannot crop twice.") Integer expectedWidth,
+            @Schema(description = "The file's height as media get reported it; checked as expectedWidth is.")
+            Integer expectedHeight) {
+    }
+
+    /**
      * A partial update. Every component is nullable and null means ABSENT,
      * not "clear this"; {@code clear} removes a value. An explicitly empty
      * {@code altText} ("") still sets an empty alt text (the author marked it

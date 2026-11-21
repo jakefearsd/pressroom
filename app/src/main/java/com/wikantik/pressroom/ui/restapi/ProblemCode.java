@@ -309,6 +309,14 @@ public enum ProblemCode {
     MEDIA_NOT_FOUND("media.notFound", ProblemType.NOT_FOUND, 0),
     /** A media file's new {@code name} is held by another file in the directory it will be in. */
     MEDIA_NAME_IN_USE("media.nameInUse", ProblemType.CONFLICT, 1),
+    /** A crop was asked of a file that is not a JPEG or PNG image; `{0}` is the file's content type. */
+    MEDIA_NOT_CROPPABLE("media.notCroppable", ProblemType.CONFLICT, 1),
+    /** The crop rectangle does not overlap the image; the arguments are x, y, width, height, then the image's width and height. */
+    MEDIA_CROP_OUTSIDE("media.cropOutside", ProblemType.INVALID_REQUEST, 6),
+    /** A crop's `width` or `height` is below 1; `{0}` is its name. */
+    MEDIA_CROP_SIZE_INVALID("media.cropSizeInvalid", ProblemType.INVALID_REQUEST, 1),
+    /** The `expectedWidth`/`expectedHeight` sent is not the image's size now; the arguments are its width and height. */
+    MEDIA_CROP_STALE("media.cropStale", ProblemType.CONFLICT, 2),
     /** A directory {@code name} may not contain a slash (one leading slash is dropped). */
     DIRECTORY_NAME_INVALID("directory.nameInvalid", ProblemType.INVALID_REQUEST, 0),
     /** No media directory of the weblog has this id. */

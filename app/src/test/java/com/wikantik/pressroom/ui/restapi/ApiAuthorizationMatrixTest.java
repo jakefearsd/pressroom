@@ -251,6 +251,7 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs/{handle}/media/imports",          POST,  SITE_LOGIN, ON_POST),
             row("PATCH  /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/media/{id}/crop",        POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media/directories",      POST,  SITE_LOGIN, ON_POST),
 
@@ -683,6 +684,16 @@ class ApiAuthorizationMatrixTest {
         assertEquals(new Row(key, traffic.role(), traffic.global(), traffic.weblog(), traffic.flags()), row, key);
     }
 
+    /** A crop is a media write: asked exactly as the media patch is. */
+    @Test
+    void cropRowEqualsTheMediaPatchRow() {
+        Row patch = ROWS.stream().filter(r -> r.key().equals("PATCH /v1/weblogs/{handle}/media/{id}"))
+                .findFirst().orElseThrow();
+        String key = "POST /v1/weblogs/{handle}/media/{id}/crop";
+        Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+        assertEquals(new Row(key, patch.role(), patch.global(), patch.weblog(), patch.flags()), row, key);
+    }
+
     /** The site-wide traffic read is asked exactly as the user list is: a site admin, an ADMIN token, no weblog. */
     @Test
     void siteTrafficRowEqualsTheUsersRow() {
@@ -743,6 +754,7 @@ class ApiAuthorizationMatrixTest {
             new McpSample("categories", "create", W),
             new McpSample("media", "list", W),
             new McpSample("media", "import", W),
+            new McpSample("media", "crop", W_ID),
             new McpSample("pages", "update", W_ID),
             new McpSample("redirects", "delete", W_ID),
             new McpSample("comments", "reply", W_ID),

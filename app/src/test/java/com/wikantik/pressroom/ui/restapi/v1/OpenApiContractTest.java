@@ -94,7 +94,7 @@ class OpenApiContractTest {
             "pagesRestore", "pagesDeleteForever",
             "categoriesList", "categoriesCreate", "categoriesUpdate", "categoriesDelete", "tagsList",
             "commentsList", "commentsGet", "commentsUpdate", "commentsDelete", "commentsReply",
-            "mediaList", "mediaGet", "mediaUpload", "mediaImport", "mediaUpdate", "mediaDelete",
+            "mediaList", "mediaGet", "mediaUpload", "mediaImport", "mediaUpdate", "mediaCrop", "mediaDelete",
             "mediaListDirectories", "mediaCreateDirectory",
             "redirectsList", "redirectsCreate", "redirectsDelete",
             "auditsGetSeo", "auditsGetSeoEntry", "auditsGetMedia",

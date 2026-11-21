@@ -27,7 +27,7 @@ class McpToolCatalogTest {
                         "delete_forever", "preview", "revisions", "revision", "restore_revision",
                         "keep_revision", "unkeep_revision")),
                 Map.entry("categories", List.of("list", "create", "update", "delete", "list_tags")),
-                Map.entry("media", List.of("list", "get", "import", "update", "delete", "list_directories",
+                Map.entry("media", List.of("list", "get", "import", "update", "crop", "delete", "list_directories",
                         "create_directory")),
                 Map.entry("pages", List.of("list", "get", "create", "update", "delete", "restore",
                         "delete_forever", "revisions", "revision", "restore_revision", "keep_revision",
