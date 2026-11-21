@@ -157,7 +157,7 @@ public class UserEditController extends BaseController {
                             StringEscapeUtils.escapeHtml4(bean.getUserName()), request);
                 }
                 model.addAttribute("bean", new CreateUserBean());
-                return AccountRows.showList(weblogger, model, null, null);
+                return showAccounts(model, null, null);
 
             } catch (WebloggerException ex) {
                 log.error("ERROR in action", ex);
@@ -185,7 +185,7 @@ public class UserEditController extends BaseController {
             model.addAttribute("bean", bean);
             model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
             addLocalesAndTimezones(model);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
 
         if (user.isAgent()) {
@@ -228,11 +228,11 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         if (user.isAgent()) {
             addError(model, "agent.error.notAPerson", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         model.addAttribute("permissions", getPermissions(user));
         UserWeblogsModel.populate(weblogger, model, user);
@@ -301,7 +301,7 @@ public class UserEditController extends BaseController {
             // successful edit: send user back to user admin page
             model.addAttribute("bean", new CreateUserBean());
             addMessage(model, "userAdmin.userSaved", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
 
         } catch (WebloggerException ex) {
             log.error("ERROR in action", ex);
@@ -360,11 +360,11 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         if (user.isAgent()) {
             addError(model, "agent.error.notAPerson", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
 
         bean.copyFrom(user);

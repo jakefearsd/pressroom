@@ -770,30 +770,25 @@ class MenuHelperTest {
     // Menu containers
     // ------------------------------------------------------------------
 
+    /** The containers are built by the helper now (no public setters); what is put in them reads back. */
     @Test
     void menuContainersHoldWhatIsPutInThem() {
-        MenuTabItem item = new MenuTabItem();
-        item.setKey("item.key");
-        item.setAction("someAction");
+        MenuTabItem item = new MenuTabItem("item.key", "someAction");
 
-        MenuTab menuTab = new MenuTab();
-        menuTab.setKey("tab.key");
-        menuTab.setAction("tabAction");
+        MenuTab menuTab = new MenuTab("tab.key");
+        menuTab.withAction("tabAction");
         menuTab.addItem(item);
 
-        Menu menu = new Menu();
-        menu.setTabs(new ArrayList<>(List.of(menuTab)));
+        Menu menu = new Menu(Menu.Surface.AUTHORING);
+        menu.addTab(menuTab);
 
         assertEquals("item.key", item.getKey(), "item key did not round-trip");
         assertEquals("someAction", item.getAction(), "item action did not round-trip");
+        assertEquals("tabAction", menuTab.getAction(), "tab action did not round-trip");
         assertFalse(item.isSelected(), "A newly built item must not start out highlighted");
         assertFalse(menuTab.isSelected(), "A newly built tab must not start out highlighted");
         assertEquals(List.of(item), menuTab.getItems(), "tab items did not round-trip");
         assertEquals(List.of(menuTab), menu.getTabs(), "menu tabs did not round-trip");
-
-        menuTab.setItems(new ArrayList<>());
-        assertEquals(List.of(), menuTab.getItems(),
-                "setItems must replace the item list, not append to it");
     }
 
     @Test

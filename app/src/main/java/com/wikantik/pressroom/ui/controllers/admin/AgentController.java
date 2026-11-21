@@ -161,7 +161,7 @@ public class AgentController extends TokenFormController {
         User agent = lookupAgent(userName);
         if (agent == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         return showAgentFromStore(request, model, agent, new TokenFormValues());
     }
@@ -173,7 +173,7 @@ public class AgentController extends TokenFormController {
         User agent = lookupAgent(bean.getUserName());
         if (agent == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         String name = checkedName(bean, model, request);
         String notes = checkedNotes(bean, model, request);
@@ -247,7 +247,7 @@ public class AgentController extends TokenFormController {
         User agent = lookupAgent(userName);
         if (agent == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         TokenFormValues values = new TokenFormValues(label, role, pin, expiry);
         ApiTokenManager.Issued issued = mintToken(agent, getAuthenticatedUser(request), values, model, request);
@@ -290,7 +290,7 @@ public class AgentController extends TokenFormController {
         } catch (WebloggerException e) {
             log.error("Could not read whether the agent {} is a site administrator", agent.getUserName(), e);
             addError(model, "generic.error.check.logs", request);
-            return AccountRows.showList(weblogger, model, null, null);
+            return showAccounts(model, null, null);
         }
         return showAgent(model, agent, AgentBean.of(agent, siteAdmin), values);
     }

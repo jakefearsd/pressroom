@@ -55,27 +55,29 @@ public final class MenuHelper {
 
     private static final Logger log = LoggerFactory.getLogger(MenuHelper.class);
 
-    private static Map<String, ParsedMenu> menus = new HashMap<>();
+    private static final Map<String, ParsedMenu> menus;
 
     private MenuHelper() {
     }
 
     static {
+        Map<String, ParsedMenu> parsed = new HashMap<>();
         try {
 
             // parse menus and cache so we can efficiently reuse them.
             // Named relative to the root package (WebloggerException's): no class lives in
             // ui.menu, and a name relative to MenuHelper would resolve under ui/core/util/menu
             // and silently return null.
-            menus.put("editor", unmarshall(
+            parsed.put("editor", unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/editor-menu.xml")));
 
-            menus.put("admin", unmarshall(
+            parsed.put("admin", unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/admin-menu.xml")));
 
         } catch (IOException | JDOMException | RuntimeException ex) {
             log.error("Error parsing menu configs", ex);
         }
+        menus = Map.copyOf(parsed);
     }
 
     /**
@@ -218,7 +220,7 @@ public final class MenuHelper {
             Predicate<String> propertyEnabled)
             throws WebloggerException {
 
-        Menu tabMenu = new Menu();
+        Menu tabMenu = new Menu("admin".equals(menuId) ? Menu.Surface.ADMIN : Menu.Surface.AUTHORING);
 
         // Hack - for blogger convenience, the design tab of the edit
         // menu defaults to the templates tab item (instead of theme edit)
@@ -231,8 +233,7 @@ public final class MenuHelper {
             if (!isVisible(configTab, user, weblog, umgr, propertyEnabled)) {
                 continue;
             }
-            MenuTab tab = new MenuTab();
-            tab.setKey(configTab.getName());
+            MenuTab tab = new MenuTab(configTab.getName());
             for (ParsedTabItem configTabItem : configTab.getTabItems()) {
                 if (offeredHere(weblog, configTabItem)
                         && isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
@@ -255,22 +256,20 @@ public final class MenuHelper {
      */
     private static void addItem(MenuTab tab, ParsedTabItem configTabItem, String currentAction,
             boolean customThemeOverride) {
-        MenuTabItem tabItem = new MenuTabItem();
-        tabItem.setKey(configTabItem.getName());
-        tabItem.setAction(configTabItem.getAction());
+        MenuTabItem tabItem = new MenuTabItem(configTabItem.getName(), configTabItem.getAction());
 
         if (currentAction != null && !tab.isSelected()
                 && isSelected(currentAction, configTabItem)) {
-            tabItem.setSelected(true);
-            tab.setSelected(true);
+            tabItem.select();
+            tab.select();
         }
 
         // the url for the tab is the url of the first tab item
         if (tab.getItems().isEmpty()) {
             if (customThemeOverride && "tabbedmenu.design".equals(tab.getKey())) {
-                tab.setAction("templates");
+                tab.withAction("templates");
             } else {
-                tab.setAction(tabItem.getAction());
+                tab.withAction(tabItem.getAction());
             }
         }
 

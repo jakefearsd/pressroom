@@ -73,6 +73,6 @@ public class UserAdminController extends BaseController {
                           @RequestParam(name = "kind", required = false) String kind,
                           @RequestParam(name = "q", required = false) String q) {
         populateCommonModel(request, model);
-        return AccountRows.showList(weblogger, model, kind, q);
+        return showAccounts(model, kind, q);
     }
 }

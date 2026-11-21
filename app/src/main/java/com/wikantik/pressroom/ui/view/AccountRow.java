@@ -16,7 +16,7 @@
  * directory of this distribution.
  */
 
-package com.wikantik.pressroom.ui.controllers.admin;
+package com.wikantik.pressroom.ui.view;
 
 import java.util.Date;
 

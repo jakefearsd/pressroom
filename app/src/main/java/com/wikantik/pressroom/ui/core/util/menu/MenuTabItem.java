@@ -20,37 +20,33 @@ package com.wikantik.pressroom.ui.core.util.menu;
 
 
 /**
- * Items in a Tab.
+ * Items in a Tab, built only by {@link MenuHelper}; read through getters (see {@link Menu}).
  */
 public class MenuTabItem {
-    
-    private String key;
-    private String action;
+
+    private final String key;
+    private final String action;
     private boolean selected;
-    
-    
-    public String getKey() {
-        return key;
+
+    MenuTabItem(String key, String action) {
+        this.key = key;
+        this.action = action;
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    public String getKey() {
+        return key;
     }
 
     public String getAction() {
         return action;
     }
 
-    public void setAction(String url) {
-        this.action = url;
-    }
-
     public boolean isSelected() {
         return selected;
     }
 
-    public void setSelected(boolean selected) {
-        this.selected = selected;
+    void select() {
+        this.selected = true;
     }
-    
+
 }

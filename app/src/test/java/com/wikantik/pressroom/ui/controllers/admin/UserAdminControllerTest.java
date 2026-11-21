@@ -28,6 +28,7 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.view.AccountRow;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

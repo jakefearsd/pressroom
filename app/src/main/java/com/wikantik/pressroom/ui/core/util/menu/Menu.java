@@ -19,28 +19,43 @@
 package com.wikantik.pressroom.ui.core.util.menu;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
 /**
- * A Menu of MenuTab objects.
+ * A Menu of MenuTab objects, built only by {@link MenuHelper}. A JavaBean, not
+ * a record: {@code weblog.vm}'s menu macros and the JSPs read {@code tabs},
+ * {@code items}, {@code key} and {@code action} through getters, and Velocity
+ * prints a record accessor's reference as literal text.
  */
 public class Menu {
-    
-    private List<MenuTab> tabs = new ArrayList<>();
-    
-    
+
+    /** Which screens a menu's actions belong to, so a client can build a link without guessing. */
+    public enum Surface {
+        /** The weblog-scoped authoring screens ({@code editor} menu). */
+        AUTHORING,
+        /** The site-wide administration screens ({@code admin} menu). */
+        ADMIN
+    }
+
+    private final Surface surface;
+    private final List<MenuTab> tabs = new ArrayList<>();
+
+    Menu(Surface surface) {
+        this.surface = surface;
+    }
+
     void addTab(MenuTab tab) {
         this.tabs.add(tab);
     }
-    
-    
+
     public List<MenuTab> getTabs() {
-        return tabs;
+        return Collections.unmodifiableList(tabs);
     }
 
-    public void setTabs(List<MenuTab> menus) {
-        this.tabs = menus;
+    public Surface getSurface() {
+        return surface;
     }
-    
+
 }

@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.controllers;
 
+import com.wikantik.pressroom.ui.view.AccountList;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -694,6 +695,19 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * menu, switcher and model are all built from the one value.
      */
     public record Screen(String actionName, String pageTitle) {
+    }
+
+    /**
+     * Lands on Admin → Users: puts {@link AccountList}'s three values on the
+     * model under {@code kindFilter}, {@code textFilter} and {@code accounts}
+     * and names the view. Shared by every controller that ends there.
+     */
+    protected final String showAccounts(Model model, String kind, String text) {
+        AccountList list = AccountList.of(weblogger, kind, text);
+        model.addAttribute("kindFilter", list.kindFilter());
+        model.addAttribute("textFilter", list.textFilter());
+        model.addAttribute("accounts", list.accounts());
+        return ".UserAdmin";
     }
 
     /** {@link #populateCommonModel(HttpServletRequest, Model, Screen)} for the controller's own action and title. */

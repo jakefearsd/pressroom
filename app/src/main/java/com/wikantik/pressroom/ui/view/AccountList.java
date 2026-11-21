@@ -16,7 +16,7 @@
  * directory of this distribution.
  */
 
-package com.wikantik.pressroom.ui.controllers.admin;
+package com.wikantik.pressroom.ui.view;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -31,44 +31,32 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ui.Model;
 
 /**
- * Builds Admin → Users (spec 2026-10-13, section 4) for every controller that
- * lands on it -- the list itself, and the user editor and agent page after a
- * save or a missing account -- so the page always has its rows.
+ * Admin → Users (spec 2026-10-13, section 4) as a value: the normalised
+ * filters and the rows, for every screen that lands on it -- the list itself,
+ * and the user editor and agent page after a save or a missing account. Knows
+ * nothing of a servlet or a model; the controller puts the three values on its
+ * model under {@code kindFilter}, {@code textFilter} and {@code accounts}.
+ *
+ * @param kindFilter {@code people}, {@code agents}, or empty for every account
+ * @param textFilter the filter as typed, trimmed; empty for none
+ * @param accounts the rows; empty when the store cannot list (logged)
  */
-final class AccountRows {
+public record AccountList(String kindFilter, String textFilter, List<AccountRow> accounts) {
 
-    private static final Logger log = LoggerFactory.getLogger(AccountRows.class);
-
-    private AccountRows() {
-    }
+    private static final Logger log = LoggerFactory.getLogger(AccountList.class);
 
     /**
-     * Puts the list on the model and names its view. A display path: a store
-     * that cannot list shows an empty list, logged.
+     * A display path: a store that cannot list shows an empty list, logged.
      *
      * @param kind {@code people}, {@code agents}, or anything else for every account
      * @param text the filter as typed; blank for none
      */
-    static String showList(Weblogger weblogger, Model model, String kind, String text) {
+    public static AccountList of(Weblogger weblogger, String kind, String text) {
         String tab = "people".equals(kind) || "agents".equals(kind) ? kind : "";
         String filter = StringUtils.trimToEmpty(text);
-        model.addAttribute("kindFilter", tab);
-        model.addAttribute("textFilter", filter);
-        model.addAttribute("accounts", rowsOrNone(weblogger, kindOf(tab), StringUtils.trimToNull(filter)));
-        return ".UserAdmin";
-    }
-
-    static List<AccountRow> load(Weblogger weblogger, User.Kind kind, String text) throws WebloggerException {
-        UserManager users = weblogger.getUserManager();
-        List<AccountRow> rows = new ArrayList<>();
-        for (User user : users.getAccounts(kind, text)) {
-            rows.add(new AccountRow(user, roleOf(users.getRoles(user)),
-                    users.getWeblogPermissions(user).size(), lastActive(weblogger, user)));
-        }
-        return rows;
+        return new AccountList(tab, filter, rowsOrNone(weblogger, kindOf(tab), StringUtils.trimToNull(filter)));
     }
 
     private static List<AccountRow> rowsOrNone(Weblogger weblogger, User.Kind kind, String text) {
@@ -78,6 +66,17 @@ final class AccountRows {
             log.error("Could not list the accounts", e);
             return List.of();
         }
+    }
+
+    private static List<AccountRow> load(Weblogger weblogger, User.Kind kind, String text)
+            throws WebloggerException {
+        UserManager users = weblogger.getUserManager();
+        List<AccountRow> rows = new ArrayList<>();
+        for (User user : users.getAccounts(kind, text)) {
+            rows.add(new AccountRow(user, roleOf(users.getRoles(user)),
+                    users.getWeblogPermissions(user).size(), lastActive(weblogger, user)));
+        }
+        return rows;
     }
 
     private static User.Kind kindOf(String tab) {

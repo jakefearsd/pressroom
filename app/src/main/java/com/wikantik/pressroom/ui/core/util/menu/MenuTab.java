@@ -19,38 +19,37 @@
 package com.wikantik.pressroom.ui.core.util.menu;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
 /**
- * Tab in a Menu.
+ * Tab in a Menu, built only by {@link MenuHelper}; read through getters (see {@link Menu}).
  */
 public class MenuTab {
-    
-    private String key;
+
+    private final String key;
     private String action;
     private boolean selected;
-    private List<MenuTabItem> items = new ArrayList<>();
-    
-    
-    public void addItem(MenuTabItem item) {
-        this.items.add(item);
-    }
-    
-    
-    public String getKey() {
-        return key;
+    private final List<MenuTabItem> items = new ArrayList<>();
+
+    MenuTab(String key) {
+        this.key = key;
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    void addItem(MenuTabItem item) {
+        this.items.add(item);
+    }
+
+    public String getKey() {
+        return key;
     }
 
     public String getAction() {
         return action;
     }
 
-    public void setAction(String url) {
+    void withAction(String url) {
         this.action = url;
     }
 
@@ -58,16 +57,12 @@ public class MenuTab {
         return selected;
     }
 
-    public void setSelected(boolean selected) {
-        this.selected = selected;
-    }
-    
-    public List<MenuTabItem> getItems() {
-        return items;
+    void select() {
+        this.selected = true;
     }
 
-    public void setItems(List<MenuTabItem> items) {
-        this.items = items;
+    public List<MenuTabItem> getItems() {
+        return Collections.unmodifiableList(items);
     }
-    
+
 }
