@@ -619,9 +619,6 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
     @Test
     void aFailedCreateKeepsTheNewPageTitle() throws Exception {
-        doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
-
         PageBean bean = new PageBean();
         bean.setSlug("feed");
         bean.setTitle("Feed");
@@ -692,9 +689,6 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
     @Test
     void savingWithAReservedSlugIsAFieldErrorNotA500() throws Exception {
-        doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
-
         PageBean bean = new PageBean();
         bean.setSlug("feed");
         bean.setTitle("Feed");
@@ -860,9 +854,6 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         // attribute back, since there is nothing looked up yet to redisplay;
         // an edit of an existing page must still show it after a rejected save.
         WeblogPage existing = pageOn(weblogA, "about");
-        doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
-
         PageBean bean = new PageBean();
         bean.setId(existing.getId());
         bean.setSlug("feed");

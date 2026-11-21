@@ -235,6 +235,20 @@ class PageSlugAndStrandScreensCharacterisationTest extends EditorControllerTestS
         assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
 
+    /**
+     * Changed on purpose (spec Task 4, criterion 3): the manager's refusal of a slug was only reached once the
+     * form had no other error, so a reserved slug beside a bad canonical URL showed the URL error alone. The
+     * slug is judged by the rules before the save now, so both are shown at once.
+     */
+    @Test
+    void aBadSlugAndAnotherFieldErrorAreBothShown() {
+        PageBean bean = bean("Feed", "feed");
+        bean.setCanonicalUrl("javascript:alert(1)");
+        save(bean);
+        assertEquals(List.of("entryEdit.canonicalUrlInvalid", "pageEdit.error.slugReserved"), errors(model));
+        assertEquals(List.of("seo_canonicalUrl", "page_bean_slug"), invalidFields(model));
+    }
+
     @Test
     void aSlugLookupThatFailsRefusesTheSave() throws Exception {
         when(pages.getPageBySlug(weblog, "about")).thenThrow(new WebloggerException("database down"));

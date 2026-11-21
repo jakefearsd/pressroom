@@ -372,7 +372,9 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **Page slugs** (2026-11-21, spec `2026-11-20-jsp-rules-and-view-models-design.md`, Task 4): the page
   editor refuses a slug a live page of the same weblog holds on `page_bean_slug` (`pageEdit.error.slugTaken`;
   it used to reach the unique index and answer "check the logs") and a slug over 255 characters
-  (`pageEdit.error.slugTooLong`; likewise). A slug held by a trashed page keeps `slugInTrash`.
+  (`pageEdit.error.slugTooLong`; likewise). A slug held by a trashed page keeps `slugInTrash`. The slug is
+  judged before the save, so a bad slug beside another field error shows both (the manager's refusal used to
+  surface only when nothing else had erred).
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;
