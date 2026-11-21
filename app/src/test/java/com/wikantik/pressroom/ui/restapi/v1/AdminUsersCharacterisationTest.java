@@ -59,7 +59,7 @@ class AdminUsersCharacterisationTest {
         alice = new User();
         alice.setUserName("alice");
         alice.setScreenName("Alice");
-        alice.setEmailAddress("alice@example.test");
+        alice.setEmailAddress("alice@example.com");
         alice.setEnabled(Boolean.TRUE);
         when(users.getUserByUserName("alice", null)).thenReturn(alice);
     }
@@ -75,15 +75,15 @@ class AdminUsersCharacterisationTest {
     void aBlankOrMissingUserNameIsRequired() throws Exception {
         String required = invalid("/v1/admin/users", "userName", "userName is required.", "field.required");
 
-        assertEquals(required, created("{\"userName\":\"  \",\"emailAddress\":\"new@example.test\"}", 400));
-        assertEquals(required, created("{\"emailAddress\":\"new@example.test\"}", 400));
+        assertEquals(required, created("{\"userName\":\"  \",\"emailAddress\":\"new@example.com\"}", 400));
+        assertEquals(required, created("{\"emailAddress\":\"new@example.com\"}", 400));
     }
 
     @Test
     void aUserNameOverItsColumnIsTooLong() throws Exception {
         assertEquals(invalid("/v1/admin/users", "userName", "'userName' must be 255 characters or fewer.",
                         "field.tooLong"),
-                created("{\"userName\":\"" + "j".repeat(256) + "\",\"emailAddress\":\"new@example.test\","
+                created("{\"userName\":\"" + "j".repeat(256) + "\",\"emailAddress\":\"new@example.com\","
                         + "\"screenName\":\"Jake\"}", 400));
     }
 
@@ -97,28 +97,28 @@ class AdminUsersCharacterisationTest {
                 + "\"code\":\"field.tooLong\"},{\"field\":\"screenName\","
                 + "\"message\":\"'screenName' must be 255 characters or fewer.\",\"code\":\"field.tooLong\"}],"
                 + "\"code\":\"request.invalidFields\"}",
-                created("{\"userName\":\"" + "j".repeat(256) + "\",\"emailAddress\":\"new@example.test\"}", 400));
+                created("{\"userName\":\"" + "j".repeat(256) + "\",\"emailAddress\":\"new@example.com\"}", 400));
     }
 
     @Test
     void aUserNameOutsideTheAllowedCharactersIsRefused() throws Exception {
         assertEquals(invalid("/v1/admin/users", "userName", "userName contains characters that are not allowed.",
                         "user.nameHasDisallowedCharacters"),
-                created("{\"userName\":\"jake fear\",\"emailAddress\":\"new@example.test\"}", 400));
+                created("{\"userName\":\"jake fear\",\"emailAddress\":\"new@example.com\"}", 400));
     }
 
     @Test
     void aUserNameTooLongAndOfBadCharactersIsTooLong() throws Exception {
         assertEquals(invalid("/v1/admin/users", "userName", "'userName' must be 255 characters or fewer.",
                         "field.tooLong"),
-                created("{\"userName\":\"" + "j ".repeat(150) + "x\",\"emailAddress\":\"new@example.test\","
+                created("{\"userName\":\"" + "j ".repeat(150) + "x\",\"emailAddress\":\"new@example.com\","
                         + "\"screenName\":\"Jake\"}", 400));
     }
 
     @Test
     void aUserNameIsJudgedTrimmed() throws Exception {
         assertEquals(mailNotConfigured(),
-                created("{\"userName\":\"  jake \",\"emailAddress\":\"new@example.test\"}", 400));
+                created("{\"userName\":\"  jake \",\"emailAddress\":\"new@example.com\"}", 400));
         verify(users, atLeastOnce()).getUserByUserName("jake", null);
     }
 
@@ -129,7 +129,7 @@ class AdminUsersCharacterisationTest {
                 + "\"errors\":[{\"field\":\"userName\",\"message\":\"A user named 'Alice' already exists.\","
                 + "\"code\":\"user.nameInUse\"}],\"code\":\"user.nameInUse\"}";
 
-        assertEquals(conflict, created("{\"userName\":\"Alice\",\"emailAddress\":\"new@example.test\"}", 409));
+        assertEquals(conflict, created("{\"userName\":\"Alice\",\"emailAddress\":\"new@example.com\"}", 409));
     }
 
     @Test
@@ -147,7 +147,7 @@ class AdminUsersCharacterisationTest {
         assertEquals("{\"type\":\"https://pressroom.invalid/problems/internal-error\",\"title\":\"Internal error\","
                 + "\"status\":500,\"detail\":\"The request could not be completed.\",\"instance\":\"/v1/admin/users\","
                 + "\"code\":\"server.internalError\"}",
-                created("{\"userName\":\"jake\",\"emailAddress\":\"new@example.test\"}", 500));
+                created("{\"userName\":\"jake\",\"emailAddress\":\"new@example.com\"}", 500));
     }
 
     // --- POST /users: emailAddress and screenName ---
@@ -160,7 +160,7 @@ class AdminUsersCharacterisationTest {
         assertEquals(required, created("{\"userName\":\"jake\"}", 400));
         assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"  \"}", 400));
         assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"not-an-address\"}", 400));
-        assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"a b@example.test\"}", 400));
+        assertEquals(required, created("{\"userName\":\"jake\",\"emailAddress\":\"a b@example.com\"}", 400));
     }
 
     /** The regex accepts a one-letter top-level domain, so the request reaches the mail check. */
@@ -172,7 +172,7 @@ class AdminUsersCharacterisationTest {
     @Test
     void anAddressIsJudgedTrimmed() throws Exception {
         assertEquals(mailNotConfigured(),
-                created("{\"userName\":\"jake\",\"emailAddress\":\"  new@example.test \"}", 400));
+                created("{\"userName\":\"jake\",\"emailAddress\":\"  new@example.com \"}", 400));
     }
 
     @Test
@@ -186,7 +186,7 @@ class AdminUsersCharacterisationTest {
     void aScreenNameOverItsColumnIsTooLong() throws Exception {
         assertEquals(invalid("/v1/admin/users", "screenName", "'screenName' must be 255 characters or fewer.",
                         "field.tooLong"),
-                created("{\"userName\":\"jake\",\"emailAddress\":\"new@example.test\",\"screenName\":\""
+                created("{\"userName\":\"jake\",\"emailAddress\":\"new@example.com\",\"screenName\":\""
                         + "s".repeat(256) + "\"}", 400));
     }
 
@@ -194,7 +194,7 @@ class AdminUsersCharacterisationTest {
     @Test
     void aBlankUserNameIsNotAlsoABlankScreenName() throws Exception {
         assertEquals(invalid("/v1/admin/users", "userName", "userName is required.", "field.required"),
-                created("{\"userName\":\" \",\"emailAddress\":\"new@example.test\",\"screenName\":\" \"}", 400));
+                created("{\"userName\":\" \",\"emailAddress\":\"new@example.com\",\"screenName\":\" \"}", 400));
     }
 
     @Test
@@ -221,8 +221,8 @@ class AdminUsersCharacterisationTest {
 
         assertEquals(invalid, patched("{\"emailAddress\":\"not-an-address\"}", 400));
         assertEquals(invalid, patched("{\"emailAddress\":\"  \"}", 400));
-        assertEquals(invalid, patched("{\"emailAddress\":\"a b@example.test\"}", 400));
-        assertEquals("alice@example.test", alice.getEmailAddress());
+        assertEquals(invalid, patched("{\"emailAddress\":\"a b@example.com\"}", 400));
+        assertEquals("alice@example.com", alice.getEmailAddress());
         verify(users, never()).saveUser(any());
     }
 
@@ -236,9 +236,9 @@ class AdminUsersCharacterisationTest {
 
     @Test
     void aPatchedAddressIsStoredTrimmed() throws Exception {
-        patched("{\"emailAddress\":\"  new@example.test \"}", 200);
+        patched("{\"emailAddress\":\"  new@example.com \"}", 200);
 
-        assertEquals("new@example.test", alice.getEmailAddress());
+        assertEquals("new@example.com", alice.getEmailAddress());
     }
 
     @Test
