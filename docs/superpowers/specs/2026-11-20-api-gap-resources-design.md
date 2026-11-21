@@ -91,6 +91,18 @@ tokens of a `POST`-level and an `EDIT_DRAFT`-level member of `W`); `NONE`
 account's token, with the agent's memberships). These are the Tier 2 matrix
 callers.
 
+- **Amendment (2026-11-21, controller, after Tiers 2 and 5 landed).** Every
+  new route: raises errors only through the keyed `ApiException` factories
+  with a `ProblemCode` (new codes get a bundle entry, a README code-table row
+  and a `ProblemCodeCatalogTest` pin; reuse an existing code where the
+  meaning is the same); gets an `ApiAuthorizationMatrixTest` row
+  (hand-written expectations) and an operationId in `OpenApiContractTest`'s
+  pinned list; returns records, never `Map`; a paged list answers
+  `{items, offset, limit, hasMore}` (`ListShapeOpenApiTest` rule, now inside
+  `OpenApiContractTest`). Caller kind is asked of `Caller` only
+  (`CallerKindConfinementTest`). `McpInstructions.TEXT` is at ~2995/3000: a
+  new tool's guidance must trim the same amount elsewhere.
+
 ## Approaches considered
 
 1. **Wrap the JSP controllers' model data as JSON.** Fast, but the model

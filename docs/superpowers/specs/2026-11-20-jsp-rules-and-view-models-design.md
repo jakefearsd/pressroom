@@ -116,6 +116,19 @@ period, locale and clock; the admin menu is already filtered by a pure
 - Implementers share `app/target/`: one `mvn -pl app test` at a time per
   tree. Commit on master; never push.
 
+- **Amendment (2026-11-21, controller, after Tier 5 landed).** Every API
+  error now carries a stable `code` (`ProblemCode`, text in the bundle under
+  `api.problem.*`; see docs/dev/api.md "Problem codes"), and `ApiException`
+  has no public free-text factory. So `RuleViolation` carries a `ProblemCode`
+  and its arguments in place of an English `detail`; the API adapter raises it
+  through the keyed factories (`problem`/`problemOnField`). Where the API
+  already answered a case, reuse the code it answers today, so `code` and the
+  English `detail` stay byte-identical; a case the API newly refuses gets a
+  new code (bundle entry, README code table, `ProblemCodeCatalogTest` pin).
+  `ContentProblemSourceScanTest`, `ApiProblemSourceScanTest`,
+  `ApiAuthorizationMatrixTest` and `CallerKindConfinementTest` stay green.
+  The JSP side keeps its `messageKey`.
+
 ## Approaches considered
 
 1. **Rule classes per family, called by both surfaces** (chosen). Extends the
