@@ -209,11 +209,15 @@ public class PageEditController extends BaseController {
         if (wanted == null) {
             return;
         }
+        if (wanted.length() > com.wikantik.pressroom.ui.controllers.ColumnWidths.PAGE_SLUG) {
+            addFieldError(model, "page_bean_slug", "pageEdit.error.slugTooLong", request);
+            return;
+        }
         try {
             WeblogPage holder = weblogger.getWeblogPageManager().getPageBySlug(page.getWeblog(), wanted);
-            if (holder != null && holder.getStatus() == WeblogPage.PubStatus.TRASHED
-                    && !holder.getId().equals(page.getId())) {
-                addFieldError(model, "page_bean_slug", "pageEdit.error.slugInTrash", request);
+            if (holder != null && !holder.getId().equals(page.getId())) {
+                addFieldError(model, "page_bean_slug", holder.getStatus() == WeblogPage.PubStatus.TRASHED
+                        ? "pageEdit.error.slugInTrash" : "pageEdit.error.slugTaken", request);
             }
         } catch (WebloggerException ex) {
             log.error("Error checking slug {} against the page trash", wanted, ex);

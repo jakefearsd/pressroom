@@ -40,4 +40,6 @@ public final class ColumnWidths {
     public static final int DIRECTORY_NAME = 255;
     /** {@code pressroom_mediafile.name}. */
     public static final int MEDIA_NAME = 255;
+    /** {@code pressroom_weblogpage.slug}. */
+    public static final int PAGE_SLUG = 255;
 }

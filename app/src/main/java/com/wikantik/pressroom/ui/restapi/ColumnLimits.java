@@ -73,7 +73,7 @@ public final class ColumnLimits {
     public static final int CATEGORY_DESCRIPTION = ColumnWidths.CATEGORY_DESCRIPTION;
 
     // pressroom_weblogpage (V014__weblog_pages.sql)
-    public static final int PAGE_SLUG = 255;
+    public static final int PAGE_SLUG = ColumnWidths.PAGE_SLUG;
 
     // pressroom_weblog_redirect (V028__weblog_redirects.sql)
     public static final int REDIRECT_PATH = 255;

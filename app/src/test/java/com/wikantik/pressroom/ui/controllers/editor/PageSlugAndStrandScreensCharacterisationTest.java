@@ -199,35 +199,40 @@ class PageSlugAndStrandScreensCharacterisationTest extends EditorControllerTestS
         verify(pages).savePage(any(), any(), any());
     }
 
-    /**
-     * Today: no check against a live page; the save reaches the manager and
-     * the database's unique index refuses it, which the editor reports as
-     * "check the logs". Changed on purpose (spec Task 4, criterion 4).
-     */
+    /** Changed on purpose (spec Task 4, criterion 4): a live holder was left to the unique index ("check the logs"). */
     @Test
-    void today_aSlugHeldByALivePageIsTheCheckTheLogsError() throws Exception {
+    void aSlugHeldByALivePageIsTheTakenErrorOnTheSlugFieldAndNothingIsSaved() throws Exception {
         holder("p9", "about", WeblogPage.PubStatus.PUBLISHED);
-        doAnswer(call -> {
-            throw new WebloggerException("duplicate key value violates unique constraint");
-        }).when(pages).savePage(any(), any(), any());
         save(bean("About", "about"));
-        assertEquals(List.of("generic.error.check.logs"), errors(model));
-        assertTrue(invalidFields(model).isEmpty());
+        assertEquals(List.of("pageEdit.error.slugTaken"), errors(model));
+        assertEquals(List.of("page_bean_slug"), invalidFields(model));
+        verify(pages, never()).savePage(any(), any(), any());
+    }
+
+    @Test
+    void renamingOntoASlugALivePageHoldsIsTheTakenError() throws Exception {
+        WeblogPage mine = stored("p1", "contact");
+        holder("p9", "about", WeblogPage.PubStatus.PUBLISHED);
+        PageBean bean = bean("Contact", "about");
+        bean.setId(mine.getId());
+        save(bean);
+        assertEquals(List.of("pageEdit.error.slugTaken"), errors(model));
+        assertEquals("contact", mine.getSlug());
     }
 
     /**
-     * Today: no length check; the database refuses the value and the editor
-     * reports "check the logs". Changed on purpose (spec Task 4, as built:
-     * the shared rule holds the slug to its column).
+     * Changed on purpose (spec Task 4, as built): no length check; the database refused the value and the editor
+     * said "check the logs". The slug is held to its column, as the API holds it.
      */
     @Test
-    void today_aSlugOverTheColumnIsTheCheckTheLogsError() throws Exception {
-        doAnswer(call -> {
-            throw new WebloggerException("value too long for type character varying(255)");
-        }).when(pages).savePage(any(), any(), any());
+    void aSlugOverTheColumnIsTheTooLongErrorOnTheSlugFieldAndNothingIsSaved() throws Exception {
         save(bean("Long", "s".repeat(256)));
-        assertEquals(List.of("generic.error.check.logs"), errors(model));
-        assertTrue(invalidFields(model).isEmpty());
+        assertEquals(List.of("pageEdit.error.slugTooLong"), errors(model));
+        assertEquals(List.of("page_bean_slug"), invalidFields(model));
+        verify(pages, never()).savePage(any(), any(), any());
+        model = newModel();
+        save(bean("Long", "s".repeat(255)));
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
 
     @Test
