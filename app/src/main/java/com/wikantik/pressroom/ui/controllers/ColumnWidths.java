@@ -32,6 +32,12 @@ public final class ColumnWidths {
     private ColumnWidths() {
     }
 
+    /** {@code pressroom_user.username}. */
+    public static final int USERNAME = 255;
+    /** {@code pressroom_user.screenname}. */
+    public static final int SCREEN_NAME = 255;
+    /** {@code pressroom_user.emailaddress}. */
+    public static final int USER_EMAIL_ADDRESS = 255;
     /** {@code weblogcategory.name}. */
     public static final int CATEGORY_NAME = 255;
     /** {@code weblogcategory.description}. */

@@ -47,9 +47,6 @@ public final class AccountRules {
 
     private static final Logger log = LoggerFactory.getLogger(AccountRules.class);
 
-    /** pressroom_user.username, screenname and emailaddress are varchar(255). */
-    public static final int MAX_LENGTH = 255;
-
     public static final String USER_NAME = "userName";
     public static final String EMAIL = "emailAddress";
     public static final String SCREEN_NAME = "screenName";
@@ -69,7 +66,7 @@ public final class AccountRules {
 
     /**
      * The username's shape, for a new account: present, at most
-     * {@link #MAX_LENGTH} characters, and inside {@code username.allowedChars}
+     * {@link ColumnWidths#USERNAME} characters, and inside {@code username.allowedChars}
      * (letters and digits when the property is blank). Judged in that order,
      * so the first broken one is the answer. Whether it is taken is
      * {@link #userNameTaken}.
@@ -79,8 +76,9 @@ public final class AccountRules {
             return RuleViolation.invalid(USER_NAME, "error.add.user.missingUserName", List.of(),
                     ProblemCode.FIELD_REQUIRED, USER_NAME);
         }
-        if (userName.length() > MAX_LENGTH) {
-            return tooLong(USER_NAME, "personForm.error.userNameTooLong");
+        if (userName.length() > ColumnWidths.USERNAME) {
+            return RuleViolation.invalid(USER_NAME, "personForm.error.userNameTooLong", List.of(),
+                    ProblemCode.FIELD_TOO_LONG, USER_NAME, Integer.toString(ColumnWidths.USERNAME));
         }
         String allowed = WebloggerConfig.getProperty("username.allowedChars");
         if (StringUtils.isBlank(allowed)) {
@@ -109,7 +107,8 @@ public final class AccountRules {
 
     /**
      * A new account's username, as the create screens judge it: its shape,
-     * then whether it is taken. A taken-check that cannot run refuses it
+     * then whether it is taken. Screens only; the API uses {@link #userNameTaken}
+     * (whose failed lookup is its opaque 500). A taken-check that cannot run refuses it
      * ({@code generic.error.check.logs}): a check that could not run is not a
      * check that passed.
      */
@@ -129,7 +128,7 @@ public final class AccountRules {
 
     /**
      * An email address, judged trimmed by commons {@link EmailValidator} (which
-     * knows the top-level domains), then held to {@link #MAX_LENGTH}. An
+     * knows the top-level domains), then held to {@link ColumnWidths#USER_EMAIL_ADDRESS}. An
      * {@link EmailUse#OPTIONAL} address may be absent or blank.
      */
     public static RuleViolation emailProblem(String email, EmailUse use) {
@@ -141,8 +140,9 @@ public final class AccountRules {
             return RuleViolation.invalid(EMAIL, "personForm.error.email", List.of(),
                     use == EmailUse.REQUIRED ? ProblemCode.USER_EMAIL_REQUIRED : ProblemCode.USER_EMAIL_INVALID);
         }
-        if (trimmed.length() > MAX_LENGTH) {
-            return tooLong(EMAIL, "personForm.error.emailTooLong");
+        if (trimmed.length() > ColumnWidths.USER_EMAIL_ADDRESS) {
+            return RuleViolation.invalid(EMAIL, "personForm.error.emailTooLong", List.of(),
+                    ProblemCode.FIELD_TOO_LONG, EMAIL, Integer.toString(ColumnWidths.USER_EMAIL_ADDRESS));
         }
         return null;
     }
@@ -150,15 +150,16 @@ public final class AccountRules {
     /**
      * A screen name, after the surface's own defaulting (the API stands the
      * username in for one it was not sent): not blank, and at most
-     * {@link #MAX_LENGTH} characters as given.
+     * {@link ColumnWidths#SCREEN_NAME} characters as given.
      */
     public static RuleViolation screenNameProblem(String screenName) {
         if (StringUtils.isBlank(screenName)) {
             return RuleViolation.invalid(SCREEN_NAME, "personForm.error.screenName", List.of(),
                     ProblemCode.FIELD_BLANK, SCREEN_NAME);
         }
-        if (screenName.length() > MAX_LENGTH) {
-            return tooLong(SCREEN_NAME, "personForm.error.screenNameTooLong");
+        if (screenName.length() > ColumnWidths.SCREEN_NAME) {
+            return RuleViolation.invalid(SCREEN_NAME, "personForm.error.screenNameTooLong", List.of(),
+                    ProblemCode.FIELD_TOO_LONG, SCREEN_NAME, Integer.toString(ColumnWidths.SCREEN_NAME));
         }
         return null;
     }
@@ -174,10 +175,5 @@ public final class AccountRules {
             return required ? "error.add.user.missingPassword" : null;
         }
         return PasswordRules.isLongEnough(password) ? null : "personForm.error.passwordTooShort";
-    }
-
-    private static RuleViolation tooLong(String field, String messageKey) {
-        return RuleViolation.invalid(field, messageKey, List.of(), ProblemCode.FIELD_TOO_LONG, field,
-                Integer.toString(MAX_LENGTH));
     }
 }

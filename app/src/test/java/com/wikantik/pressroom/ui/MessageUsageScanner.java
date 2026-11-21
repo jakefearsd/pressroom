@@ -38,6 +38,11 @@ import java.util.stream.Stream;
  * {@code &#123;n&#125;} match what the caller passes?), so the two ratchets
  * cannot drift apart on what counts as a call site.
  *
+ * <p>Besides the message helpers it reads the shared rule classes' two ways
+ * of naming a key the screens show: a {@code RuleViolation.invalid/conflict}
+ * call (the {@code List.of} items are the arguments) and a "key or null"
+ * return in {@code ui.controllers} (no arguments).
+ *
  * <p><b>Only literal keys are seen, by construction.</b> A key assembled at
  * runtime ({@code "weblogEntryQuery.label." + status}, a {@code successKey}
  * parameter, {@code msg.getKey()} replayed off a {@code PressroomMessages}
@@ -91,6 +96,34 @@ final class MessageUsageScanner {
     private static final Pattern PAGE_TITLE_ATTRIBUTE = Pattern.compile(
             "addAttribute\\(\\s*\"pageTitle\"\\s*,\\s*\"([^\"]+)\"\\s*\\)");
 
+    /**
+     * A shared rule's violation ({@code ui.controllers.RuleViolation}): {@code
+     * RuleViolation.invalid(field, "key", List.of(args...), code, ...)} or
+     * {@code .conflict(...)}. The screens show the key with exactly the
+     * {@code List.of} items as its arguments, so their count is the argument
+     * count; an argument list that is not a {@code List.of(...)} literal is
+     * {@link #UNRESOLVED}.
+     */
+    private static final Pattern RULE_VIOLATION_CALL = Pattern.compile(
+            "\\bRuleViolation\\.(?:invalid|conflict)\\s*\\(");
+
+    private static final Pattern LIST_OF_LITERAL = Pattern.compile("^List\\.of\\s*\\((.*)\\)$", Pattern.DOTALL);
+
+    /**
+     * A rule that answers "the message key refusing this, or null" ({@code
+     * Memberships.levelProblem}, {@code AccountRules.passwordProblem}): {@code
+     * return cond ? "a.key" : null;} or {@code ? null : "a.key"}. Every caller
+     * shows such a key with no arguments. Matched only in the shared rule
+     * classes at the top of {@link #RULES_PACKAGE}, where the shape means a
+     * key by convention; elsewhere a dotted string could be a file name.
+     */
+    private static final Pattern KEY_OR_NULL_RETURN = Pattern.compile(
+            "\\breturn\\s[^;]*?\\?\\s*(?:\"([A-Za-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9_]+)+)\"\\s*:\\s*null"
+                    + "|null\\s*:\\s*\"([A-Za-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9_]+)+)\")\\s*;");
+
+    /** Where the shared rule classes live, relative to {@link #JAVA_ROOT}. */
+    static final String RULES_PACKAGE = "com/wikantik/pressroom/ui/controllers/";
+
     private static final Pattern ARRAY_LITERAL = Pattern.compile(
             "^new\\s+\\w+\\s*\\[\\s*\\]\\s*\\{(.*)\\}$", Pattern.DOTALL);
 
@@ -131,27 +164,59 @@ final class MessageUsageScanner {
     static List<Usage> scanJavaSources() throws IOException {
         List<Usage> usages = new ArrayList<>();
         for (Path file : filesUnder(JAVA_ROOT, ".java")) {
-            String source = Files.readString(file, StandardCharsets.UTF_8);
-            String rel = JAVA_ROOT.relativize(file).toString();
-            List<String> arrayNames = arrayTypedNames(source);
-
-            Matcher call = MESSAGE_CALL.matcher(source);
-            while (call.find()) {
-                int openParen = call.end() - 1;
-                String inner = argumentList(source, openParen);
-                if (inner == null) {
-                    continue;
-                }
-                Usage usage = usageFor(call.group(1), splitTopLevel(inner), arrayNames,
-                        rel + ":" + lineOf(source, call.start()));
-                if (usage != null) {
-                    usages.add(usage);
-                }
-            }
-            addLiteralMatches(usages, PAGE_TITLE_RETURN, source, rel);
-            addLiteralMatches(usages, PAGE_TITLE_ATTRIBUTE, source, rel);
+            String rel = JAVA_ROOT.relativize(file).toString().replace('\\', '/');
+            usages.addAll(scanJavaSource(Files.readString(file, StandardCharsets.UTF_8), rel));
         }
         return usages;
+    }
+
+    /** The usages in one Java file's {@code source}, at {@code rel} (relative to {@link #JAVA_ROOT}). */
+    static List<Usage> scanJavaSource(String source, String rel) {
+        List<Usage> usages = new ArrayList<>();
+        List<String> arrayNames = arrayTypedNames(source);
+
+        Matcher call = MESSAGE_CALL.matcher(source);
+        while (call.find()) {
+            int openParen = call.end() - 1;
+            String inner = argumentList(source, openParen);
+            if (inner == null) {
+                continue;
+            }
+            Usage usage = usageFor(call.group(1), splitTopLevel(inner), arrayNames,
+                    rel + ":" + lineOf(source, call.start()));
+            if (usage != null) {
+                usages.add(usage);
+            }
+        }
+        Matcher violation = RULE_VIOLATION_CALL.matcher(source);
+        while (violation.find()) {
+            String inner = argumentList(source, violation.end() - 1);
+            List<String> args = inner == null ? List.of() : splitTopLevel(inner);
+            if (args.size() > 2 && isStringLiteral(args.get(1))) {
+                usages.add(new Usage(literalValue(args.get(1)), rel + ":" + lineOf(source, violation.start()),
+                        listOfCount(args.get(2))));
+            }
+        }
+        if (rel.startsWith(RULES_PACKAGE) && rel.indexOf('/', RULES_PACKAGE.length()) < 0) {
+            Matcher keyReturn = KEY_OR_NULL_RETURN.matcher(source);
+            while (keyReturn.find()) {
+                String key = keyReturn.group(1) != null ? keyReturn.group(1) : keyReturn.group(2);
+                usages.add(new Usage(key, rel + ":" + lineOf(source, keyReturn.start()), 0));
+            }
+        }
+        addLiteralMatches(usages, PAGE_TITLE_RETURN, source, rel);
+        addLiteralMatches(usages, PAGE_TITLE_ATTRIBUTE, source, rel);
+        return usages;
+    }
+
+    /** The items of a {@code List.of(...)} literal, or {@link #UNRESOLVED} for any other expression. */
+    private static int listOfCount(String expression) {
+        Matcher list = LIST_OF_LITERAL.matcher(expression.trim());
+        if (!list.matches()) {
+            return UNRESOLVED;
+        }
+        String body = list.group(1).trim();
+        return body.isEmpty() ? 0 : splitTopLevel(body).size();
     }
 
     static List<Usage> scanTemplates() throws IOException {

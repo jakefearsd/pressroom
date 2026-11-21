@@ -137,8 +137,10 @@ public class MessageKeyTest {
      * MessageUsageScanner}): {@code getText}, {@code addError} / {@code
      * addMessage} / {@code addFlashError} / {@code addFlashMessage} in both
      * their {@code BaseController} and {@code PressroomMessages} forms, a {@code
-     * getPageTitle()} that returns a literal, and {@code
-     * addAttribute("pageTitle", "...")}.
+     * getPageTitle()} that returns a literal, {@code
+     * addAttribute("pageTitle", "...")}, a shared rule's {@code
+     * RuleViolation.invalid/conflict(field, "key", List.of(...), ...)}, and a
+     * rule class's "key or null" return ({@code return cond ? "key" : null;}).
      */
     @Test
     public void everyMessageKeyNamedInJavaExists() throws IOException {
