@@ -3,6 +3,7 @@ package com.wikantik.pressroom.ui.restapi.dto;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 
 /**
@@ -37,7 +38,7 @@ public final class SeoFields {
         String value = StringUtils.trimToNull(raw);
         ColumnLimits.requireMaxLength("canonicalUrl", value, ColumnLimits.CANONICAL_URL);
         if (value != null && !EntryFieldRules.isValidCanonicalUrl(value)) {
-            throw ApiException.invalidField("canonicalUrl", "canonicalUrl must be an absolute http or https URL.");
+            throw ApiException.problemOnField("canonicalUrl", ProblemCode.CANONICAL_URL_INVALID);
         }
         return value;
     }

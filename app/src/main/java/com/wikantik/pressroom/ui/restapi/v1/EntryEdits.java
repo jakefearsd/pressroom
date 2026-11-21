@@ -2,6 +2,7 @@ package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.List;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 
 /**
@@ -37,13 +38,12 @@ final class EntryEdits {
             return sentText;
         }
         if (sentText != null) {
-            errors.add("edits", "Give text or edits, not both.");
+            errors.add("edits", ProblemCode.EDITS_WITH_TEXT);
             return sentText;
         }
         String text = storedText == null ? "" : storedText;
         if (edits.size() > MAX_EDITS) {
-            errors.add("edits", "At most " + MAX_EDITS + " edits are applied in one request; this one has "
-                    + edits.size() + ".");
+            errors.add("edits", ProblemCode.EDITS_TOO_MANY, Integer.toString(MAX_EDITS), Integer.toString(edits.size()));
             return text;
         }
         for (int i = 0; i < edits.size(); i++) {
@@ -54,26 +54,25 @@ final class EntryEdits {
 
     private static String apply(FieldErrors errors, String field, String text, EntryDtos.TextEdit edit) {
         if (edit == null) {
-            errors.add(field, field + " is empty; an edit is {find, replace}.");
+            errors.add(field, ProblemCode.EDITS_EMPTY, field, "{find, replace}");
             return text;
         }
         if (edit.find() == null || edit.find().isEmpty()) {
-            errors.add(field, field + " has no find; give the exact text to change.");
+            errors.add(field, ProblemCode.EDITS_NO_FIND, field);
             return text;
         }
         if (edit.replace() == null) {
-            errors.add(field, field + " has no replace; send \"\" to delete the text found.");
+            errors.add(field, ProblemCode.EDITS_NO_REPLACE, field);
             return text;
         }
         int at = text.indexOf(edit.find());
         if (at < 0) {
-            errors.add(field, field + " not found in the entry's text.");
+            errors.add(field, ProblemCode.EDITS_NOT_FOUND, field);
             return text;
         }
         int matches = matches(text, edit.find(), at);
         if (matches > 1) {
-            errors.add(field, field + " found " + matches
-                    + " times; include more surrounding text so it matches once.");
+            errors.add(field, ProblemCode.EDITS_AMBIGUOUS, field, Integer.toString(matches));
             return text;
         }
         return text.substring(0, at) + edit.replace() + text.substring(at + edit.find().length());

@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * The {@code clear} list of an update body: the fields to remove. A null
@@ -27,19 +28,19 @@ public final class ClearFields {
         for (String raw : clear) {
             String name = raw == null ? "" : raw.trim();
             if (!clearable.contains(name)) {
-                throw ApiException.invalidField("clear", "\"" + abbreviate(name) + "\" cannot be cleared. Clearable: "
-                        + String.join(", ", clearable) + ".");
+                throw ApiException.problemOnField("clear", ProblemCode.CLEAR_NOT_CLEARABLE,
+                        abbreviate(name), String.join(", ", clearable));
             }
             names.add(name);
         }
         for (List<String> pair : pairs) {
             if (names.contains(pair.get(0)) != names.contains(pair.get(1))) {
-                throw ApiException.invalidField("clear", pair.get(0) + " and " + pair.get(1) + " are cleared together.");
+                throw ApiException.problemOnField("clear", ProblemCode.CLEAR_TOGETHER, pair.get(0), pair.get(1));
             }
         }
         for (String set : fieldsWithValue(body)) {
             if (names.contains(set)) {
-                throw ApiException.invalidField("clear", set + " is both set and cleared.");
+                throw ApiException.problemOnField("clear", ProblemCode.CLEAR_AND_SET, set);
             }
         }
         return Set.copyOf(names);

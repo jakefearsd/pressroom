@@ -178,6 +178,17 @@ public final class ApiException extends RuntimeException {
         return new Builder(typed(code)).fields(List.of(FieldProblem.keyed(field, code, args)), true).build();
     }
 
+    /** As {@link #problem}, chaining {@code cause} for the log (a business-tier refusal this answers). */
+    public static ApiException problem(ProblemCode code, Throwable cause, String... args) {
+        return new Builder(typed(code)).keyed(args).cause(cause).build();
+    }
+
+    /** As {@link #problemOnField}, chaining {@code cause} for the log. */
+    public static ApiException problemOnField(String field, ProblemCode code, Throwable cause, String... args) {
+        return new Builder(typed(code)).fields(List.of(FieldProblem.keyed(field, code, args)), true)
+                .cause(cause).build();
+    }
+
     private static ProblemCode typed(ProblemCode code) {
         if (code.type() == null) {
             throw new IllegalArgumentException(code.code() + " has no fixed status; it is not a keyed problem");

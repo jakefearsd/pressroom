@@ -25,6 +25,7 @@ import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.MediaImports;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 
@@ -114,7 +115,7 @@ final class EntryImports {
             return featuredUrl == null ? Plan.NONE : new Plan(featuredUrl, body.featuredImageAlt(), null, null, false);
         }
         if (!uploads) {
-            errors.add("importExternalImages", "File upload is disabled for this site.");
+            errors.add("importExternalImages", ProblemCode.UPLOAD_DISABLED);
         }
         String text = body.text() != null ? body.text() : storedText;
         ExternalImages.Scan scan = ExternalImages.scan(text, ownHosts(weblogger.getUrlStrategy(), weblog));
@@ -126,7 +127,7 @@ final class EntryImports {
 
     private static void checkFeaturedAlt(FieldErrors errors, EntryDtos.EntryWrite body) {
         if (body.featuredImageUrl() == null) {
-            errors.add("featuredImageAlt", "featuredImageAlt applies only with featuredImageUrl.");
+            errors.add("featuredImageAlt", ProblemCode.IMAGE_ALT_WITHOUT_URL);
         }
         errors.check("featuredImageAlt", () -> ColumnLimits.requireMaxLength(
                 "featuredImageAlt", body.featuredImageAlt(), ColumnLimits.MEDIA_ALT_TEXT));
@@ -135,27 +136,25 @@ final class EntryImports {
     private static void checkFeaturedUrl(FieldErrors errors, EntryDtos.EntryWrite body, Set<String> cleared,
             boolean uploads) {
         if (body.featuredImageUrl().isBlank()) {
-            errors.add("featuredImageUrl", "featuredImageUrl cannot be blank.");
+            errors.add("featuredImageUrl", ProblemCode.FIELD_BLANK, "featuredImageUrl");
         }
         if (body.featuredImageId() != null) {
-            errors.add("featuredImageUrl", "Give featuredImageUrl or featuredImageId, not both.");
+            errors.add("featuredImageUrl", ProblemCode.IMAGE_URL_AND_ID);
         }
         if (cleared.contains("featuredImageId")) {
-            errors.add("featuredImageUrl",
-                    "featuredImageUrl sets the featured image; do not also clear featuredImageId.");
+            errors.add("featuredImageUrl", ProblemCode.IMAGE_URL_AND_CLEAR);
         }
         if (!uploads) {
-            errors.add("featuredImageUrl", "File upload is disabled for this site.");
+            errors.add("featuredImageUrl", ProblemCode.UPLOAD_DISABLED);
         }
     }
 
     /** An import the write asked for refuses what it cannot import, and more than the cap. */
     private static void checkExplicitScan(FieldErrors errors, ExternalImages.Scan scan) {
-        scan.refusals().forEach(refusal -> errors.add("text", refusal));
+        scan.refusals().forEach(refusal -> errors.add("text", ProblemCode.IMAGE_SCAN_REFUSED, refusal));
         int distinct = scan.distinctUrls().size();
         if (distinct > MAX_BODY_IMAGES) {
-            errors.add("text", "The text loads " + distinct + " images from other sites; at most "
-                    + MAX_BODY_IMAGES + " are imported in one write.");
+            errors.add("text", ProblemCode.IMAGE_TOO_MANY, Integer.toString(distinct), Integer.toString(MAX_BODY_IMAGES));
         }
     }
 
@@ -175,8 +174,7 @@ final class EntryImports {
             return body;
         }
         if (directory.isPrivate()) {
-            throw ApiException.invalidField(field,
-                    "The weblog's default media directory is private, so readers could not see imported images.");
+            throw ApiException.problemOnField(field, ProblemCode.IMAGE_DIRECTORY_PRIVATE);
         }
         Map<String, MediaFile> imported = importAll(plan, weblog, directory);
         imported.values().forEach(file -> importedIds.add(file.getId()));
@@ -212,10 +210,10 @@ final class EntryImports {
             if (!attempted.add(wanted.url())) {
                 continue;
             }
-            String problem = importOne(wanted, started, weblog, directory, imported);
+            Failure failure = importOne(wanted, started, weblog, directory, imported);
             boolean mayFail = plan.defaulted() && "text".equals(wanted.field());
-            if (problem != null && !mayFail) {
-                failures.add(wanted.field(), "Image " + ExternalImages.abbreviate(wanted.url()) + problem);
+            if (failure != null && !mayFail) {
+                failures.add(wanted.field(), failure.code(), failure.args().toArray(String[]::new));
             }
         }
         failures.throwIfAny();
@@ -224,20 +222,27 @@ final class EntryImports {
 
     /**
      * Imports one image into {@code imported}. Null when it was imported,
-     * else why not, worded to follow "Image &lt;url&gt;".
+     * else why not, as the problem to report against its field.
      */
-    private String importOne(Wanted wanted, Instant started, Weblog weblog, MediaFileDirectory directory,
+    private Failure importOne(Wanted wanted, Instant started, Weblog weblog, MediaFileDirectory directory,
             Map<String, MediaFile> imported) throws WebloggerException {
         if (Duration.between(started, clock.instant()).compareTo(BUDGET) >= 0) {
-            return " was not fetched: the import step's " + BUDGET.toSeconds() + "-second budget ran out.";
+            return new Failure(ProblemCode.IMAGE_IMPORT_BUDGET,
+                    List.of(ExternalImages.abbreviate(wanted.url()), Long.toString(BUDGET.toSeconds())));
         }
         try {
             imported.put(wanted.url(), MediaImports.importImage(weblogger, fetcher, weblog, directory,
                     wanted.url(), null, wanted.alt()).file());
             return null;
         } catch (MediaImports.ImportRefused e) {
-            return ": " + e.getMessage();
+            // The text is the import step's own: passed through whole, as ImportRefused states it.
+            return new Failure(ProblemCode.IMAGE_IMPORT_FAILED,
+                    List.of("Image " + ExternalImages.abbreviate(wanted.url()) + ": " + e.getMessage()));
         }
+    }
+
+    /** Why one image was not imported: the problem to report against its field. */
+    private record Failure(ProblemCode code, List<String> args) {
     }
 
     /** Ids of the files {@link #run} imported, for the featured-image default. */

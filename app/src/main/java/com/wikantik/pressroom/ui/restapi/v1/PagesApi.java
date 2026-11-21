@@ -17,6 +17,7 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -75,7 +76,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         Weblog weblog = requireActionWeblog(request);
         boolean trash = status != null;
         if (trash && !namesTheTrash(status)) {
-            throw ApiException.invalidField("status", "status accepts only TRASHED, which lists the page trash.");
+            throw ApiException.problemOnField("status", ProblemCode.PAGE_STATUS_FILTER);
         }
         List<WeblogPage> pages = trash ? weblogger.getWeblogPageManager().getTrashedPages(weblog)
                 : weblogger.getWeblogPageManager().getPages(weblog);
@@ -115,10 +116,10 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         // means absent" contract. clear is refused on create, as on entries.
         FieldErrors errors = new FieldErrors();
         if (body.title() == null || body.title().isBlank()) {
-            errors.add("title", "title is required.");
+            errors.add("title", ProblemCode.FIELD_REQUIRED, "title");
         }
         if (body.clear() != null && !body.clear().isEmpty()) {
-            errors.add("clear", "clear applies only to updates.");
+            errors.add("clear", ProblemCode.FIELD_UPDATE_ONLY, "clear");
         }
         // Both act on stored content, which a create has none of.
         RevisionedContent.refuseRevisionNote(errors, body.revisionNote());
@@ -163,7 +164,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         errors.check("revisionNote", () -> ColumnLimits.requireMaxLength(
                 "revisionNote", revisionNote, ColumnLimits.REVISION_NOTE));
         if (body.title() != null && body.title().isBlank()) {
-            errors.add("title", "title cannot be blank.");
+            errors.add("title", ProblemCode.FIELD_BLANK, "title");
         }
         Optional<String> slug = body.slug() == null ? Optional.empty()
                 : errors.value("slug", () -> PageDtos.requireUsableSlug(body.slug()));
@@ -292,16 +293,15 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         WeblogPage page = requireLivePageForWrite(request, id);
         List<String> ids = body.entries();
         if (ids == null) {
-            throw ApiException.invalidField("entries", "entries is required: the strand's post ids in reading "
-                    + "order. An empty list removes every part.");
+            throw ApiException.problemOnField("entries", ProblemCode.STRAND_ENTRIES_REQUIRED);
         }
         if (!Boolean.TRUE.equals(page.getStrand())) {
-            throw ApiException.invalidField("entries", "This page is not a strand; set strand true on it first.");
+            throw ApiException.problemOnField("entries", ProblemCode.STRAND_NOT_STRAND);
         }
         // One lookup per id follows: a list longer than any strand is refused
         // whole, before the first.
         if (ids.size() > MAX_PARTS) {
-            throw ApiException.invalidField("entries", "At most " + MAX_PARTS + " parts.");
+            throw ApiException.problemOnField("entries", ProblemCode.STRAND_TOO_MANY, Integer.toString(MAX_PARTS));
         }
         List<WeblogEntry> requested = new ArrayList<>(ids.size());
         for (String entryId : ids) {
@@ -309,7 +309,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
         FieldErrors errors = new FieldErrors();
         StrandRules.refusals(page, requested, ids)
-                .forEach((entryId, reason) -> errors.add("entries", refusal(entryId, reason)));
+                .forEach((entryId, reason) -> errors.add("entries", refusalCode(reason), entryId));
         errors.throwIfAny();
 
         weblogger.getWeblogEntryManager().setStrandParts(page, requested);
@@ -317,14 +317,13 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         return view(page);
     }
 
-    private static String refusal(String entryId, String reason) {
+    private static ProblemCode refusalCode(String reason) {
         return switch (reason) {
-            case "strand.error.inAnotherStrand" -> "Post '" + entryId + "' is already in another strand; "
-                    + "move it with entries update strand, or take it out with clear: [\"strand\"].";
-            case "strand.error.duplicate" -> "Post '" + entryId + "' is listed twice.";
+            case "strand.error.inAnotherStrand" -> ProblemCode.STRAND_IN_ANOTHER;
+            case "strand.error.duplicate" -> ProblemCode.STRAND_DUPLICATE;
             // unknownPost, and otherBlog, which the ownership lookup above
             // already turns into unknown: what another blog holds is not said.
-            default -> "No post of this blog has id '" + entryId + "'.";
+            default -> ProblemCode.STRAND_POST_UNKNOWN;
         };
     }
 
@@ -350,13 +349,12 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     private void checkStrand(FieldErrors errors, Weblog weblog, WeblogPage page, Boolean strand)
             throws WebloggerException {
         if (Boolean.TRUE.equals(strand) && weblog.isSiteSpace()) {
-            errors.add("strand", "A site page cannot be a strand.");
+            errors.add("strand", ProblemCode.STRAND_SITE_PAGE);
         }
         if (Boolean.FALSE.equals(strand) && page != null && Boolean.TRUE.equals(page.getStrand())) {
             long parts = weblogger.getWeblogEntryManager().getStrandPartCount(page);
             if (parts > 0) {
-                errors.add("strand", "This strand has " + parts + " posts. Take them out first: "
-                        + "PUT .../pages/{id}/parts with an empty entries list.");
+                errors.add("strand", ProblemCode.STRAND_HAS_PARTS, Long.toString(parts), "{id}");
             }
         }
     }
@@ -384,7 +382,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
-        WeblogPage page = requirePage(request, id, "Page is already in the trash.");
+        WeblogPage page = requirePage(request, id, ProblemCode.PAGE_ALREADY_TRASHED);
         weblogger.getWeblogPageManager().trashPage(page);
         weblogger.flush();
         return ResponseEntity.noContent().build();
@@ -398,7 +396,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     @PostMapping("/{id}/restore")
     public PageDtos.PageView restore(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
-        WeblogPage page = requireTrashedPage(request, id, "Page is not trashed.");
+        WeblogPage page = requireTrashedPage(request, id, ProblemCode.PAGE_NOT_IN_TRASH);
         weblogger.getWeblogPageManager().restorePage(page);
         weblogger.flush();
         return view(page);
@@ -412,7 +410,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     @PostMapping("/{id}/delete-forever")
     public ResponseEntity<Void> deleteForever(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
-        WeblogPage page = requireTrashedPage(request, id, "Page is not trashed; trash it first.");
+        WeblogPage page = requireTrashedPage(request, id, ProblemCode.PAGE_DELETE_NEEDS_TRASH);
         weblogger.getWeblogPageManager().removePage(page);
         weblogger.flush();
         return ResponseEntity.noContent().build();
@@ -428,26 +426,26 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     private WeblogPage requirePage(HttpServletRequest request, String id) {
         WeblogPage page = WeblogOwnership.page(weblogger, id, requireActionWeblog(request));
         if (page == null) {
-            throw ApiException.notFound("No such page.");
+            throw ApiException.problem(ProblemCode.PAGE_NOT_FOUND);
         }
         return page;
     }
 
     /** A write's lookup: as {@link #requirePage}, but a page of this weblog that is in the trash is a 409 saying so. */
     private WeblogPage requireLivePageForWrite(HttpServletRequest request, String id) {
-        return requirePage(request, id, "Page is in the trash; restore it first.");
+        return requirePage(request, id, ProblemCode.PAGE_IN_TRASH);
     }
 
-    private WeblogPage requirePage(HttpServletRequest request, String id, String whenTrashed) {
+    private WeblogPage requirePage(HttpServletRequest request, String id, ProblemCode whenTrashed) {
         Weblog weblog = requireActionWeblog(request);
         WeblogPage page = WeblogOwnership.page(weblogger, id, weblog);
         if (page != null) {
             return page;
         }
         if (WeblogOwnership.trashedPage(weblogger, id, weblog) != null) {
-            throw ApiException.conflict(whenTrashed);
+            throw ApiException.problem(whenTrashed);
         }
-        throw ApiException.notFound("No such page.");
+        throw ApiException.problem(ProblemCode.PAGE_NOT_FOUND);
     }
 
     /**
@@ -455,16 +453,16 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * this weblog that is not trashed is a 409 with {@code whenLive}; another
      * weblog's page and an unknown id are one 404.
      */
-    private WeblogPage requireTrashedPage(HttpServletRequest request, String id, String whenLive) {
+    private WeblogPage requireTrashedPage(HttpServletRequest request, String id, ProblemCode whenLive) {
         Weblog weblog = requireActionWeblog(request);
         WeblogPage page = WeblogOwnership.trashedPage(weblogger, id, weblog);
         if (page != null) {
             return page;
         }
         if (WeblogOwnership.page(weblogger, id, weblog) != null) {
-            throw ApiException.conflict(whenLive);
+            throw ApiException.problem(whenLive);
         }
-        throw ApiException.notFound("No such page.");
+        throw ApiException.problem(ProblemCode.PAGE_NOT_FOUND);
     }
 
     /**
@@ -481,9 +479,8 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         if (existing != null && !existing.getId().equals(excludingId)) {
             // A trashed page keeps its address until it is restored or
             // deleted for good; say so, since the pages list will not show it.
-            throw ApiException.conflictOnField("slug", existing.getStatus() == WeblogPage.PubStatus.TRASHED
-                    ? "A page in the trash holds slug '" + slug + "'. Restore it or delete it forever first."
-                    : "A page with slug '" + slug + "' already exists.");
+            throw ApiException.problemOnField("slug", existing.getStatus() == WeblogPage.PubStatus.TRASHED
+                    ? ProblemCode.SLUG_HELD_BY_TRASH : ProblemCode.SLUG_IN_USE, slug);
         }
     }
 

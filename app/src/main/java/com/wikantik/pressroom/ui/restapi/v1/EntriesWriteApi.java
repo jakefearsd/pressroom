@@ -31,6 +31,7 @@ import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
@@ -88,7 +89,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         User user = requireAuthenticatedUser(request);
 
         if (body.clear() != null && !body.clear().isEmpty()) {
-            throw ApiException.invalidField("clear", "clear applies only to updates.");
+            throw ApiException.problemOnField("clear", ProblemCode.FIELD_UPDATE_ONLY, "clear");
         }
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
@@ -175,7 +176,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         Set<String> cleared = new HashSet<>();
         errors.check("clear", () -> cleared.addAll(EntryDtos.ENTRY_CLEAR.validate(body.clear(), body)));
         if (body.anchor() != null && !body.anchor().equals(entry.getAnchor())) {
-            errors.add("anchor", "anchor is set when an entry is created and cannot change.");
+            errors.add("anchor", ProblemCode.ANCHOR_IMMUTABLE);
         }
         checkWrite(errors, weblog, entry, body, cleared);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
@@ -292,7 +293,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
                                       @PathVariable("id") String id) throws WebloggerException {
         WeblogEntry entry = requireEntry(request, id);
         if (entry.getStatus() == WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.conflict("Entry is already trashed.");
+            throw ApiException.problem(ProblemCode.ENTRY_ALREADY_TRASHED);
         }
         EntryDeletion.trashEntry(weblogger, entry);
         weblogger.flush();
@@ -322,7 +323,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         EntryFields shown = EntryFields.of(fields);
         WeblogEntry entry = requireEntry(request, id);
         if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.conflict("Entry is not trashed.");
+            throw ApiException.problem(ProblemCode.ENTRY_NOT_IN_TRASH);
         }
         weblogger.getWeblogEntryManager().restoreWeblogEntry(entry);
         weblogger.flush();
@@ -341,7 +342,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
                                               @PathVariable("id") String id) throws WebloggerException {
         WeblogEntry entry = requireEntry(request, id);
         if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.conflict("Entry is not trashed; trash it first.");
+            throw ApiException.problem(ProblemCode.ENTRY_DELETE_NEEDS_TRASH);
         }
         EntryDeletion.deleteEntryForever(weblogger, entry);
         weblogger.flush();
@@ -356,7 +357,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     private static void refuseUpdateOnlyFields(FieldErrors errors, EntryDtos.EntryWrite body) {
         RevisionedContent.refuseRevisionNote(errors, body.revisionNote());
         if (EntryEdits.sent(body.edits())) {
-            errors.add("edits", "edits apply only to updates; a create sends text.");
+            errors.add("edits", ProblemCode.EDITS_ON_CREATE);
         }
         RevisionedContent.refuseExpectedHash(errors, body.expectedContentHash());
     }
@@ -398,8 +399,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             HttpServletRequest request,
             @RequestBody EntryDtos.PreviewRequest body) throws WebloggerException {
         if (EntryEdits.sent(body.edits())) {
-            throw ApiException.invalidField("edits", "edits change an existing entry's text; preview with its id, "
-                    + "or send text.");
+            throw ApiException.problemOnField("edits", ProblemCode.EDITS_PREVIEW_NEEDS_ID);
         }
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
@@ -468,7 +468,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      */
     private void requireScheduledHasPubTime(WeblogEntry entry) {
         if (entry.lacksScheduleTime()) {
-            throw ApiException.invalidField("pubTime", "pubTime is required when status is SCHEDULED.");
+            throw ApiException.problemOnField("pubTime", ProblemCode.PUBTIME_REQUIRED);
         }
     }
 
@@ -514,8 +514,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         WeblogPage page = WeblogOwnership.page(weblogger, strandId, weblog);
         if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
-            throw ApiException.invalidField("strand", "strand must be the id of one of this blog's strand pages; "
-                    + "pages list shows which pages are strands.");
+            throw ApiException.problemOnField("strand", ProblemCode.STRAND_NOT_A_STRAND);
         }
         return page;
     }
@@ -529,8 +528,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     private void requirePinRoom(Weblog weblog) throws WebloggerException {
         long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog);
         if (EntryPins.wouldExceed(false, true, pinned)) {
-            throw ApiException.invalidField("pinned", "This blog already has " + EntryPins.MAX_PER_WEBLOG
-                    + " pinned posts, the most it allows. Unpin one first.");
+            throw ApiException.problemOnField("pinned", ProblemCode.PINNED_LIMIT, Integer.toString(EntryPins.MAX_PER_WEBLOG));
         }
     }
 
@@ -577,15 +575,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      */
     private static void requireNotBlank(String field, String value) {
         if (value == null || value.isBlank()) {
-            throw ApiException.invalidField(field, field + " is required.");
+            throw ApiException.problemOnField(field, ProblemCode.FIELD_REQUIRED, field);
         }
     }
 
     private static void requireAnchorForm(String anchor) {
         if (!EntryFieldRules.isValidAnchor(anchor)) {
-            throw ApiException.invalidField("anchor", "anchor must be lower-case letters and digits in words "
-                    + "joined by one '-' or '_', at most " + EntryFieldRules.ANCHOR_MAX_LENGTH
-                    + " characters, for example torrey-pines.");
+            throw ApiException.problemOnField("anchor", ProblemCode.ANCHOR_INVALID,
+                    Integer.toString(EntryFieldRules.ANCHOR_MAX_LENGTH));
         }
     }
 
@@ -607,9 +604,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     private static ApiException anchorConflict(String anchor, WeblogEntry.PubStatus holderStatus,
                                                Throwable cause) {
-        return ApiException.conflictOnField("anchor", holderStatus == WeblogEntry.PubStatus.TRASHED
-                ? "anchor '" + anchor + "' is held by an entry in the trash; delete it forever (delete_forever) to free it."
-                : "anchor '" + anchor + "' is already used by another entry.", cause);
+        return ApiException.problemOnField("anchor", holderStatus == WeblogEntry.PubStatus.TRASHED
+                ? ProblemCode.ANCHOR_HELD_BY_TRASH : ProblemCode.ANCHOR_IN_USE, cause, anchor);
     }
 
     /**
@@ -629,15 +625,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         String trimmed = categoryName.trim();
         if (trimmed.isBlank()) {
-            throw ApiException.invalidField("category", "category cannot be blank.");
+            throw ApiException.problemOnField("category", ProblemCode.FIELD_BLANK, "category");
         }
         WeblogCategory category = weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, trimmed);
         if (category == null) {
             String names = weblogger.getWeblogEntryManager().getWeblogCategories(weblog).stream()
                     .map(WeblogCategory::getName)
                     .collect(Collectors.joining(", "));
-            throw ApiException.invalidField("category",
-                    "Unknown category '" + categoryName + "'; it is one of: " + names + ".");
+            throw ApiException.problemOnField("category", ProblemCode.CATEGORY_UNKNOWN, categoryName, names);
         }
         return category;
     }

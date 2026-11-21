@@ -229,6 +229,19 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   (`DispatchedRequestTest` pins it).
 - **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`; it exists so
   `PressroomHandlerInterceptor` keeps its two permitted `ui.restapi` imports (above).
+- **Content routes are fully keyed (Task 2)**: `EntriesApi`, `EntriesWriteApi`, `EntryContent`,
+  `EntryEdits`, `EntryFields`, `EntryImports`, `RevisionedContent`, `PagesApi`, `PageContent`,
+  `BaseApiController`, `ColumnLimits`, `EntryDtos`, `PageDtos`, `SeoFields` and `ClearFields` raise
+  every problem and field error with a code. `ContentProblemSourceScanTest` fails on a call to an unkeyed
+  `ApiException` factory, or a `FieldErrors.add` with a literal second argument, in those files, so a new
+  refusal there needs a code. A code names a meaning, not a call site (`entry.notFound` is five sites;
+  `field.required` takes the field as `{0}`). The bundle value is the old text exactly. A literal brace
+  in a value with placeholders cannot be quoted (`MessageFormatRegressionTest` bans a lone apostrophe),
+  so it is an argument (`edits.empty`'s `{1}` is `{find, replace}`). Text that is a business exception's
+  message (an image import's refusal) is a passthrough code whose value is `{0}`; they are listed in
+  `ProblemCode.PASSTHROUGH_CODES`, which `ProblemCodeCatalogTest` pins and which may only shrink. A
+  code that has a REST test asserts its `code` (and `errors[].code`): `EntryProblemCodesTest`,
+  `EntryImportProblemCodesTest`, `PageProblemCodesTest`.
 - **Cross-product check** (2026-11-20): `SimpleAgilityDecisionLog` (SA-1 to SA-17) holds no suite-wide
   error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.
   If one is decided later, it supersedes this.

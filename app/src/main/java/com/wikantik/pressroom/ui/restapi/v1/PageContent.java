@@ -7,6 +7,7 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
 
 /** A page's text and revisions, as {@link RevisionedContent}. */
@@ -59,13 +60,13 @@ final class PageContent implements RevisionedContent<WeblogPage, WeblogPageRevis
     }
 
     @Override
-    public String article() {
-        return "a page";
+    public ProblemCode invalidHashCode() {
+        return ProblemCode.PAGE_HASH_INVALID;
     }
 
     @Override
     public ApiException gone() {
-        return ApiException.notFound("No such page.");
+        return ApiException.problem(ProblemCode.PAGE_NOT_FOUND);
     }
 
     @Override

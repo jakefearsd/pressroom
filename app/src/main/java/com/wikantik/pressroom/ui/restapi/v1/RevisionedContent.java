@@ -4,6 +4,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
 import com.wikantik.pressroom.util.TextDiff;
@@ -53,8 +54,8 @@ interface RevisionedContent<D, R> {
     /** The 409 problem for text that is not the one the caller read. */
     ApiException changed(String currentContentHash);
 
-    /** "an entry" or "a page", for the 400 on a malformed hash. */
-    String article();
+    /** The code of the 400 on a malformed hash: its text names "an entry" or "a page". */
+    ProblemCode invalidHashCode();
 
     /** The 404 for a document whose row vanished under the lock. */
     ApiException gone();
@@ -67,7 +68,7 @@ interface RevisionedContent<D, R> {
     default R requireRevision(D doc, String revisionId) {
         R revision = revision(doc, revisionId);
         if (revision == null) {
-            throw ApiException.notFound("No such revision.");
+            throw ApiException.problem(ProblemCode.REVISION_NOT_FOUND);
         }
         return revision;
     }
@@ -87,8 +88,7 @@ interface RevisionedContent<D, R> {
             return;
         }
         if (!CONTENT_HASH.matcher(expected).matches()) {
-            throw ApiException.invalidField("expectedContentHash",
-                    "expectedContentHash must be the contentHash " + article() + " is read with: 64 hex digits.");
+            throw ApiException.problemOnField("expectedContentHash", invalidHashCode());
         }
         String current = EntryDtos.contentHash(storedText(doc));
         if (!expected.equalsIgnoreCase(current)) {
@@ -148,14 +148,14 @@ interface RevisionedContent<D, R> {
     /** What a create refuses: both act on stored content, which a create has none of. */
     static void refuseRevisionNote(FieldErrors errors, String revisionNote) {
         if (revisionNote != null) {
-            errors.add("revisionNote", "revisionNote applies only to updates; a create leaves no revision.");
+            errors.add("revisionNote", ProblemCode.REVISION_NOTE_CREATE);
         }
     }
 
     /** See {@link #refuseRevisionNote}. */
     static void refuseExpectedHash(FieldErrors errors, String expectedHash) {
         if (expectedHash != null) {
-            errors.add("expectedContentHash", "expectedContentHash applies only to updates.");
+            errors.add("expectedContentHash", ProblemCode.FIELD_UPDATE_ONLY, "expectedContentHash");
         }
     }
 }

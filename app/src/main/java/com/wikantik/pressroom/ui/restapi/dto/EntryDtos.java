@@ -19,6 +19,7 @@ import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 
 /**
@@ -186,8 +187,7 @@ public final class EntryDtos {
     public static WeblogEntry.PubStatus parseWritableStatus(String raw) {
         WeblogEntry.PubStatus status = parseStatus(raw);
         if (status == WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.badRequest(
-                    "Use DELETE to trash an entry and POST .../restore to bring it back.");
+            throw ApiException.problem(ProblemCode.ENTRY_STATUS_TRASH);
         }
         return status;
     }
@@ -209,12 +209,12 @@ public final class EntryDtos {
 
     private static WeblogEntry.PubStatus parseStatus(String raw) {
         if (raw == null || raw.isBlank()) {
-            throw ApiException.invalidField("status", "status is required.");
+            throw ApiException.problemOnField("status", ProblemCode.FIELD_REQUIRED, "status");
         }
         try {
             return WeblogEntry.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.invalidField("status", "Unknown status '" + raw + "'.", e);
+            throw ApiException.problemOnField("status", ProblemCode.STATUS_UNKNOWN, e, raw);
         }
     }
 
@@ -371,7 +371,7 @@ public final class EntryDtos {
         boolean[] timeOk = applyEvent(entry, write, weblog, errors);
         ENTRY_CLEAR.apply(entry, cleared);
         if (timeOk[0] && timeOk[1] && EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
-            errors.add("eventEnd", "eventEnd must not be before eventStart.");
+            errors.add("eventEnd", ProblemCode.EVENT_END_BEFORE_START);
         }
         errors.throwIfAny();
     }
@@ -501,9 +501,7 @@ public final class EntryDtos {
         try {
             return EntryFieldRules.parsePubTime(raw, weblog.getTimeZoneInstance());
         } catch (DateTimeParseException e) {
-            throw ApiException.badRequest(
-                    "pubTime must be a wall-clock time in the weblog's zone, for example 2026-03-01T09:30, "
-                            + "or an instant such as 2026-03-01T08:30:00Z.", e);
+            throw ApiException.problem(ProblemCode.PUBTIME_INVALID, e);
         }
     }
 
@@ -527,15 +525,13 @@ public final class EntryDtos {
 
     /** A blank value is refused, not read as "remove": removing is clear's job. */
     private static Timestamp eventTime(String field, String raw, Weblog weblog) {
-        String detail = field + " must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30, "
-                + "or an instant such as 2026-08-02T17:30:00Z.";
         if (raw.isBlank()) {
-            throw ApiException.badRequest(detail);
+            throw ApiException.problem(ProblemCode.EVENT_TIME_INVALID, field);
         }
         try {
             return EntryFieldRules.parseEventTime(raw, weblog.getTimeZoneInstance());
         } catch (DateTimeParseException e) {
-            throw ApiException.badRequest(detail, e);
+            throw ApiException.problem(ProblemCode.EVENT_TIME_INVALID, e, field);
         }
     }
 
@@ -549,9 +545,8 @@ public final class EntryDtos {
         try {
             return JsonLdType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("Unknown jsonLdType '" + raw + "'; it is one of "
-                    + Arrays.stream(JsonLdType.values()).map(Enum::name)
-                            .collect(Collectors.joining(", ")) + ".", e);
+            throw ApiException.problem(ProblemCode.JSONLD_TYPE_UNKNOWN, e, raw,
+                    Arrays.stream(JsonLdType.values()).map(Enum::name).collect(Collectors.joining(", ")));
         }
     }
 
@@ -562,8 +557,7 @@ public final class EntryDtos {
      */
     private static Double requireOnTheGlobe(String field, Double value, double max) {
         if (!Double.isFinite(value) || Math.abs(value) > max) {
-            throw ApiException.badRequest(field + " must be between -" + (int) max
-                    + " and " + (int) max + ".");
+            throw ApiException.problem(ProblemCode.GEO_OUT_OF_RANGE, field, Integer.toString((int) max));
         }
         return value;
     }

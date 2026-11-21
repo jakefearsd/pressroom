@@ -15,6 +15,7 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Views of a weblog static page for the automation API.
@@ -207,8 +208,8 @@ public final class PageDtos {
         if (write.navOrder() != null) {
             errors.check("navOrder", () -> {
                 if (write.navOrder() < 0) {
-                    throw ApiException.invalidField("navOrder",
-                            "navOrder must be 0 or more, got " + write.navOrder() + ".");
+                    throw ApiException.problemOnField("navOrder", ProblemCode.NAV_ORDER_NEGATIVE,
+                            Integer.toString(write.navOrder()));
                 }
                 page.setNavOrder(write.navOrder());
             });
@@ -248,11 +249,10 @@ public final class PageDtos {
         try {
             status = WeblogPage.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.invalidField("status", "Unknown status '" + raw + "'.", e);
+            throw ApiException.problemOnField("status", ProblemCode.STATUS_UNKNOWN, e, raw);
         }
         if (status == WeblogPage.PubStatus.TRASHED) {
-            throw ApiException.invalidField("status",
-                    "Use DELETE to trash a page and POST .../restore to bring it back.");
+            throw ApiException.problemOnField("status", ProblemCode.PAGE_STATUS_TRASH);
         }
         return status;
     }
@@ -286,12 +286,10 @@ public final class PageDtos {
     public static String requireUsableSlug(String slug) {
         String trimmed = slug == null ? null : slug.trim();
         if (ReservedSlugs.isReserved(trimmed) || LocaleSegment.isLocale(trimmed)) {
-            throw ApiException.invalidField("slug",
-                    "slug is blank or reserved: '" + slug + "'.");
+            throw ApiException.problemOnField("slug", ProblemCode.SLUG_RESERVED, String.valueOf(slug));
         }
         if (trimmed.indexOf('/') >= 0) {
-            throw ApiException.invalidField("slug",
-                    "slug may not contain '/': '" + slug + "'.");
+            throw ApiException.problemOnField("slug", ProblemCode.SLUG_HAS_SLASH, slug);
         }
         ColumnLimits.requireMaxLength("slug", trimmed, ColumnLimits.PAGE_SLUG);
         return trimmed;

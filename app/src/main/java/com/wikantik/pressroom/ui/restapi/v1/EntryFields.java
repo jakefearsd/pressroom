@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 
 /**
@@ -76,8 +77,8 @@ final class EntryFields {
             }
         }
         if (!unknown.isEmpty()) {
-            errors.add("fields", (unknown.size() == 1 ? "Unknown field " : "Unknown fields ")
-                    + String.join(", ", unknown) + "; a field is one of: " + String.join(", ", NAMES) + ".");
+            errors.add("fields", unknown.size() == 1 ? ProblemCode.FIELDS_UNKNOWN : ProblemCode.FIELDS_UNKNOWN_MANY,
+                    String.join(", ", unknown), String.join(", ", NAMES));
             return ALL;
         }
         if (asked.isEmpty()) {

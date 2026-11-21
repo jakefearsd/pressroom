@@ -407,6 +407,83 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `server.internalError` | 500 | `internal-error` | An unexpected server error. |
 | `upstream.failure` | 502 | `upstream-failure` | A service the request depends on failed; the work it asked for may be done. |
 | `server.busy` | 503 | `busy` | Another save of the same weblog is in progress; retry after `Retry-After`. |
+| `entry.notFound` | 404 | `not-found` | No entry has this id in the weblog (or the caller may not see it). |
+| `page.notFound` | 404 | `not-found` | No live page has this id in the weblog. |
+| `revision.notFound` | 404 | `not-found` | The entry or page has no revision with this id. |
+| `weblog.notFound` | 404 | `not-found` | No weblog is addressed by this request. |
+| `auth.notAuthenticated` | 401 | `unauthorized` | A write reached the controller with no signed-in user. |
+| `entry.trashed` | 409 | `conflict` | The entry is in the trash; restore it before editing or previewing it. |
+| `entry.alreadyTrashed` | 409 | `conflict` | Trash was asked for an entry already in the trash. |
+| `entry.notInTrash` | 409 | `conflict` | Restore was asked for an entry that is not in the trash. |
+| `entry.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for an entry that is not in the trash. |
+| `page.trashed` | 409 | `conflict` | The page is in the trash; restore it before changing it. |
+| `page.alreadyTrashed` | 409 | `conflict` | Trash was asked for a page already in the trash. |
+| `page.notInTrash` | 409 | `conflict` | Restore was asked for a page that is not in the trash. |
+| `page.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for a page that is not in the trash. |
+| `revision.keepLimit` | 409 | `conflict` | The entry or page already has its 10 kept revisions; release one first. |
+| `field.required` | 400 | `invalid-request` | A required field is missing or blank; `{0}` is its name. |
+| `field.blank` | 400 | `invalid-request` | A field that may be omitted was sent blank. |
+| `field.tooLong` | 400 | `invalid-request` | A value is longer than its column allows. |
+| `field.updateOnly` | 400 | `invalid-request` | A field that acts on stored content (`clear`, `expectedContentHash`) was sent on a create. |
+| `revisionNote.onCreate` | 400 | `invalid-request` | `revisionNote` was sent on a create. |
+| `status.unknown` | 400 | `invalid-request` | `status` is not one of the known statuses. |
+| `entry.status.trashNotWritable` | 400 | `invalid-request` | An entry write set `status` to TRASHED. |
+| `page.status.trashNotWritable` | 400 | `invalid-request` | A page write set `status` to TRASHED. |
+| `page.statusFilterInvalid` | 400 | `invalid-request` | The pages list `status` filter is not TRASHED. |
+| `entry.expectedContentHashInvalid` | 400 | `invalid-request` | An entry's `expectedContentHash` is not a 64-digit hex hash. |
+| `page.expectedContentHashInvalid` | 400 | `invalid-request` | A page's `expectedContentHash` is not a 64-digit hex hash. |
+| `fields.unknown` | 400 | `invalid-request` | `fields` names one field the entry view lacks. |
+| `fields.unknownMany` | 400 | `invalid-request` | `fields` names several fields the entry view lacks. |
+| `edits.withText` | 400 | `invalid-request` | A write sent both `text` and `edits`. |
+| `edits.tooMany` | 400 | `invalid-request` | More edits than one request applies. |
+| `edits.empty` | 400 | `invalid-request` | An `edits` item is null. |
+| `edits.noFind` | 400 | `invalid-request` | An `edits` item has no `find`. |
+| `edits.noReplace` | 400 | `invalid-request` | An `edits` item has no `replace`. |
+| `edits.notFound` | 400 | `invalid-request` | An edit's `find` is not in the stored text. |
+| `edits.ambiguous` | 400 | `invalid-request` | An edit's `find` matches more than once. |
+| `edits.onCreate` | 400 | `invalid-request` | `edits` was sent on a create. |
+| `edits.previewNeedsEntry` | 400 | `invalid-request` | `edits` was sent to preview without an entry id. |
+| `anchor.immutable` | 400 | `invalid-request` | An update sent a different `anchor`. |
+| `anchor.invalidForm` | 400 | `invalid-request` | `anchor` is not in the allowed form; `{0}` is the length limit. |
+| `anchor.heldByTrashedEntry` | 409 | `conflict` | A trashed entry of the weblog holds the `anchor`. |
+| `anchor.inUse` | 409 | `conflict` | Another entry of the weblog holds the `anchor`. |
+| `pubTime.requiredForScheduled` | 400 | `invalid-request` | `status` SCHEDULED with no `pubTime`. |
+| `pubTime.invalid` | 400 | `invalid-request` | `pubTime` does not parse. |
+| `eventTime.invalid` | 400 | `invalid-request` | `eventStart` or `eventEnd` (`{0}`) is blank or does not parse. |
+| `eventEnd.beforeStart` | 400 | `invalid-request` | `eventEnd` precedes `eventStart`. |
+| `jsonLdType.unknown` | 400 | `invalid-request` | `jsonLdType` is not a known type. |
+| `geo.outOfRange` | 400 | `invalid-request` | `geoLatitude` or `geoLongitude` is off the globe. |
+| `strand.notAStrandPage` | 400 | `invalid-request` | An entry's `strand` is not one of the blog's strand pages. |
+| `pinned.limit` | 400 | `invalid-request` | The weblog already has its most pinned posts. |
+| `category.unknown` | 400 | `invalid-request` | `category` names no category of the weblog. |
+| `image.notPublic` | 400 | `invalid-request` | An image id field does not name a public image of the weblog. |
+| `canonicalUrl.notAbsolute` | 400 | `invalid-request` | `canonicalUrl` is not an absolute http(s) URL. |
+| `clear.notClearable` | 400 | `invalid-request` | `clear` names something that cannot be cleared. |
+| `clear.togetherOnly` | 400 | `invalid-request` | `clear` names only one of a pair that clears together. |
+| `clear.setAndCleared` | 400 | `invalid-request` | A field is both sent and named in `clear`. |
+| `upload.disabled` | 400 | `invalid-request` | An image import was asked for on a site that takes no uploads. |
+| `image.altWithoutUrl` | 400 | `invalid-request` | `featuredImageAlt` was sent without `featuredImageUrl`. |
+| `image.urlAndId` | 400 | `invalid-request` | Both `featuredImageUrl` and `featuredImageId` were sent. |
+| `image.urlAndClear` | 400 | `invalid-request` | `featuredImageUrl` was sent with `clear: [featuredImageId]`. |
+| `image.scanRefused` | 400 | `invalid-request` | The text holds an image the import cannot take (an HTML `srcset`); `detail` says which. Text from the business tier. |
+| `image.tooManyBodyImages` | 400 | `invalid-request` | More external images in the text than one write imports. |
+| `image.directoryPrivate` | 400 | `invalid-request` | An import was asked for while the default media directory is private. |
+| `image.importBudgetExhausted` | 400 | `invalid-request` | The import step ran out of time before this image. |
+| `image.importFailed` | 400 | `invalid-request` | One image could not be imported; `detail` names it and says why. Text from the import step. |
+| `strand.entriesRequired` | 400 | `invalid-request` | `entries` was omitted from a parts replacement. |
+| `strand.pageNotAStrand` | 400 | `invalid-request` | Parts were set on a page that is not a strand. |
+| `strand.tooManyParts` | 400 | `invalid-request` | More parts than a strand holds. |
+| `strand.postInAnotherStrand` | 400 | `invalid-request` | A listed post belongs to another strand. |
+| `strand.postListedTwice` | 400 | `invalid-request` | A post id is repeated in `entries`. |
+| `strand.postUnknown` | 400 | `invalid-request` | A listed post id is not a post of the weblog. |
+| `strand.sitePage` | 400 | `invalid-request` | `strand` was set on a site page. |
+| `strand.hasParts` | 400 | `invalid-request` | `strand` false on a strand that still has parts. |
+| `navOrder.negative` | 400 | `invalid-request` | `navOrder` is below 0. |
+| `slug.reserved` | 400 | `invalid-request` | `slug` is blank or a reserved name. |
+| `slug.hasSlash` | 400 | `invalid-request` | `slug` contains a `/`. |
+| `slug.heldByTrashedPage` | 409 | `conflict` | A trashed page holds the `slug`. |
+| `slug.inUse` | 409 | `conflict` | Another page holds the `slug`. |
+| `parameter.aliasConflict` | 400 | `invalid-request` | A deprecated parameter alias (`{0}`) was sent with a different value than its current name (`{1}`). |
 | `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
 
 A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where

@@ -7,6 +7,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
 
 /** An entry's text and revisions, as {@link RevisionedContent}. */
@@ -59,13 +60,13 @@ final class EntryContent implements RevisionedContent<WeblogEntry, WeblogEntryRe
     }
 
     @Override
-    public String article() {
-        return "an entry";
+    public ProblemCode invalidHashCode() {
+        return ProblemCode.ENTRY_HASH_INVALID;
     }
 
     @Override
     public ApiException gone() {
-        return ApiException.notFound("No such entry.");
+        return ApiException.problem(ProblemCode.ENTRY_NOT_FOUND);
     }
 
     @Override

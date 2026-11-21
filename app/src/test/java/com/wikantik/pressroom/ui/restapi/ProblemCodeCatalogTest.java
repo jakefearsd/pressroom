@@ -63,8 +63,105 @@ class ProblemCodeCatalogTest {
                         "request.notAcceptable",
                         "request.throttled",
                         "upstream.failure",
+                        "entry.notFound",
+                        "page.notFound",
+                        "revision.notFound",
+                        "weblog.notFound",
+                        "auth.notAuthenticated",
+                        "entry.trashed",
+                        "entry.alreadyTrashed",
+                        "entry.notInTrash",
+                        "entry.deleteForeverNeedsTrash",
+                        "page.trashed",
+                        "page.alreadyTrashed",
+                        "page.notInTrash",
+                        "page.deleteForeverNeedsTrash",
+                        "revision.keepLimit",
+                        "field.required",
+                        "field.blank",
+                        "field.tooLong",
+                        "field.updateOnly",
+                        "revisionNote.onCreate",
+                        "status.unknown",
+                        "entry.status.trashNotWritable",
+                        "page.status.trashNotWritable",
+                        "page.statusFilterInvalid",
+                        "entry.expectedContentHashInvalid",
+                        "page.expectedContentHashInvalid",
+                        "fields.unknown",
+                        "fields.unknownMany",
+                        "edits.withText",
+                        "edits.tooMany",
+                        "edits.empty",
+                        "edits.noFind",
+                        "edits.noReplace",
+                        "edits.notFound",
+                        "edits.ambiguous",
+                        "edits.onCreate",
+                        "edits.previewNeedsEntry",
+                        "anchor.immutable",
+                        "anchor.invalidForm",
+                        "anchor.heldByTrashedEntry",
+                        "anchor.inUse",
+                        "pubTime.requiredForScheduled",
+                        "pubTime.invalid",
+                        "eventTime.invalid",
+                        "eventEnd.beforeStart",
+                        "jsonLdType.unknown",
+                        "geo.outOfRange",
+                        "strand.notAStrandPage",
+                        "pinned.limit",
+                        "category.unknown",
+                        "image.notPublic",
+                        "canonicalUrl.notAbsolute",
+                        "clear.notClearable",
+                        "clear.togetherOnly",
+                        "clear.setAndCleared",
+                        "upload.disabled",
+                        "image.altWithoutUrl",
+                        "image.urlAndId",
+                        "image.urlAndClear",
+                        "image.scanRefused",
+                        "image.tooManyBodyImages",
+                        "image.directoryPrivate",
+                        "image.importBudgetExhausted",
+                        "image.importFailed",
+                        "strand.entriesRequired",
+                        "strand.pageNotAStrand",
+                        "strand.tooManyParts",
+                        "strand.postInAnotherStrand",
+                        "strand.postListedTwice",
+                        "strand.postUnknown",
+                        "strand.sitePage",
+                        "strand.hasParts",
+                        "navOrder.negative",
+                        "slug.reserved",
+                        "slug.hasSlash",
+                        "slug.heldByTrashedPage",
+                        "slug.inUse",
+                        "parameter.aliasConflict",
                         "http.error"),
                 Arrays.stream(ProblemCode.values()).map(ProblemCode::code).collect(Collectors.toSet()));
+    }
+
+    /**
+     * Task 2: a code whose text is a business exception's own message has
+     * the base value {0}, and is listed here. The set may only shrink, so it
+     * is pinned; a new passthrough code, or a keyed one left in the set,
+     * fails.
+     */
+    @Test
+    void thePassthroughCodesArePinnedAndAreExactlyTheCodesWhoseTextIsItsArgument() throws IOException {
+        assertEquals(Set.of(ProblemCode.IMAGE_SCAN_REFUSED, ProblemCode.IMAGE_IMPORT_FAILED),
+                ProblemCode.PASSTHROUGH_CODES);
+        Properties base = load(BASE_BUNDLE);
+        Set<ProblemCode> argumentOnly = new java.util.HashSet<>();
+        for (ProblemCode code : ProblemCode.values()) {
+            if ("{0}".equals(base.getProperty(code.key()))) {
+                argumentOnly.add(code);
+            }
+        }
+        assertEquals(argumentOnly, ProblemCode.PASSTHROUGH_CODES);
     }
 
     @Test

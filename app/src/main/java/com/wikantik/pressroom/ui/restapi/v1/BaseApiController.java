@@ -12,6 +12,7 @@ import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import com.wikantik.pressroom.business.RevisionKeepLimitException;
@@ -45,7 +46,7 @@ public abstract class BaseApiController {
         if (weblog instanceof Weblog w) {
             return w;
         }
-        throw ApiException.notFound("No such weblog.");
+        throw ApiException.problem(ProblemCode.WEBLOG_NOT_FOUND);
     }
 
     /**
@@ -60,8 +61,7 @@ public abstract class BaseApiController {
             return StringUtils.isBlank(aliasValue) ? null : aliasValue;
         }
         if (StringUtils.isNotBlank(aliasValue) && !aliasValue.equals(value)) {
-            throw ApiException.invalidField(alias, alias + " is the old name of " + name
-                    + " and names a different value; send " + name + " only.");
+            throw ApiException.problemOnField(alias, ProblemCode.PARAMETER_ALIAS_CONFLICT, alias, name);
         }
         return value;
     }
@@ -81,8 +81,7 @@ public abstract class BaseApiController {
             return;
         }
         if (WeblogOwnership.publicImage(weblogger, id, weblog) == null) {
-            errors.add(field, field + " must be the id of an image in this weblog's media, "
-                    + "outside any private directory.");
+            errors.add(field, ProblemCode.IMAGE_NOT_PUBLIC, field);
         }
     }
 
@@ -92,7 +91,7 @@ public abstract class BaseApiController {
         if (user instanceof User u) {
             return u;
         }
-        throw ApiException.unauthorized("Not authenticated.");
+        throw ApiException.problem(ProblemCode.AUTH_NOT_AUTHENTICATED);
     }
 
     /**
@@ -104,7 +103,7 @@ public abstract class BaseApiController {
     protected WeblogEntry requireEntry(HttpServletRequest request, String id) {
         WeblogEntry entry = WeblogOwnership.entry(weblogger, id, requireActionWeblog(request));
         if (entry == null) {
-            throw ApiException.notFound("No such entry.");
+            throw ApiException.problem(ProblemCode.ENTRY_NOT_FOUND);
         }
         return entry;
     }
@@ -129,7 +128,7 @@ public abstract class BaseApiController {
     protected WeblogEntry requireLiveEntry(HttpServletRequest request, String id) {
         WeblogEntry entry = requireEntry(request, id);
         if (entry.getStatus() == WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.conflict("Entry is trashed. Restore it before editing.");
+            throw ApiException.problem(ProblemCode.ENTRY_TRASHED);
         }
         return entry;
     }
@@ -149,7 +148,7 @@ public abstract class BaseApiController {
         try {
             change.apply();
         } catch (RevisionKeepLimitException e) {
-            throw ApiException.conflict("At most 10 kept revisions for one item.", e);
+            throw ApiException.problem(ProblemCode.REVISION_KEEP_LIMIT, e);
         }
         weblogger.flush();
     }

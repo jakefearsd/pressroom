@@ -13,6 +13,7 @@ import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
@@ -144,7 +145,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             }
         }
         if (entry == null || !requireActionWeblog(request).equals(entry.getWebsite())) {
-            throw ApiException.notFound("No such entry.");
+            throw ApiException.problem(ProblemCode.ENTRY_NOT_FOUND);
         }
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
