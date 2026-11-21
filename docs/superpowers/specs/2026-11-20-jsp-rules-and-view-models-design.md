@@ -251,6 +251,14 @@ your own membership" rule moves too (`selfChangeProblem`).
 5. `UserAdminIT`, `AgentAccountsIT` and the members browser ITs green at both
    context paths.
 
+> **As built (Task 2, 2026-11-21).** `Memberships.levelProblem`,
+> `selfChangeProblem` and `AccountRules.passwordProblem` return message keys,
+> not `RuleViolation`, because no API answers them yet and a `RuleViolation`
+> needs a `ProblemCode`. `groupBloggingOff()` returns a boolean.
+> `leavesNoAdmin` is two overloads: one counts the Members table's posted
+> rows, the other counts the store for one change. Tier 4's membership routes
+> wrap the keys into violations and mint their codes then.
+
 ## Task 3: Category and media-folder rules
 
 **Rule.** `CategoryRules`: `nameProblem(Weblog, String name, String
