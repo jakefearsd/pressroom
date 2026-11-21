@@ -28,7 +28,7 @@ class SiteSettingsScreenIndependenceTest {
     private static final List<String> FILES = List.of("RuleViolation.java", "SiteSettingsRules.java",
             "SiteSettingsEffects.java", "AccountRules.java", "Memberships.java",
             "CategoryRules.java", "MediaRules.java", "ColumnWidths.java", "PageRules.java", "StrandChoice.java",
-            "EntryPinRules.java");
+            "EntryPinRules.java", "EntryListQuery.java", "../view/EntryListView.java");
 
     private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+)");
 

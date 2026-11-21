@@ -24,25 +24,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
-import com.wikantik.pressroom.business.analytics.AnalyticsManager;
-import com.wikantik.pressroom.business.analytics.TrafficState;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
-import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.EntryListQuery;
+import com.wikantik.pressroom.ui.controllers.EntryListQuery.EntryListPage;
+import com.wikantik.pressroom.ui.view.EntryListView;
 import com.wikantik.pressroom.util.URLUtilities;
 import com.wikantik.pressroom.util.MailUtil;
 import com.wikantik.pressroom.ui.controllers.pagers.EntriesPager;
@@ -94,102 +92,50 @@ public class EntriesController extends BaseController {
         return "weblogEntryQuery.title";
     }
 
-    /**
-     * The "Views (30d)" column: read from the local snapshot, one call per
-     * render, and only when analytics is configured. An entry with no recorded
-     * views is a real zero once the blog has a complete snapshot; before that,
-     * or when the snapshot holds only the top paths (ruling R23), it is an em
-     * dash, since its views are not known.
-     */
-    private void addViews(Model model, List<WeblogEntry> entries, String weblogId,
-                          Locale locale) {
-        AnalyticsManager analytics = weblogger.getAnalyticsManager();
-        boolean column = analytics.getStatus().configured();
-        model.addAttribute("viewsColumn", column);
-        if (!column || entries == null) {
-            return;
-        }
-        Map<String, Long> views = analytics.entryViews(weblogId, "30d");
-        boolean snapshot = !views.isEmpty()
-                || analytics.getBlogTraffic(weblogId, "30d").state() != TrafficState.NO_DATA;
-        boolean zeroIsKnown = snapshot && analytics.pathsCappedAt(weblogId, "30d") == 0;
-        Map<String, String> cells = new HashMap<>();
-        for (WeblogEntry entry : entries) {
-            cells.put(entry.getId(), views.containsKey(entry.getId())
-                    ? TrafficView.number(views.get(entry.getId()), locale) : zeroIsKnown ? "0" : TrafficView.DASH);
-        }
-        model.addAttribute("entryViews", cells);
-    }
-
-    /**
-     * The status filter a query-string value means: blank, "ALL" and anything
-     * that is not a status name all mean no filter -- a stale bookmark or a
-     * hand-built url gets the whole list, not a 500.
-     */
-    private static WeblogEntry.PubStatus filterStatus(String status) {
-        if (StringUtils.isBlank(status) || "ALL".equals(status)) {
-            return null;
-        }
-        try {
-            return WeblogEntry.PubStatus.valueOf(status);
-        } catch (IllegalArgumentException unknown) {
-            return null;
-        }
-    }
-
     @GetMapping("/entries.rol")
     public String execute(HttpServletRequest request, Model model,
                           @ModelAttribute("bean") EntriesBean bean) {
         populateCommonModel(request, model);
 
-        List<WeblogEntry> entries = null;
-        boolean hasMore = false;
+        EntryListPage page = null;
         try {
-            String status = bean.getStatus();
-            WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
-            WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
-            wesc.setWeblog(getActionWeblog(request));
-            wesc.setStartDate(bean.getStartDate());
-            wesc.setEndDate(bean.getEndDate());
-            wesc.setCatName(bean.getCategoryName());
-            wesc.setTags(bean.getTags());
-            // A blank status means the same thing as "ALL" (task B5/B6's
-            // EntriesSidebar.jsp guards its hidden bean.status input against
-            // posting one, but that is a JSP-side belt; a query string built
-            // by hand, or a form whose guard regresses, still reaches here --
-            // and PubStatus.valueOf("") is an uncaught IllegalArgumentException,
-            // outside the catch below, i.e. a 500 rather than an unfiltered
-            // list).
-            wesc.setStatus(filterStatus(status));
-            wesc.setText(bean.getText());
-            wesc.setSortBy(bean.getSortBy());
-            wesc.setOffset(bean.getPage() * COUNT);
-            wesc.setMaxResults(COUNT + 1);
-            List<WeblogEntry> rawEntries = wmgr.getWeblogEntries(wesc);
-            entries = new ArrayList<>(rawEntries);
-            if (!entries.isEmpty()) {
-                if (rawEntries.size() > COUNT) {
-                    entries.remove(entries.size() - 1);
-                    hasMore = true;
-                }
-                model.addAttribute("firstEntry", entries.get(0));
-                model.addAttribute("lastEntry", entries.get(entries.size() - 1));
-            }
+            // A blank status means the same thing as "ALL" (EntriesSidebar.jsp
+            // guards its hidden bean.status input against posting one, but that
+            // is a JSP-side belt; a query string built by hand still reaches
+            // here), and so does one that names no status.
+            page = EntryListQuery.run(weblogger.getWeblogEntryManager(), getActionWeblog(request),
+                    new EntryListQuery.Filters(EntryListQuery.lenientStatus(bean.getStatus()),
+                            bean.getCategoryName(), bean.getTags(), bean.getText(), null,
+                            bean.getStartDate(), bean.getEndDate(), bean.getSortBy()),
+                    bean.getPage() * COUNT, COUNT);
         } catch (WebloggerException ex) {
             log.error("Error looking up entries", ex);
             addError(model, "generic.error.check.logs", request);
         }
 
-        String baseUrl = buildBaseUrl(request, bean);
-        model.addAttribute("pager", new EntriesPager(baseUrl, bean.getPage(), entries, hasMore));
-        model.addAttribute("entryTitles", plainTitles(entries));
-        addViews(model, entries, getActionWeblog(request).getId(), request.getLocale());
-        model.addAttribute("filtered", isFiltered(bean));
-        model.addAttribute("categories", getCategories(request));
-        model.addAttribute("sortByOptions", getSortByOptions(request));
-        List<KeyValueObject> statusOptions = getStatusOptions(request);
-        model.addAttribute("statusOptions", statusOptions);
-        model.addAttribute("statusChipUrls", statusChipUrls(request, bean, statusOptions));
+        EntryListView view = EntryListView.of(page, bean.getPage(),
+                EntryListView.Views.read(weblogger.getAnalyticsManager(), getActionWeblog(request).getId(),
+                        page != null),
+                request.getLocale(), getCategories(request), key -> getText(key, request),
+                new EntryListView.Filters(bean.getStatus(), bean.getCategoryName(), bean.getTagsAsString(),
+                        bean.getText(), bean.getStartDateString(), bean.getEndDateString(), bean.getSortBy()));
+
+        if (view.firstEntry() != null) {
+            model.addAttribute("firstEntry", view.firstEntry());
+            model.addAttribute("lastEntry", view.lastEntry());
+        }
+        model.addAttribute("pager", new EntriesPager(buildBaseUrl(request, bean), view.pageNumber(),
+                view.entries(), view.hasMore()));
+        model.addAttribute("entryTitles", view.titlesById());
+        model.addAttribute("viewsColumn", view.viewsColumn());
+        if (view.viewsShown()) {
+            model.addAttribute("entryViews", view.viewsById());
+        }
+        model.addAttribute("filtered", view.filtered());
+        model.addAttribute("categories", view.categories());
+        model.addAttribute("sortByOptions", view.sortByOptions());
+        model.addAttribute("statusOptions", view.statusOptions());
+        model.addAttribute("statusChipUrls", statusChipUrls(request, bean, view.statusOptions()));
 
         return ".Entries";
     }
@@ -418,19 +364,6 @@ public class EntriesController extends BaseController {
         return "redirect:" + ENTRIES_PATH + URLUtilities.getQueryString(params);
     }
 
-    /**
-     * Whether the author narrowed the list, so an empty result means "nothing
-     * matched" rather than "this weblog has no entries". The sort order and
-     * the "ALL" status are the defaults wearing a value, not filters -- the
-     * same two {@link #backToList} drops for the same reason.
-     */
-    private boolean isFiltered(EntriesBean bean) {
-        Map<String, String> params = filterParams(bean);
-        params.remove("bean.sortBy");
-        params.remove("bean.status", "ALL");
-        return !params.isEmpty();
-    }
-
     /** Each entry's {@link #plainTitle}, by entry id; empty for a failed lookup. */
     public static Map<String, String> plainTitles(List<WeblogEntry> entries) {
         Map<String, String> titles = new HashMap<>();
@@ -442,20 +375,9 @@ public class EntriesController extends BaseController {
         return titles;
     }
 
-    /**
-     * An entry's display title as plain text, for a JSP to escape exactly once
-     * with {@code fn:escapeXml} -- in element content and attributes alike.
-     *
-     * <p>Neither stored form is safe to print as it stands. A title is stored
-     * HTML-escaped (see {@code EntryFieldRules.escapeTitle}), so escaping it
-     * again shows "Tom &amp;amp; Jerry" and a screen reader reads "amp". An
-     * UNTITLED entry's {@code getDisplayTitle()} is its body with tags removed
-     * -- not escaped, and {@code Utilities.removeHTML} keeps an unterminated
-     * tag verbatim -- so printing it bare is markup injection. Unescaping the
-     * one and leaving the other as text gives both the same shape: raw text.
-     */
+    /** An entry's display title as plain text; see {@link EntryListView#plainTitle}. */
     public static String plainTitle(WeblogEntry entry) {
-        return StringEscapeUtils.unescapeHtml4(entry.getDisplayTitle());
+        return EntryListView.plainTitle(entry);
     }
 
     // Package-private rather than public: widened only so the test can call it
@@ -543,7 +465,7 @@ public class EntriesController extends BaseController {
 
     // No synthetic "Any" entry here -- that choice is an <option value="">
     // the JSP emits directly (EntriesSidebar.jsp), since a blank categoryName
-    // already means "no filter" in WeblogEntrySearchCriteria.
+    // already means "no filter" to the entry query.
     private List<WeblogCategory> getCategories(HttpServletRequest request) {
         List<WeblogCategory> cats = new ArrayList<>();
         try {
@@ -553,25 +475,6 @@ public class EntriesController extends BaseController {
             log.error("Error getting category list", ex);
         }
         return cats;
-    }
-
-    private List<KeyValueObject> getSortByOptions(HttpServletRequest request) {
-        List<KeyValueObject> opts = new ArrayList<>();
-        opts.add(new KeyValueObject(WeblogEntrySearchCriteria.SortBy.PUBLICATION_TIME.name(),
-                getText("weblogEntryQuery.label.pubTime", request)));
-        opts.add(new KeyValueObject(WeblogEntrySearchCriteria.SortBy.UPDATE_TIME.name(),
-                getText("weblogEntryQuery.label.updateTime", request)));
-        return opts;
-    }
-
-    private List<KeyValueObject> getStatusOptions(HttpServletRequest request) {
-        List<KeyValueObject> opts = new ArrayList<>();
-        opts.add(new KeyValueObject("ALL", getText("weblogEntryQuery.label.allEntries", request)));
-        opts.add(new KeyValueObject("DRAFT", getText("weblogEntryQuery.label.draftOnly", request)));
-        opts.add(new KeyValueObject("PUBLISHED", getText("weblogEntryQuery.label.publishedOnly", request)));
-        opts.add(new KeyValueObject("PENDING", getText("weblogEntryQuery.label.pendingOnly", request)));
-        opts.add(new KeyValueObject("SCHEDULED", getText("weblogEntryQuery.label.scheduledOnly", request)));
-        return opts;
     }
 
     @ModelAttribute("bean")

@@ -11,8 +11,8 @@ import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.EntryListQuery;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
@@ -88,32 +88,17 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         Weblog weblog = requireActionWeblog(request);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
 
-        WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
-        criteria.setWeblog(weblog);
-        criteria.setCatName(category);
-        criteria.setTags(tags);
-        criteria.setText(text);
-        criteria.setLocale(locale);
-        criteria.setOffset(offset);
-        // One extra row decides hasMore without a second count query.
-        criteria.setMaxResults(boundedLimit + 1);
-        if (status != null && !status.isBlank()) {
-            criteria.setStatus(EntryDtos.parseFilterStatus(status));
-            // The only way to see the trash, and only when asked for by
-            // name -- WeblogEntrySearchCriteria.includeTrashed defaults to
-            // false, which is the safety property: a caller naming no
-            // status at all gets that default untouched.
-            criteria.setIncludeTrashed(criteria.getStatus() == WeblogEntry.PubStatus.TRASHED);
-        }
+        // The strict parse: an unknown status is a 400 here, where the JSP list
+        // treats one as no filter. A blank one is no filter on both.
+        EntryListQuery.EntryListPage found = EntryListQuery.run(weblogger.getWeblogEntryManager(), weblog,
+                new EntryListQuery.Filters(status == null || status.isBlank() ? null
+                        : EntryDtos.parseFilterStatus(status), category, tags, text, locale, null, null, null),
+                offset, boundedLimit);
 
-        List<WeblogEntry> found = weblogger.getWeblogEntryManager().getWeblogEntries(criteria);
-        boolean hasMore = found.size() > boundedLimit;
-        List<WeblogEntry> page = hasMore ? found.subList(0, boundedLimit) : found;
-
-        List<EntryDtos.EntryView> items = page.stream()
+        List<EntryDtos.EntryView> items = found.items().stream()
                 .map(entry -> EntryDtos.toView(entry, permalink(entry)))
                 .toList();
-        return shown.project(new EntryDtos.EntryPage(items, offset, boundedLimit, hasMore));
+        return shown.project(new EntryDtos.EntryPage(items, found.offset(), found.limit(), found.hasMore()));
     }
 
     @Operation(operationId = "entriesGet")

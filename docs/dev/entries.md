@@ -231,6 +231,17 @@ build does not pass `-parameters`, so a bare `@RequestParam String id` throws
 at runtime while unit tests (which call the method directly) pass;
 `ControllerMetadataTest` fails on any unnamed one.
 
+## The entry list
+
+`entries.rol` and `GET /v1/weblogs/{handle}/entries` build the same query
+through `EntryListQuery` (`ui.controllers`): filters in, `WeblogEntrySearchCriteria`
+and the trash rule (trash only when `TRASHED` is asked for by name) inside, one
+extra row fetched to answer "more?", an `EntryListPage` out. Each surface keeps
+its own parameter parsing. `EntryListView` (`ui.view`) is what `Entries.jsp`
+shows, as plain values; `EntriesController` only adds the urls. An unknown
+`bean.status` on `entries.rol` is no filter (the whole list); the API answers 400
+for the same value.
+
 ## Tag counts
 
 A tag's count (`pressroom_weblogentrytagagg`, see `database.md`) is the number
