@@ -21,6 +21,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.boot.SsoConfig;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
+import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.business.Weblogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -80,6 +86,56 @@ public class MetaApi {
                 principal.scopeWeblog() == null ? "" : principal.scopeWeblog(), principal.scopeRole().name());
         return ResponseEntity.ok(new MetaDtos.MeView(user.getUserName(), user.getScreenName(), user.getKind().name(),
                 isGlobalAdmin(user), scope, weblogsFor(user, principal)));
+    }
+
+    /**
+     * The site facts a client needs before it draws a screen. The same for every
+     * authenticated caller, and read afresh each time (nothing is cached), so a
+     * switch an operator flips shows in the next response. Authentication is
+     * required (401 otherwise) though no permission is: the version is public,
+     * but nothing needs these facts before sign-in.
+     */
+    @WeblogScopeExempt
+    @Operation(operationId = "metaGet", summary = "The site's version, address, feature switches and limits.")
+    @GetMapping("/meta")
+    public ResponseEntity<MetaDtos.MetaView> meta(HttpServletRequest request) {
+        requireUser(request);
+        String version = weblogger.getVersion();
+        String url = SsoConfig.configuredAbsoluteUrl();
+        String siteUrl = url == null || url.isBlank() ? null : url.strip().replaceAll("/+$", "");
+        MetaDtos.Features features = new MetaDtos.Features(
+                WebloggerRuntimeConfig.getBooleanProperty("themes.customtheme.allowed"),
+                WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled"),
+                WebloggerRuntimeConfig.getBooleanProperty("site.allowUserWeblogCreation"),
+                WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled"),
+                SsoSettings.fromConfig().enabled(),
+                weblogger.getAnalyticsManager().getStatus().configured());
+        MetaDtos.Limits limits = new MetaDtos.Limits(ApiBodyLimitFilter.MAX_BODY_BYTES, Paging.MAX_LIMIT,
+                ColumnLimits.ENTRY_TEXT);
+        return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
+                siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits));
+    }
+
+    /**
+     * The caller's own account, read-only: the fields the Profile page shows,
+     * never a password field. Changing any of it is session-only policy.
+     */
+    @WeblogScopeExempt
+    @Operation(operationId = "meProfileGet", summary = "The caller's own account details (read-only).")
+    @GetMapping("/me/profile")
+    public ResponseEntity<MetaDtos.ProfileView> profile(HttpServletRequest request) {
+        User user = requireUser(request);
+        return ResponseEntity.ok(new MetaDtos.ProfileView(user.getUserName(), user.getScreenName(),
+                user.getFullName(), user.getEmailAddress(), user.getLocale(), user.getTimeZone(),
+                user.getKind().name()));
+    }
+
+    private static User requireUser(HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null) {
+            throw ApiException.authenticationRequired();
+        }
+        return user;
     }
 
     /**

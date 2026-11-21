@@ -84,7 +84,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
     // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
     // repeated in each controller, so change all of them together.
-    private static final int MAX_LIMIT = 200;
+    private static final int MAX_LIMIT = Paging.MAX_LIMIT;
 
     // ------------------------------------------------------------- users
 

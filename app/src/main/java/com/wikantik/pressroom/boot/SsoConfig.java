@@ -48,7 +48,7 @@ public class SsoConfig {
      * {@code PRESSROOM_SITE_ABSOLUTEURL}. Never {@code getAbsoluteContextURL()},
      * whose last fallback is latched from whatever host the first request used.
      */
-    static String configuredAbsoluteUrl() {
+    public static String configuredAbsoluteUrl() {
         return WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl");
     }
 

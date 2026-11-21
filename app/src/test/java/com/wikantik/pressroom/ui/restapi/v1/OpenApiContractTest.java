@@ -82,7 +82,7 @@ class OpenApiContractTest {
      * "Operation ids".
      */
     private static final Set<String> OPERATION_IDS = Set.of(
-            "pingGet", "meGet",
+            "pingGet", "meGet", "metaGet", "meProfileGet",
             "tokensIssue", "tokensList", "tokensRevoke",
             "weblogsList", "weblogsCreate", "weblogsGet", "weblogsUpdate",
             "entriesList", "entriesGet", "entriesGetByAnchor", "entriesListRevisions", "entriesGetRevision",

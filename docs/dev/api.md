@@ -366,6 +366,19 @@ the old ones (`user.emailRequired` on create, `user.emailInvalid` on patch). Tes
 address use `example.com`: `example.test` is refused now. `AdminUsersCharacterisationTest` pins the wire
 bodies.
 
+## Site facts and the caller's profile (2026-11-21)
+
+`GET /v1/meta` and `GET /v1/me/profile` live on `MetaApi`, both
+`@WeblogScopeExempt`, authenticated-only, matrix rows equal to `GET /v1/me`.
+Nothing in `meta` is cached: every flag is read per request through
+`WebloggerRuntimeConfig.getBooleanProperty` (and `SsoSettings.fromConfig`,
+`AnalyticsManager.getStatus().configured()`), and `siteUrl` reuses
+`SsoConfig.configuredAbsoluteUrl` (now public), never `getAbsoluteContextURL`.
+`limits.maxListLimit` is `Paging.MAX_LIMIT`, the one constant the list
+controllers cap against. `ProfileView` is pinned by `MetaApiTest` to its
+component set: a new member is a deliberate change and never a credential.
+The profile is excluded from MCP; `site_info` is the tool for `meta`.
+
 ## The OpenAPI document (2026-11-20)
 
 Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 4. `/api/v1/openapi.json` is

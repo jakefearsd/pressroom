@@ -5,6 +5,17 @@ import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
+import com.wikantik.pressroom.business.analytics.AnalyticsStatus;
+import com.wikantik.pressroom.config.WebloggerConfig;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.Paging;
+import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import java.util.Arrays;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.ApiToken;
@@ -59,10 +70,15 @@ class MetaApiTest {
     private WeblogManager weblogManager;
     private MockMvc mockMvc;
     private User user;
+    private AnalyticsManager analyticsManager;
+    private Weblogger weblogger;
 
     @BeforeEach
     void setUp() {
-        Weblogger weblogger = mock(Weblogger.class);
+        weblogger = mock(Weblogger.class);
+        analyticsManager = mock(AnalyticsManager.class);
+        when(weblogger.getAnalyticsManager()).thenReturn(analyticsManager);
+        when(analyticsManager.getStatus()).thenReturn(AnalyticsStatus.notConfigured());
         userManager = mock(UserManager.class);
         when(weblogger.getUserManager()).thenReturn(userManager);
         weblogManager = mock(WeblogManager.class);
@@ -319,6 +335,156 @@ class MetaApiTest {
 
         user.setKind(User.Kind.AGENT);
         assertEquals("AGENT", me().get("kind").asString());
+    }
+
+    // ------------------------------------------------------- GET /v1/meta
+
+    private static final List<String> FLAG_SETTINGS = List.of("themes.customtheme.allowed",
+            "groupblogging.enabled", "site.allowUserWeblogCreation", "uploads.enabled");
+
+    /** {@code GET /v1/meta} as {@link #user}; asserts 200 and returns the body. */
+    private JsonNode meta() throws Exception {
+        return json(mockMvc.perform(get("/v1/meta").requestAttr(AUTHENTICATED_USER, user))
+                .andExpect(status().isOk()));
+    }
+
+    @Test
+    void metaWithoutAnAuthenticatedUserIsA401Problem() throws Exception {
+        mockMvc.perform(get("/v1/meta")).andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
+    void metaCarriesEveryMember() throws Exception {
+        when(weblogger.getVersion()).thenReturn("0.16.0");
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))
+                    .thenReturn("https://blog.example.com/");
+
+            JsonNode body = meta();
+
+            assertEquals("0.16.0", body.get("version").asString());
+            assertEquals("https://blog.example.com", body.get("siteUrl").asString());
+            assertEquals(List.of("customThemes", "groupBlogging", "userWeblogCreation", "uploads", "readerSignIn",
+                    "analytics"), names(body.get("features")));
+            assertEquals(List.of("maxBodyBytes", "maxListLimit", "entryTextMaxChars"), names(body.get("limits")));
+        }
+    }
+
+    private static List<String> names(JsonNode node) {
+        return node.propertyNames().stream().toList();
+    }
+
+    /** Each flag follows its setting, read afresh on each request: nothing is cached. */
+    @Test
+    void eachRuntimeFeatureFlagFollowsItsSettingBetweenTwoRequests() throws Exception {
+        String[] members = {"customThemes", "groupBlogging", "userWeblogCreation", "uploads"};
+        for (int i = 0; i < FLAG_SETTINGS.size(); i++) {
+            String setting = FLAG_SETTINGS.get(i);
+            try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+                rt.when(() -> WebloggerRuntimeConfig.getBooleanProperty(setting)).thenReturn(true);
+                assertTrue(meta().get("features").get(members[i]).asBoolean(), setting + " on");
+                for (String other : members) {
+                    if (!other.equals(members[i])) {
+                        assertFalse(meta().get("features").get(other).asBoolean(), other + " is its own setting");
+                    }
+                }
+                rt.when(() -> WebloggerRuntimeConfig.getBooleanProperty(setting)).thenReturn(false);
+                assertFalse(meta().get("features").get(members[i]).asBoolean(), setting + " off");
+            }
+        }
+    }
+
+    @Test
+    void readerSignInFollowsTheSsoConfiguration() throws Exception {
+        try (MockedStatic<WebloggerConfig> cfg = Mockito.mockStatic(WebloggerConfig.class)) {
+            cfg.when(() -> WebloggerConfig.getProperty("sso.oidc.client.id")).thenReturn("id");
+            cfg.when(() -> WebloggerConfig.getProperty("sso.oidc.client.secret")).thenReturn("secret");
+            assertTrue(meta().get("features").get("readerSignIn").asBoolean());
+            cfg.when(() -> WebloggerConfig.getProperty("sso.oidc.client.secret")).thenReturn("");
+            assertFalse(meta().get("features").get("readerSignIn").asBoolean());
+        }
+    }
+
+    @Test
+    void analyticsFollowsWhetherAServiceIsConfigured() throws Exception {
+        assertFalse(meta().get("features").get("analytics").asBoolean());
+        when(analyticsManager.getStatus())
+                .thenReturn(new AnalyticsStatus(true, true, 0, 0, List.of(), null, null));
+        assertTrue(meta().get("features").get("analytics").asBoolean());
+    }
+
+    @Test
+    void siteUrlIsTheConfiguredAddressWithoutATrailingSlashOrNull() throws Exception {
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))
+                    .thenReturn("https://blog.example.com");
+            assertEquals("https://blog.example.com", meta().get("siteUrl").asString());
+            rt.when(() -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))
+                    .thenReturn("");
+            assertTrue(meta().get("siteUrl").isNull());
+            rt.when(() -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))
+                    .thenReturn(null);
+            assertTrue(meta().get("siteUrl").isNull());
+        }
+    }
+
+    @Test
+    void anUnknownVersionIsNull() throws Exception {
+        when(weblogger.getVersion()).thenReturn("");
+        assertTrue(meta().get("version").isNull());
+    }
+
+    /** Each limit is read from its constant, so the response cannot lag the constant. */
+    @Test
+    void limitsEqualTheirConstants() throws Exception {
+        JsonNode limits = meta().get("limits");
+
+        assertEquals(ApiBodyLimitFilter.MAX_BODY_BYTES, limits.get("maxBodyBytes").asInt());
+        assertEquals(Paging.MAX_LIMIT, limits.get("maxListLimit").asInt());
+        assertEquals(ColumnLimits.ENTRY_TEXT, limits.get("entryTextMaxChars").asInt());
+        assertEquals(200, Paging.MAX_LIMIT);
+    }
+
+    // ------------------------------------------------- GET /v1/me/profile
+
+    @Test
+    void profileWithoutAnAuthenticatedUserIsA401Problem() throws Exception {
+        mockMvc.perform(get("/v1/me/profile")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void profileIsTheCallersOwnAccountForAPersonAndAnAgent() throws Exception {
+        user.setFullName("Alice Atkins");
+        user.setEmailAddress("alice@example.com");
+        user.setLocale("en_US");
+        user.setTimeZone("America/Denver");
+
+        JsonNode body = profile();
+
+        assertEquals("alice", body.get("userName").asString());
+        assertEquals("Alice A.", body.get("screenName").asString());
+        assertEquals("Alice Atkins", body.get("fullName").asString());
+        assertEquals("alice@example.com", body.get("emailAddress").asString());
+        assertEquals("en_US", body.get("locale").asString());
+        assertEquals("America/Denver", body.get("timeZone").asString());
+        assertEquals("PERSON", body.get("kind").asString());
+
+        user.setKind(User.Kind.AGENT);
+        assertEquals("AGENT", profile().get("kind").asString());
+    }
+
+    private JsonNode profile() throws Exception {
+        return json(mockMvc.perform(get("/v1/me/profile").requestAttr(AUTHENTICATED_USER, user))
+                .andExpect(status().isOk()));
+    }
+
+    /** A field added to the profile later is a deliberate change, and is never a credential. */
+    @Test
+    void theProfileHoldsExactlyTheseMembersAndNoCredential() {
+        assertEquals(List.of("userName", "screenName", "fullName", "emailAddress", "locale", "timeZone", "kind"),
+                Arrays.stream(MetaDtos.ProfileView.class.getRecordComponents())
+                        .map(java.lang.reflect.RecordComponent::getName).toList());
     }
 
     // ---------------------------------------------------------------- helpers

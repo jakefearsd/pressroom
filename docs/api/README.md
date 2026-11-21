@@ -57,6 +57,7 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
 - [Pagination](#pagination)
 - [Errors](#errors)
 - [The throttle](#the-throttle)
+- [Site facts and your profile](#site-facts-and-your-profile)
 - [Entries](#entries)
 - [Categories and tags](#categories-and-tags)
 - [Media](#media)
@@ -698,6 +699,47 @@ bare connection reset or an HTML error page. The 429 carries `Retry-After`,
 in seconds: the throttle interval (60 by default). A window opens at the
 caller's first request and lasts the interval, so waiting that long always
 clears it.
+
+## Site facts and your profile
+
+> **New in 0.16.0: `GET /api/v1/meta` and `GET /api/v1/me/profile`.**
+
+Two read-only routes beside `GET /api/v1/me`. Both need a valid bearer token
+of any role, pinned or not (a call without one is a 401), and neither names a
+weblog.
+
+```
+GET /api/v1/meta
+```
+
+The facts a client needs before it draws a screen. They are the same for every
+caller, so fetch them once per session; nothing is cached on the server, so a
+setting an operator changes shows in the next response.
+
+| Member | Meaning |
+|---|---|
+| `version` | The Pressroom version, as the page footers show it; `null` when unknown. |
+| `siteUrl` | The site's absolute URL without a trailing slash (the Global Config value, else the `PRESSROOM_SITE_ABSOLUTEURL` environment setting); `null` when neither is set. |
+| `features.customThemes` | Weblog owners may use custom templates and stylesheets. |
+| `features.groupBlogging` | A weblog may have more than one member. |
+| `features.userWeblogCreation` | Any user, not only a site admin, may create a weblog. |
+| `features.uploads` | Media uploads are switched on. |
+| `features.readerSignIn` | Readers can sign in (single sign-on is configured). |
+| `features.analytics` | An analytics service is configured; `false` is what makes a traffic read answer `NOT_CONFIGURED`. |
+| `limits.maxBodyBytes` | The largest JSON request body, in bytes (see Errors, 413). |
+| `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
+| `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
+
+```
+GET /api/v1/me/profile
+```
+
+The caller's own account, read-only: `userName`, `screenName`, `fullName`,
+`emailAddress`, `locale`, `timeZone` and `kind` (`PERSON` or `AGENT`). It never
+holds a password, a hash or a token. Changing any of it is done in the admin
+UI, not through the API. The MCP tools do not offer it (a person's contact
+details are nothing an agent acts on; `whoami` names the account); `site_info`
+calls `GET /api/v1/meta`.
 
 ## Entries
 
@@ -1962,6 +2004,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | Tool | Actions |
 |---|---|
 | `whoami` | |
+| `site_info` | |
 | `weblogs` | `list`, `get`, `create`, `update` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |

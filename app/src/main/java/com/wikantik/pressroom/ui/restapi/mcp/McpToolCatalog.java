@@ -25,6 +25,9 @@ public final class McpToolCatalog {
             tool("whoami", "Who this token belongs to: user name, whether the user is a site admin, "
                     + "the token's role and weblog limit, and the weblogs it can act on.", true,
                     action("", "Describe the caller.", "GET /v1/me")),
+            tool("site_info", "The site's version and address, which features are switched on, and the API's "
+                    + "size limits.", true,
+                    action("", "Describe the site.", "GET /v1/meta")),
             tool("weblogs", "Weblogs: create one (any writing token not limited to a weblog); read and change a "
                     + "weblog's settings and theme as its owner (ADMIN tokens); list every weblog (site admins).",
                     false,
@@ -161,6 +164,8 @@ public final class McpToolCatalog {
                             "POST /v1/admin/weblogs/{handle}/actions/regenerate-renditions")));
 
     public static final List<Exclusion> EXCLUDED = List.of(
+            new Exclusion("GET /v1/me/profile", "The person's own contact details; nothing an agent acts on, "
+                    + "and whoami names the account."),
             new Exclusion("POST /v1/tokens", "Basic-auth only by design: a token holder can never mint a token."),
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),

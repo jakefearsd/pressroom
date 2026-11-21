@@ -11,6 +11,9 @@ public final class Paging {
     public static final String HAS_MORE_DESCRIPTION = "True while items remain beyond this page: page until it is "
             + "false, not until a short page arrives.";
 
+    /** The largest page any list route answers; a bigger {@code limit} is capped to it. */
+    public static final int MAX_LIMIT = 200;
+
     private Paging() {
     }
 

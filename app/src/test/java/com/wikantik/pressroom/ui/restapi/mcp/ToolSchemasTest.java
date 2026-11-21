@@ -62,6 +62,12 @@ class ToolSchemasTest {
     }
 
     @Test
+    void siteInfoTakesNoArgumentsAtAll() {
+        assertEquals(Map.of(), properties("site_info"));
+        assertNull(ToolSchemas.inputSchema(tool("site_info")).get("required"));
+    }
+
+    @Test
     void whoamiTakesNoArgumentsAtAll() {
         assertEquals(Map.of(), properties("whoami"));
         assertNull(ToolSchemas.inputSchema(tool("whoami")).get("required"));

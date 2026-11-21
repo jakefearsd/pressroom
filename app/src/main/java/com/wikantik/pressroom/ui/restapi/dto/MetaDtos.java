@@ -72,4 +72,71 @@ public final class MetaDtos {
                     requiredMode = Schema.RequiredMode.REQUIRED)
             String permission) {
     }
+
+    /** The site facts a client needs before it draws a screen; the same for every authenticated caller. */
+    public record MetaView(
+            @Schema(description = "The Pressroom version, as the footer shows it; null when unknown.")
+            String version,
+            @Schema(description = "The site's absolute URL without a trailing slash; null when none is configured.")
+            String siteUrl,
+            @Schema(description = "Which optional features the site has switched on.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            Features features,
+            @Schema(description = "Sizes the API holds every caller to.", requiredMode = Schema.RequiredMode.REQUIRED)
+            Limits limits) {
+    }
+
+    /** Feature switches, each read afresh from its setting on every request. */
+    public record Features(
+            @Schema(description = "True when weblog owners may use custom templates and stylesheets.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean customThemes,
+            @Schema(description = "True when a weblog may have more than one member.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean groupBlogging,
+            @Schema(description = "True when any user, not only a site admin, may create a weblog.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean userWeblogCreation,
+            @Schema(description = "True when media uploads are switched on.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean uploads,
+            @Schema(description = "True when readers can sign in (single sign-on is configured).",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean readerSignIn,
+            @Schema(description = "True when an analytics service is configured; false is what makes a traffic "
+                    + "read answer NOT_CONFIGURED.", requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean analytics) {
+    }
+
+    /** The API's size limits. */
+    public record Limits(
+            @Schema(description = "The largest JSON request body, in bytes; a larger one is refused with 413.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int maxBodyBytes,
+            @Schema(description = "The largest page a list answers; a bigger limit is capped to it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int maxListLimit,
+            @Schema(description = "The most characters an entry's text may hold.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int entryTextMaxChars) {
+    }
+
+    /** The caller's own account, read-only; no password, hash or token. */
+    public record ProfileView(
+            @Schema(description = "The account's user name.", requiredMode = Schema.RequiredMode.REQUIRED)
+            String userName,
+            @Schema(description = "The account's display name.")
+            String screenName,
+            @Schema(description = "The account holder's full name.")
+            String fullName,
+            @Schema(description = "The account's email address.")
+            String emailAddress,
+            @Schema(description = "The account's locale, such as en_US.")
+            String locale,
+            @Schema(description = "The account's time zone, such as America/Denver.")
+            String timeZone,
+            @Schema(description = "PERSON or AGENT: whether the account is a person or an agent.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String kind) {
+    }
 }

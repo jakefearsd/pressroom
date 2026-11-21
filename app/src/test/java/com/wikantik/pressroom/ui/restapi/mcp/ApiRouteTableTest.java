@@ -16,7 +16,8 @@ class ApiRouteTableTest {
         // + a page's revisions: list, get and restore (2026-11-16).
         // + keep and unkeep of a revision, on entries and on pages (2026-11-16).
         // + the admin's revision figures and sweep (2026-11-16).
-        assertEquals(72, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // + GET /v1/meta and GET /v1/me/profile (2026-11-21).
+        assertEquals(74, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep").isPresent());

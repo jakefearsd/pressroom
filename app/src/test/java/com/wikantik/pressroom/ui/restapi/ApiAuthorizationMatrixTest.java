@@ -201,6 +201,8 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/ping",                                    READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PUBLIC,
                     Flag.PIN_EXEMPT),
             row("GET    /v1/me",                                      READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
+            row("GET    /v1/meta",                                    READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
+            row("GET    /v1/me/profile",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
 
             // --- The token resource: a password too. Not pin-exempt, and the
             //     role ceiling still applies to a token; TokensApi then refuses
@@ -651,6 +653,20 @@ class ApiAuthorizationMatrixTest {
         assertEquals(Set.of(), stale, "rows naming no live route");
     }
 
+    /**
+     * Site facts and the caller's profile are asked exactly as {@code GET /v1/me}
+     * is: the same role, global permission, weblog permission and flags, so a
+     * later change to either side surfaces here.
+     */
+    @Test
+    void metaAndProfileRowsEqualTheMeRow() {
+        Row me = ROWS.stream().filter(r -> r.key().equals("GET /v1/me")).findFirst().orElseThrow();
+        for (String key : List.of("GET /v1/meta", "GET /v1/me/profile")) {
+            Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+            assertEquals(new Row(key, me.role(), me.global(), me.weblog(), me.flags()), row, key);
+        }
+    }
+
     // ------------------------------------------------------------------ criteria 2-4: the cells
 
     @TestFactory
@@ -691,6 +707,7 @@ class ApiAuthorizationMatrixTest {
 
     static final List<McpSample> MCP_SAMPLES = List.of(
             new McpSample("whoami", "", Map.of()),
+            new McpSample("site_info", "", Map.of()),
             new McpSample("weblogs", "list", Map.of()),
             new McpSample("weblogs", "create", Map.of()),
             new McpSample("weblogs", "update", W),
