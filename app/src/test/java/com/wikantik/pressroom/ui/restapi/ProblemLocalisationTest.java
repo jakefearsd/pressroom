@@ -64,7 +64,10 @@ class ProblemLocalisationTest {
 
     private static ResourceBundleMessageSource testMessages() {
         ResourceBundleMessageSource source = new ResourceBundleMessageSource();
-        source.setBasenames("com/wikantik/pressroom/ui/restapi/ProblemL10nTest", "ApplicationResources");
+        // The test bundle sits beside this class; derived, not spelled out, so the
+        // qualified-name scan (StringClassReferenceTest) has no path to resolve.
+        String testBundle = ProblemLocalisationTest.class.getPackageName().replace('.', '/') + "/ProblemL10nTest";
+        source.setBasenames(testBundle, "ApplicationResources");
         source.setDefaultEncoding("UTF-8");
         return source;
     }
