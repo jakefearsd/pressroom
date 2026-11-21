@@ -1,0 +1,3 @@
+tabbedmenu.weblog|entryAdd|S {tabbedmenu.weblog.newEntry|entryAdd|-; tabbedmenu.weblog.archives|entries|-; tabbedmenu.trash|trash|-; tabbedmenu.submissions|submissions|-; tabbedmenu.comments|comments|-; tabbedmenu.weblog.categories|categories|S; tabbedmenu.pages|pages|-; tabbedmenu.weblog.mediaFiles|mediaFileView|-; tabbedmenu.weblog.traffic|traffic|-}
+tabbedmenu.design|themeEdit|- {tabbedmenu.website.themes|themeEdit|-; tabbedmenu.design.stylesheet|stylesheetEdit|-; tabbedmenu.website.pages|templates|-}
+tabbedmenu.website|weblogConfig|- {tabbedmenu.website.settings|weblogConfig|-; tabbedmenu.website.members|members|-}

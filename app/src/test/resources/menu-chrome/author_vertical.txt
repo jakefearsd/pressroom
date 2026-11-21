@@ -1,0 +1,174 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <ul class="rMenu">
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/entryAdd.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.newEntry)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/entries.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.archives)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/trash.rol">T(tabbedmenu.weblog):T(tabbedmenu.trash)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/submissions.rol">T(tabbedmenu.weblog):T(tabbedmenu.submissions)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/comments.rol">T(tabbedmenu.weblog):T(tabbedmenu.comments)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/categories.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.categories)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/pages.rol">T(tabbedmenu.weblog):T(tabbedmenu.pages)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/mediaFileView.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.mediaFiles)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/traffic.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.traffic)</a></li>
+            </ul>
+            <ul class="rMenu">
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/themeEdit.rol">T(tabbedmenu.design):T(tabbedmenu.website.themes)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/stylesheetEdit.rol">T(tabbedmenu.design):T(tabbedmenu.design.stylesheet)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/templates.rol">T(tabbedmenu.design):T(tabbedmenu.website.pages)</a></li>
+            </ul>
+            <ul class="rMenu">
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/weblogConfig.rol">T(tabbedmenu.website):T(tabbedmenu.website.settings)</a></li>
+                <li class="rMenuItem"><a href="/pressroom-ui/authoring/members.rol">T(tabbedmenu.website):T(tabbedmenu.website.members)</a></li>
+            </ul>
+

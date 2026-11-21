@@ -1,0 +1,2 @@
+tabbedmenu.weblog|pages|S {tabbedmenu.pages|pages|S; tabbedmenu.weblog.mediaFiles|mediaFileView|-}
+tabbedmenu.design|themeEdit|- {tabbedmenu.website.themes|themeEdit|-}

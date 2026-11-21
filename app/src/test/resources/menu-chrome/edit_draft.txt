@@ -1,0 +1,1 @@
+tabbedmenu.weblog|entryAdd|- {tabbedmenu.weblog.newEntry|entryAdd|-}

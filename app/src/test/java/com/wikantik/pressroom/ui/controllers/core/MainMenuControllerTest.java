@@ -123,6 +123,25 @@ class MainMenuControllerTest {
         assertNull(model.getAttribute("siteSpace"));
     }
 
+    /** Characterisation (passes on the pre-Task-6 code): an admin's site space is fetched, a non-admin's never. */
+    @Test
+    void theSiteSpaceIsFetchedForAnAdminAndNeverForAnyoneElse() throws Exception {
+        User user = user("jake");
+        com.wikantik.pressroom.pojos.Weblog site = new com.wikantik.pressroom.pojos.Weblog();
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(user))).thenReturn(true);
+        when(weblogger.weblogManager().getOrCreateSiteSpace(user)).thenReturn(site);
+
+        controller.execute(ControllerTestFixture.requestFor(user), model);
+        assertSame(site, model.getAttribute("siteSpace"));
+
+        ExtendedModelMap other = new ExtendedModelMap();
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(user))).thenReturn(false);
+        controller.execute(ControllerTestFixture.requestFor(user), other);
+        assertTrue(other.containsAttribute("siteSpace"));
+        assertNull(other.getAttribute("siteSpace"));
+        org.mockito.Mockito.verify(weblogger.weblogManager(), org.mockito.Mockito.times(1)).getOrCreateSiteSpace(user);
+    }
+
     @Test
     void theMenuNeedsNoWeblogOfItsOwn() {
         // It is the page you reach before choosing one.

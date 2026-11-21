@@ -1,0 +1,1 @@
+tabbedmenu.admin|globalConfig|- {tabbedmenu.admin.config|globalConfig|-; tabbedmenu.admin.userAdmin|userAdmin|-; tabbedmenu.admin.businesses|businesses|-; tabbedmenu.admin.apiTokens|apiTokens|-; tabbedmenu.admin.siteTraffic|siteTraffic|-; tabbedmenu.admin.maintenance|maintenance|-}
