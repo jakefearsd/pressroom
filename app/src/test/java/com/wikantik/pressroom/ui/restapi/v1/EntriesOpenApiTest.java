@@ -58,6 +58,11 @@ class EntriesOpenApiTest {
         }
 
         @Bean
+        EntriesTrashApi entriesTrashApi() {
+            return new EntriesTrashApi();
+        }
+
+        @Bean
         Weblogger weblogger() {
             return mock(Weblogger.class);
         }

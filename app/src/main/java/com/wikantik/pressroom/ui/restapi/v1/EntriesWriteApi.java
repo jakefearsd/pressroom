@@ -27,6 +27,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.ContributorRules;
 import com.wikantik.pressroom.ui.controllers.EntryDeletion;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.controllers.EntryPinRules;
@@ -57,23 +58,34 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Entry create and patch. A separate {@code @RestController} from {@link
- * EntriesApi} on the same {@code /v1/weblogs/{handle}/entries} path --
- * {@code UISecurityEnforced} declares its required {@code WeblogPermission}
- * per controller, not per method, and reads (EDIT_DRAFT) and writes (POST)
- * need different ones. Spring MVC resolves by method plus path, so GET
- * reaches {@link EntriesApi} and POST/PATCH reach this controller with no
- * ambiguity; {@code PressroomHandlerInterceptor} is what actually enforces the
- * declared permission, so this controller adds no permission checking of
- * its own.
+ * Entry writes, as the JSP entry editor makes them. A separate {@code
+ * @RestController} from {@link EntriesApi} on the same {@code
+ * /v1/weblogs/{handle}/entries} path because reads and writes have different
+ * tags and token ceilings; Spring MVC resolves by method plus path, so GET
+ * reaches {@link EntriesApi} and POST/PATCH/DELETE reach this controller.
+ *
+ * <p><b>Who may write</b> (spec 2026-11-21 owner decisions, Task 3): the
+ * editor's level, {@code EDIT_DRAFT}, which {@code PressroomHandlerInterceptor}
+ * enforces like every declared permission, with a POST- or ADMIN-role token
+ * ({@code ApiScopeInterceptor}). A caller without {@code POST} on the weblog
+ * -- a contributor -- is then held here to the editor's rules, through
+ * {@link ContributorRules}: a publish or a schedule is submitted for review
+ * (PENDING, as the editor's Publish button does for them); an update, a trash,
+ * or a revision restore or keep needs an entry that is their own draft or
+ * pending entry ({@code entry.notChangeable}, 403); and pinning or a strand
+ * stays a publisher's ({@code entry.needsPublishRights}, 403). Preview renders
+ * text and changes nothing, so it needs only the entry's weblog, as the
+ * editor's preview does. Restore and delete-forever take {@code POST}, as the
+ * Trash page does, so they live in {@link EntriesTrashApi}: the declared
+ * permission is per controller.
  *
  * <p>The routes that return an entry take {@code fields} ({@link
  * EntryFields}), so their Java return type is {@code Object}; each one's
  * {@code @ApiResponse} keeps openapi.json naming the view a caller gets
  * without it.
  */
-@Tag(name = "Entry writes", description = "Writing entries: create, update, trash, restore and delete forever, "
-        + "preview, and restore or keep a revision.")
+@Tag(name = "Entry writes", description = "Writing entries: create, update, trash, preview, and restore or keep "
+        + "a revision. A member without publish rights writes drafts: a publish is submitted for review.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesWriteApi extends BaseApiController implements UISecurityEnforced {
@@ -95,6 +107,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
+        boolean mayPublish = mayPublish(weblog, user);
 
         if (body.clear() != null && !body.clear().isEmpty()) {
             throw ApiException.problemOnField("clear", ProblemCode.FIELD_UPDATE_ONLY, "clear");
@@ -111,7 +124,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (body.anchor() != null) {
             errors.check("anchor", () -> requireAnchorForm(body.anchor()));
         }
-        checkWrite(errors, weblog, entry, body, Set.of());
+        checkWrite(errors, weblog, entry, body, Set.of(), mayPublish);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
         EntryImports.Plan importPlan = imports.plan(errors, weblog, body, Set.of(), null);
         errors.throwIfAny();
@@ -127,7 +140,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             // saveWeblogEntry generates an anchor only when none is set
             entry.setAnchor(body.anchor());
         }
-        apply(entry, weblog, effective, Set.of());
+        apply(entry, weblog, effective, Set.of(), mayPublish);
         defaultFeaturedImage(entry, weblog, Set.of(), imports.importedIds());
         // No explicit category fallback needed here:
         // JPAWeblogEntryManagerImpl.saveWeblogEntry already defaults a
@@ -166,6 +179,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // (to DRAFT or straight to PUBLISHED) by a side door that bypasses
         // restore's DRAFT-only rule entirely. See requireLiveEntry's javadoc.
         WeblogEntry entry = requireLiveEntry(request, id);
+        boolean mayPublish = requireChangeable(request, entry);
         // Before every other check, and so before the import step can fetch:
         // a caller whose view of the text is stale learns that first.
         entryContent().requireUnchanged(entry, sent.expectedContentHash());
@@ -187,7 +201,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (body.anchor() != null && !body.anchor().equals(entry.getAnchor())) {
             errors.add("anchor", ProblemCode.ANCHOR_IMMUTABLE);
         }
-        checkWrite(errors, weblog, entry, body, cleared);
+        checkWrite(errors, weblog, entry, body, cleared, mayPublish);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
         EntryImports.Plan importPlan = imports.plan(errors, weblog, body, cleared, entry.getText());
         errors.throwIfAny();
@@ -198,7 +212,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (sent.expectedContentHash() != null || EntryEdits.sent(sent.edits())) {
             entryContent().requireUnchangedUnderLock(entry, read);
         }
-        apply(entry, weblog, effective, cleared);
+        apply(entry, weblog, effective, cleared, mayPublish);
         defaultFeaturedImage(entry, weblog, cleared, imports.importedIds());
         // The token's user made this save, so a revision it leaves names them,
         // and carries the note when one was sent.
@@ -222,6 +236,30 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
     }
 
+    /** Whether {@code user} may publish on {@code weblog}; a check that fails is a no ({@link ContributorRules}). */
+    private boolean mayPublish(Weblog weblog, User user) {
+        return ContributorRules.mayPublish(weblogger.getUserManager(), weblog, user);
+    }
+
+    /**
+     * Refuses a change to {@code entry} the entry editor would refuse
+     * ({@code BaseController.lookupChangeableEntry}): someone without publish
+     * rights changes only their own drafts and pending entries. The editor
+     * answers that like an unknown id; here the caller may read the entry
+     * ({@link EntriesApi} takes EDIT_DRAFT), so hiding it would hide nothing,
+     * and the answer says why: a 403 {@code entry.notChangeable}.
+     *
+     * @return whether the caller may publish, for the write's status ceiling
+     */
+    private boolean requireChangeable(HttpServletRequest request, WeblogEntry entry) {
+        User user = requireAuthenticatedUser(request);
+        boolean mayPublish = mayPublish(requireActionWeblog(request), user);
+        if (!mayPublish && !ContributorRules.mayChange(entry, user)) {
+            throw ApiException.problem(ProblemCode.ENTRY_NOT_CHANGEABLE);
+        }
+        return mayPublish;
+    }
+
     /**
      * Puts a revision's title, summary and text back, as the editor's Restore
      * does (spec 2026-10-24, section 5): through the ordinary save, so the
@@ -242,6 +280,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             @Parameter(description = EntryFields.DESCRIPTION)
             @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         WeblogEntry entry = requireLiveEntry(request, id);
+        requireChangeable(request, entry);
         WeblogEntryRevision revision = entryContent().requireRevision(entry, revisionId);
         EntryFields shown = EntryFields.of(fields);
         // The manager's restore, not a plain save: a restore is never
@@ -278,7 +317,9 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     private RevisionDtos.RevisionSummary markKept(HttpServletRequest request, String id, String revisionId,
             boolean kept) throws WebloggerException {
         RevisionedContent<WeblogEntry, WeblogEntryRevision> content = entryContent();
-        WeblogEntryRevision revision = content.requireRevision(requireLiveEntry(request, id), revisionId);
+        WeblogEntry entry = requireLiveEntry(request, id);
+        requireChangeable(request, entry);
+        WeblogEntryRevision revision = content.requireRevision(entry, revisionId);
         applyKeep(() -> content.setKept(revision, kept));
         return content.summary(revision);
     }
@@ -309,59 +350,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (entry.getStatus() == WeblogEntry.PubStatus.TRASHED) {
             throw ApiException.problem(ProblemCode.ENTRY_ALREADY_TRASHED);
         }
+        requireChangeable(request, entry);
         EntryDeletion.trashEntry(weblogger, entry);
-        weblogger.flush();
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Brings a trashed entry back -- always as a DRAFT, never back to
-     * PUBLISHED. {@code WeblogEntryManager.restoreWeblogEntry} enforces that
-     * itself and remembers no pre-trash status to restore instead, precisely
-     * so an undelete can never silently republish to feeds, the sitemap and
-     * every subscriber.
-     *
-     * <p>Restoring an entry that is not currently trashed is refused with
-     * 409: {@code restoreWeblogEntry} has no status guard of its own, and
-     * calling it on a live PUBLISHED entry would silently unpublish it to
-     * DRAFT -- exactly the side-door resurrection/demotion hazard {@code
-     * TrashController.trashedEntry} exists to close off on the JSP side.
-     */
-    @Operation(operationId = "entriesRestore")
-    @PostMapping("/{id}/restore")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
-    public Object restore(HttpServletRequest request,
-                          @PathVariable("id") String id,
-                          @Parameter(description = EntryFields.DESCRIPTION)
-                          @RequestParam(value = "fields", required = false) List<String> fields)
-            throws WebloggerException {
-        EntryFields shown = EntryFields.of(fields);
-        WeblogEntry entry = requireEntry(request, id);
-        if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.problem(ProblemCode.ENTRY_NOT_IN_TRASH);
-        }
-        weblogger.getWeblogEntryManager().restoreWeblogEntry(entry);
-        weblogger.flush();
-        return shown.project(EntryDtos.toView(entry, permalink(entry)));
-    }
-
-    /**
-     * Permanently deletes an already-trashed entry. Only reachable from the
-     * trash, the same way the JSP {@code trash!delete.rol} row action is --
-     * deleting forever is a second, deliberate step after trashing, never a
-     * shortcut around it, so a live entry's id here is a 409 rather than an
-     * undocumented hard-delete endpoint.
-     */
-    @Operation(operationId = "entriesDeleteForever")
-    @ApiResponse(responseCode = "204", description = "Done; no body.")
-    @PostMapping("/{id}/delete-forever")
-    public ResponseEntity<Void> deleteForever(HttpServletRequest request,
-                                              @PathVariable("id") String id) throws WebloggerException {
-        WeblogEntry entry = requireEntry(request, id);
-        if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.problem(ProblemCode.ENTRY_DELETE_NEEDS_TRASH);
-        }
-        EntryDeletion.deleteEntryForever(weblogger, entry);
         weblogger.flush();
         return ResponseEntity.noContent().build();
     }
@@ -499,9 +489,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * never commit half a write. Problems land in {@code errors}.
      */
     private void checkWrite(FieldErrors errors, Weblog weblog, WeblogEntry entry,
-                            EntryDtos.EntryWrite body, Set<String> cleared) throws WebloggerException {
+                            EntryDtos.EntryWrite body, Set<String> cleared, boolean mayPublish)
+            throws WebloggerException {
+        if (!mayPublish) {
+            refusePublishersFields(entry, body, cleared);
+        }
         WeblogEntry scratch = EntryDtos.scratchOf(entry);
         errors.check(() -> EntryDtos.applyWrite(scratch, body, weblog, cleared));
+        holdToCeiling(scratch, mayPublish);
         errors.check("category", () -> categoryFor(weblog, body.category()));
         errors.check("tags", () -> checkTags(body.tags()));
         applyPublishNowDefault(scratch);
@@ -518,6 +513,38 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /**
+     * Pinning and strands are a publisher's: the editor shows neither to a
+     * contributor, and keeps what is stored. Over the API a contributor's
+     * write that would change either is refused, naming the field; one that
+     * sends the stored value back (a view read and returned) changes nothing
+     * and passes. Thrown, not collected: it is a 403, not a field problem.
+     */
+    private static void refusePublishersFields(WeblogEntry entry, EntryDtos.EntryWrite body, Set<String> cleared) {
+        if (body.pinned() != null && !body.pinned().equals(entry.getPinned())) {
+            throw ApiException.problemOnField(EntryPinRules.PINNED, ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS,
+                    EntryPinRules.PINNED);
+        }
+        boolean joins = body.strand() != null && !body.strand().equals(entry.getStrandPageId());
+        boolean leaves = cleared.contains("strand") && entry.getStrandPageId() != null;
+        if (joins || leaves) {
+            throw ApiException.problemOnField("strand", ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS, "strand");
+        }
+    }
+
+    /**
+     * A write by someone without publish rights lands at most in PENDING
+     * ({@link ContributorRules#ceiling}): asking for PUBLISHED or SCHEDULED
+     * submits the entry for review, as the editor's Publish button does for
+     * them. Applied after the write's own status, before the publish-now and
+     * schedule checks read it.
+     */
+    private static void holdToCeiling(WeblogEntry entry, boolean mayPublish) {
+        if (!mayPublish) {
+            entry.setStatus(ContributorRules.ceiling(entry.getStatus()));
+        }
+    }
+
+    /**
      * The strand page {@code strandId} names, for the entry to join as its
      * last part, or null when there is nothing to join: no strand sent, or
      * the one the entry is already in (re-sending it changes nothing, as in
@@ -525,7 +552,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * pages: another blog's page, an unknown id, a blank one and a plain page
      * are one 400 on {@code strand}. {@link WeblogOwnership#page} is the
      * ownership check, and a lookup that fails answers null, so it refuses.
-     * Joining needs POST, which every write here requires.
+     * Joining needs POST ({@link #refusePublishersFields}).
      */
     private WeblogPage strandFor(Weblog weblog, WeblogEntry entry, String strandId) {
         StrandChoice.Choice choice = StrandChoice.resolve(weblogger, weblog, entry, strandId);
@@ -537,9 +564,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     /**
      * A new pin is refused once the blog has {@link EntryPins#MAX_PER_WEBLOG}
-     * (the editor's rule, {@link EntryPinRules}). Pinning
-     * needs POST, which every write here already requires
-     * ({@link #requiredWeblogPermissionActions}), as publishing does.
+     * (the editor's rule, {@link EntryPinRules}). Pinning needs POST
+     * ({@link #refusePublishersFields}), as publishing does.
      */
     private void requirePinRoom(Weblog weblog, boolean wasPinned) throws WebloggerException {
         RuleViolation full = EntryPinRules.roomProblem(weblogger.getWeblogEntryManager(), weblog, wasPinned, true);
@@ -563,9 +589,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * Applies a write {@link #checkWrite} passed. Each step repeats a check
      * that already passed on identical input, so none of them refuses here.
      */
-    private void apply(WeblogEntry entry, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared)
-            throws WebloggerException {
+    private void apply(WeblogEntry entry, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared,
+                       boolean mayPublish) throws WebloggerException {
         EntryDtos.applyWrite(entry, body, weblog, cleared);
+        holdToCeiling(entry, mayPublish);
         WeblogCategory category = categoryFor(weblog, body.category());
         if (category != null) {
             entry.setCategory(category);
@@ -700,9 +727,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         return true;
     }
 
+    /** The entry editor's level; a contributor's limits are applied in the handler (see the class comment). */
     @Override
     public List<String> requiredWeblogPermissionActions() {
-        return List.of(WeblogPermission.POST);
+        return List.of(WeblogPermission.EDIT_DRAFT);
     }
 
     @Override

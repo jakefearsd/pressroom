@@ -187,16 +187,16 @@ class ApiSecurityRefusalTest {
     }
 
     /**
-     * Pinning a post needs POST, the level publishing needs. The API has no
-     * separate publish check to mirror: every entry write ({@code
-     * EntriesWriteApi}, which carries {@code pinned}) declares POST, so a
-     * member who may only edit drafts is refused any PATCH -- pinned in it or
-     * not -- with this 403, before the handler runs. A characterisation test:
-     * it passes against the existing interceptor, and fails if the write
-     * controller's declared level is ever lowered.
+     * Entry writes take the entry editor's level, EDIT_DRAFT (spec 2026-11-21
+     * owner decisions, Task 3): a member who may only edit drafts passes the
+     * interceptor to a PATCH, and the handler holds them to the editor's
+     * rules -- pinning, publishing and changing someone else's entry are
+     * refused or submitted for review there ({@code EntriesWriteApiContributorTest},
+     * {@code EntriesWriteApiDispatchTest}). Replaces the characterisation that
+     * every entry write needed POST.
      */
     @Test
-    void aDraftOnlyMemberCannotPinBecauseEveryEntryWriteNeedsPost() throws Exception {
+    void aDraftOnlyMemberReachesAnEntryWriteAndTheHandlerHoldsThemToTheEditorsRules() throws Exception {
         signInAsAlice();
         nameWeblogInPath("aliceblog");
         when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
@@ -207,10 +207,7 @@ class ApiSecurityRefusalTest {
                         jakarta.servlet.http.HttpServletRequest.class, String.class,
                         com.wikantik.pressroom.ui.restapi.dto.EntryDtos.EntryWrite.class, List.class));
 
-        ApiException refusal = assertThrows(ApiException.class,
-                () -> interceptor.preHandle(request, response, update));
-
-        assertEquals(403, refusal.getStatus());
+        assertTrue(interceptor.preHandle(request, response, update));
     }
 
     /**

@@ -37,7 +37,8 @@ public final class McpToolCatalog {
                     action("list", "List entries; without status the trash is excluded.", "GET " + W + "/entries"),
                     action("get", "One entry, by id or by anchor (its URL slug).", "GET " + W + "/entries/{id}",
                             "GET " + W + "/entries/by-anchor/{anchor}"),
-                    action("create", "Create an entry (a DRAFT unless status says otherwise).",
+                    action("create", "Create an entry (a DRAFT unless status says otherwise; without publish rights, "
+                            + "PUBLISHED or SCHEDULED is saved as PENDING, for review).",
                             "POST " + W + "/entries"),
                     action("update", "Change the fields given; others are left alone. edits change part of the "
                             + "text; expectedContentHash refuses the update if the entry changed since it was read.",

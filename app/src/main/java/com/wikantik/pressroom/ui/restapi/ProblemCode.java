@@ -70,6 +70,13 @@ public enum ProblemCode {
     ENTRY_NOT_IN_TRASH("entry.notInTrash", ProblemType.CONFLICT, 0),
     /** Delete-forever was asked for an entry that is not in the trash. */
     ENTRY_DELETE_NEEDS_TRASH("entry.deleteForeverNeedsTrash", ProblemType.CONFLICT, 0),
+    /**
+     * A member without publish rights (a contributor) asked to change an entry that is not their own draft
+     * or pending entry, as the entry editor refuses.
+     */
+    ENTRY_NOT_CHANGEABLE("entry.notChangeable", ProblemType.FORBIDDEN, 0),
+    /** A member without publish rights asked to change field {@code {0}} (pinned, strand), a publisher's. */
+    ENTRY_NEEDS_PUBLISH_RIGHTS("entry.needsPublishRights", ProblemType.FORBIDDEN, 1),
     /** The page is in the trash; restore it before changing it. */
     PAGE_IN_TRASH("page.trashed", ProblemType.CONFLICT, 0),
     /** Trash was asked for a page already in the trash. */

@@ -246,7 +246,8 @@ public final class EntryDtos {
                     + "edits.")
             String text,
             @Schema(description = "DRAFT, PUBLISHED, PENDING or SCHEDULED; a new entry without one is a "
-                    + "DRAFT. TRASHED is not writable: trash, restore and delete-forever are their own calls.")
+                    + "DRAFT. Without publish rights on the weblog, PUBLISHED and SCHEDULED are saved as PENDING, "
+                    + "for review. TRASHED is not writable: trash, restore and delete-forever are their own calls.")
             String status,
             @Schema(description = "The category's name, not its id. Omitted on create, the weblog's "
                     + "default category.")
@@ -331,7 +332,7 @@ public final class EntryDtos {
                     + "blog. Needs publish rights.")
             Boolean pinned,
             @Schema(description = "Id of one of this blog's strand pages: the entry joins it as the last part. "
-                    + "clear: [\"strand\"] takes it out.")
+                    + "clear: [\"strand\"] takes it out. Needs publish rights.")
             String strand) {
 
         /**

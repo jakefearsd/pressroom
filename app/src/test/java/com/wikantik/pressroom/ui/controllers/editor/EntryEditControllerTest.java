@@ -504,6 +504,61 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     /**
+     * Characterisation (spec 2026-11-21 owner decisions, Task 3, criterion 1):
+     * passes against the editor as it stands, and pins the outcome the API now
+     * mirrors. A contributor's Publish on their own draft, even with a date a
+     * week out, submits it for review; nothing schedules or publishes.
+     */
+    @Test
+    void aContributorPublishingTheirOwnDraftSubmitsItForReviewEvenWithAFutureDate() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.DRAFT);
+        setBeanPubTime(new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000));
+
+        controller.entryEditPublish(request, model, bean);
+
+        assertEquals(PubStatus.PENDING, captureSavedEntry().getStatus());
+    }
+
+    /**
+     * Characterisation (Task 3, criterion 6): keeping a revision changes the
+     * entry's revision list, so it takes the same "may change" rule as a save;
+     * a contributor cannot keep one of a published entry. Refused like an
+     * unknown id.
+     */
+    @Test
+    void aContributorCannotKeepARevisionOfAPublishedEntry() throws Exception {
+        userMayPost = false;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        revisionOf(entry, "r1");
+        RedirectAttributes redirect = newRedirectAttributes();
+
+        controller.entryEditKeepRevision(request, "entry-1", "r1", true, redirect);
+
+        verify(weblogger.getWeblogEntryManager(), never())
+                .setRevisionKept(any(), org.mockito.ArgumentMatchers.anyBoolean());
+        assertEquals(java.util.List.of("weblogEntry.notFound"), flashErrors(redirect));
+    }
+
+    /**
+     * Characterisation (Task 3, criterion 6): the preview only renders text,
+     * so it takes the plain ownership lookup, not the "may change" one; a
+     * contributor previews against any entry of the weblog, someone else's
+     * published post included, and nothing is saved.
+     */
+    @Test
+    void aContributorPreviewsAgainstAnEntryTheyCannotChange() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.PUBLISHED).setCreatorUserName("someone-else");
+
+        var response = controller.entryEditPreview(request, "entry-1", "**Draft words**");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue(response.getBody().contains("<strong>Draft words</strong>"), response.getBody());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    /**
      * The editor open in one tab, the entry trashed from the list in another:
      * Update must not bring it straight back to PUBLISHED with trashedAt still
      * set, past restore's always-DRAFT rule (code review, 2026-11-03).

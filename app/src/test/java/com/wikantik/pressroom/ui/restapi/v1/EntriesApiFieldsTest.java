@@ -53,7 +53,7 @@ class EntriesApiFieldsTest {
         when(fx.entries.getWeblogEntryByAnchor(fx.weblog, "harbour-walk")).thenReturn(stored);
         EntriesApi reads = new EntriesApi();
         reads.weblogger = fx.weblogger;
-        mvc = MockMvcBuilders.standaloneSetup(reads, fx.controller)
+        mvc = MockMvcBuilders.standaloneSetup(reads, fx.controller, fx.trash)
                 .setControllerAdvice(new ApiExceptionHandler()).build();
     }
 

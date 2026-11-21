@@ -199,7 +199,7 @@ request: the token's `role`, and its `weblog` pin.
 | Role    | May do |
 |---------|--------|
 | `READ`  | GET only. |
-| `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. |
+| `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. Still only what the owner's weblog permission allows: a contributor's (`EDIT_DRAFT`) token writes entries as the entry editor lets them (drafts; a publish is submitted for review, see [Entries](#entries)). |
 | `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, not the per-weblog content APIs) and the Maintenance actions. |
 
 A non-write method (`GET`/`HEAD`) never needs more than `READ`. Anything else
@@ -442,6 +442,8 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `entry.alreadyTrashed` | 409 | `conflict` | Trash was asked for an entry already in the trash. |
 | `entry.notInTrash` | 409 | `conflict` | Restore was asked for an entry that is not in the trash. |
 | `entry.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for an entry that is not in the trash. |
+| `entry.notChangeable` | 403 | `forbidden` | A member without publish rights (a contributor) asked to change an entry that is not their own draft or pending entry. |
+| `entry.needsPublishRights` | 403 | `forbidden` | A member without publish rights asked to change `pinned` or `strand`; the field is named in `errors`. |
 | `page.trashed` | 409 | `conflict` | The page is in the trash; restore it before changing it. |
 | `page.alreadyTrashed` | 409 | `conflict` | Trash was asked for a page already in the trash. |
 | `page.notInTrash` | 409 | `conflict` | Restore was asked for a page that is not in the trash. |
@@ -715,7 +717,30 @@ GET    /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}   one revisi
 POST   /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore   put a revision back
 ```
 
-Reads need `READ`; writes need `POST` or `ADMIN`.
+Reads need `READ`; writes need a `POST` or `ADMIN` token. On the weblog the
+writes ask what the entry editor asks. A member with publish rights (`POST` or
+`ADMIN` on the weblog) writes as described below. A contributor (`EDIT_DRAFT`)
+writes drafts, as the editor lets them:
+
+- create and update save what they send, except that `PUBLISHED` or
+  `SCHEDULED` is saved as `PENDING`: submitted for review, the weblog's
+  reviewers are told, and the response reads `PENDING`. A `DRAFT` with a
+  future `pubTime` stays a draft;
+- update, trash, and restoring or keeping a revision need an entry that is
+  their own and still `DRAFT` or `PENDING`; any other is a 403
+  `entry.notChangeable`;
+- changing `pinned` or `strand` (joining, or `clear: ["strand"]`) is a 403
+  `entry.needsPublishRights` naming the field; sending back the stored value
+  changes nothing and passes;
+- preview works against any entry of the weblog;
+- restore from the trash and delete-forever need publish rights, as the Trash
+  page does (403 `auth.noPermission`).
+
+> **Changed in 0.16.0: a contributor's token writes drafts.** Before, every
+> entry write needed publish rights on the weblog, so a contributor's `POST`
+> token got a 403 `auth.noPermission` on any of them. Now it writes as above.
+> A `READ` token still writes nothing, whoever holds it, and nothing changes
+> for a member with publish rights.
 
 **Create:**
 

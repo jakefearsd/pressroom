@@ -452,8 +452,9 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * on the weblog -- their own and still a draft or pending. A contributor
      * submits work for review and cannot publish, so they cannot rewrite,
      * demote or trash anyone else's post or any published one either (code
-     * review, 2026-11-03; the API already requires POST for every write).
-     * Null otherwise, which every caller answers exactly like an unknown id.
+     * review, 2026-11-03). The rule is {@link ContributorRules#mayChange},
+     * which the entries API applies too. Null otherwise, which every caller
+     * answers exactly like an unknown id.
      */
     protected WeblogEntry lookupChangeableEntry(String id, HttpServletRequest request) {
         WeblogEntry entry = lookupNonTrashedEntry(id, request);
@@ -461,11 +462,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
                 WeblogPermission.POST)) {
             return entry;
         }
-        User user = getAuthenticatedUser(request);
-        boolean own = user != null && user.getUserName() != null
-                && user.getUserName().equals(entry.getCreatorUserName());
-        boolean unpublished = entry.getStatus() == PubStatus.DRAFT || entry.getStatus() == PubStatus.PENDING;
-        return own && unpublished ? entry : null;
+        return ContributorRules.mayChange(entry, getAuthenticatedUser(request)) ? entry : null;
     }
 
     /**

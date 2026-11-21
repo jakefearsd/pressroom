@@ -18,13 +18,15 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.ui.controllers.ContributorRules;
 import com.wikantik.pressroom.util.PressroomConstants;
 import java.sql.Timestamp;
 
 /**
  * What the author asked a save to do. The one place that decides the status
  * a publish request becomes: POST permission publishes (or schedules, for a
- * pubTime more than a minute out), anything less submits for review.
+ * pubTime more than a minute out), anything less submits for review, through
+ * {@link ContributorRules#ceiling}, the rule the entries API applies too.
  */
 enum SaveIntent {
     DRAFT,
@@ -39,10 +41,8 @@ enum SaveIntent {
         if (this == DRAFT) {
             return PubStatus.DRAFT;
         }
-        if (!mayPost) {
-            return PubStatus.PENDING;
-        }
-        return pubTime != null && pubTime.getTime() > nowMillis + PressroomConstants.MIN_IN_MS
+        PubStatus asked = pubTime != null && pubTime.getTime() > nowMillis + PressroomConstants.MIN_IN_MS
                 ? PubStatus.SCHEDULED : PubStatus.PUBLISHED;
+        return mayPost ? asked : ContributorRules.ceiling(asked);
     }
 }

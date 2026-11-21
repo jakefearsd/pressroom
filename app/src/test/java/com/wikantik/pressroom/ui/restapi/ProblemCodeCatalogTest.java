@@ -72,6 +72,8 @@ class ProblemCodeCatalogTest {
                         "entry.alreadyTrashed",
                         "entry.notInTrash",
                         "entry.deleteForeverNeedsTrash",
+                        "entry.notChangeable",
+                        "entry.needsPublishRights",
                         "page.trashed",
                         "page.alreadyTrashed",
                         "page.notInTrash",

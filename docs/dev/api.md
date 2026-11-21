@@ -111,8 +111,26 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   per controller must answer as its route's cell. **Adding a route means adding its row**, written
   from the README and the JSP page the route mirrors, never copied from its annotations; a route
   with no row fails by method and path, and a cell that disagrees means either the row or the
-  route is wrong: deciding which is the point. API writes on entries take `POST` on the weblog
-  (a contributor drafts in the JSP editor only); the matrix records that as it stands.
+  route is wrong: deciding which is the point. Entry writes take `EDIT_DRAFT` (see the next point);
+  what a contributor's write then saves is decided in the handler, past the sentinel, so
+  `EntriesWriteApiDispatchTest` carries those cells.
+- **Contributors write drafts over the API (spec 2026-11-21 owner decisions, Task 3, 0.16.0).**
+  `EntriesWriteApi` declares `EDIT_DRAFT`, the entry editor's level, and holds a caller without `POST`
+  on the weblog to the editor's rules in the handler, through `ContributorRules` (`ui.controllers`),
+  the one home the editor uses too (`SaveIntent.status` calls `ceiling`,
+  `BaseController.lookupChangeableEntry` calls `mayChange`): a write's status is capped at `PENDING`
+  (`holdToCeiling`, after `applyWrite` and before the publish-now and schedule checks, on the
+  scratch copy and again on the entry); update, trash and revision restore/keep need the caller's own
+  `DRAFT`/`PENDING` entry (`requireChangeable`, a 403 `entry.notChangeable`: the caller can read the
+  entry, so a 404 would hide nothing); changing `pinned` or `strand` is a 403
+  `entry.needsPublishRights` (`refusePublishersFields`, thrown before the import step). Preview needs
+  only the weblog, as the editor's preview. `mayPublish` asks `UserManager` for `POST` and reads a
+  failed check as no (fail closed). **One controller, not a draft-only twin**: the editor is one
+  controller gated on `EDIT_DRAFT` deciding the status from the caller's permission, and a second
+  controller would duplicate the write path. Restore and delete-forever are the exception, moved to
+  `EntriesTrashApi` (`POST`), because the Trash page (`TrashController`) takes `POST` and the
+  declaration is per controller: their matrix rows stay as they were. The token role stays the
+  ceiling (`ApiScopeInterceptor`, by HTTP method): a `READ` token writes nothing.
 - **`EntryFieldRules` and `WeblogOwnership`
   (`com.wikantik.pressroom.ui.controllers`) are shared by JSP editor and
   API — one home each for entry-field rules and by-id ownership checks.**

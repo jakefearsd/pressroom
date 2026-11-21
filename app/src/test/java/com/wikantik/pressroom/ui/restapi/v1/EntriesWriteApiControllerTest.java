@@ -45,7 +45,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EntriesWriteApiControllerTest {
 
     private MockMvc mockMvc(EntriesWriteApi controller) {
-        return MockMvcBuilders.standaloneSetup(controller)
+        // Restore and delete-forever answer on the same path from EntriesTrashApi,
+        // which takes POST as the Trash page does (spec 2026-11-21 owner decisions, Task 3).
+        EntriesTrashApi trash = new EntriesTrashApi();
+        trash.weblogger = controller.weblogger;
+        return MockMvcBuilders.standaloneSetup(controller, trash)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
@@ -58,6 +62,15 @@ class EntriesWriteApiControllerTest {
         // EntryDeletion.trashEntry/deleteEntryForever both
         // reach the index manager before touching the entry manager.
         when(weblogger.getIndexManager()).thenReturn(mock(IndexManager.class));
+        // The caller holds POST (a publisher) unless a test says otherwise;
+        // EntriesWriteApiContributorTest covers a contributor.
+        com.wikantik.pressroom.business.UserManager users = mock(com.wikantik.pressroom.business.UserManager.class);
+        try {
+            when(users.checkPermission(any(), any())).thenReturn(true);
+        } catch (com.wikantik.pressroom.WebloggerException e) {
+            throw new IllegalStateException(e);
+        }
+        when(weblogger.getUserManager()).thenReturn(users);
         // preview renders through the tier's renderer; a real one over this
         // facade's mocks gives real markdown output
         when(weblogger.getEntryRenderer()).thenReturn(
@@ -1121,12 +1134,21 @@ class EntriesWriteApiControllerTest {
         verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
 
+    /**
+     * The entry editor's level (spec 2026-11-21 owner decisions, Task 3): a
+     * contributor reaches the writes and the handler holds them to the
+     * editor's rules; restore and delete-forever stay POST, as the Trash page.
+     */
     @Test
-    void declaresPostAsTheRequiredWeblogPermission() {
-        assertEquals(List.of(WeblogPermission.POST),
+    void entryWritesDeclareTheEditorsLevelAndTheTrashThePublishers() {
+        assertEquals(List.of(WeblogPermission.EDIT_DRAFT),
                 new EntriesWriteApi().requiredWeblogPermissionActions());
         assertTrue(new EntriesWriteApi().isUserRequired());
         assertTrue(new EntriesWriteApi().isWeblogRequired());
+        assertEquals(List.of(WeblogPermission.POST), new EntriesTrashApi().requiredWeblogPermissionActions());
+        assertTrue(new EntriesTrashApi().isUserRequired());
+        assertTrue(new EntriesTrashApi().isWeblogRequired());
+        assertEquals(List.of(), new EntriesTrashApi().requiredGlobalPermissionActions());
     }
 
     // ---- trash / restore / delete-forever / preview (Task 10) ----------
@@ -1149,7 +1171,8 @@ class EntriesWriteApiControllerTest {
 
         mockMvc(controllerFor(weblogger))
                 .perform(delete("/v1/weblogs/myblog/entries/{id}", "entry-1")
-                        .requestAttr("actionWeblog", weblog))
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia")))
                 .andExpect(status().isNoContent());
 
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);

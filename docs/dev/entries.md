@@ -34,7 +34,11 @@ incidental re-save) — minor PII residue worth clearing.
   (code review) a contributor could trash any post by id (ids are in page
   source), restore old revisions onto live posts, and demote other people's
   posts by saving them, and a save from a stale tab republished a trashed
-  entry. The API already required POST for every write.
+  entry. The rule lives in `ContributorRules` (`mayChange`, and `ceiling` for
+  the status a contributor's Publish becomes), which the entries API applies
+  too since 0.16.0: a contributor's token writes drafts there, with a 403
+  `entry.notChangeable` where the editor answers like an unknown id
+  (`docs/dev/api.md`, "Contributors write drafts over the API").
 - **Layout**: `EntryEdit.jsp` (approved card:
   `docs/design/editor/editor-writing-surface.html`) is a writing surface plus
   a 252px publish rail. Main column: title (large serif, borderless —

@@ -3,6 +3,7 @@ package com.wikantik.pressroom.ui.restapi.v1;
 import java.util.ArrayList;
 import java.util.List;
 import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -36,8 +37,17 @@ final class EntriesWriteApiFixture {
     final WeblogEntryManager entries = mock(WeblogEntryManager.class);
     final URLStrategy urls = mock(URLStrategy.class);
     final IndexManager index = mock(IndexManager.class);
+    final UserManager users = mock(UserManager.class);
     final Weblog weblog = new Weblog();
     final EntriesWriteApi controller = new EntriesWriteApi();
+    /** Restore and delete-forever, on the same path (spec 2026-11-21 owner decisions, Task 3). */
+    final EntriesTrashApi trash = new EntriesTrashApi();
+    /**
+     * Whether the caller holds the weblog's POST (a publisher). True by
+     * default; false makes them a contributor (EDIT_DRAFT only), whom the
+     * interceptor would also have let through to every route here.
+     */
+    boolean mayPost = true;
 
     EntriesWriteApiFixture() throws Exception {
         weblog.setId("myblog-id");
@@ -46,16 +56,19 @@ final class EntriesWriteApiFixture {
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
         when(weblogger.getUrlStrategy()).thenReturn(urls);
         when(weblogger.getIndexManager()).thenReturn(index);
+        when(weblogger.getUserManager()).thenReturn(users);
+        when(users.checkPermission(any(), any())).thenAnswer(call -> mayPost);
         when(entries.getWeblogCategories(weblog)).thenReturn(List.of(
                 new WeblogCategory(weblog, "Food", null, null),
                 new WeblogCategory(weblog, "Travel", null, null)));
         // A row lock finds the text as read unless a test says another save got there first.
         when(entries.lockEntryText(any())).thenAnswer(inv -> inv.<WeblogEntry>getArgument(0).getText());
         controller.weblogger = weblogger;
+        trash.weblogger = weblogger;
     }
 
     MockMvc mvc() {
-        return MockMvcBuilders.standaloneSetup(controller)
+        return MockMvcBuilders.standaloneSetup(controller, trash)
                 .setControllerAdvice(new ApiExceptionHandler()).build();
     }
 

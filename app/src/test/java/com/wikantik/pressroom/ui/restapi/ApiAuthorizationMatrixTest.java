@@ -211,25 +211,27 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/tokens",                                  POST,  NO_GLOBAL,  NO_WEBLOG, Flag.PASSWORD_TOO),
             row("DELETE /v1/tokens/{id}",                             POST,  NO_GLOBAL,  NO_WEBLOG, Flag.PASSWORD_TOO),
 
-            // --- Entries: reads READ, writes POST. A contributor (EDIT_DRAFT) may read them; writing
-            //     takes publish rights (POST) over the API, unlike the JSP editor, where a contributor
-            //     saves drafts (EntriesWriteApi's javadoc: reads and writes are separate controllers
-            //     because they need different permissions)
+            // --- Entries: reads READ; writes a POST- or ADMIN-role token and, on the weblog, what the JSP
+            //     editor asks: EDIT_DRAFT, the contributor's level (spec 2026-11-21 owner decisions, Task 3).
+            //     Past this layer the handler holds a contributor to the editor's rules (a publish is
+            //     submitted for review, only their own drafts and pending entries change); the sentinel
+            //     stops before that, so EntriesWriteApiDispatchTest pins it. Restore and delete-forever
+            //     take POST, as the Trash page does (EntriesTrashApi).
             row("GET    /v1/weblogs/{handle}/entries",                READ,  SITE_LOGIN, ON_DRAFT),
             row("GET    /v1/weblogs/{handle}/entries/{id}",           READ,  SITE_LOGIN, ON_DRAFT),
             row("GET    /v1/weblogs/{handle}/entries/by-anchor/{anchor}", READ, SITE_LOGIN, ON_DRAFT),
             row("GET    /v1/weblogs/{handle}/entries/{id}/revisions", READ,  SITE_LOGIN, ON_DRAFT),
             row("GET    /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}", READ, SITE_LOGIN, ON_DRAFT),
-            row("POST   /v1/weblogs/{handle}/entries",                POST,  SITE_LOGIN, ON_POST),
-            row("PATCH  /v1/weblogs/{handle}/entries/{id}",           POST,  SITE_LOGIN, ON_POST),
-            row("DELETE /v1/weblogs/{handle}/entries/{id}",           POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/entries",                POST,  SITE_LOGIN, ON_DRAFT),
+            row("PATCH  /v1/weblogs/{handle}/entries/{id}",           POST,  SITE_LOGIN, ON_DRAFT),
+            row("DELETE /v1/weblogs/{handle}/entries/{id}",           POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/{id}/restore",   POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/entries/{id}/delete-forever", POST, SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/{id}/preview",   POST,  SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/preview",        POST,  SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore", POST, SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep", POST, SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep", POST, SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/preview",   POST,  SITE_LOGIN, ON_DRAFT),
+            row("POST   /v1/weblogs/{handle}/entries/preview",        POST,  SITE_LOGIN, ON_DRAFT),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore", POST, SITE_LOGIN, ON_DRAFT),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep", POST, SITE_LOGIN, ON_DRAFT),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep", POST, SITE_LOGIN, ON_DRAFT),
 
             // --- Categories and tags: blog-wide structure, a publisher's (POST), as on the Categories page
             row("GET    /v1/weblogs/{handle}/categories",             READ,  SITE_LOGIN, ON_POST),
@@ -694,6 +696,7 @@ class ApiAuthorizationMatrixTest {
             new McpSample("weblogs", "update", W),
             new McpSample("entries", "get", W_ID),
             new McpSample("entries", "create", W),
+            new McpSample("entries", "restore", W_ID),
             new McpSample("categories", "create", W),
             new McpSample("media", "import", W),
             new McpSample("pages", "update", W_ID),

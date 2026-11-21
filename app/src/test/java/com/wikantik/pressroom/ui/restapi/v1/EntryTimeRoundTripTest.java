@@ -41,6 +41,11 @@ class EntryTimeRoundTripTest {
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
         when(weblogger.getUrlStrategy()).thenReturn(mock(URLStrategy.class));
         when(weblogger.getIndexManager()).thenReturn(mock(IndexManager.class));
+        // A publisher: the write is not held to a contributor's rules.
+        com.wikantik.pressroom.business.UserManager users = mock(com.wikantik.pressroom.business.UserManager.class);
+        when(users.checkPermission(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(true);
+        when(weblogger.getUserManager()).thenReturn(users);
 
         Weblog weblog = new Weblog();
         weblog.setId("myblog-id");
