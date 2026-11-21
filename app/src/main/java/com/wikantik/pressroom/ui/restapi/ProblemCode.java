@@ -300,6 +300,10 @@ public enum ProblemCode {
     MEDIA_IMPORT_REFUSED("media.importRefused", ProblemType.INVALID_REQUEST, 1),
     /** No media file of the weblog has this id. */
     MEDIA_NOT_FOUND("media.notFound", ProblemType.NOT_FOUND, 0),
+    /** A media file's new {@code name} is held by another file in the directory it will be in. */
+    MEDIA_NAME_IN_USE("media.nameInUse", ProblemType.CONFLICT, 1),
+    /** A directory {@code name} may not contain a slash (one leading slash is dropped). */
+    DIRECTORY_NAME_INVALID("directory.nameInvalid", ProblemType.INVALID_REQUEST, 0),
     /** No media directory of the weblog has this id. */
     DIRECTORY_NOT_FOUND("directory.notFound", ProblemType.NOT_FOUND, 0),
     /** A directory may not be named {@code default}. */
@@ -314,6 +318,8 @@ public enum ProblemCode {
     CATEGORY_NOT_FOUND("category.notFound", ProblemType.NOT_FOUND, 0),
     /** The weblog already has a category with this {@code name}. */
     CATEGORY_NAME_IN_USE("category.nameInUse", ProblemType.CONFLICT, 1),
+    /** A category {@code name} may not contain a character HTML escaping would change. */
+    CATEGORY_NAME_INVALID("category.nameInvalid", ProblemType.INVALID_REQUEST, 0),
     /** The weblog's last category cannot be deleted. */
     CATEGORY_LAST_ONE("category.lastOne", ProblemType.CONFLICT, 0),
     /** A category delete's {@code moveTo} names the category itself. */

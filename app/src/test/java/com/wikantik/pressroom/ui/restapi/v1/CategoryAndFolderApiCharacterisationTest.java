@@ -141,11 +141,20 @@ class CategoryAndFolderApiCharacterisationTest {
                 "description", "field.tooLong", "'description' must be 255 characters or fewer.");
     }
 
-    /** Today the API accepts HTML characters in a category name (the JSP refuses them): changed on purpose. */
+    /**
+     * Changed on purpose (spec Task 3, AC3a; owner decision 2026-11-21): the API refuses a category name
+     * HTML escaping would change, as the screen always has. It took them before.
+     */
     @Test
-    void todayAnAmpersandInACategoryNameIsAcceptedOnCreateAndRename() throws Exception {
-        assertEquals("R&D", answer(status().isCreated(), post(CATEGORIES), name("R&D")).get("name").asString());
-        assertEquals("Q&A", answer(status().isOk(), patch(CATEGORIES + "/c1"), name("Q&A")).get("name").asString());
+    void aCategoryNameHtmlEscapingWouldChangeIsRefusedOnCreateAndRename() throws Exception {
+        String detail = "A category name cannot contain an ampersand, an angle bracket or a double quote.";
+        for (String bad : new String[] {"R&D", "a<b", "a>b", "a\\\"b"}) {
+            oneField(answer(status().isBadRequest(), post(CATEGORIES), name(bad)),
+                    "name", "category.nameInvalid", detail);
+            oneField(answer(status().isBadRequest(), patch(CATEGORIES + "/c1"), name(bad)),
+                    "name", "category.nameInvalid", detail);
+        }
+        verify(entries, never()).saveWeblogCategory(any());
     }
 
     /** HTML 4 escaping leaves an apostrophe alone, so it is no HTML character to the rule either. */
@@ -256,11 +265,19 @@ class CategoryAndFolderApiCharacterisationTest {
         assertEquals("trips", created.get("name").asString());
     }
 
-    /** Today a leading slash is stripped by the manager and an inner one is passed through: the latter changes. */
     @Test
-    void todayALeadingSlashIsStrippedAndAnInnerSlashIsCreated() throws Exception {
+    void aLeadingSlashIsStrippedOnce() throws Exception {
         assertEquals("x", folder(status().isCreated(), name("/x")).get("name").asString());
-        assertEquals("a/b", folder(status().isCreated(), name("a/b")).get("name").asString());
+    }
+
+    /** Changed on purpose (spec Task 3, AC3c): an inner slash was passed through to the manager and created. */
+    @Test
+    void aSlashInsideAFolderNameIsRefused() throws Exception {
+        String detail = "A directory name cannot contain a slash.";
+        for (String bad : new String[] {"a/b", "x/", "//x"}) {
+            oneField(folder(status().isBadRequest(), name(bad)), "name", "directory.nameInvalid", detail);
+        }
+        verify(files, never()).createMediaFileDirectory(any(), any());
     }
 
     // --- file names ---
@@ -296,12 +313,31 @@ class CategoryAndFolderApiCharacterisationTest {
                 .asString());
     }
 
-    /** Today the API has no duplicate-name check on a rename: changed on purpose. */
+    /** Changed on purpose (spec Task 3, AC3d): the API had no duplicate-name check on a rename. */
     @Test
-    void todayRenamingAFileOntoAnotherFilesNameIsAccepted() throws Exception {
-        file("f1", "dog.jpg");
+    void renamingAFileOntoAnotherFilesNameInItsDirectoryIsAConflictAndNothingChanges() throws Exception {
+        MediaFile dog = file("f1", "dog.jpg");
         file("f2", "cat.jpg");
-        assertEquals("cat.jpg", answer(status().isOk(), patch(MEDIA + "/f1"), name("cat.jpg")).get("name")
-                .asString());
+        oneField(answer(status().isConflict(), patch(MEDIA + "/f1"), name("cat.jpg")),
+                "name", "media.nameInUse", "A file named 'cat.jpg' already exists in that directory.");
+        assertEquals("dog.jpg", dog.getName());
+        verify(files, never()).updateMediaFile(any(), any());
+    }
+
+    @Test
+    void aTakenNameIsJudgedInTheDirectoryTheFileIsMovingTo() throws Exception {
+        MediaFile dog = file("f1", "dog.jpg");
+        MediaFileDirectory other = new MediaFileDirectory(weblog, "other", null);
+        other.setId("d2");
+        other.setMediaFiles(new HashSet<>());
+        when(files.getMediaFileDirectory("d2")).thenReturn(other);
+        MediaFile cat = new MediaFile();
+        cat.setId("f3");
+        cat.setName("cat.jpg");
+        cat.setDirectory(other);
+        other.getMediaFiles().add(cat);
+        oneField(answer(status().isConflict(), patch(MEDIA + "/f1"), "{\"name\":\"cat.jpg\",\"directoryId\":\"d2\"}"),
+                "name", "media.nameInUse", "A file named 'cat.jpg' already exists in that directory.");
+        assertEquals("dog.jpg", dog.getName());
     }
 }

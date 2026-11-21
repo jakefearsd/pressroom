@@ -294,7 +294,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         Set<String> cleared = MediaDtos.MEDIA_CLEAR.validate(body.clear(), body);
         MediaFileDirectory target = body.directoryId() == null ? null : requireDirectory(request, body.directoryId());
 
-        MediaDtos.applyPatch(file, body, cleared);
+        MediaDtos.applyPatch(file, body, cleared, target != null ? target : file.getDirectory());
         weblogger.getMediaFileManager().updateMediaFile(weblog, file);
 
         if (target != null && (file.getDirectory() == null || !target.getId().equals(file.getDirectory().getId()))) {
@@ -369,6 +369,9 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         if ("default".equals(normalized)) {
             throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_RESERVED);
         }
+        if (normalized.contains("/")) {
+            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_INVALID);
+        }
         ColumnLimits.requireMaxLength("name", normalized, ColumnLimits.DIRECTORY_NAME);
         if (weblog.hasMediaFileDirectory(normalized)) {
             throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_IN_USE, normalized);
@@ -377,7 +380,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.DIRECTORY_DESCRIPTION);
         }
 
-        MediaFileDirectory directory = weblogger.getMediaFileManager().createMediaFileDirectory(weblog, name);
+        MediaFileDirectory directory = weblogger.getMediaFileManager().createMediaFileDirectory(weblog, normalized);
         if (body.description() != null) {
             directory.setDescription(body.description());
         }

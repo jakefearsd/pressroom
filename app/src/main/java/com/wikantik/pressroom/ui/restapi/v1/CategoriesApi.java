@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -72,6 +73,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
         }
         ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
+        requireNoHtmlCharacters(name);
         if (body.description() != null) {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.CATEGORY_DESCRIPTION);
         }
@@ -89,6 +91,12 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         weblogger.flush();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDtos.toView(category, 0));
+    }
+
+    private static void requireNoHtmlCharacters(String name) {
+        if (!name.equals(StringEscapeUtils.escapeHtml4(name))) {
+            throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_INVALID);
+        }
     }
 
     @Operation(operationId = "categoriesUpdate")
@@ -109,6 +117,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
             if (!name.equals(category.getName())) {
+                requireNoHtmlCharacters(name);
                 // The entity has no category-by-name lookup of its own (it
                 // would need the manager, which entities do not hold), so go
                 // straight through this controller's injected manager

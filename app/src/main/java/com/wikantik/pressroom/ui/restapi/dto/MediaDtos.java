@@ -225,6 +225,17 @@ public final class MediaDtos {
      * silently broken one.
      */
     public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared) {
+        applyPatch(file, patch, cleared, file.getDirectory());
+    }
+
+    /**
+     * As {@link #applyPatch(MediaFile, MediaPatch, Set)}, with a new
+     * {@code name} also judged against the files of {@code directory}, the
+     * directory the file will be in: one 400 for every bad field first, then
+     * the 409 for a name another file there holds, and nothing is applied.
+     */
+    public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared,
+            MediaFileDirectory directory) {
         // Every field is judged before any is applied (the file is managed),
         // and one 400 names all the bad ones.
         FieldErrors errors = new FieldErrors();
@@ -243,6 +254,12 @@ public final class MediaDtos {
             });
         }
         errors.throwIfAny();
+        if (name != null && directory != null) {
+            MediaFile holder = directory.getMediaFile(name);
+            if (holder != null && !holder.getId().equals(file.getId())) {
+                throw ApiException.problemOnField("name", ProblemCode.MEDIA_NAME_IN_USE, name);
+            }
+        }
         if (patch.altText() != null) {
             file.setAltText(patch.altText());
         }

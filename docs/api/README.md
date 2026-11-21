@@ -546,6 +546,8 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `media.fileRequired` | 400 | `invalid-request` | A media upload carried no file. |
 | `media.importRefused` | 400 | `invalid-request` | A media import could not fetch or store the image; `detail` says why. Text from the import step. |
 | `media.notFound` | 404 | `not-found` | No media file of the weblog has this id. |
+| `media.nameInUse` | 409 | `conflict` | A media file's new `name` is held by another file in the directory it will be in. |
+| `directory.nameInvalid` | 400 | `invalid-request` | A directory `name` contains a slash (one leading slash is dropped). |
 | `directory.notFound` | 404 | `not-found` | No media directory of the weblog has this id. |
 | `directory.nameReserved` | 400 | `invalid-request` | A directory may not be named `default`. |
 | `directory.nameInUse` | 409 | `conflict` | The weblog already has a directory with this `name`. |
@@ -553,6 +555,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `focal.pairOnly` | 400 | `invalid-request` | One focal coordinate was sent for a file with no focal point. |
 | `category.notFound` | 404 | `not-found` | No category of the weblog has this id. |
 | `category.nameInUse` | 409 | `conflict` | The weblog already has a category with this `name`. |
+| `category.nameInvalid` | 400 | `invalid-request` | A category `name` contains a character HTML escaping would change (`&`, `<`, `>`, `"`). |
 | `category.lastOne` | 409 | `conflict` | The weblog's last category cannot be deleted. |
 | `category.moveToSelf` | 400 | `invalid-request` | A category delete's `moveTo` names the category itself. |
 | `category.moveTargetNotFound` | 404 | `not-found` | A category delete's `moveTo` names no category of the weblog. |
@@ -1120,6 +1123,15 @@ another category to move them into first (and `moveTo` naming the category
 being deleted is itself a 400). `GET .../tags` has no pagination — a
 per-weblog tag cloud has never been large enough to need it.
 
+> **Changed in 0.16.0: a category name must survive HTML escaping.**
+> `POST .../categories` and `PATCH .../categories/{id}` refuse a `name`
+> containing `&`, `<`, `>` or `"` (the characters HTML escaping would change)
+> with a 400 on `name`, code `category.nameInvalid`, as the admin pages always
+> have; earlier versions stored them. A PATCH that sends a category's current
+> name again is never refused for this, so a category created before the rule
+> (with an `&` in it) can still be edited. An apostrophe was never refused and
+> still is not.
+
 ## Media
 
 ```
@@ -1132,6 +1144,15 @@ DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
 ```
+
+> **Changed in 0.16.0: media names are judged more strictly.**
+> `POST .../media/directories` refuses a `name` with a slash anywhere but the
+> first character (one leading slash is dropped, as before): 400 on `name`, code
+> `directory.nameInvalid`; it used to create the directory with the slash in its
+> name. `PATCH .../media/{id}` answers 409 on `name`, code `media.nameInUse`,
+> when the new `name` is held by another file in the directory the file will be
+> in (the `directoryId` sent, else its current one), and changes nothing; it used
+> to store two files of one name.
 
 `GET .../media` returns a bare array of `MediaView`s sorted by name. With
 `directoryId`, only that directory's files (`dir` is its old name and still

@@ -182,6 +182,12 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `EntryDtos.applyWrite`, so edits cannot grow an entry past it a request at a
   time. `TextDiff` caps its table at `MAX_CELLS` after matching the common
   start and end.
+- **Category and media-folder names (spec 2026-11-20-jsp-rules-and-view-models-design, Task 3)**: a
+  category name must survive `escapeHtml4` on both surfaces (`&`, `<`, `>`, `"`; an apostrophe passes), but a
+  PATCH resending the category's own name is never judged again, so an `&` stored before the rule stays
+  editable. A folder name loses one leading slash, then may hold no slash (`directory.nameInvalid`). A file
+  rename is judged against the directory the file will be in (`media.nameInUse`, a 409 raised in
+  `MediaDtos.applyPatch` after every 400 and before anything is applied).
 - **A category name lost to an overlapping create** is a
   `DuplicateCategoryNameException` from the manager's locked check: the API
   answers 409 on `name`, the category screen its duplicate-name error.
