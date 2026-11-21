@@ -334,6 +334,15 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   `AdminLog` exactly as `UserWeblogsController` does. A permission row whose account no
   longer resolves (deleted or disabled; the page shows it no control) is skipped, not an
   NPE that failed every other change in the submission.
+- **Column limits on the create screens** (2026-11-21, spec
+  `2026-11-20-jsp-rules-and-view-models-design.md`, Task 2): the new-person and new-agent forms
+  refuse a username, screen name or email address over 255 characters on its own field
+  (`personForm.error.userNameTooLong`, `screenNameTooLong`, `emailTooLong`), the answer the API
+  already gave; an over-long value used to reach the store and fail there as a generic error. The
+  username's length is judged before its characters, as the API judges it. The Weblogs section's
+  grant and change answer a missing `level` with `userWeblogs.error.level`; they used to throw
+  (`List.contains(null)`) and fail as a 500. The edit-person form still judges neither the address
+  nor the screen name (pinned in `AccountScreensCharacterisationTest`; a follow-up).
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;

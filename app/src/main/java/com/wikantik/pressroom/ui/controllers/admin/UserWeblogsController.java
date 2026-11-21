@@ -93,7 +93,7 @@ public class UserWeblogsController extends BaseController {
                 addFlashError(redirectAttributes, "userWeblogs.groupBloggingOff", request);
             } else if (weblog == null) {
                 addFlashError(redirectAttributes, "userWeblogs.error.noSuchWeblog", request);
-            } else if (!Memberships.LEVELS.contains(level)) {
+            } else if (level == null || !Memberships.LEVELS.contains(level)) {
                 addFlashError(redirectAttributes, "userWeblogs.error.level", request);
             } else if (!users.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), account)) {
                 // A reader holds no login action: a weblog permission would be
@@ -123,7 +123,7 @@ public class UserWeblogsController extends BaseController {
         if (account == null) {
             return accountNotFound(request, redirectAttributes);
         }
-        if (!Memberships.LEVELS.contains(level)) {
+        if (level == null || !Memberships.LEVELS.contains(level)) {
             addFlashError(redirectAttributes, "userWeblogs.error.level", request);
             return backTo(account, redirectAttributes);
         }

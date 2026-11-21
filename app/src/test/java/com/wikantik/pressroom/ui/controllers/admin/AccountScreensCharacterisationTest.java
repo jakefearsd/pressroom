@@ -48,10 +48,19 @@ import static org.mockito.Mockito.when;
  * a refused form -- every error's message key in order, the controls marked,
  * the view -- and that nothing was written, so the move (criterion 3) is seen
  * to change none of them.
+ *
+ * <p>Some answers changed on purpose, in a commit of their own before the
+ * move, each new expectation seen to fail first: the username, screen name and
+ * address are held to their 255-character columns on both create screens (the
+ * shared rule's answer, which the API already gave), where an over-long value
+ * used to reach the store and fail there.
  */
 class AccountScreensCharacterisationTest {
 
     private static final String ALLOWED_CHARS = "username.allowedChars";
+
+    /** A 258-character address the validator accepts but for its length. */
+    private static final String LONG_ADDRESS = "abcdefghij@" + ("x".repeat(60) + ".").repeat(4) + "com";
 
     private MockWeblogger weblogger;
     private UserEditController people;
@@ -193,10 +202,42 @@ class AccountScreensCharacterisationTest {
         assertEquals(List.of(), ControllerTestFixture.errors(model));
     }
 
+    /** Changed on purpose (criterion 3, the shared rule): the column limit is the screen's, not the store's. */
     @Test
-    void aLongUserNameIsNotJudgedByTheScreenSoTheStoreDecides() throws Exception {
-        assertEquals(".UserAdmin", people.createUserSave(asAdmin(), model, person("j".repeat(300))));
+    void aNewPersonsUserNameOverItsColumnIsRefused() throws Exception {
+        assertNewPersonRefused(person("j".repeat(256)), List.of("personForm.error.userNameTooLong"),
+                List.of("bean_userName"));
+    }
+
+    /** Changed on purpose: the length is judged before the characters, as the API judges it. */
+    @Test
+    void aUserNameTooLongAndOfBadCharactersIsTooLong() throws Exception {
+        assertNewPersonRefused(person("j ".repeat(150)), List.of("personForm.error.userNameTooLong"),
+                List.of("bean_userName"));
+    }
+
+    @Test
+    void aUserNameOfExactlyTheColumnIsAccepted() throws Exception {
+        assertEquals(".UserAdmin", people.createUserSave(asAdmin(), model, person("j".repeat(255))));
         verify(weblogger.userManager()).addUser(any());
+    }
+
+    /** Changed on purpose (the shared rule). */
+    @Test
+    void aNewPersonsScreenNameOverItsColumnIsRefused() throws Exception {
+        CreateUserBean bean = person("jake");
+        bean.setScreenName("s".repeat(256));
+
+        assertNewPersonRefused(bean, List.of("personForm.error.screenNameTooLong"), List.of("bean_screenName"));
+    }
+
+    /** Changed on purpose (the shared rule): a valid address can still overflow the column. */
+    @Test
+    void aNewPersonsAddressOverItsColumnIsRefused() throws Exception {
+        CreateUserBean bean = person("jake");
+        bean.setEmailAddress(LONG_ADDRESS);
+
+        assertNewPersonRefused(bean, List.of("personForm.error.emailTooLong"), List.of("bean_email"));
     }
 
     // --- edit person ---
@@ -328,6 +369,22 @@ class AccountScreensCharacterisationTest {
         bean.setEmailAddress(" a@b.c ");
 
         assertNewAgentRefused(bean, List.of("personForm.error.email"), List.of("bean_emailAddress"));
+    }
+
+    /** Changed on purpose (the shared rule). */
+    @Test
+    void aNewAgentsUserNameOverItsColumnIsRefused() throws Exception {
+        assertNewAgentRefused(agent("b".repeat(256)), List.of("personForm.error.userNameTooLong"),
+                List.of("bean_userName"));
+    }
+
+    /** Changed on purpose (the shared rule). */
+    @Test
+    void aNewAgentsAddressOverItsColumnIsRefused() throws Exception {
+        AgentBean bean = agent("bot1");
+        bean.setEmailAddress(LONG_ADDRESS);
+
+        assertNewAgentRefused(bean, List.of("personForm.error.emailTooLong"), List.of("bean_emailAddress"));
     }
 
     @Test

@@ -119,6 +119,8 @@ public class AgentController extends TokenFormController {
         String email = StringUtils.trimToNull(bean.getEmailAddress());
         if (email != null && !EmailValidator.getInstance().isValid(email)) {
             addFieldError(model, "bean_emailAddress", "personForm.error.email", request);
+        } else if (email != null && email.length() > UserNames.MAX_LENGTH) {
+            addFieldError(model, "bean_emailAddress", "personForm.error.emailTooLong", request);
         }
         String notes = checkedNotes(bean, model, request);
         if (hasErrors(model)) {

@@ -440,12 +440,17 @@ public class UserEditController extends BaseController {
         // only by the page's script.
         if (StringUtils.isBlank(bean.getScreenName())) {
             addFieldError(model, "bean_screenName", "personForm.error.screenName", request);
+        } else if (bean.getScreenName().length() > UserNames.MAX_LENGTH) {
+            addFieldError(model, "bean_screenName", "personForm.error.screenNameTooLong", request);
         }
         if (StringUtils.isBlank(bean.getFullName())) {
             addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
         }
-        if (!EmailValidator.getInstance().isValid(StringUtils.trimToEmpty(bean.getEmailAddress()))) {
+        String email = StringUtils.trimToEmpty(bean.getEmailAddress());
+        if (!EmailValidator.getInstance().isValid(email)) {
             addFieldError(model, "bean_email", "personForm.error.email", request);
+        } else if (email.length() > UserNames.MAX_LENGTH) {
+            addFieldError(model, "bean_email", "personForm.error.emailTooLong", request);
         }
         if (sendsSetPasswordLink(bean)) {
             return;

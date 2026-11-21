@@ -35,7 +35,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -50,6 +49,11 @@ import static org.mockito.Mockito.when;
  * refused grant, change or removal -- the flash errors in order, where it
  * redirects -- and that nothing was written, so the move (criterion 3) is
  * seen to change none of them.
+ *
+ * <p>One answer changed on purpose, in a commit of its own before the move,
+ * the new expectation seen to fail first: a grant or change posting no level
+ * is the level error, where {@code List.contains(null)} threw and the page
+ * failed as a 500.
  */
 class UserWeblogsCharacterisationTest {
 
@@ -117,10 +121,11 @@ class UserWeblogsCharacterisationTest {
         }
     }
 
-    /** A defect the characterisation found: a form posting no level at all fails as a 500. */
+    /** Changed on purpose: a form posting no level at all is the level error, where it failed as a 500. */
     @Test
-    void grantingWithNoLevelFailsOnTheNull() {
-        assertThrows(NullPointerException.class, () -> controller.grant(asAdmin(), redirect, "jake", "travel", null));
+    void grantingWithNoLevelIsTheLevelError() throws Exception {
+        assertRefused(controller.grant(asAdmin(), redirect, "jake", "travel", null),
+                List.of("userWeblogs.error.level"));
     }
 
     @Test
@@ -158,10 +163,11 @@ class UserWeblogsCharacterisationTest {
         verify(weblogger.weblogManager(), never()).getWeblogByHandle(any(), any());
     }
 
-    /** A defect the characterisation found: a form posting no level at all fails as a 500. */
+    /** Changed on purpose: a form posting no level at all is the level error, where it failed as a 500. */
     @Test
-    void changingWithNoLevelFailsOnTheNull() {
-        assertThrows(NullPointerException.class, () -> controller.change(asAdmin(), redirect, "jake", "travel", null));
+    void changingWithNoLevelIsTheLevelError() throws Exception {
+        assertRefused(controller.change(asAdmin(), redirect, "jake", "travel", null),
+                List.of("userWeblogs.error.level"));
     }
 
     @Test

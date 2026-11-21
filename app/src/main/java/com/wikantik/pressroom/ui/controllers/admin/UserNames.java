@@ -38,6 +38,9 @@ final class UserNames {
 
     private static final Logger log = LoggerFactory.getLogger(UserNames.class);
 
+    /** pressroom_user.username is varchar(255). */
+    static final int MAX_LENGTH = 255;
+
     private UserNames() {
     }
 
@@ -54,6 +57,9 @@ final class UserNames {
     static String problem(String userName, UserManager users) {
         if (StringUtils.isEmpty(userName)) {
             return "error.add.user.missingUserName";
+        }
+        if (userName.length() > MAX_LENGTH) {
+            return "personForm.error.userNameTooLong";
         }
         String allowed = WebloggerConfig.getProperty("username.allowedChars");
         if (StringUtils.isBlank(allowed)) {
