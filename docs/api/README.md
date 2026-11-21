@@ -1753,6 +1753,33 @@ is declared server-side, not asserted by the caller — and every name and
 value in the request is validated *before* anything is saved, so a bad
 request never leaves a partial write behind.
 
+> **Changed in 0.16.0: `PATCH /api/v1/admin/config` applies the rules the
+> Global Config screen applies.** Earlier versions checked only each value's
+> type. Now, judged together and answered as one 400 that names every refused
+> setting in `errors` (nothing is stored):
+> - `site.frontpage.page` changed to a slug that is not a published site page:
+>   `config.frontDoorPageUnpublished`. An unchanged slug is not looked up, so
+>   resending a page that was unpublished later is accepted.
+> - `site.frontpage.weblog.handle` set to the site space's handle, in any
+>   case: `config.frontDoorSiteSpace`.
+> - Both front-door settings non-empty after the patch (counting the stored
+>   one a patch leaves alone): `config.frontDoorBothSet`, on
+>   `site.frontpage.page`. To move the front door to a site page, send
+>   `"site.frontpage.weblog.handle": ""` with it; to a blog, send
+>   `"site.frontpage.page": ""`.
+> - `site.privacy.page` changed to a reference (`slug` or `handle/slug`) that
+>   does not resolve to a published page: `config.privacyPageUnpublished`.
+> - Several bad values, type errors included, are one 400
+>   (`request.invalidFields` when there are several) rather than the first
+>   alone. A single type error answers exactly as before.
+>
+> String settings are stored trimmed, and the answer echoes the stored value.
+> A change to `site.name`, `site.shortName`, `site.description`,
+> `site.verification.bing`, either front-door setting, `site.privacy.page` or
+> `site.absoluteurl` now expires every cached page (every weblog's
+> `lastModified` moves), as a Global Config save does; a change to a
+> `site.discovery.*` value still rebuilds the front page's discovery snapshot.
+
 **`GET/PATCH /api/v1/weblogs/{handle}` is the weblog's owner's, as the
 Weblog Settings and Theme pages are.** They need the weblog's `ADMIN`
 permission (the owner, or a site admin, who holds it on every weblog) and an

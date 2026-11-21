@@ -60,10 +60,14 @@ final class RuleProblems {
         };
     }
 
-    /** {@code violation} as the problem it is on its field: a 400, or a 409 for a conflict. */
-    static ApiException problem(RuleViolation violation) {
-        return ApiException.problemOnField(violation.field(), violation.code(),
-                violation.codeArgs().toArray(String[]::new));
+    /**
+     * Refuses {@code violations}, when there are any, as {@link #refuse(List)}
+     * refuses broken rules: a conflict alone is its 409, anything else one
+     * 400 naming every violation.
+     */
+    static void refuseViolations(List<RuleViolation> violations) {
+        refuse(violations.stream().map(v -> new Broken(v.field(), v.code(), v.codeArgs(),
+                v.kind() == RuleViolation.Kind.CONFLICT)).toList());
     }
 
     /** One broken rule, keyed: its field (as the API names it), code and args. */

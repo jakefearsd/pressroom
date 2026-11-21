@@ -96,7 +96,8 @@ resolves through the index at the end of `CLAUDE.md`.
   `site.frontpage.weblog.handle`, and a draft or deleted page falls back to
   the site directory. `site.privacy.page` is a page reference, `slug` (a site
   page) or `handle/slug` (a blog's page). Both are set from Global Config
-  (`admin-ui.md`) and touch every weblog on change.
+  (`admin-ui.md`) or `PATCH /api/v1/admin/config`, under the same rules
+  (`SiteSettingsRules`), and touch every weblog on change (`SiteSettingsEffects`).
 - **Startup** (`pressroom.properties` / `pressroom-custom.properties`): read once
   via `WebloggerConfig`; needs a restart.
 - **Per-weblog** (`Weblog` columns, Weblog Settings) and **per-entry**.

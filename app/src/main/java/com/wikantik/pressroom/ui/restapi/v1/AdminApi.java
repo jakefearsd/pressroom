@@ -11,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
-import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
@@ -30,6 +28,7 @@ import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
+import com.wikantik.pressroom.ui.controllers.SiteSettingsEffects;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
@@ -98,13 +97,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * way this API could only report as an opaque 500.
      */
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-
-    /**
-     * true or false in ASCII letters, any case: CASE_INSENSITIVE without
-     * UNICODE_CASE folds ASCII only, where equalsIgnoreCase would also take
-     * "fal\u017Fe" (LONG S upper-cases to S).
-     */
-    private static final Pattern BOOLEAN = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
 
     // ------------------------------------------------------------- users
 
@@ -339,9 +331,13 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * runtimeConfigDefs.xml}, not something a caller gets to assert, and a
      * map is the natural shape for "set these properties" either way. Every
      * name is checked against {@link AdminDtos#requireRuntimeProperty} --
-     * the allowlist -- before anything is saved, and every value is checked
-     * against its declared type, so a whole-request failure never leaves a
-     * partial write behind.
+     * the allowlist -- and a null value is refused, each at once; then
+     * {@link SiteSettingsRules}, the rules Global Config applies, judges the
+     * values (type and range, the front door, the privacy page; strings are
+     * stored trimmed), and every value it refuses is named in one 400. A
+     * refused request never leaves a partial write behind. After the save,
+     * {@link SiteSettingsEffects#afterSave} expires cached pages and
+     * refreshes discovery as the screen's save does.
      */
     @Operation(operationId = "configUpdate")
     @PatchMapping("/config")
@@ -352,47 +348,57 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         }
         AdminAccountGuard.requireApiManageable(Caller.current(), body.keySet());
 
+        for (Map.Entry<String, String> entry : body.entrySet()) {
+            AdminDtos.requireRuntimeProperty(entry.getKey());
+            if (entry.getValue() == null) {
+                throw ApiException.problemOnField(entry.getKey(), ProblemCode.CONFIG_VALUE_NULL, entry.getKey());
+            }
+        }
+
+        // Every runtime property is pre-seeded into pressroom_properties at
+        // startup (JPAPropertiesManagerImpl.initializeMissingProps), so this
+        // is (almost) always an update, never an insert.
+        // JPAPersistenceStrategy.store() calls em.persist() outright for any
+        // not-yet-managed instance -- it does not upsert -- so handing it a
+        // bare `new RuntimeConfigProperty(name, value)` for a name that
+        // already has a row throws a raw, unguarded duplicate-key
+        // DatabaseException. Loading the existing managed row and mutating it
+        // in place is the same pattern GlobalConfigController's save uses for
+        // the JSP admin screen. The front door's two rows are read too: the
+        // rules judge them as a pair.
+        Map<String, RuntimeConfigProperty> rows = new LinkedHashMap<>();
+        for (String name : body.keySet()) {
+            rows.put(name, weblogger.getPropertiesManager().getProperty(name));
+        }
+        for (String name : List.of(SiteSettingsRules.FRONT_DOOR_BLOG, SiteSettingsRules.FRONT_DOOR_PAGE)) {
+            if (!rows.containsKey(name)) {
+                rows.put(name, weblogger.getPropertiesManager().getProperty(name));
+            }
+        }
+        Map<String, String> before = new LinkedHashMap<>();
+        rows.forEach((name, row) -> before.put(name, row == null ? null : row.getValue()));
+
+        SiteSettingsRules.Judgement judgement = SiteSettingsRules.judge(body, AdminDtos::findPropertyDef, before,
+                SiteSettingsRules.publishedPages(weblogger));
+        RuleProblems.refuseViolations(judgement.violations());
+
         Map<String, RuntimeConfigProperty> toSave = new LinkedHashMap<>();
         List<AdminDtos.ConfigEntry> result = new ArrayList<>();
-        boolean discoveryChanged = false;
-        for (Map.Entry<String, String> entry : body.entrySet()) {
+        for (Map.Entry<String, String> entry : judgement.values().entrySet()) {
             String name = entry.getKey();
-            AdminDtos.requireRuntimeProperty(name);
-            PropertyDef def = AdminDtos.findPropertyDef(name);
-            String value = entry.getValue();
-            requireValidType(def, value);
-
-            // Every runtime property is pre-seeded into pressroom_properties at
-            // startup (JPAPropertiesManagerImpl.initializeMissingProps), so
-            // this is (almost) always an update, never an insert.
-            // JPAPersistenceStrategy.store() calls em.persist() outright for
-            // any not-yet-managed instance -- it does not upsert -- so
-            // handing it a bare `new RuntimeConfigProperty(name, value)` for
-            // a name that already has a row throws a raw, unguarded
-            // duplicate-key DatabaseException. Loading the existing managed
-            // row and mutating it in place is the same pattern
-            // GlobalConfigController's save uses for the JSP admin screen.
-            RuntimeConfigProperty property = weblogger.getPropertiesManager().getProperty(name);
-            if (name.startsWith(DiscoverySettings.PREFIX)
-                    && (property == null || !Objects.equals(property.getValue(), value))) {
-                discoveryChanged = true;
-            }
+            RuntimeConfigProperty property = rows.get(name);
             if (property != null) {
-                property.setValue(value);
+                property.setValue(entry.getValue());
             } else {
-                property = new RuntimeConfigProperty(name, value);
+                property = new RuntimeConfigProperty(name, entry.getValue());
             }
             toSave.put(name, property);
-            result.add(new AdminDtos.ConfigEntry(name, value, def.getType()));
+            result.add(new AdminDtos.ConfigEntry(name, entry.getValue(), AdminDtos.findPropertyDef(name).getType()));
         }
 
         weblogger.getPropertiesManager().saveProperties(toSave);
         weblogger.flush();
-        // The discovery snapshot holds the share and window it was built with
-        // until the next scheduled refresh, up to an hour away.
-        if (discoveryChanged) {
-            weblogger.getDiscoveryManager().refresh();
-        }
+        SiteSettingsEffects.afterSave(weblogger, judgement.values(), before);
         return result;
     }
 
@@ -402,22 +408,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             return stored.getValue();
         }
         return def.getDefaultValue();
-    }
-
-    /**
-     * A property value of the wrong shape for its declared type (an
-     * unparsable integer/float, or anything but true/false for a boolean)
-     * is a 400 here rather than whatever downstream code first tries to
-     * parse the stored string and throws an unguarded exception. The type
-     * rule is {@link SiteSettingsRules#checkValue}'s, shared with Global Config.
-     */
-    private static void requireValidType(PropertyDef def, String value) {
-        if (value == null) {
-            throw ApiException.problemOnField(def.getName(), ProblemCode.CONFIG_VALUE_NULL, def.getName());
-        }
-        SiteSettingsRules.checkValue(def, value).ifPresent(violation -> {
-            throw RuleProblems.problem(violation);
-        });
     }
 
     @Override

@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -36,7 +37,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * pin what {@code PATCH /v1/admin/config} answers today for the inputs the
  * Global Config screen's characterisation covers: the status, and for a
  * refusal its whole problem body; for an acceptance what is stored and what
- * else happens. Most of those inputs are accepted today.
+ * else happens. Most of those inputs were accepted then.
+ *
+ * <p>Criterion 4 changed the API's answers on purpose, in a commit of its own
+ * after the move, each new expectation seen to fail first: the front-door and
+ * privacy references are judged as the screen judges them, strings are stored
+ * trimmed, a changed rendered-page input moves every weblog, and several bad
+ * values are one 400 naming each. The type refusals are byte-identical.
  */
 class AdminConfigCharacterisationTest {
 
@@ -100,73 +107,108 @@ class AdminConfigCharacterisationTest {
     }
 
     @Test
-    void severalBadValuesNameOnlyTheFirst() throws Exception {
-        String body = refused("{\"site.pages.maxEntries\":\"many\",\"uploads.file.maxsize\":\"big\"}");
+    void severalBadValuesAreOneRefusalNamingEach() throws Exception {
+        String body = refused("{\"site.pages.maxEntries\":\"many\",\"uploads.file.maxsize\":\"big\","
+                + "\"site.privacy.page\":\"nope\"}");
 
         assertEquals("{\"type\":\"https://pressroom.invalid/problems/invalid-request\",\"title\":\"Invalid request\","
-                + "\"status\":400,\"detail\":\"'site.pages.maxEntries' must be an integer.\","
+                + "\"status\":400,\"detail\":\"'site.pages.maxEntries' must be an integer. "
+                + "'uploads.file.maxsize' must be a number. " + PRIVACY_REFUSED + "\","
                 + "\"instance\":\"/v1/admin/config\",\"errors\":[{\"field\":\"site.pages.maxEntries\","
-                + "\"message\":\"'site.pages.maxEntries' must be an integer.\",\"code\":\"config.notInteger\"}],"
-                + "\"code\":\"config.notInteger\"}", body);
+                + "\"message\":\"'site.pages.maxEntries' must be an integer.\",\"code\":\"config.notInteger\"},"
+                + "{\"field\":\"uploads.file.maxsize\",\"message\":\"'uploads.file.maxsize' must be a number.\","
+                + "\"code\":\"config.notNumber\"},{\"field\":\"site.privacy.page\",\"message\":\""
+                + PRIVACY_REFUSED + "\",\"code\":\"config.privacyPageUnpublished\"}],"
+                + "\"code\":\"request.invalidFields\"}", body);
     }
 
     @Test
-    void stringValuesAreStoredAsSent() throws Exception {
-        accepted("{\"site.name\":\"  New Name \\t\"}");
+    void stringValuesAreStoredTrimmed() throws Exception {
+        String body = accepted("{\"site.name\":\"  New Name \\t\"}");
 
-        assertEquals("  New Name \t", saved().get("site.name").getValue());
+        assertEquals("New Name", saved().get("site.name").getValue());
+        assertEquals("[{\"name\":\"site.name\",\"value\":\"New Name\",\"type\":\"string\"}]", body,
+                "the answer echoes what was stored");
     }
 
-    // --- the front door and the privacy page: accepted today ---
+    // --- the front door and the privacy page ---
 
     @Test
-    void aFrontDoorPageThatIsNoPublishedSitePageIsStored() throws Exception {
+    void aChangedFrontDoorPageThatIsNoPublishedSitePageIsRefused() throws Exception {
         siteSpaceWith("draft", WeblogPage.PubStatus.DRAFT);
 
-        accepted("{\"site.frontpage.page\":\"draft\"}");
-
-        assertEquals("draft", saved().get("site.frontpage.page").getValue());
+        assertEquals(oneField("site.frontpage.page", "The front page must be a published site page; no such page "
+                + "was found, or it could not be checked.", "config.frontDoorPageUnpublished"),
+                refused("{\"site.frontpage.page\":\"draft\"}"));
     }
 
     @Test
-    void theSiteSpaceHandleIsStoredAsTheFrontDoorBlog() throws Exception {
-        accepted("{\"site.frontpage.weblog.handle\":\"SITE-SPACE\"}");
+    void anUnchangedFrontDoorPageIsNotLookedUp() throws Exception {
+        when(properties.getProperty("site.frontpage.page"))
+                .thenReturn(new RuntimeConfigProperty("site.frontpage.page", "gone"));
 
-        assertEquals("SITE-SPACE", saved().get("site.frontpage.weblog.handle").getValue());
+        accepted("{\"site.frontpage.page\":\"gone\"}");
+
+        verify(weblogger.getWeblogPageManager(), never()).getPageBySlug(any(), any());
     }
 
     @Test
-    void bothFrontDoorSettingsNonEmptyAreStored() throws Exception {
+    void theSiteSpaceHandleInAnyCaseIsRefusedAsTheFrontDoorBlog() throws Exception {
+        assertEquals(oneField("site.frontpage.weblog.handle", "site.frontpage.weblog.handle cannot be the site "
+                + "space: it holds the site's pages, not a blog.", "config.frontDoorSiteSpace"),
+                refused("{\"site.frontpage.weblog.handle\":\"SITE-SPACE\"}"));
+    }
+
+    @Test
+    void bothFrontDoorSettingsNonEmptyAreRefusedOnThePage() throws Exception {
         siteSpaceWith("home", WeblogPage.PubStatus.PUBLISHED);
+        when(properties.getProperty("site.frontpage.weblog.handle"))
+                .thenReturn(new RuntimeConfigProperty("site.frontpage.weblog.handle", "travel"));
+        String both = oneField("site.frontpage.page", "Set site.frontpage.page or site.frontpage.weblog.handle, "
+                + "not both: send the other as an empty string.", "config.frontDoorBothSet");
 
-        accepted("{\"site.frontpage.weblog.handle\":\"travel\",\"site.frontpage.page\":\"home\"}");
+        assertEquals(both, refused("{\"site.frontpage.weblog.handle\":\"travel\",\"site.frontpage.page\":\"home\"}"));
+        assertEquals(both, refused("{\"site.frontpage.page\":\"home\"}"), "the stored blog stays");
 
-        assertEquals("travel", saved().get("site.frontpage.weblog.handle").getValue());
+        accepted("{\"site.frontpage.weblog.handle\":\"\",\"site.frontpage.page\":\"home\"}");
+        assertEquals("", saved().get("site.frontpage.weblog.handle").getValue());
         assertEquals("home", saved().get("site.frontpage.page").getValue());
     }
 
     @Test
-    void anUnpublishedPrivacyPageIsStored() throws Exception {
+    void aChangedPrivacyPageThatIsNotPublishedIsRefused() throws Exception {
         siteSpaceWith("privacy", WeblogPage.PubStatus.DRAFT);
 
-        accepted("{\"site.privacy.page\":\"privacy\"}");
-
-        assertEquals("privacy", saved().get("site.privacy.page").getValue());
+        assertEquals(oneField("site.privacy.page", PRIVACY_REFUSED, "config.privacyPageUnpublished"),
+                refused("{\"site.privacy.page\":\"privacy\"}"));
     }
 
     // --- what a save does afterwards ---
 
     @Test
-    void aChangedRenderedPageInputMovesNoWeblog() throws Exception {
+    void aChangedRenderedPageInputMovesEveryWeblogAndTheSiteSpace() throws Exception {
         Weblog blog = new Weblog();
         blog.setLastModified(new Date(1_000L));
         when(weblogger.getWeblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(blog));
+        Weblog site = siteSpaceWith("home", WeblogPage.PubStatus.PUBLISHED);
+        site.setLastModified(new Date(1_000L));
         when(properties.getProperty("site.name")).thenReturn(new RuntimeConfigProperty("site.name", "Old"));
 
         accepted("{\"site.name\":\"New\"}");
 
-        assertEquals(new Date(1_000L), blog.getLastModified());
+        assertTrue(blog.getLastModified().after(new Date(1_000L)));
+        assertTrue(site.getLastModified().after(new Date(1_000L)));
+        verify(weblogger.getWeblogManager()).saveWeblog(blog);
+        verify(weblogger.getWeblogManager()).saveWeblog(site);
+    }
+
+    @Test
+    void anUnchangedRenderedPageInputMovesNoWeblog() throws Exception {
+        when(properties.getProperty("site.name")).thenReturn(new RuntimeConfigProperty("site.name", "Same"));
+
+        accepted("{\"site.name\":\" Same \"}");
+
         verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
     }
 
@@ -192,9 +234,21 @@ class AdminConfigCharacterisationTest {
         return body;
     }
 
-    private void accepted(String json) throws Exception {
-        mvc.perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(r -> assertEquals(200, r.getResponse().getStatus(), r.getResponse().getContentAsString()));
+    private String accepted(String json) throws Exception {
+        return mvc.perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(r -> assertEquals(200, r.getResponse().getStatus(), r.getResponse().getContentAsString()))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private static final String PRIVACY_REFUSED = "The privacy policy page must be a published page, written as "
+            + "a site page slug or blog-handle/slug; no such published page was found, or it could not be checked.";
+
+    /** The whole body of a 400 naming one field. */
+    private static String oneField(String field, String message, String code) {
+        return "{\"type\":\"https://pressroom.invalid/problems/invalid-request\",\"title\":\"Invalid request\","
+                + "\"status\":400,\"detail\":\"" + message + "\",\"instance\":\"/v1/admin/config\","
+                + "\"errors\":[{\"field\":\"" + field + "\",\"message\":\"" + message + "\",\"code\":\""
+                + code + "\"}],\"code\":\"" + code + "\"}";
     }
 
     private Map<String, RuntimeConfigProperty> saved() throws Exception {
@@ -204,7 +258,7 @@ class AdminConfigCharacterisationTest {
         return captor.getValue();
     }
 
-    private void siteSpaceWith(String slug, WeblogPage.PubStatus status) throws Exception {
+    private Weblog siteSpaceWith(String slug, WeblogPage.PubStatus status) throws Exception {
         Weblog site = new Weblog();
         site.setHandle(Weblog.SITE_SPACE_HANDLE);
         site.setSiteSpace(true);
@@ -213,5 +267,6 @@ class AdminConfigCharacterisationTest {
         page.setSlug(slug);
         page.setStatus(status);
         when(weblogger.getWeblogPageManager().getPageBySlug(site, slug)).thenReturn(page);
+        return site;
     }
 }

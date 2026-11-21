@@ -300,6 +300,24 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.
   If one is decided later, it supersedes this.
 
+## Site settings over the API (2026-11-21)
+
+Spec `docs/superpowers/specs/2026-11-20-jsp-rules-and-view-models-design.md`, Task 1.
+`AdminApi.patchConfig` and `GlobalConfigController.save` share `SiteSettingsRules` (type and range,
+trimming, the front door, the privacy page; a lookup that throws refuses) and
+`SiteSettingsEffects.afterSave` (touch every weblog and the site space on a `RENDERED_PAGE_INPUTS`
+change, then refresh discovery on a changed `site.discovery.*` value). `patchConfig` keeps, in order:
+the empty-body refusal, `AdminAccountGuard.requireApiManageable`, then per name
+`AdminDtos.requireRuntimeProperty` and the null-value refusal (each thrown at once); then the rules,
+whose violations go out through `RuleProblems.refuseViolations` (one 400 naming each). It reads the
+two front-door rows even when the patch names one, because "both non-empty" counts the stored value.
+New in 0.16.0 (README change note under `GET/PATCH /api/v1/admin/config`): codes
+`config.frontDoorSiteSpace`, `config.frontDoorPageUnpublished`, `config.frontDoorBothSet` (the form
+cannot reach it: its select blanks one setting), `config.privacyPageUnpublished`; trimmed strings; the
+cache touch; several type errors in one 400. Mixed requests now report an unknown name or a null value
+before any type error, where the first bad entry used to win. `AdminConfigCharacterisationTest` pins
+the wire bodies; `GlobalConfigCharacterisationTest` the screen's.
+
 ## The OpenAPI document (2026-11-20)
 
 Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 4. `/api/v1/openapi.json` is
