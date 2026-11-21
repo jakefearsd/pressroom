@@ -334,6 +334,22 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   `AdminLog` exactly as `UserWeblogsController` does. A permission row whose account no
   longer resolves (deleted or disabled; the page shows it no control) is skipped, not an
   NPE that failed every other change in the submission.
+- **The membership decisions live in `Memberships` too** (2026-11-21, spec
+  `2026-11-20-jsp-rules-and-view-models-design.md`, Task 2): `levelProblem(value, removalAllowed)`
+  (`REMOVE` is `-1`), `mayHold(users, account)` (a reader holds no login action), `groupBloggingOff()`,
+  `selfChangeProblem` (Members page) and `leavesNoAdmin` in two shapes: the Members table's posted
+  levels (a row that posted nothing is not counted) and one change on a person's page (counts from
+  the store only when the change takes Admin from an admin; a count that throws refuses). They answer
+  in message keys and booleans, each screen keeping its own wording (`memberPermissions.error.
+  groupBloggingDisabled` vs `userWeblogs.groupBloggingOff`); no problem codes until Tier 4 gives
+  members an API. Neither controller counts admins itself.
+- **The account rules live in `AccountRules`** (same task; `admin.UserNames` is gone): username
+  (present, 255, `username.allowedChars`, taken in any case; `newUserNameProblem` refuses with
+  `generic.error.check.logs` when the taken-check throws), email (`EmailValidator`, trimmed, 255;
+  `EmailUse` REQUIRED / REPLACEMENT / OPTIONAL), screen name (not blank, 255) and the password key
+  (`PasswordRules`). The screens show a violation with `BaseController.addFieldError(model, id,
+  violation, request)` (arguments escaped; these carry none). The full-name requirement and the
+  agent's name/notes checks stay in their controllers.
 - **Column limits on the create screens** (2026-11-21, spec
   `2026-11-20-jsp-rules-and-view-models-design.md`, Task 2): the new-person and new-agent forms
   refuse a username, screen name or email address over 255 characters on its own field

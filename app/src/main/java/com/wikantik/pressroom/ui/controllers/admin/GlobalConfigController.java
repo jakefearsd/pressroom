@@ -248,7 +248,7 @@ public class GlobalConfigController extends BaseController {
         // never blocks.
         for (RuleViolation violation : SiteSettingsRules.checkReferences(accepted, before,
                 SiteSettingsRules.publishedPages(weblogger))) {
-            addViolation(model, violation, request);
+            addError(model, violation, request);
             frontDoorRefused |= SiteSettingsRules.FRONT_DOOR_BLOG.equals(violation.field())
                     || SiteSettingsRules.FRONT_DOOR_PAGE.equals(violation.field());
         }
@@ -342,22 +342,8 @@ public class GlobalConfigController extends BaseController {
         } else {
             String value = SiteSettingsRules.normalise(propertyDef, incomingProp);
             SiteSettingsRules.checkValue(propertyDef, value)
-                    .ifPresent(violation -> addViolation(model, violation, request));
+                    .ifPresent(violation -> addError(model, violation, request));
             accepted.put(propName, value);
-        }
-    }
-
-    /**
-     * Shows a rule's message, every argument HTML-escaped: they are raw
-     * values, the typed one among them, and {@code tiles/messages.jsp} does
-     * not escape.
-     */
-    private void addViolation(Model model, RuleViolation violation, HttpServletRequest request) {
-        if (violation.args().isEmpty()) {
-            addError(model, violation.messageKey(), request);
-        } else {
-            addError(model, violation.messageKey(), violation.args().stream()
-                    .map(arg -> StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
         }
     }
 

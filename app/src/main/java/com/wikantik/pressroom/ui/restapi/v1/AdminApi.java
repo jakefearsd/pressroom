@@ -9,16 +9,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
-import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
 import com.wikantik.pressroom.config.runtime.DisplayGroup;
@@ -27,17 +23,17 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
+import com.wikantik.pressroom.ui.controllers.AccountRules;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsEffects;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
-import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
-import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
@@ -119,22 +115,20 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     @PostMapping("/users")
     public ResponseEntity<AdminDtos.UserView> createUser(@RequestBody AdminDtos.UserCreate body)
             throws WebloggerException {
+        // The account rules the person screen applies (AccountRules); the trimming and the
+        // screen name's default are the API's own.
         FieldErrors errors = new FieldErrors();
         String userName = body.userName() == null ? null : body.userName().trim();
-        errors.check("userName", () -> requireValidUserName(userName));
+        RuleProblems.add(errors, AccountRules.userNameProblem(userName));
 
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
-        errors.check("emailAddress", () -> {
-            // The person and agent screens' check (spec 2026-11-20-jsp-rules-and-view-models-design, Task 2).
-            if (!EmailValidator.getInstance().isValid(emailAddress)) {
-                throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_REQUIRED);
-            }
-            ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
-        });
+        RuleProblems.add(errors, AccountRules.emailProblem(emailAddress, AccountRules.EmailUse.REQUIRED));
 
         String screenName = StringUtils.isBlank(body.screenName()) ? userName : body.screenName().trim();
-        errors.check("screenName", () -> ColumnLimits.requireMaxLength("screenName", screenName,
-                ColumnLimits.SCREEN_NAME));
+        // Blank only when the username it defaulted to is, which is refused on its own field.
+        if (StringUtils.isNotBlank(screenName)) {
+            RuleProblems.add(errors, AccountRules.screenNameProblem(screenName));
+        }
         errors.throwIfAny();
 
         UserManager mgr = weblogger.getUserManager();
@@ -142,9 +136,10 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // UserManager.addUser's own duplicate check, which only looks among
         // ENABLED users -- a same-named disabled account would otherwise
         // reach addUser and fail as a bare, unguarded WebloggerException.
-        if (mgr.getUserByUserName(userName, null) != null
-                || mgr.getUserByUserName(userName.toLowerCase(Locale.ROOT), null) != null) {
-            throw ApiException.problemOnField("userName", ProblemCode.USER_NAME_IN_USE, userName);
+        // A lookup that fails throws: the opaque 500.
+        RuleViolation taken = AccountRules.userNameTaken(userName, mgr);
+        if (taken != null) {
+            RuleProblems.refuseViolations(List.of(taken));
         }
 
         if (!PasswordLinkMailer.isReady()) {
@@ -213,27 +208,23 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         AdminAccountGuard.requireNotAdmin(caller, mgr, user);
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
 
+        // Each value is set only when it passes: the user is a managed entity.
         FieldErrors errors = new FieldErrors();
         if (body.emailAddress() != null) {
             String emailAddress = body.emailAddress().trim();
-            // Set only when it passes: the user is a managed entity.
-            errors.value("emailAddress", () -> {
-                if (!EmailValidator.getInstance().isValid(emailAddress)) {
-                    throw ApiException.problemOnField("emailAddress", ProblemCode.USER_EMAIL_INVALID);
-                }
-                ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
-                return emailAddress;
-            }).ifPresent(user::setEmailAddress);
+            RuleViolation problem = AccountRules.emailProblem(emailAddress, AccountRules.EmailUse.REPLACEMENT);
+            if (problem == null) {
+                user.setEmailAddress(emailAddress);
+            }
+            RuleProblems.add(errors, problem);
         }
         if (body.screenName() != null) {
             String screenName = body.screenName().trim();
-            errors.value("screenName", () -> {
-                if (screenName.isBlank()) {
-                    throw ApiException.problemOnField("screenName", ProblemCode.FIELD_BLANK, "screenName");
-                }
-                ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
-                return screenName;
-            }).ifPresent(user::setScreenName);
+            RuleViolation problem = AccountRules.screenNameProblem(screenName);
+            if (problem == null) {
+                user.setScreenName(screenName);
+            }
+            RuleProblems.add(errors, problem);
         }
         errors.throwIfAny();
         if (body.enabled() != null) {
@@ -248,20 +239,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
         }
         return AdminDtos.toView(user, roles(user));
-    }
-
-    private static void requireValidUserName(String userName) {
-        if (StringUtils.isBlank(userName)) {
-            throw ApiException.problemOnField("userName", ProblemCode.FIELD_REQUIRED, "userName");
-        }
-        ColumnLimits.requireMaxLength("userName", userName, ColumnLimits.USERNAME);
-        String allowed = WebloggerConfig.getProperty("username.allowedChars");
-        if (StringUtils.isBlank(allowed)) {
-            allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
-        }
-        if (!CharSetUtils.keep(userName, allowed).equals(userName)) {
-            throw ApiException.problemOnField("userName", ProblemCode.USER_NAME_CHARACTERS);
-        }
     }
 
     private List<String> roles(User user) throws WebloggerException {

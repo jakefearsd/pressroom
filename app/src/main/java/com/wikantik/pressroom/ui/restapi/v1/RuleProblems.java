@@ -70,6 +70,13 @@ final class RuleProblems {
                 v.kind() == RuleViolation.Kind.CONFLICT)).toList());
     }
 
+    /** Records {@code violation}, when there is one, on {@code errors} under its field, code and args. */
+    static void add(FieldErrors errors, RuleViolation violation) {
+        if (violation != null) {
+            errors.add(violation.field(), violation.code(), violation.codeArgs().toArray(String[]::new));
+        }
+    }
+
     /** One broken rule, keyed: its field (as the API names it), code and args. */
     record Broken(String field, ProblemCode code, List<String> args, boolean conflict) {
         Broken {

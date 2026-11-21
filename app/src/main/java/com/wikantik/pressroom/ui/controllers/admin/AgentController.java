@@ -27,13 +27,14 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
-import org.apache.commons.validator.routines.EmailValidator;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.ApiTokenManager;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.ui.controllers.AccountRules;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.TokenFormController;
 import com.wikantik.pressroom.ui.controllers.TokenFormValues;
 import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
@@ -111,17 +112,16 @@ public class AgentController extends TokenFormController {
         populateCommonModel(request, model);
         model.addAttribute("pageTitle", "agent.create.title");
         model.addAttribute("bean", bean);
-        String userNameProblem = UserNames.problem(bean.getUserName(), weblogger.getUserManager());
-        if (userNameProblem != null) {
-            addFieldError(model, "bean_userName", userNameProblem, request);
+        RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
+        if (userName != null) {
+            addFieldError(model, "bean_userName", userName, request);
         }
         String name = checkedName(bean, model, request);
-        String email = StringUtils.trimToNull(bean.getEmailAddress());
-        if (email != null && !EmailValidator.getInstance().isValid(email)) {
-            addFieldError(model, "bean_emailAddress", "personForm.error.email", request);
-        } else if (email != null && email.length() > UserNames.MAX_LENGTH) {
-            addFieldError(model, "bean_emailAddress", "personForm.error.emailTooLong", request);
+        RuleViolation emailProblem = AccountRules.emailProblem(bean.getEmailAddress(), AccountRules.EmailUse.OPTIONAL);
+        if (emailProblem != null) {
+            addFieldError(model, "bean_emailAddress", emailProblem, request);
         }
+        String email = StringUtils.trimToNull(bean.getEmailAddress());
         String notes = checkedNotes(bean, model, request);
         if (hasErrors(model)) {
             return ".AgentCreate";

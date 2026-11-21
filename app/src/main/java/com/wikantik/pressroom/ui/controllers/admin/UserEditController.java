@@ -26,7 +26,6 @@ import java.util.Objects;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -37,7 +36,8 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.ui.controllers.PasswordRules;
+import com.wikantik.pressroom.ui.controllers.AccountRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
@@ -432,33 +432,29 @@ public class UserEditController extends BaseController {
     }
 
     private void validateNew(CreateUserBean bean, Model model, HttpServletRequest request) {
-        String userNameProblem = UserNames.problem(bean.getUserName(), weblogger.getUserManager());
-        if (userNameProblem != null) {
-            addFieldError(model, "bean_userName", userNameProblem, request);
+        RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
+        if (userName != null) {
+            addFieldError(model, "bean_userName", userName, request);
         }
         // Spec 2026-10-13, section 4: required on the server too, not
         // only by the page's script.
-        if (StringUtils.isBlank(bean.getScreenName())) {
-            addFieldError(model, "bean_screenName", "personForm.error.screenName", request);
-        } else if (bean.getScreenName().length() > UserNames.MAX_LENGTH) {
-            addFieldError(model, "bean_screenName", "personForm.error.screenNameTooLong", request);
+        RuleViolation screenName = AccountRules.screenNameProblem(bean.getScreenName());
+        if (screenName != null) {
+            addFieldError(model, "bean_screenName", screenName, request);
         }
         if (StringUtils.isBlank(bean.getFullName())) {
             addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
         }
-        String email = StringUtils.trimToEmpty(bean.getEmailAddress());
-        if (!EmailValidator.getInstance().isValid(email)) {
-            addFieldError(model, "bean_email", "personForm.error.email", request);
-        } else if (email.length() > UserNames.MAX_LENGTH) {
-            addFieldError(model, "bean_email", "personForm.error.emailTooLong", request);
+        RuleViolation email = AccountRules.emailProblem(bean.getEmailAddress(), AccountRules.EmailUse.REQUIRED);
+        if (email != null) {
+            addFieldError(model, "bean_email", email, request);
         }
         if (sendsSetPasswordLink(bean)) {
             return;
         }
-        if (StringUtils.isEmpty(bean.getPassword())) {
-            addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
-        } else if (!PasswordRules.isLongEnough(bean.getPassword())) {
-            addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
+        String password = AccountRules.passwordProblem(bean.getPassword(), true);
+        if (password != null) {
+            addFieldError(model, "bean_password", password, request);
         }
     }
 
@@ -468,8 +464,11 @@ public class UserEditController extends BaseController {
         }
         if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
             addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
-        } else if (!StringUtils.isEmpty(bean.getPassword()) && !PasswordRules.isLongEnough(bean.getPassword())) {
-            addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
+            return;
+        }
+        String password = AccountRules.passwordProblem(bean.getPassword(), false);
+        if (password != null) {
+            addFieldError(model, "bean_password", password, request);
         }
     }
 

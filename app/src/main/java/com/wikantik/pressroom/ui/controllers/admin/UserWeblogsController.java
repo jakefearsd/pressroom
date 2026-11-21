@@ -25,7 +25,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -89,13 +88,14 @@ public class UserWeblogsController extends BaseController {
         try {
             UserManager users = weblogger.getUserManager();
             Weblog weblog = weblogFor(handle);
-            if (!WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled")) {
+            String levelProblem = Memberships.levelProblem(level, false);
+            if (Memberships.groupBloggingOff()) {
                 addFlashError(redirectAttributes, "userWeblogs.groupBloggingOff", request);
             } else if (weblog == null) {
                 addFlashError(redirectAttributes, "userWeblogs.error.noSuchWeblog", request);
-            } else if (level == null || !Memberships.LEVELS.contains(level)) {
-                addFlashError(redirectAttributes, "userWeblogs.error.level", request);
-            } else if (!users.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), account)) {
+            } else if (levelProblem != null) {
+                addFlashError(redirectAttributes, levelProblem, request);
+            } else if (!Memberships.mayHold(users, account)) {
                 // A reader holds no login action: a weblog permission would be
                 // dead weight and a promotion path (MembersController.grant).
                 addFlashError(redirectAttributes, "inviteMember.error.readerAccount", request);
@@ -123,8 +123,9 @@ public class UserWeblogsController extends BaseController {
         if (account == null) {
             return accountNotFound(request, redirectAttributes);
         }
-        if (level == null || !Memberships.LEVELS.contains(level)) {
-            addFlashError(redirectAttributes, "userWeblogs.error.level", request);
+        String levelProblem = Memberships.levelProblem(level, false);
+        if (levelProblem != null) {
+            addFlashError(redirectAttributes, levelProblem, request);
             return backTo(account, redirectAttributes);
         }
         try {
@@ -137,7 +138,7 @@ public class UserWeblogsController extends BaseController {
             WeblogPermission current = users.getWeblogPermission(weblog, account);
             if (current == null) {
                 addFlashError(redirectAttributes, "userWeblogs.error.notMember", request);
-            } else if (!WeblogPermission.ADMIN.equals(level) && isLastAdmin(users, weblog, current)) {
+            } else if (Memberships.leavesNoAdmin(users, weblog, current, level)) {
                 addFlashError(redirectAttributes, "memberPermissions.oneAdminRequired", request);
             } else {
                 users.revokeWeblogPermission(weblog, account, WeblogPermission.ALL_ACTIONS);
@@ -173,7 +174,7 @@ public class UserWeblogsController extends BaseController {
             WeblogPermission current = users.getWeblogPermission(weblog, account);
             if (current == null) {
                 addFlashError(redirectAttributes, "userWeblogs.error.notMember", request);
-            } else if (isLastAdmin(users, weblog, current)) {
+            } else if (Memberships.leavesNoAdmin(users, weblog, current, Memberships.REMOVE)) {
                 addFlashError(redirectAttributes, "memberPermissions.oneAdminRequired", request);
             } else {
                 users.revokeWeblogPermission(weblog, account, WeblogPermission.ALL_ACTIONS);
@@ -187,21 +188,6 @@ public class UserWeblogsController extends BaseController {
             addFlashError(redirectAttributes, "memberPermissions.saveError", request);
         }
         return backTo(account, redirectAttributes);
-    }
-
-    /** Whether {@code current} is the weblog's only Admin membership -- which a weblog must keep. */
-    private static boolean isLastAdmin(UserManager users, Weblog weblog, WeblogPermission current)
-            throws WebloggerException {
-        if (!current.hasAction(WeblogPermission.ADMIN)) {
-            return false;
-        }
-        int admins = 0;
-        for (WeblogPermission permission : users.getWeblogPermissions(weblog)) {
-            if (permission.hasAction(WeblogPermission.ADMIN)) {
-                admins++;
-            }
-        }
-        return admins <= 1;
     }
 
     /**

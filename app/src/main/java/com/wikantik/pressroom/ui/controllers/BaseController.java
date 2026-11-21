@@ -28,6 +28,7 @@ import java.util.TreeSet;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -252,6 +253,26 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     protected void addFieldError(Model model, String fieldId, String key, Object[] args,
                                  HttpServletRequest request) {
         addError(model, key, args, request);
+        markInvalidField(model, fieldId);
+    }
+
+    /**
+     * Shows a rule's violation (no control marked): its message key with
+     * every argument HTML-escaped, because they are raw values, user input
+     * among them, and {@code tiles/messages.jsp} does not escape.
+     */
+    protected void addError(Model model, RuleViolation violation, HttpServletRequest request) {
+        if (violation.args().isEmpty()) {
+            addError(model, violation.messageKey(), request);
+        } else {
+            addError(model, violation.messageKey(), violation.args().stream()
+                    .map(arg -> StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
+        }
+    }
+
+    /** As {@link #addError(Model, RuleViolation, HttpServletRequest)}, marking {@code fieldId}'s control. */
+    protected void addFieldError(Model model, String fieldId, RuleViolation violation, HttpServletRequest request) {
+        addError(model, violation, request);
         markInvalidField(model, fieldId);
     }
 

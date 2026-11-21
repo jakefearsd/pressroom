@@ -29,8 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
-import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
@@ -79,9 +77,6 @@ public class MembersController extends BaseController {
         model.addAttribute("weblogPermissions", getWeblogPermissions(request));
         return ".Members";
     }
-
-    /** The value a member's row posts to remove them. */
-    private static final String REMOVE = "-1";
 
     /** A member the page can show (its account resolves) and what the form posted for them. */
     private record Submitted(WeblogPermission permission, User member, String value) {
@@ -159,36 +154,38 @@ public class MembersController extends BaseController {
     }
 
     /**
-     * Whether the form is refused, every reason added as an error: a value
-     * that is not a level or removal, a change to your own membership, or
-     * no administrator left.
+     * Whether the form is refused, every reason added as an error by
+     * {@link Memberships}' rules: a change to your own membership (per row),
+     * a value that is not a level or removal (once), or no administrator
+     * left among the posted rows.
      */
     private boolean refused(List<Submitted> rows, User user, Model model, HttpServletRequest request) {
         boolean error = false;
-        boolean badLevel = false;
-        int numAdmins = 0;
+        String levelProblem = null;
+        List<String> posted = new ArrayList<>();
         for (Submitted row : rows) {
             String sval = row.value();
             if (sval == null) {
                 continue;
             }
-            if (!REMOVE.equals(sval) && !Memberships.LEVELS.contains(sval)) {
-                // One of the three levels or removal, as the person page
-                // allows (UserWeblogsController), never an action list.
-                badLevel = true;
+            posted.add(sval);
+            // One of the three levels or removal, as the person page allows
+            // (UserWeblogsController), never an action list.
+            String problem = Memberships.levelProblem(sval, true);
+            if (problem != null) {
+                levelProblem = problem;
             }
-            if (WeblogPermission.ADMIN.equals(sval)) {
-                numAdmins++;
-            } else if (row.permission().getUserName().equals(user.getUserName())) {
+            String self = Memberships.selfChangeProblem(user.getUserName(), row.permission().getUserName(), sval);
+            if (self != null) {
                 error = true;
-                addError(model, "memberPermissions.noSelfModifications", request);
+                addError(model, self, request);
             }
         }
-        if (badLevel) {
-            addError(model, "userWeblogs.error.level", request);
+        if (levelProblem != null) {
+            addError(model, levelProblem, request);
             error = true;
         }
-        if (numAdmins == 0) {
+        if (Memberships.leavesNoAdmin(posted)) {
             addError(model, "memberPermissions.oneAdminRequired", request);
             error = true;
         }
@@ -207,7 +204,7 @@ public class MembersController extends BaseController {
             }
             User permUser = row.member();
             userMgr.revokeWeblogPermission(weblog, permUser, WeblogPermission.ALL_ACTIONS);
-            if (REMOVE.equals(sval)) {
+            if (Memberships.REMOVE.equals(sval)) {
                 AdminLog.record("membership.removed", user, Memberships.details(permUser, weblog));
                 removed++;
             } else {
@@ -245,7 +242,7 @@ public class MembersController extends BaseController {
                          @RequestParam(value = "permissionString", required = false) String permissionString) {
         populateCommonModel(request, model);
 
-        if (!WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled")) {
+        if (Memberships.groupBloggingOff()) {
             addError(model, "memberPermissions.error.groupBloggingDisabled", request);
             model.addAttribute("weblogPermissions", getWeblogPermissions(request));
             return ".Members";
@@ -260,8 +257,7 @@ public class MembersController extends BaseController {
                 user = userMgr.getUserByUserName(userName);
                 if (user == null) {
                     addFieldError(model, "grantUserName", "inviteMember.error.userNotFound", request);
-                } else if (!userMgr.checkPermission(
-                        new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)) {
+                } else if (!Memberships.mayHold(userMgr, user)) {
                     // A reader holds no global login action; a weblog
                     // permission on it would be dead weight and a promotion
                     // path. A check that throws lands in the catch below.
@@ -277,12 +273,13 @@ public class MembersController extends BaseController {
         // The form's <select> always submits one of the three levels, so a
         // blank or other permissionString only happens via a hand-crafted
         // POST. Refused here as malformed input, never granted as posted.
+        String levelProblem = Memberships.levelProblem(permissionString, false);
         if (StringUtils.isBlank(permissionString)) {
             addError(model, "memberPermissions.saveError", request);
-        } else if (!Memberships.LEVELS.contains(permissionString)) {
+        } else if (levelProblem != null) {
             // One level, as the select offers and the person page allows, never
             // a comma-separated action list.
-            addError(model, "userWeblogs.error.level", request);
+            addError(model, levelProblem, request);
         }
 
         if (!hasErrors(model)) {
