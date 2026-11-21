@@ -119,7 +119,14 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // screen name's default are the API's own.
         FieldErrors errors = new FieldErrors();
         String userName = body.userName() == null ? null : body.userName().trim();
-        RuleProblems.add(errors, AccountRules.userNameProblem(userName));
+        if (StringUtils.isBlank(userName)) {
+            // Blank as isBlank judges it: trim() leaves Unicode whitespace (an em space) in place,
+            // and such a name is missing, not one with disallowed characters (the screens keep
+            // AccountRules' isEmpty: what was typed is judged as typed).
+            errors.add(AccountRules.USER_NAME, ProblemCode.FIELD_REQUIRED, AccountRules.USER_NAME);
+        } else {
+            RuleProblems.add(errors, AccountRules.userNameProblem(userName));
+        }
 
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
         RuleProblems.add(errors, AccountRules.emailProblem(emailAddress, AccountRules.EmailUse.REQUIRED));

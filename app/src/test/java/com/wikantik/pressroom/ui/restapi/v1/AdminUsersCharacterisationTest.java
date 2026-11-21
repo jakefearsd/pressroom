@@ -87,6 +87,17 @@ class AdminUsersCharacterisationTest {
         assertEquals(required, created("{\"emailAddress\":\"new@example.com\"}", 400));
     }
 
+    /**
+     * Blank as {@code StringUtils.isBlank} judges it, not as {@code String.trim} does:
+     * trim leaves an em space (U+2003) in place, and the old API still answered
+     * {@code field.required} for a name made only of one (Task 2 AC4).
+     */
+    @Test
+    void aUserNameOfUnicodeWhitespaceOnlyIsRequired() throws Exception {
+        assertEquals(invalid("/v1/admin/users", "userName", "userName is required.", "field.required"),
+                created("{\"userName\":\"\\u2003\",\"emailAddress\":\"new@example.com\"}", 400));
+    }
+
     @Test
     void aUserNameOverItsColumnIsTooLong() throws Exception {
         assertEquals(invalid("/v1/admin/users", "userName", "'userName' must be 255 characters or fewer.",

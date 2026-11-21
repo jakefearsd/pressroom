@@ -1,6 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.fetch.FetchRefusal;
@@ -27,6 +29,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -145,5 +149,32 @@ class MediaProblemCodesTest {
                 "focalX", "focal.pairOnly", "focalX and focalY are set together; this file has no focal point yet.");
         oneField(json(status().isBadRequest(), patch(MEDIA + "/f1"), "{\"name\":\" \"}"),
                 "name", "field.blank", "name cannot be blank.");
+    }
+
+    /**
+     * A move alone (no new name) is judged on the name the file keeps: a folder
+     * already holding that name refuses it, or two files would share one public
+     * address. Nothing is updated or moved. Intended change (0.16.0): before,
+     * a PATCH carrying only directoryId was never checked.
+     */
+    @Test
+    void aMoveIntoAFolderHoldingTheFilesNameIsMediaNameInUse() throws Exception {
+        MediaFile file = new MediaFile();
+        file.setId("f1");
+        file.setName("dog.jpg");
+        file.setDirectory(new MediaFileDirectory(weblog, "default", null));
+        when(files.getMediaFile("f1")).thenReturn(file);
+        MediaFileDirectory images = weblog.getMediaFileDirectories().get(0);
+        images.setId("images-id");
+        MediaFile holder = new MediaFile();
+        holder.setId("f2");
+        holder.setName("dog.jpg");
+        images.setMediaFiles(new HashSet<>(Set.of(holder)));
+        when(files.getMediaFileDirectory("images-id")).thenReturn(images);
+
+        oneField(json(status().isConflict(), patch(MEDIA + "/f1"), "{\"directoryId\":\"images-id\"}"),
+                "name", "media.nameInUse", "A file named 'dog.jpg' already exists in that directory.");
+        verify(files, never()).updateMediaFile(any(), any());
+        verify(files, never()).moveMediaFile(any(), any());
     }
 }

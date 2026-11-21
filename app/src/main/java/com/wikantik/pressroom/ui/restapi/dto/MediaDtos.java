@@ -3,6 +3,7 @@ package com.wikantik.pressroom.ui.restapi.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.MediaFile;
@@ -231,10 +232,12 @@ public final class MediaDtos {
     }
 
     /**
-     * As {@link #applyPatch(MediaFile, MediaPatch, Set)}, with a new
-     * {@code name} also judged against the files of {@code directory}, the
-     * directory the file will be in: one 400 for every bad field first, then
-     * the 409 for a name another file there holds, and nothing is applied.
+     * As {@link #applyPatch(MediaFile, MediaPatch, Set)}, with the name the
+     * file will have -- a new {@code name}, or its own when {@code directory}
+     * is not the folder it is in now (a move) -- also judged against the files
+     * of {@code directory}, the directory the file will be in: one 400 for
+     * every bad field first, then the 409 for a name another file there holds,
+     * and nothing is applied.
      */
     public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared,
             MediaFileDirectory directory) {
@@ -254,7 +257,12 @@ public final class MediaDtos {
             }
         }
         errors.throwIfAny();
-        RuleViolation taken = MediaRules.fileNameTaken(directory, name, file.getId());
+        // A move keeps the file's name unless a new one is sent, and the target folder must not
+        // already hold whichever name the file will have there.
+        boolean moving = directory != null
+                && (file.getDirectory() == null || !Objects.equals(directory.getId(), file.getDirectory().getId()));
+        String judged = name != null ? name : moving ? file.getName() : null;
+        RuleViolation taken = MediaRules.fileNameTaken(directory, judged, file.getId());
         if (taken != null) {
             throw ApiException.problemOnField(taken.field(), taken.code(), taken.codeArgs().toArray(String[]::new));
         }
