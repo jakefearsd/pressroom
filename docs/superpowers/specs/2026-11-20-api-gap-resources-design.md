@@ -473,6 +473,14 @@ accounts, memberships and tokens). The React admin needs session login on
 `/api` before it can replace these screens; every other screen it can build
 on token-safe routes.
 
+## Owner confirmations (Jake, 2026-11-21)
+
+Member writes stay session-only (tokens read only); `/v1/meta` requires
+authentication; businesses get full site-admin CRUD plus the owner picker;
+a crop expires the rendered-page cache on both surfaces (decision 13
+overruled, so the crop task gains that change, test-first, on the JSP crop
+and the API crop alike).
+
 ## Decisions made while drafting
 
 Ruled without the owner; each with the cost if wrong.
@@ -525,7 +533,7 @@ Ruled without the owner; each with the cost if wrong.
 12. **Every new list route pages**, even though businesses and members are
     small, so the list contract has no exceptions. Cost if wrong: two
     unused parameters.
-13. **Crop does not invalidate the rendered-page cache**, matching the JSP
+13. **(Overruled by Jake, 2026-11-21: a crop now expires the rendered-page cache on both surfaces, JSP and API, by touching the weblog; test it on both.)** ~~Crop does not invalidate the rendered-page cache~~, matching the JSP
     crop. Rendered pages carry the old rendition sizes until
     `weblog.lastModified` moves. Cost if wrong: stale `width`/`height` in
     cached HTML on both surfaces; a separate fix for both.

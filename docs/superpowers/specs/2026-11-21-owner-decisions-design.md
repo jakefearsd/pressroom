@@ -90,8 +90,8 @@ token's ceiling and the weblog permission is the person's.
    list which tests pin them).
 2. Over the API, a contributor with a `POST` token: create → 201 with status
    `DRAFT`; a create or patch asking for `PUBLISHED` or a future pubTime is
-   saved as `PENDING` if that is what the editor does, otherwise refused with a
-   specific code. Mirror the editor; state which in the report. Patching a
+   saved as `PENDING` (submitted for review), as the editor does (Jake
+   confirmed, 2026-11-21). Patching a
    published entry they may not edit → the editor's answer (403 with a code).
 3. A contributor with a `READ` token → 403 on every write, as today.
 4. Every other entry-write case for `POST` and `ADMIN` members is unchanged.
@@ -108,6 +108,14 @@ token's ceiling and the weblog permission is the person's.
 7. README: the entries section and the role table say what a contributor's
    token can do; 0.16.0 notes include it. `docs/dev/api.md` explains why one
    controller and how the ceiling is enforced.
+
+## Task 4: A negative page on the entry list is page 0
+
+`entries.rol` with a negative `bean.page` answers a 500 today
+(`setFirstResult` refuses a negative offset). Jake ruled it fixed (2026-11-21):
+a negative page is treated as page 0. Write the test first, seeing the 500,
+then clamp it in `EntryListQuery` or its caller. Note it in
+`docs/dev/entries.md`.
 
 ## Out of scope
 
