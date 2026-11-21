@@ -188,6 +188,8 @@ resolves through the index at the end of `CLAUDE.md`.
   and shows each violation with `addError`, every argument `escapeHtml4`'d; it marks
   no field, as before. Error order is unchanged: each property's own, in stored
   order, then the front door's, then the privacy page's (`GlobalConfigCharacterisationTest`).
+  One answer changed with the move: `site.frontpage.page` posted by hand without the
+  select used to be stored unchecked; a changed one is now judged like any other.
 - **The Site section (global admins only).** The main menu (`MainMenuController`
   adds `siteSpace`, creating the hidden `site-space` weblog on first use; null
   for everyone else) shows a Site row with Pages, Media and Theme, the only

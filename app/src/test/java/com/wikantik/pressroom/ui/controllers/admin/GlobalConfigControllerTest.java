@@ -911,6 +911,42 @@ class GlobalConfigControllerTest {
         verify(weblogger.propertiesManager(), never()).saveProperties(any());
     }
 
+    /** A refused front-door choice leaves both settings showing as they were sent or stored. */
+    @Test
+    void aRefusedFrontDoorChoiceShowsAHandPostedPageAsTyped() throws Exception {
+        doorProps("travel", "");
+        HttpServletRequest request = doorRequest(Weblog.SITE_SPACE_HANDLE);
+        when(request.getParameter(FRONT_PAGE)).thenReturn(" home ");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("ConfigForm.invalidProperty[" + FRONT + "]"), ControllerTestFixture.errors(model));
+        @SuppressWarnings("unchecked")
+        Map<String, RuntimeConfigProperty> shown = (Map<String, RuntimeConfigProperty>) model.getAttribute("properties");
+        assertEquals("travel", shown.get(FRONT).getValue());
+        assertEquals("home", shown.get(FRONT_PAGE).getValue());
+    }
+
+    /**
+     * The page setting posted by hand without the select used to be stored
+     * unchecked; since the rule moved to SiteSettingsRules (spec
+     * 2026-11-20-jsp-rules-and-view-models-design, Task 1) a changed page is
+     * judged however it arrives.
+     */
+    @Test
+    void aHandPostedFrontDoorPageWithoutTheSelectIsStillJudged() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("", "");
+        page(siteSpace(), "draft", WeblogPage.PubStatus.DRAFT);
+        HttpServletRequest request = request();
+        when(request.getParameter(FRONT_PAGE)).thenReturn("draft");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("configForm.error.frontpagePage.notFound"), ControllerTestFixture.errors(model));
+        assertEquals("", stored.get(FRONT_PAGE).getValue());
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
     @Test
     void aFrontDoorPageLookupFailureIsRefused() throws Exception {
         doorProps("", "");
