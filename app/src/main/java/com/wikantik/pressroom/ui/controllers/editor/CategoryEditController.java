@@ -32,6 +32,7 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.ColumnWidths;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -187,8 +188,11 @@ public class CategoryEditController extends BaseController {
     }
 
     private void myValidate(CategoryBean bean, boolean isAdd, HttpServletRequest request, Model model) {
-        if (bean.getName() == null || !bean.getName().equals(StringEscapeUtils.escapeHtml4(bean.getName()))) {
+        if (bean.getName() == null || bean.getName().isBlank()
+                || !bean.getName().equals(StringEscapeUtils.escapeHtml4(bean.getName()))) {
             addFieldError(model, "category_bean_name", "categoryForm.error.invalidName", request);
+        } else if (bean.getName().length() > ColumnWidths.CATEGORY_NAME) {
+            addFieldError(model, "category_bean_name", "categoryForm.error.nameTooLong", request);
         } else if (isAdd) {
             if (getActionWeblog(request).hasCategory(bean.getName())) {
                 addFieldError(model, "category_bean_name", "categoryForm.error.duplicateName",

@@ -36,6 +36,7 @@ import com.wikantik.pressroom.pojos.MediaFileComparator;
 import com.wikantik.pressroom.pojos.MediaFileComparator.MediaFileComparatorType;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.MediaFileFilter;
+import com.wikantik.pressroom.ui.controllers.ColumnWidths;
 import com.wikantik.pressroom.ui.controllers.pagers.MediaFilePager;
 import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
 import com.wikantik.pressroom.util.cache.CacheManager;
@@ -110,21 +111,27 @@ public class MediaFileViewController extends MediaFileBase {
 
         // the folder shown afterwards: the new one once it exists
         String shownId = directoryId;
-        if (StringUtils.isEmpty(newDirectoryName)) {
+        String trimmed = StringUtils.trimToEmpty(newDirectoryName);
+        String folderName = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
+        if (StringUtils.isBlank(folderName)) {
             addError(model, "mediaFile.error.view.dirNameEmpty", request);
-        } else if (newDirectoryName.contains("/")) {
+        } else if ("default".equals(folderName)) {
+            addFieldError(model, "newDirectoryName", "mediaFile.error.view.dirNameReserved", request);
+        } else if (folderName.contains("/")) {
             addError(model, "mediaFile.error.view.dirNameInvalid", request);
+        } else if (folderName.length() > ColumnWidths.DIRECTORY_NAME) {
+            addFieldError(model, "newDirectoryName", "mediaFile.error.view.dirNameTooLong", request);
         } else {
             try {
                 MediaFileManager manager = weblogger.getMediaFileManager();
-                if (!getActionWeblog(request).hasMediaFileDirectory(newDirectoryName)) {
-                    MediaFileDirectory dir = manager.createMediaFileDirectory(getActionWeblog(request), newDirectoryName);
+                if (!getActionWeblog(request).hasMediaFileDirectory(folderName)) {
+                    MediaFileDirectory dir = manager.createMediaFileDirectory(getActionWeblog(request), folderName);
                     weblogger.flush();
                     addMessage(model, "mediaFile.directoryCreate.success",
-                            StringEscapeUtils.escapeHtml4(newDirectoryName), request);
+                            StringEscapeUtils.escapeHtml4(folderName), request);
                     shownId = dir.getId();
                 } else {
-                    addError(model, "mediaFile.directoryCreate.error.exists", StringEscapeUtils.escapeHtml4(newDirectoryName), request);
+                    addError(model, "mediaFile.directoryCreate.error.exists", StringEscapeUtils.escapeHtml4(folderName), request);
                 }
             } catch (WebloggerException e) {
                 log.error("Error creating new directory", e);

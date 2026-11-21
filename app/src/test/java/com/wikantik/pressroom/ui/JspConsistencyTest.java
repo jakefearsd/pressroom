@@ -423,6 +423,8 @@ class JspConsistencyTest {
     private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
             Map.entry("editor/WeblogConfigController.java", List.of("editor/WeblogConfig.jsp")),
             Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
+            Map.entry("editor/MediaFileViewController.java", List.of("editor/MediaFileSidebar.jsp")),
+            Map.entry("editor/MediaFileEditController.java", List.of("editor/MediaFileEdit.jsp")),
             Map.entry("editor/PageEditController.java", List.of("editor/PageEdit.jsp")),
             Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
             Map.entry("editor/TemplatesController.java", List.of("editor/TemplatesSidebar.jsp")),

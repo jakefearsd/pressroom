@@ -128,21 +128,34 @@ class CategoryAndFolderScreensCharacterisationTest extends EditorControllerTestS
         assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
 
-    /** Today a blank name passes the screen's checks and is stored: changed on purpose. */
+    /** Changed on purpose (spec Task 3): a blank name was saved; it is the invalid-name error now. */
     @Test
-    void todayABlankCategoryNameIsSaved() throws Exception {
+    void aBlankCategoryNameIsTheInvalidNameErrorOnTheNameField() throws Exception {
         add("   ");
-        assertTrue(errors(model).isEmpty(), errors(model).toString());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogCategory(any());
+        assertEquals(List.of("categoryForm.error.invalidName"), errors(model));
+        assertEquals(List.of("category_bean_name"), invalidFields(model));
+        model = newModel();
+        rename("c1", "");
+        assertEquals(List.of("categoryForm.error.invalidName"), errors(model));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
     }
 
-    /** Today a name over the column's width passes the screen's checks: changed on purpose. */
+    /** Changed on purpose (spec Task 3, AC3b): a name over the column's width reached the database. */
     @Test
-    void todayANameOver255IsSavedOnAddAndRename() throws Exception {
+    void aCategoryNameOver255IsTheTooLongErrorOnTheNameFieldOnAddAndRename() throws Exception {
         add("n".repeat(256));
-        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        assertEquals(List.of("categoryForm.error.nameTooLong"), errors(model));
+        assertEquals(List.of("category_bean_name"), invalidFields(model));
         model = newModel();
         rename("c1", "m".repeat(256));
+        assertEquals(List.of("categoryForm.error.nameTooLong"), errors(model));
+        assertEquals(List.of("category_bean_name"), invalidFields(model));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
+    }
+
+    @Test
+    void aNameOf255IsAccepted() {
+        add("n".repeat(255));
         assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
 
@@ -231,16 +244,36 @@ class CategoryAndFolderScreensCharacterisationTest extends EditorControllerTestS
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
     }
 
-    /** Today a leading slash is refused like any other: changed on purpose (the name is accepted without it). */
     @Test
-    void todayAnySlashInAFolderNameIsTheInvalidError() throws Exception {
-        for (String bad : List.of("/x", "a/b", "x/")) {
+    void aSlashInsideAFolderNameIsTheInvalidErrorWithNoFieldMarked() throws Exception {
+        for (String bad : List.of("a/b", "x/", "//x")) {
             model = newModel();
             createFolder(bad);
             assertEquals(List.of("mediaFile.error.view.dirNameInvalid"), errors(model), bad);
             assertTrue(invalidFields(model).isEmpty());
         }
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
+    }
+
+    /** Changed on purpose (spec Task 3, AC3c): the screen refused a leading slash; the name is taken without it. */
+    @Test
+    void aLeadingSlashIsDroppedAndAPaddedNameTrimmed() throws Exception {
+        MediaFileDirectory created = directory("d3", "x");
+        when(weblogger.getMediaFileManager().createMediaFileDirectory(weblog, "x")).thenReturn(created);
+        when(weblogger.getMediaFileManager().getMediaFileDirectory("d3")).thenReturn(created);
+        createFolder(" /x ");
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+        assertEquals(List.of("created:x"), messages(model));
+        verify(weblogger.getMediaFileManager()).createMediaFileDirectory(weblog, "x");
+    }
+
+    @Test
+    void aFolderNameOfOnlySpacesOrASlashIsTheEmptyError() throws Exception {
+        for (String empty : List.of("   ", "/", " / ")) {
+            model = newModel();
+            createFolder(empty);
+            assertEquals(List.of("mediaFile.error.view.dirNameEmpty"), errors(model), empty);
+        }
     }
 
     @Test
@@ -250,25 +283,25 @@ class CategoryAndFolderScreensCharacterisationTest extends EditorControllerTestS
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
     }
 
-    /** Today the screen leaves the reserved name to the manager, whose refusal reads "check the logs": changed. */
+    /** Changed on purpose (spec Task 3, AC3c): the reserved name reached the manager, whose refusal read "check the logs". */
     @Test
-    void todayDefaultReachesTheManagerWhichRefusesIt() throws Exception {
-        when(weblogger.getMediaFileManager().createMediaFileDirectory(weblog, "default"))
-                .thenThrow(new WebloggerException("Invalid name!"));
+    void defaultIsTheReservedErrorOnTheNameField() throws Exception {
         createFolder("default");
-        assertEquals(List.of("generic.error.check.logs"), errors(model));
+        assertEquals(List.of("mediaFile.error.view.dirNameReserved"), errors(model));
+        assertEquals(List.of("newDirectoryName"), invalidFields(model));
+        model = newModel();
+        createFolder("/default");
+        assertEquals(List.of("mediaFile.error.view.dirNameReserved"), errors(model));
+        verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
     }
 
-    /** Today the screen has no length check: changed on purpose. */
+    /** Changed on purpose (spec Task 3, AC3c): the screen had no length check. */
     @Test
-    void todayAFolderNameOver255ReachesTheManager() throws Exception {
-        String longName = "f".repeat(256);
-        MediaFileDirectory created = directory("d9", longName);
-        when(weblogger.getMediaFileManager().createMediaFileDirectory(weblog, longName)).thenReturn(created);
-        when(weblogger.getMediaFileManager().getMediaFileDirectory("d9")).thenReturn(created);
-        createFolder(longName);
-        assertTrue(errors(model).isEmpty(), errors(model).toString());
-        verify(weblogger.getMediaFileManager()).createMediaFileDirectory(weblog, longName);
+    void aFolderNameOver255IsTheTooLongErrorOnTheNameField() throws Exception {
+        createFolder("f".repeat(256));
+        assertEquals(List.of("mediaFile.error.view.dirNameTooLong"), errors(model));
+        assertEquals(List.of("newDirectoryName"), invalidFields(model));
+        verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
     }
 
     @Test
@@ -317,19 +350,22 @@ class CategoryAndFolderScreensCharacterisationTest extends EditorControllerTestS
         assertEquals(".MediaFileEditSuccess", save("f1", "dog.jpg"));
     }
 
-    /** Today a blank file name passes the screen's checks and is stored: changed on purpose. */
+    /** Changed on purpose (spec Task 3, AC3d): a blank file name was saved. */
     @Test
-    void todayABlankFileNameIsSaved() throws Exception {
+    void aBlankFileNameIsAFieldError() throws Exception {
         file("f1", "dog.jpg");
-        assertEquals(".MediaFileEditSuccess", save("f1", "  "));
-        assertTrue(errors(model).isEmpty());
+        assertEquals(".MediaFileEdit", save("f1", "  "));
+        assertEquals(List.of("MediaFile.error.nameBlank"), errors(model));
+        assertEquals(List.of("mfedit_bean_name"), invalidFields(model));
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
     }
 
-    /** Today a file name over the column's width passes the screen's checks: changed on purpose. */
+    /** Changed on purpose (spec Task 3, AC3d): a file name over the column's width reached the database. */
     @Test
-    void todayAFileNameOver255IsSaved() throws Exception {
+    void aFileNameOver255IsAFieldError() throws Exception {
         file("f1", "dog.jpg");
-        assertEquals(".MediaFileEditSuccess", save("f1", "f".repeat(256)));
-        assertTrue(errors(model).isEmpty());
+        assertEquals(".MediaFileEdit", save("f1", "f".repeat(256)));
+        assertEquals(List.of("MediaFile.error.nameTooLong"), errors(model));
+        assertEquals(List.of("mfedit_bean_name"), invalidFields(model));
     }
 }

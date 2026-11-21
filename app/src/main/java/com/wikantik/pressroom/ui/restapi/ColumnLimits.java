@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi;
 
+import com.wikantik.pressroom.ui.controllers.ColumnWidths;
+
 /**
  * Column-width limits for the varchar columns this API's patchable string
  * fields land in, sourced from {@code bin/db/migrations/V002__baseline_schema
@@ -60,15 +62,15 @@ public final class ColumnLimits {
 
     // pressroom_mediafile / pressroom_mediafiledir (V002__baseline_schema.sql,
     // V024__media_alt_text.sql)
-    public static final int MEDIA_NAME = 255;
+    public static final int MEDIA_NAME = ColumnWidths.MEDIA_NAME;
     public static final int MEDIA_ALT_TEXT = 255;
     public static final int MEDIA_CONTENT_TYPE = 50;
-    public static final int DIRECTORY_NAME = 255;
+    public static final int DIRECTORY_NAME = ColumnWidths.DIRECTORY_NAME;
     public static final int DIRECTORY_DESCRIPTION = 255;
 
     // weblogcategory (V002__baseline_schema.sql)
-    public static final int CATEGORY_NAME = 255;
-    public static final int CATEGORY_DESCRIPTION = 255;
+    public static final int CATEGORY_NAME = ColumnWidths.CATEGORY_NAME;
+    public static final int CATEGORY_DESCRIPTION = ColumnWidths.CATEGORY_DESCRIPTION;
 
     // pressroom_weblogpage (V014__weblog_pages.sql)
     public static final int PAGE_SLUG = 255;

@@ -359,6 +359,16 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   grant and change answer a missing `level` with `userWeblogs.error.level`; they used to throw
   (`List.contains(null)`) and fail as a 500. The edit-person form still judges neither the address
   nor the screen name (pinned in `AccountScreensCharacterisationTest`; a follow-up).
+- **Category, folder and file names** (2026-11-21, spec `2026-11-20-jsp-rules-and-view-models-design.md`,
+  Task 3): a category name that is blank or over 255 characters is refused on `category_bean_name`
+  (`categoryForm.error.invalidName`, `categoryForm.error.nameTooLong`; both were saved before). A folder
+  name is trimmed and loses one leading slash (it used to be refused), then `default`
+  (`mediaFile.error.view.dirNameReserved`) and over 255 characters (`dirNameTooLong`) are refused on
+  `newDirectoryName`; an inner slash and a taken name keep their unmarked messages. A file rename that is
+  blank or over 255 characters is refused on `mfedit_bean_name` (`MediaFile.error.nameBlank`,
+  `nameTooLong`); a taken name keeps `MediaFile.error.duplicateName`, unmarked. New keys go into the
+  bundles that carry their neighbours (English until translated). `escapeHtml4` leaves an apostrophe
+  alone, so a category name may hold one on both surfaces.
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;

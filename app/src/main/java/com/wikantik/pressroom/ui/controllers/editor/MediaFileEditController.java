@@ -29,6 +29,7 @@ import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.ui.controllers.ColumnWidths;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -120,9 +121,14 @@ public class MediaFileEditController extends MediaFileBase {
         }
 
         // validate
+        if (StringUtils.isBlank(bean.getName())) {
+            addFieldError(model, "mfedit_bean_name", "MediaFile.error.nameBlank", request);
+        } else if (bean.getName().length() > ColumnWidths.MEDIA_NAME) {
+            addFieldError(model, "mfedit_bean_name", "MediaFile.error.nameTooLong", request);
+        }
         MediaFileDirectory directory = postedDirectory(bean, request, model);
         if (directory != null) {
-            MediaFile fileWithSameName = directory.getMediaFile(bean.getName());
+            MediaFile fileWithSameName = bean.getName() == null ? null : directory.getMediaFile(bean.getName());
             if (fileWithSameName != null && !fileWithSameName.getId().equals(mediaFileId)) {
                 addError(model, "MediaFile.error.duplicateName",
                         StringEscapeUtils.escapeHtml4(bean.getName()), request);
