@@ -167,6 +167,52 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `grep -r "import com.wikantik.pressroom.ui.restapi" app/src/main/java/com/wikantik/pressroom/ui/controllers/`
   must return exactly those two lines, both in `PressroomHandlerInterceptor`.
 
+## Problem codes (2026-11-20)
+
+Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 1. Every problem body and every
+field error carries `code`, the last JSON member (so earlier members serialise as before), never null.
+
+- **`ProblemCode` is the catalogue**: the wire string (dotted lowerCamel), its `ProblemType` (status,
+  `type` URI, `title`) and its arity. The message key `api.problem.<code>` in
+  `ApplicationResources.properties` is an implementation detail; the code is the contract. `http.error`
+  (MCP's `about:blank`, `ApiException.httpError`) is the one code with no `ProblemType`.
+- **Adding a code**: the constant; its English under its key (plain text, no `<`); its README "Errors"
+  table row (`ProblemCodeDocsTest`); its string in `ProblemCodeCatalogTest`'s pin. Never rename or remove
+  one. An English with no placeholder is used as written (single apostrophes, as the JSPs); one with
+  placeholders goes through `MessageFormat`, so a literal apostrophe is `''` and a literal `{` is quoted
+  (`MessageFormatRegressionTest`). Arity is the count of distinct `{n}`, held to the English and every
+  translation by the catalogue test. A code names a meaning, not a call site.
+- **Raising one**: `ApiException.problem(code, args...)`, `ApiException.problemOnField(field, code,
+  args...)`, `FieldErrors.add`/`addIfAbsent(field, code, args...)`. Arguments are `String`s: format a
+  number at the call site exactly as it should read, or `MessageFormat` would print `1,000`. A wrong
+  argument count logs a WARN naming the code and renders with what it has; the status stands (the
+  status is the decision, the text is display).
+- **Unkeyed problems**: every factory taking a literal `detail` (`badRequest`, `notFound`, ...) attaches
+  the generic code for its type and stays English whatever the caller asks for. Tasks 2 and 3 key the
+  call sites and then delete those factories.
+- **Codes on the wire**: one field error lends the problem its code; several make it
+  `request.invalidFields`, whose `detail` is the rendered field messages joined by one space, as
+  `FieldErrors.throwIfAny` always joined them.
+- **Localisation**: `getMessage()` is always the English, read from the base bundle with
+  `ResourceBundle` at `Locale.ROOT` (`ProblemMessages.english`), for logs and every existing assertion.
+  Only `ApiExceptionHandler` localises: it reads the `Accept-Language` header itself (never
+  `request.getLocale()`, which Tomcat answers with the JVM default when the header is absent) and
+  `ProblemMessages.localeFor` matches it against the shipped bundles in q order, basic filtering then
+  lookup (so `fr-CA` reaches `fr`). English, no match, or no header renders at `Locale.ROOT`, because a
+  `ResourceBundleMessageSource` lookup for a locale with no bundle (English has none) falls back to the JVM
+  default locale (`ProblemLocalisationTest` runs with German as the default). No `Content-Language` or
+  `Vary`: a matched language can fall back to English key by key. `title` is not localised. No
+  translations of `api.problem.*` ship yet.
+- **English-only paths**: `toProblem(instance)` (`ApiProblemWriter` and its callers in `auth/`,
+  `ApiBodyLimitFilter`, `ApiScopeInterceptor`'s direct write, MCP). Task 3 gives `ApiProblemWriter` a
+  locale-aware overload. MCP is always English: `DispatchedRequest` exposes no `Accept-Language`
+  (`DispatchedRequestTest` pins it).
+- **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`; it exists so
+  `PressroomHandlerInterceptor` keeps its two permitted `ui.restapi` imports (above).
+- **Cross-product check** (2026-11-20): `SimpleAgilityDecisionLog` (SA-1 to SA-17) holds no suite-wide
+  error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.
+  If one is decided later, it supersedes this.
+
 ## MCP endpoint
 `/api/mcp` (spec `docs/superpowers/specs/2026-10-11-mcp-endpoint-design.md`) is a facade over
 `/api/v1`, never a second API.
@@ -243,8 +289,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   and propagates at once, so a clash found during a write is never merged into the 400 list.
 - **`expectedContentHash` is checked first** (spec `docs/superpowers/specs/2026-10-24-agent-editing-and-seo-design.md`, section 4):
   right after the live-entry lookup, before `checkWrite` and so before the import step can fetch.
-  A mismatch is `ApiException.entryChanged`, a 409 whose `currentContentHash` is the one RFC 9457
-  extension member `ApiProblem` has (null, so omitted, on every other problem). `contentHash` is
+  A mismatch is `ApiException.entryChanged`, a 409 whose `currentContentHash` is an RFC 9457
+  extension member of `ApiProblem` (null, so omitted, on every other problem; `code` is the other). `contentHash` is
   `EntryDtos.contentHash`: SHA-256 of the UTF-8 text, lower-case hex, Wikantik's scheme; keep the two
   stacks on one.
 - **...and checked again under the row lock, immediately before the save.** The first check is

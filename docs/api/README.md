@@ -341,9 +341,55 @@ from every other failure in this document.
   "title": "Not found",
   "status": 404,
   "detail": "No such entry.",
-  "instance": "/api/v1/weblogs/myblog/entries/does-not-exist"
+  "instance": "/api/v1/weblogs/myblog/entries/does-not-exist",
+  "code": "resource.notFound"
 }
 ```
+
+Every problem body carries a `code`, and so does every `errors` entry: a
+stable, case-sensitive string of dotted lowerCamel segments
+(`resource.notFound`, `request.invalid`). `type` is the coarse category;
+`code` refines it, and several codes can share a type.
+
+- **Branch on `code`, never on `detail`.** A code is never renamed or
+  removed. New codes are added as the API learns to name more of its
+  refusals precisely, so treat one you do not know by its `type` and status.
+- **`detail` is plain text for a person, and may be localised.** Send
+  `Accept-Language` and a problem whose text the server holds in that
+  language reads in it; anything else reads in English. No translations
+  ship yet, so today every `detail` is English. `title` is never localised.
+  Over MCP a tool error is always English.
+- A 400 or 409 about exactly one field carries that field error's `code` as
+  its own. A 400 naming several fields has the code `request.invalidFields`,
+  and each `errors` entry has its own.
+- The bodies Boot's own `/error` writes (the unmapped-path 404, the 405, and
+  the multipart 413 and 415, described above) are not problem bodies and
+  carry no `code`.
+
+| Code | Status | Type | Meaning |
+|------|--------|------|---------|
+| `request.invalid` | 400 | `invalid-request` | The request is not valid. The generic code for a 400 not yet given its own: `detail` says what is wrong. |
+| `request.invalidFields` | 400 | `invalid-request` | More than one field is invalid; each `errors` entry carries its own code. |
+| `request.malformedBody` | 400 | `invalid-request` | The body could not be parsed as JSON (or was missing where one is required). |
+| `parameter.notWholeNumber` | 400 | `invalid-request` | A query parameter or path variable that must be a whole number is not one. |
+| `parameter.notNumber` | 400 | `invalid-request` | A query parameter or path variable that must be a number is not one. |
+| `parameter.notBoolean` | 400 | `invalid-request` | A query parameter or path variable that must be `true` or `false` is not. |
+| `parameter.invalidValue` | 400 | `invalid-request` | A query parameter or path variable will not convert to its type (a timestamp, say). |
+| `paging.invalidRange` | 400 | `invalid-request` | `limit` is below 1 or `offset` is negative; `errors` names which. |
+| `auth.unauthorized` | 401 | `unauthorized` | No usable credential: authenticate, or mint a token and send it as a bearer token. |
+| `auth.forbidden` | 403 | `forbidden` | Authenticated, but this caller may not make this call. |
+| `resource.notFound` | 404 | `not-found` | No such resource, or the caller may not see it. |
+| `request.notAcceptable` | 406 | `not-acceptable` | The `Accept` header excludes JSON. |
+| `resource.conflict` | 409 | `conflict` | The request conflicts with the resource's current state. |
+| `entry.changed` | 409 | `entry-changed` | The entry's text changed after it was read (`currentContentHash`). |
+| `page.changed` | 409 | `page-changed` | The page's text changed after it was read (`currentContentHash`). |
+| `request.tooLarge` | 413 | `too-large` | The JSON request body is over the size limit. |
+| `request.unsupportedMediaType` | 415 | `unsupported-media-type` | The body is not `application/json`. |
+| `request.throttled` | 429 | `throttled` | Too many requests in the throttle window (see below); wait `Retry-After` seconds. |
+| `server.internalError` | 500 | `internal-error` | An unexpected server error. |
+| `upstream.failure` | 502 | `upstream-failure` | A service the request depends on failed; the work it asked for may be done. |
+| `server.busy` | 503 | `busy` | Another save of the same weblog is in progress; retry after `Retry-After`. |
+| `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
 
 A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where
 `field` is the property or query parameter name as the caller sent it (for
@@ -364,9 +410,10 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
   "detail": "geoLatitude must be between -90 and 90. Unknown category 'Travle'; it is one of: Food, Travel.",
   "instance": "/api/v1/weblogs/myblog/entries",
   "errors": [
-    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90."},
-    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel."}
-  ]
+    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90.", "code": "request.invalid"},
+    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel.", "code": "request.invalid"}
+  ],
+  "code": "request.invalidFields"
 }
 ```
 
