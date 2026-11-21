@@ -15,6 +15,7 @@ import com.wikantik.pressroom.ui.controllers.TokenPins;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.dto.TokenDtos;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -223,10 +224,6 @@ public class TokensApi {
     }
 
     private static ApiPrincipal currentApiPrincipal() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return null;
-        }
-        return auth.getDetails() instanceof ApiPrincipal p ? p : null;
+        return Caller.current().principal();
     }
 }

@@ -14,7 +14,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiProblem;
-import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -221,7 +221,8 @@ public final class McpToolExecutor {
 
     private static void logCall(String tool, Outcome outcome, long started) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String tokenId = auth != null && auth.getDetails() instanceof ApiPrincipal p ? p.tokenId() : "-";
+        Caller caller = Caller.current();
+        String tokenId = caller.kind() == Caller.Kind.TOKEN ? caller.principal().tokenId() : "-";
         String user = auth != null ? auth.getName() : "-";
         // token label and user name are attacker-influenced: only ever {} arguments
         calls.info("token={} user={} tool={} action={} weblog={} status={} ms={}",

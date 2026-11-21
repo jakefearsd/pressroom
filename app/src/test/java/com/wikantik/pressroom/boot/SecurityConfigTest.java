@@ -251,6 +251,25 @@ class SecurityConfigTest {
         assertTrue(cap >= 0 && cap < indexOf(api, ApiTokenAuthFilter.class), "before token sign-in: " + api);
     }
 
+    /**
+     * HTTP Basic marks the details it attaches so the caller is recognised as
+     * a password caller positively, not inferred from "not a token".
+     */
+    @Test
+    void theApiChainsBasicFilterMarksItsCallersAsPasswordCallers() {
+        List<SecurityFilterChain> chains = context.getBean(FilterChainProxy.class).getFilterChains();
+        List<jakarta.servlet.Filter> api = chains.stream()
+                .filter(c -> c.getFilters().stream().anyMatch(ApiTokenAuthFilter.class::isInstance))
+                .findFirst().orElseThrow().getFilters();
+
+        jakarta.servlet.Filter basic = api.get(indexOf(api,
+                org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class));
+        assertEquals(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE,
+                org.springframework.test.util.ReflectionTestUtils.getField(
+                        org.springframework.test.util.ReflectionTestUtils.getField(basic, "authenticationConverter"),
+                        "authenticationDetailsSource"));
+    }
+
     private static int indexOf(List<jakarta.servlet.Filter> filters, Class<?> type) {
         for (int i = 0; i < filters.size(); i++) {
             if (type.isInstance(filters.get(i))) {

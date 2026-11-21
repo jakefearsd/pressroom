@@ -33,6 +33,7 @@ import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAccessDeniedHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAuthenticationEntryPoint;
+import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -394,7 +395,7 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(apiAuthenticationEntryPoint)
                 .accessDeniedHandler(apiAccessDeniedHandler))
-            .httpBasic(basic -> { })
+            .httpBasic(basic -> basic.authenticationDetailsSource(PasswordCallerDetails.SOURCE))
             .addFilterBefore(apiTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             // An oversized body is refused before any credential work.
             .addFilterBefore(new ApiBodyLimitFilter(apiProblemWriter), ApiTokenAuthFilter.class)

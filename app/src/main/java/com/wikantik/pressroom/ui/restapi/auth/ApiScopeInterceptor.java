@@ -9,8 +9,6 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
@@ -137,11 +135,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
     }
 
     private static ApiPrincipal currentPrincipal() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return null;
-        }
-        return auth.getDetails() instanceof ApiPrincipal p ? p : null;
+        return Caller.current().principal();
     }
 
     /**

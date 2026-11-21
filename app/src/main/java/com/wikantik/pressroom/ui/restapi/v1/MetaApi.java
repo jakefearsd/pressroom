@@ -12,10 +12,9 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.auth.WeblogScopeExempt;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -71,9 +70,7 @@ public class MetaApi {
         if (user == null) {
             throw ApiException.unauthorized("Authentication required.");
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        ApiPrincipal principal =
-                auth != null && auth.getDetails() instanceof ApiPrincipal p ? p : null;
+        ApiPrincipal principal = Caller.current().principal();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("userName", user.getUserName());
         body.put("screenName", user.getScreenName());

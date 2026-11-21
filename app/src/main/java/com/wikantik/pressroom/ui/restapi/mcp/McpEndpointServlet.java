@@ -10,9 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
-import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 
 /**
  * The servlet at {@code /api/mcp}: the SDK's stateless transport, behind a
@@ -46,8 +44,7 @@ public final class McpEndpointServlet extends HttpServlet {
         // apiSecurityFilterChain accepts Basic across /api/** because minting a
         // token needs it; an MCP client's config holding a password is worse
         // than one holding a revocable token, so only a token gets through.
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getDetails() instanceof ApiPrincipal)) {
+        if (Caller.current().kind() != Caller.Kind.TOKEN) {
             problemWriter.write(response,
                     ApiException.unauthorized("MCP accepts API tokens only.").toProblem(request.getRequestURI()));
             return;

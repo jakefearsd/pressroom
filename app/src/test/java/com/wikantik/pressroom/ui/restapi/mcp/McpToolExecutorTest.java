@@ -402,6 +402,11 @@ class McpToolExecutorTest {
 
     /** Runs the action with a capture on the pressroom.mcp logger; returns the formatted lines. */
     private static List<String> logged(Runnable action) {
+        return logged(action, new ApiPrincipal("alice", null, ApiToken.Role.POST, "tok-1"));
+    }
+
+    /** As above, with the given details on the authentication (a token's principal, or none). */
+    private static List<String> logged(Runnable action, Object details) {
         List<String> lines = new ArrayList<>();
         AbstractAppender appender = new AbstractAppender("mcp-capture", null, null, true, Property.EMPTY_ARRAY) {
             @Override
@@ -418,7 +423,7 @@ class McpToolExecutorTest {
         try {
             UsernamePasswordAuthenticationToken auth =
                     UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
-            auth.setDetails(new ApiPrincipal("alice", null, ApiToken.Role.POST, "tok-1"));
+            auth.setDetails(details);
             SecurityContextHolder.getContext().setAuthentication(auth);
             action.run();
         } finally {
@@ -441,6 +446,22 @@ class McpToolExecutorTest {
         }
         assertFalse(line.contains("SECRET-TITLE"), line);
         assertEquals("pressroom.mcp", McpToolExecutor.LOG_NAME);
+    }
+
+    /**
+     * Characterisation, written before the caller model replaced the
+     * {@code instanceof ApiPrincipal} test and passing on the old code: the
+     * call log names the token for a token caller and "-" for any other.
+     */
+    @Test
+    void aCallLogNamesTheTokenOnlyForATokenCaller() {
+        List<String> basic = logged(() -> call("entries", Map.of("action", "get", "weblog", "b", "id", "e1")),
+                null);
+        assertEquals(1, basic.size(), basic.toString());
+        assertTrue(basic.get(0).startsWith("token=- user=alice "), basic.get(0));
+
+        List<String> token = logged(() -> call("entries", Map.of("action", "get", "weblog", "b", "id", "e1")));
+        assertTrue(token.get(0).startsWith("token=tok-1 user=alice "), token.get(0));
     }
 
     @Test
