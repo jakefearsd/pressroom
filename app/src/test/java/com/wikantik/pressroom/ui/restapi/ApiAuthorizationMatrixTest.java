@@ -301,6 +301,7 @@ class ApiAuthorizationMatrixTest {
 
             // --- Site administration: a site admin with an ADMIN token
             row("GET    /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/traffic",                           ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
@@ -682,6 +683,15 @@ class ApiAuthorizationMatrixTest {
         assertEquals(new Row(key, traffic.role(), traffic.global(), traffic.weblog(), traffic.flags()), row, key);
     }
 
+    /** The site-wide traffic read is asked exactly as the user list is: a site admin, an ADMIN token, no weblog. */
+    @Test
+    void siteTrafficRowEqualsTheUsersRow() {
+        Row users = ROWS.stream().filter(r -> r.key().equals("GET /v1/admin/users")).findFirst().orElseThrow();
+        String key = "GET /v1/admin/traffic";
+        Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+        assertEquals(new Row(key, users.role(), users.global(), users.weblog(), users.flags()), row, key);
+    }
+
     // ------------------------------------------------------------------ criteria 2-4: the cells
 
     @TestFactory
@@ -738,6 +748,7 @@ class ApiAuthorizationMatrixTest {
             new McpSample("comments", "reply", W_ID),
             new McpSample("audits", "seo", W),
             new McpSample("traffic", "get", W),
+            new McpSample("traffic", "site", Map.of()),
             new McpSample("weblogs", "list_members", W),
             new McpSample("users", "list", Map.of()),
             new McpSample("maintenance", "flush_cache", W));

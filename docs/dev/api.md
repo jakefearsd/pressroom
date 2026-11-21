@@ -393,6 +393,16 @@ controllers cap against. `ProfileView` is pinned by `MetaApiTest` to its
 component set: a new member is a deliberate change and never a credential.
 The profile is excluded from MCP; `site_info` is the tool for `meta`.
 
+## Site-wide traffic (2026-11-21)
+
+`GET /v1/admin/traffic` is `AdminTrafficApi`, a controller of its own (declarations are per
+class; `AdminApi` is already large): `GlobalPermission.ADMIN`, no weblog, `@AdminScoped`,
+matrix row equal to `GET /v1/admin/users`. It does NOT reuse `SiteTrafficView`
+(`ui.controllers.admin`): that record is the page's display strings (formatted numbers, the
+em dash). `TrafficDtos.toSiteView` maps `SiteTraffic` itself, sharing `post` with the blog
+route. `NOT_CONFIGURED` lists nothing, as the page shows no body; an unread blog's numbers
+and a NaN `change` are null.
+
 ## A weblog's members, read (2026-11-21)
 
 `GET /v1/weblogs/{handle}/members` is `MembersApi`, declaring what `MembersController`

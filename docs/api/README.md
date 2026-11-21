@@ -74,6 +74,8 @@ Additive or narrower changes:
   `site_info` tool. See [Site facts and your profile](#site-facts-and-your-profile).
 - New: `GET /api/v1/weblogs/{handle}/members`, read only, and the MCP `weblogs`
   `list_members` action. See [Members](#members).
+- New: `GET /api/v1/admin/traffic` (every blog's traffic, site admins) and the
+  MCP `traffic` `site` action. See [Traffic](#traffic).
 - A contributor's (`EDIT_DRAFT`) token writes drafts, a publish being
   submitted for review, and reads the categories, tags and media the entry
   editor shows. See [Entries](#entries) and [Media](#media).
@@ -1845,6 +1847,53 @@ analytics service. So read `state` and `asOf` before the numbers:
 - With no snapshot, `asOf`, `current` and `previous` are absent and the
   lists and `breakdowns` are empty.
 
+### Site traffic
+
+```
+GET /api/v1/admin/traffic[?period=]
+```
+
+What the server admin's Site Traffic page shows, as numbers: one row per
+blog, and the site's top posts and sources. It needs a site admin and an
+`ADMIN` token (the permission of the other `/admin` routes); a weblog-pinned
+token gets 404. `period` and `state` are as above, and so is the 400 for a
+bad `period`. The numbers come from the same local copy, so nothing waits on
+the analytics service.
+
+```json
+{
+  "state": "OK",
+  "asOf": "2026-11-08T10:15:00Z",
+  "period": "30d",
+  "totalViews": 300,
+  "totalVisits": 200,
+  "blogs": [
+    {"handle": "myblog", "name": "My Blog", "siteSpace": false, "standing": "READ",
+     "visitors": 40, "views": 120, "visits": 50, "change": 0.25, "topPostTitle": "Spring in Auburn"},
+    {"handle": "newblog", "name": "New Blog", "siteSpace": false, "standing": "NO_DATA",
+     "visitors": null, "views": null, "visits": null, "change": null, "topPostTitle": null}
+  ],
+  "posts": [{"entryId": "8a2f...", "title": "Spring in Auburn", "path": "/myblog/entry/spring-in-auburn",
+             "views": 90, "visitors": 30, "trend": 0.5}],
+  "sources": [{"key": "google.com", "value": 12}]
+}
+```
+
+- `blogs` lists every blog, the site space included (`siteSpace`): those
+  with numbers first, most viewed first, then those without, by handle.
+  `standing` is `READ`, `NO_DATA` (not read yet) or `NOT_REGISTERED`
+  (registering it with the analytics service failed). Unless it is `READ`,
+  `visitors`, `views`, `visits` and `change` are null, never 0. `change` is
+  views against the previous period (0.25 is a quarter more), and null when
+  the previous period had no views. `topPostTitle` is plain text.
+- `totalViews` and `totalVisits` add across the blogs. There is no visitor
+  total: a reader of two blogs would count twice.
+- `posts` rows are the per-blog route's; `sources` rows show, for a source
+  several blogs share, the largest single blog's visitors, so a value is a
+  lower bound.
+- With no analytics service (`NOT_CONFIGURED`) the answer is 200 with empty
+  lists and no `asOf`.
+
 ## Members
 
 ```
@@ -2124,7 +2173,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
-| `traffic` | `get` |
+| `traffic` | `get`, `site` |
 | `users` | `list`, `create`, `update` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |

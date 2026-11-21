@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport;
 import com.wikantik.pressroom.business.analytics.BlogTraffic;
+import com.wikantik.pressroom.business.analytics.SiteTraffic;
+import com.wikantik.pressroom.business.analytics.TrafficState;
+import com.wikantik.pressroom.pojos.Weblog;
 
 /**
  * A blog's traffic for one period, as {@code GET /v1/weblogs/{handle}/traffic} writes it: the Traffic
@@ -88,6 +91,79 @@ public final class TrafficDtos {
                 traffic.series().stream().map(TrafficDtos::point).toList(),
                 traffic.posts().stream().map(TrafficDtos::post).toList(),
                 breakdowns, traffic.pathsCappedAt());
+    }
+
+    /**
+     * Every blog's traffic for one period, as {@code GET /v1/admin/traffic} writes it: what the Site Traffic
+     * page shows, as numbers. {@code asOf} is absent when there is no snapshot. There is no visitor total:
+     * each blog is its own website, so a sum would count a reader of two blogs twice.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record SiteTrafficView(
+            @Schema(description = "NOT_CONFIGURED, NO_DATA, STALE (a blog's last read failed: shown, not hidden) "
+                    + "or OK.")
+            String state,
+            @Schema(description = "When the oldest snapshot was read; the numbers are as fresh as this.")
+            Instant asOf,
+            String period,
+            @Schema(description = "Views summed across the blogs that have a snapshot.")
+            long totalViews,
+            @Schema(description = "Visits summed across the blogs that have a snapshot.")
+            long totalVisits,
+            @Schema(description = "One row per blog, the site space included: those with a snapshot first, most "
+                    + "viewed first, then those without one, by handle. Empty when the state is NOT_CONFIGURED.")
+            List<SiteBlogRow> blogs,
+            @Schema(description = "The most viewed entries across the blogs, most viewed first.")
+            List<Post> posts,
+            @Schema(description = "The site's top sources; a source several blogs share shows the largest single "
+                    + "blog's visitors, so the value is a lower bound.")
+            List<Row> sources) {
+    }
+
+    /**
+     * One blog's line. Every component is written, nulls included: when {@code standing} is not
+     * {@code READ} the four numbers are null (never 0), as the page shows dashes.
+     */
+    public record SiteBlogRow(
+            String handle,
+            String name,
+            @Schema(description = "True for the site space, which holds the site's own pages.")
+            boolean siteSpace,
+            @Schema(description = "READ (the blog has numbers), NO_DATA (not read yet) or NOT_REGISTERED "
+                    + "(registering it with the analytics service failed).")
+            String standing,
+            @Schema(description = "The blog's distinct visitors; null unless standing is READ.")
+            Long visitors,
+            @Schema(description = "The blog's views; null unless standing is READ.")
+            Long views,
+            @Schema(description = "The blog's visits; null unless standing is READ.")
+            Long visits,
+            @Schema(description = "Views against the previous period, as a fraction (0.25 is a quarter more); "
+                    + "null unless standing is READ, and null when the previous period had no views.")
+            Double change,
+            @Schema(description = "The blog's most viewed entry's title as plain text; null when it has none.")
+            String topPostTitle) {
+    }
+
+    /**
+     * The site-wide figures for {@code period}. Nothing is listed when no analytics service is configured,
+     * as the page shows no body then. A blog without a snapshot has null numbers, never zeros; a
+     * {@link Double#NaN} change (no views in the previous period) is null.
+     */
+    public static SiteTrafficView toSiteView(SiteTraffic site, String period) {
+        boolean listed = site.state() != TrafficState.NOT_CONFIGURED;
+        return new SiteTrafficView(site.state().name(), site.asOf(), period, site.totalViews(), site.totalVisits(),
+                listed ? site.blogs().stream().map(TrafficDtos::blogRow).toList() : List.of(),
+                listed ? site.topPosts().stream().map(TrafficDtos::post).toList() : List.of(),
+                listed ? site.topSources().stream().map(k -> new Row(k.key(), k.value())).toList() : List.of());
+    }
+
+    private static SiteBlogRow blogRow(SiteTraffic.BlogRow b) {
+        boolean read = b.standing() == SiteTraffic.BlogRow.Standing.READ;
+        return new SiteBlogRow(b.handle(), b.name(), Weblog.SITE_SPACE_HANDLE.equals(b.handle()),
+                b.standing().name(), read ? b.visitors() : null, read ? b.views() : null,
+                read ? b.visits() : null, read && Double.isFinite(b.change()) ? b.change() : null,
+                EntryFieldRules.plainTitle(b.topPostTitle()));
     }
 
     private static Summary summary(AnalyticsReport.Summary s) {

@@ -98,7 +98,7 @@ class OpenApiContractTest {
             "mediaListDirectories", "mediaCreateDirectory",
             "redirectsList", "redirectsCreate", "redirectsDelete",
             "auditsGetSeo", "auditsGetSeoEntry", "auditsGetMedia",
-            "trafficGet", "membersList",
+            "trafficGet", "membersList", "siteTrafficGet",
             "usersList", "usersCreate", "usersUpdate", "revisionsGetStats", "revisionsSweep", "configList",
             "configUpdate",
             "maintenanceFlushCache", "maintenanceRebuildIndex", "maintenanceRegenerateRenditions");
