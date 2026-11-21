@@ -219,9 +219,17 @@ annotation on the controller (not the weblog-pin exemption above), and the
 whole `/v1/tokens` resource (mint/list/revoke) refuses a Bearer-authenticated
 caller outright regardless of role — see the next section. A weblog-pinned
 token, even an `ADMIN` one held by a site administrator, is therefore refused
-on `/api/v1/admin/**` and `/api/v1/weblogs` with a 404 whose detail says so
-(`This token is limited to the weblog '<handle>', and this route is not part
-of one weblog.`). Site-wide work needs a second token minted with no weblog.
+on the routes that name no weblog — `/api/v1/admin/users`, `/admin/config`,
+`/admin/revisions` and `/api/v1/weblogs` (list and create) — with a 404 whose
+detail says so (`This token is limited to the weblog '<handle>', and this
+route is not part of one weblog.`). The account's own permission is checked
+first, so on the site-admin-only ones a pinned token whose owner is not a
+site admin gets the 403 any non-admin gets, not the 404. Site-wide work needs
+a second token minted with no weblog. The per-weblog maintenance routes
+(`/api/v1/admin/weblogs/{handle}/actions/...`) name their weblog, so a site
+administrator's `ADMIN` token pinned to that weblog may run them there (and
+gets 404 on any other weblog): the pin is a ceiling on weblogs, and these
+routes are inside one.
 A route that names a weblog the caller cannot see still answers `No such
 weblog.`, whether or not that weblog exists.
 
@@ -1476,8 +1484,8 @@ pinned to that weblog reaches it; one pinned to another weblog gets 404,
 whatever its owner's role there, so reaching several weblogs takes an
 unpinned token. The settings form reserves no field to site admins, so
 neither does `PATCH`. `GET /api/v1/weblogs`, the list of every weblog, stays
-site-admin only, and a pinned token gets 404 there because the route names
-no weblog. These are not the same resource as
+site-admin only: a site admin's pinned token gets 404 there because the
+route names no weblog, and anyone else gets 403 first. These are not the same resource as
 `/api/v1/weblogs/{handle}/entries` and the other content routes, which a
 `POST` token and a lower weblog role reach.
 
@@ -1513,8 +1521,9 @@ POST /api/v1/admin/weblogs/{handle}/actions/rebuild-index
 POST /api/v1/admin/weblogs/{handle}/actions/regenerate-renditions
 ```
 
-`ADMIN` scope only — the same three actions the Maintenance screen offers,
-reachable without a browser. All three answer **202 Accepted**, not 200:
+`ADMIN` scope only, and a site admin's — the same three actions the
+Maintenance screen offers, reachable without a browser. A token pinned to the
+weblog in the path may run them; one pinned to another weblog gets 404. All three answer **202 Accepted**, not 200:
 rebuilding the index and regenerating renditions are asynchronous
 background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a

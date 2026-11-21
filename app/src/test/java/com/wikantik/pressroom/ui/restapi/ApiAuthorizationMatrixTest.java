@@ -204,7 +204,9 @@ class ApiAuthorizationMatrixTest {
 
             // --- The token resource: a password too. Not pin-exempt, and the
             //     role ceiling still applies to a token; TokensApi then refuses
-            //     every token itself (outside this matrix).
+            //     every token itself (outside this matrix). The role and pin
+            //     columns here record what the interceptors do today, not a
+            //     published contract: the contract is that no token gets in.
             row("GET    /v1/tokens",                                  READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PASSWORD_TOO),
             row("POST   /v1/tokens",                                  POST,  NO_GLOBAL,  NO_WEBLOG, Flag.PASSWORD_TOO),
             row("DELETE /v1/tokens/{id}",                             POST,  NO_GLOBAL,  NO_WEBLOG, Flag.PASSWORD_TOO),
@@ -297,8 +299,10 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/admin/revisions",                         ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/revisions/sweep",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
 
-            // --- Maintenance actions: the site admin's, as the Maintenance screen; they name a
-            //     weblog (so a token pinned to it may), but ask no permission on it
+            // --- Maintenance actions: the site admin's, as the Maintenance screen. They name a
+            //     weblog, so a token pinned to it may run them (the pin is a ceiling on weblogs);
+            //     they ask no permission on it. The README once said every /admin/** route refuses
+            //     a pinned token; it was narrowed to the routes that name no weblog (2026-11-20)
             row("POST   /v1/admin/weblogs/{handle}/actions/flush-cache",  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/weblogs/{handle}/actions/rebuild-index", ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/weblogs/{handle}/actions/regenerate-renditions", ADMIN, SITE_ADMIN, NO_WEBLOG));
@@ -368,7 +372,9 @@ class ApiAuthorizationMatrixTest {
      * (403), the weblog permission (404 for a caller who may not see the
      * weblog: no role on it, or a token pinned elsewhere; 403 for a member
      * below the level), then the token's ceiling: its pin (404) and its role
-     * (403).
+     * (403). The global refusal comes first by design: on a site-admin route
+     * that names no weblog, a pinned token whose owner is not a site admin
+     * gets 403, and only a site admin's pinned token reaches the pin's 404.
      */
     static int expected(Row row, Who who) {
         if (row.has(Flag.PUBLIC)) {
