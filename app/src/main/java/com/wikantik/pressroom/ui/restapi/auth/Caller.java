@@ -11,7 +11,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetails;
  *
  * <p>Every mechanism leaves a different mark: the Bearer filter attaches an
  * {@link ApiPrincipal}, the Basic filter a {@link PasswordCallerDetails}
- * (see {@code SecurityConfig.apiSecurityFilterChain}), and form login and
+ * (see {@code SecurityConfig.apiTokenResourceSecurityFilterChain}), and form login and
  * reader SSO plain {@link WebAuthenticationDetails}.
  *
  * <p>Lives beside {@link ApiPrincipal} rather than in {@code ui.controllers}

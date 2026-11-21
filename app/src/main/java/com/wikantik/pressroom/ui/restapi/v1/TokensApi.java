@@ -34,11 +34,12 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Issues and manages the automation API's own long-lived credentials.
  *
- * <p>Minting is Basic-auth-only, enforced here rather than in Spring Security
- * config -- see {@code SecurityConfig.apiSecurityFilterChain}'s javadoc for
- * why the chain cannot cleanly forbid a Bearer caller from reaching this
- * endpoint, and {@code TokensApiTest#aBearerAuthenticatedCallerCannotMintAToken}
- * for the test that would catch a regression.
+ * <p>Minting is Basic-auth-only. HTTP Basic authenticates only this resource
+ * ({@code SecurityConfig.apiTokenResourceSecurityFilterChain}); a Bearer
+ * caller still authenticates on that chain and is refused here, where the
+ * mechanism can be read -- see {@code
+ * TokensApiTest#aBearerAuthenticatedCallerCannotMintAToken} for the test that
+ * would catch a regression.
  *
  * <p>{@code weblogger} is injected {@code @Lazy}, the same discipline every
  * other business-bean dependency in this codebase follows (see

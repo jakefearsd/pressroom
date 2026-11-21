@@ -124,11 +124,11 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
      * request on the same thread happens to reach order 60 and inherit it.
      *
      * <p>The converse matters just as much: on a SUCCESSFUL authentication
-     * this method must NOT release. {@code SecurityConfig.apiSecurityFilterChain}'s
-     * {@code authorizeHttpRequests} actually has three rules -- {@code POST
-     * /api/v1/tokens} and {@code /api/v1/ping} each get their own
-     * ({@code authenticated()} and {@code permitAll()} respectively), then
-     * {@code anyRequest().authenticated()} covers everything else -- and
+     * this method must NOT release. The two API chains in {@code
+     * SecurityConfig} (this filter runs in both) answer with
+     * {@code authenticated()} everywhere but {@code /api/v1/ping}, which is
+     * {@code permitAll()} (a path outside the API is {@code denyAll()} and
+     * never reaches a controller) -- and
      * setting the context here reliably means the request proceeds through
      * the rest of the chain to order 60 REGARDLESS of which rule applies:
      * an authenticated caller obviously satisfies {@code authenticated()},

@@ -40,7 +40,6 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -52,6 +51,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
@@ -82,8 +82,14 @@ import tools.jackson.databind.ObjectMapper;
  * {@code security="none"} for the three static-asset patterns (the XML's own
  * {@code use-authorization-manager} comment explains why {@code ignoring()}
  * is the right replacement, not a {@code permitAll()} rule -- it skips the
- * whole filter chain rather than just the authorization check), and the one
- * real {@link SecurityFilterChain} below for everything else.
+ * whole filter chain rather than just the authorization check), and the
+ * admin UI's {@link SecurityFilterChain} below for everything else.
+ *
+ * <p>The automation API, which {@code security.xml} never had, has two
+ * chains of its own ahead of that one: the token resource
+ * ({@code /api/v1/tokens}, the only place HTTP Basic authenticates) at
+ * order 0, and the rest of {@code /api/**} (Bearer only) at order 1. The UI
+ * chain, which matches every request, is order 2 and so must stay last.
  */
 @Configuration
 public class SecurityConfig {
@@ -328,59 +334,89 @@ public class SecurityConfig {
     }
 
     /**
-     * The automation API's own chain.
+     * The token resource, {@code /api/v1/tokens} and {@code /api/v1/tokens/{id}}:
+     * the one place HTTP Basic authenticates (spec 2026-11-20, Task 2).
+     * Matched as path patterns, so they meet the request path as Spring MVC
+     * routes it (decoded, path parameters dropped); the firewall refuses
+     * {@code ..}, {@code ;} and an encoded slash before any chain is chosen
+     * ({@code ApiPasswordScopeTest} tries each spelling).
+     */
+    static final String[] TOKEN_RESOURCE = {"/api/v1/tokens", "/api/v1/tokens/*"};
+
+    /**
+     * The token resource's chain: everything {@link #apiSecurityFilterChain}
+     * does, plus HTTP Basic. Ahead of it, so these two paths never reach the
+     * general chain.
      *
-     * <p>Separate from the UI chain rather than folded into it. The UI chain's
-     * csrf.ignoringRequestMatchers list holds exactly one narrow entry and its
-     * narrowness is the point; a matcher-scoped chain disables CSRF only where
-     * no cookie-authenticated request can reach.
+     * <p>Basic is here because minting the first token cannot require a token
+     * to prove identity. Its details carry {@link PasswordCallerDetails}, so
+     * {@code Caller} names the caller {@code PASSWORD} positively. A Bearer
+     * caller still authenticates on this chain and is refused by
+     * {@code TokensApi} itself (403), where the mechanism can be read: a
+     * leaked token must never mint, list or revoke tokens
+     * ({@code TokensApiTest#aBearerAuthenticatedCallerCannotMintAToken}).
      *
-     * <p>Stateless: an API call must never mint a session cookie. {@code
-     * httpBasic()} is enabled chain-wide because POST /api/v1/tokens -- the
-     * mint endpoint, which by definition cannot require an existing token to
-     * prove identity -- needs it; this chain does not, and cannot cleanly,
-     * restrict Basic to that one path or forbid it to a Bearer-authenticated
-     * caller. "A Bearer caller must not be able to mint another token" is a
-     * real requirement (a leaked token could otherwise mint itself a
-     * replacement forever), but it is enforced in {@code TokensApi} instead,
-     * where the request's {@code ApiPrincipal} is readable and the
-     * authentication mechanism can actually be inspected -- see {@code
-     * TokensApiTest#aBearerAuthenticatedCallerCannotMintAToken}.
-     *
-     * <p>{@code exceptionHandling(...)} is not optional here. Without an
-     * explicit {@code AuthenticationEntryPoint}/{@code AccessDeniedHandler},
-     * Spring Security's defaults commit the response themselves -- a Basic
-     * challenge, or Boot's own {@code /error} page -- entirely outside
-     * {@code DispatcherServlet}, so every ordinary 401 (a missing, malformed,
-     * unknown, expired or revoked Bearer token: {@code ApiTokenAuthFilter}
-     * never rejects, it just leaves the context empty for this chain's
-     * {@code authorizeHttpRequests} to answer) and every 403 would bypass
-     * {@code ApiExceptionHandler} and not be problem+json. This is the exact
-     * same structural bug the throttle write above exists to avoid, just one
-     * layer further out -- see {@link ApiAuthenticationEntryPoint}/
-     * {@link ApiAccessDeniedHandler}.
+     * <p>A wrong password is refused by the Basic filter's own entry point,
+     * as it always was; the chain's {@link ApiAuthenticationEntryPoint} answers
+     * a request with no usable credential at all.
      */
     @Bean
-    @Order(1)
+    @Order(0)
     // HttpSecurity's configurers and build() declare throws Exception: the
     // signature is Spring Security's, and a @Bean method can only pass it on.
     @SuppressWarnings("PMD.SignatureDeclareThrowsException")
-    @SuppressFBWarnings(
-            value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
-            justification = "HttpSecurity's configurers and build() declare throws Exception.")
-    public SecurityFilterChain apiSecurityFilterChain(
+    public SecurityFilterChain apiTokenResourceSecurityFilterChain(
             HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
             ApiAccessDeniedHandler apiAccessDeniedHandler,
             AuthenticationManager authenticationManager,
             ApiProblemWriter apiProblemWriter) throws Exception {
 
-        http
-            .securityMatcher("/api/**")
-            .authenticationManager(authenticationManager)
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session ->
-                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        apiChain(http.securityMatcher(TOKEN_RESOURCE), apiTokenAuthFilter, apiAuthenticationEntryPoint,
+                apiAccessDeniedHandler, authenticationManager, apiProblemWriter)
+            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .httpBasic(basic -> basic.authenticationDetailsSource(PasswordCallerDetails.SOURCE));
+
+        return http.build();
+    }
+
+    /**
+     * The automation API's own chain, for every {@code /api/**} path but the
+     * token resource ({@link #apiTokenResourceSecurityFilterChain}).
+     *
+     * <p>Separate from the UI chain rather than folded into it. The UI chain's
+     * csrf.ignoringRequestMatchers list holds exactly one narrow entry and its
+     * narrowness is the point; a matcher-scoped chain disables CSRF only where
+     * no cookie-authenticated request can reach.
+     *
+     * <p>Bearer only: no {@code httpBasic()}. Basic is accepted only on the
+     * token resource (spec 2026-11-20, Task 2; a client-visible change in
+     * 0.16.0). Here a Basic header authenticates nobody, so the request is
+     * anonymous and
+     * every route but {@code /api/v1/ping} answers 401, right password or
+     * wrong; {@link ApiAuthenticationEntryPoint#refusingPasswords} says in the
+     * detail that a password is accepted only on {@code /api/v1/tokens}. A
+     * password is never checked off the token resource, so it carries no
+     * scope ceiling anywhere and is never a second credential for every route.
+     *
+     * <p>Both API chains are stateless ({@link #apiChain}): neither reads nor
+     * writes a session, so an admin-UI session is no credential on
+     * {@code /api} either.
+     */
+    @Bean
+    @Order(1)
+    // HttpSecurity's configurers and build() declare throws Exception: the
+    // signature is Spring Security's, and a @Bean method can only pass it on.
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    public SecurityFilterChain apiSecurityFilterChain(
+            HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
+            ApiAccessDeniedHandler apiAccessDeniedHandler,
+            AuthenticationManager authenticationManager,
+            ApiProblemWriter apiProblemWriter) throws Exception {
+
+        apiChain(http.securityMatcher("/api/**"), apiTokenAuthFilter,
+                ApiAuthenticationEntryPoint.refusingPasswords(apiProblemWriter),
+                apiAccessDeniedHandler, authenticationManager, apiProblemWriter)
             // Only the API itself: /api/* is a prefix mapping on the same
             // DispatcherServlet as *.rol, so /api/pressroom-ui/... would reach
             // the JSP controllers with an API credential, no CSRF check and no
@@ -388,21 +424,62 @@ public class SecurityConfig {
             // code review 2026-11-03). PressroomHandlerInterceptor refuses a
             // handler outside its own mount too.
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/v1/tokens").authenticated()
                 .requestMatchers("/api/v1/ping").permitAll()
                 .requestMatchers("/api/v1/**", McpServerConfig.ENDPOINT).authenticated()
-                .anyRequest().denyAll())
+                .anyRequest().denyAll());
+
+        return http.build();
+    }
+
+    /**
+     * What both API chains share.
+     *
+     * <p>Stateless: an API call must never mint a session cookie, and never
+     * reads one.
+     *
+     * <p>The same {@link ApiTokenAuthFilter} instance runs in both chains, so
+     * there is one throttle and its keys are unchanged (the token's digest,
+     * or the client address without one); only one chain matches a request,
+     * and the filter is a {@code OncePerRequestFilter} besides. The instance
+     * is still not registered with the container ({@link
+     * #apiTokenAuthFilterRegistration}). Each chain builds its own
+     * {@link ApiBodyLimitFilter}, which keeps no state.
+     *
+     * <p>{@code exceptionHandling(...)} is not optional here. Without an
+     * explicit {@code AuthenticationEntryPoint}/{@code AccessDeniedHandler},
+     * Spring Security's defaults commit the response themselves -- a Basic
+     * challenge, or Boot's own {@code /error} page -- entirely outside
+     * {@code DispatcherServlet}, so every ordinary 401 (a missing, malformed,
+     * unknown, expired or revoked Bearer token: {@code ApiTokenAuthFilter}
+     * never rejects, it just leaves the context empty for the chain's
+     * {@code authorizeHttpRequests} to answer) and every 403 would bypass
+     * {@code ApiExceptionHandler} and not be problem+json. This is the same
+     * structural bug the throttle's own write exists to avoid, one layer
+     * further out -- see {@link ApiAuthenticationEntryPoint}/
+     * {@link ApiAccessDeniedHandler}.
+     */
+    // HttpSecurity's configurers declare throws Exception.
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    @SuppressFBWarnings(
+            value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
+            justification = "HttpSecurity's configurers declare throws Exception.")
+    private static HttpSecurity apiChain(
+            HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
+            AuthenticationEntryPoint entryPoint, ApiAccessDeniedHandler apiAccessDeniedHandler,
+            AuthenticationManager authenticationManager, ApiProblemWriter apiProblemWriter) throws Exception {
+        return http
+            .authenticationManager(authenticationManager)
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                .authenticationEntryPoint(entryPoint)
                 .accessDeniedHandler(apiAccessDeniedHandler))
-            .httpBasic(basic -> basic.authenticationDetailsSource(PasswordCallerDetails.SOURCE))
             .addFilterBefore(apiTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             // An oversized body is refused before any credential work.
             .addFilterBefore(new ApiBodyLimitFilter(apiProblemWriter), ApiTokenAuthFilter.class)
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(AbstractHttpConfigurer::disable);
-
-        return http.build();
     }
 
     /**

@@ -56,8 +56,9 @@ public class MetaApi {
     /**
      * Who the caller is, and -- when authenticated via a scoped API token --
      * what that token's ceiling is. {@code authenticatedUser} is the request
-     * attribute {@code PressroomHandlerInterceptor} sets for every request,
-     * Bearer- or Basic-authenticated alike.
+     * attribute {@code PressroomHandlerInterceptor} sets for every
+     * authenticated request. Only a token reaches it: HTTP Basic is refused
+     * here by the security chain (it authenticates only the token resource).
      *
      * <p>{@code @WeblogScopeExempt} for the same reason as {@link #ping()}:
      * this route names no weblog, and a weblog-scoped token must still be

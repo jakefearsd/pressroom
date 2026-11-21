@@ -22,7 +22,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   Getting it wrong compiles and 404s; no test catches it.
 - **Each mount serves only its own handlers.** Because the prefix is
   stripped, `/api/pressroom-ui/...` once resolved to a JSP controller behind
-  the API's chain (Bearer or Basic, no CSRF, no token-scope check off
+  the API's chain (Bearer, then also Basic, no CSRF, no token-scope check off
   `/v1/**`): a READ token pinned to one weblog minted an unpinned ADMIN token
   through `profileTokens!create.rol` (code review, 2026-11-03). Now
   `apiSecurityFilterChain` admits only `/api/v1/**` and `/api/mcp` and denies
@@ -36,6 +36,28 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `newsletter` are reserved roots in
   `rendering.weblogMapper.pressroomProtectedUrls` so no weblog handle can shadow
   them.
+- **HTTP Basic authenticates only the token resource (2026-11-20, 0.16.0).**
+  Two chains serve `/api/**`, both stateless (they never read a session, so an
+  admin-UI login is no API credential): `apiTokenResourceSecurityFilterChain`
+  (`@Order(0)`, `SecurityConfig.TOKEN_RESOURCE`: `/api/v1/tokens` and
+  `/api/v1/tokens/*`) carries `httpBasic` with the `PasswordCallerDetails`
+  marker, and `apiSecurityFilterChain` (`@Order(1)`, the rest) has no Basic
+  filter, so a Basic header there leaves the request anonymous and every route
+  but `/api/v1/ping` answers 401. That chain's entry point
+  (`ApiAuthenticationEntryPoint.refusingPasswords`) reads only the header's
+  scheme and says a password is accepted only on `/api/v1/tokens`; the token
+  chain keeps the plain entry point, and a wrong password there is still the
+  Basic filter's own 401. Both chains share the one `ApiTokenAuthFilter` bean
+  (one throttle, keys unchanged; still not container-registered, see
+  `apiTokenAuthFilterRegistration`) and each builds an `ApiBodyLimitFilter`.
+  A Bearer caller on the token resource still reaches `TokensApi`, which
+  refuses it (403). The patterns meet the decoded path as MVC routes it, and
+  the firewall refuses `..`, `;` and an encoded slash first, so no spelling
+  widens Basic (`ApiPasswordScopeTest`, `SecurityConfigTest`, `ApiIT`). A new
+  route is Bearer-only by default; adding one that takes a password means
+  adding it to `TOKEN_RESOURCE`, which is a decision, not a convenience.
+  Browser ITs call the API with `it.support.AdminToken` (minted over Basic,
+  revoked by id), never with the admin's password.
 - **The API and the JSP admin UI share exactly one authorization path:
   `PressroomHandlerInterceptor`.** Every `*Api` controller implements
   `UISecurityEnforced` and declares `GlobalPermission`/`WeblogPermission` like
@@ -96,8 +118,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   (`/v1/openapi.json` in `application.properties`, per the prefix point),
   scanning only `ui.restapi.v1` so the JSP surface never leaks. The springdoc
   UI is not a dependency; `springdoc.swagger-ui.enabled=false` is defence in
-  depth. It sits behind `apiSecurityFilterChain` like all of `/api/**` (Basic
-  or Bearer), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
+  depth. It sits behind `apiSecurityFilterChain` like all of `/api/**` (a
+  bearer token), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
   two `docs/api/README.md` claims the document cannot convey — v1 is unstable,
   and `pressroom-api auth login` is the bootstrap path. springdoc's controller is outside `ApiExceptionHandler`'s
   package, so a refusal of it cannot be thrown to the advice (it escaped as the container's 500
@@ -173,7 +195,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `AdminAccountGuard.UI_ONLY_SETTINGS` (today `site.absoluteurl`, the base of every password-reset
   link) are likewise never written through `PATCH /admin/config` (403, nothing applied); add a
   setting there to protect it. Agent accounts likewise: `requireNotAgent` answers 403 `Agent accounts are managed in the admin UI.`, and `patchUser` calls it before `requireNotAdmin`.
-- `McpEndpointServlet` refuses non-token callers (Basic is accepted chain-wide for `/v1/tokens`).
+- `McpEndpointServlet` refuses non-token callers. The chain already refuses Basic on `/api/mcp` (it
+  authenticates only the token resource); the servlet's check does not rely on that.
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `pressroom.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
   the console appender, like `pressroom.redirects`, not to `pressroom.log`.

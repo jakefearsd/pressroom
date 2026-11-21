@@ -40,6 +40,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
@@ -51,6 +52,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -239,16 +241,55 @@ class SecurityConfigTest {
         assertTrue(stamp < indexOf(ui, AnonymousAuthenticationFilter.class), "before anonymous: " + ui);
     }
 
-    /** Before token sign-in: an oversized body is refused before any credential work. */
+    /**
+     * Both API chains (the token resource's and the general one) cap the body
+     * before token sign-in: an oversized body is refused before any
+     * credential work, whichever chain answers.
+     */
     @Test
-    void theApiChainCapsTheRequestBodyBeforeTokenSignIn() {
-        List<SecurityFilterChain> chains = context.getBean(FilterChainProxy.class).getFilterChains();
-        List<jakarta.servlet.Filter> api = chains.stream()
-                .filter(c -> c.getFilters().stream().anyMatch(ApiTokenAuthFilter.class::isInstance))
-                .findFirst().orElseThrow().getFilters();
+    void eachApiChainCapsTheRequestBodyBeforeTokenSignIn() {
+        List<SecurityFilterChain> api = apiChains();
+        assertEquals(2, api.size(), "the token resource's chain and the general API chain: " + api);
+        for (SecurityFilterChain chain : api) {
+            List<jakarta.servlet.Filter> filters = chain.getFilters();
+            int cap = indexOf(filters, ApiBodyLimitFilter.class);
+            assertTrue(cap >= 0 && cap < indexOf(filters, ApiTokenAuthFilter.class),
+                    "before token sign-in: " + filters);
+        }
+    }
 
-        int cap = indexOf(api, ApiBodyLimitFilter.class);
-        assertTrue(cap >= 0 && cap < indexOf(api, ApiTokenAuthFilter.class), "before token sign-in: " + api);
+    /**
+     * One {@code ApiTokenAuthFilter} bean serves both API chains, so there is
+     * one throttle (it is the filter's own field) and its keys are what they
+     * were. Wiring a second instance would give each chain half the budget.
+     */
+    @Test
+    void bothApiChainsShareTheOneTokenFilterAndSoTheOneThrottle() {
+        ApiTokenAuthFilter bean = context.getBean(ApiTokenAuthFilter.class);
+        for (SecurityFilterChain chain : apiChains()) {
+            assertTrue(chain.getFilters().stream().anyMatch(f -> f == bean), "not the bean: " + chain);
+        }
+    }
+
+    /**
+     * HTTP Basic is on exactly one chain, and that chain matches only the
+     * token resource (spec 2026-11-20, Task 2).
+     */
+    @Test
+    void onlyTheTokenResourcesChainCarriesHttpBasic() {
+        List<SecurityFilterChain> basic = context.getBean(FilterChainProxy.class).getFilterChains().stream()
+                .filter(c -> indexOf(c.getFilters(), BasicAuthenticationFilter.class) >= 0)
+                .toList();
+        assertEquals(1, basic.size(), "chains with HTTP Basic: " + basic);
+        SecurityFilterChain tokens = basic.get(0);
+
+        assertTrue(tokens.matches(apiRequest("POST", "/api/v1/tokens")));
+        assertTrue(tokens.matches(apiRequest("GET", "/api/v1/tokens")));
+        assertTrue(tokens.matches(apiRequest("DELETE", "/api/v1/tokens/abc123")));
+        for (String path : new String[] {"/api/v1/me", "/api/v1/tokensX", "/api/v1/tokens/abc/more",
+                "/api/mcp", "/api/v1/ping", "/api/v1/openapi.json"}) {
+            assertFalse(tokens.matches(apiRequest("GET", path)), path);
+        }
     }
 
     /**
@@ -256,18 +297,29 @@ class SecurityConfigTest {
      * a password caller positively, not inferred from "not a token".
      */
     @Test
-    void theApiChainsBasicFilterMarksItsCallersAsPasswordCallers() {
-        List<SecurityFilterChain> chains = context.getBean(FilterChainProxy.class).getFilterChains();
-        List<jakarta.servlet.Filter> api = chains.stream()
-                .filter(c -> c.getFilters().stream().anyMatch(ApiTokenAuthFilter.class::isInstance))
-                .findFirst().orElseThrow().getFilters();
+    void theTokenResourcesBasicFilterMarksItsCallersAsPasswordCallers() {
+        List<jakarta.servlet.Filter> api = apiChains().stream()
+                .map(SecurityFilterChain::getFilters)
+                .filter(filters -> indexOf(filters, BasicAuthenticationFilter.class) >= 0)
+                .findFirst().orElseThrow();
 
-        jakarta.servlet.Filter basic = api.get(indexOf(api,
-                org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class));
+        jakarta.servlet.Filter basic = api.get(indexOf(api, BasicAuthenticationFilter.class));
         assertEquals(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE,
                 org.springframework.test.util.ReflectionTestUtils.getField(
                         org.springframework.test.util.ReflectionTestUtils.getField(basic, "authenticationConverter"),
                         "authenticationDetailsSource"));
+    }
+
+    private static List<SecurityFilterChain> apiChains() {
+        return context.getBean(FilterChainProxy.class).getFilterChains().stream()
+                .filter(c -> c.getFilters().stream().anyMatch(ApiTokenAuthFilter.class::isInstance))
+                .toList();
+    }
+
+    private static MockHttpServletRequest apiRequest(String method, String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.setServletPath(path);
+        return request;
     }
 
     private static int indexOf(List<jakarta.servlet.Filter> filters, Class<?> type) {
@@ -421,7 +473,7 @@ class SecurityConfigTest {
     // ------------------------------------------------------- the API mount
 
     /**
-     * The API chain (Bearer or Basic, CSRF off) covers /api/**, but only
+     * The API chains (Bearer; Basic on the token resource; CSRF off) cover /api/**, but only
      * /api/v1/** and /api/mcp are the API: the container strips /api before
      * lookup, so anything else under it is a UI route reached with an API
      * credential and no CSRF check. Refused before any controller runs, even

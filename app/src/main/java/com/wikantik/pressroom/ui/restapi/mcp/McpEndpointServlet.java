@@ -41,9 +41,10 @@ public final class McpEndpointServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // apiSecurityFilterChain accepts Basic across /api/** because minting a
-        // token needs it; an MCP client's config holding a password is worse
-        // than one holding a revocable token, so only a token gets through.
+        // Only a token gets through: an MCP client's config holding a password
+        // is worse than one holding a revocable token. The security chain
+        // already refuses Basic here (only the token resource accepts it);
+        // this check does not depend on that.
         if (Caller.current().kind() != Caller.Kind.TOKEN) {
             problemWriter.write(response,
                     ApiException.unauthorized("MCP accepts API tokens only.").toProblem(request.getRequestURI()));

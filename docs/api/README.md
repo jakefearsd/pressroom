@@ -98,20 +98,33 @@ admin UI: no API route creates or changes an agent, or mints a token for one.
 
 ### With the API
 
-`POST /api/v1/tokens` (mint), plus `GET`/`DELETE` on the same resource
-(list/revoke), is where you use HTTP Basic authentication — your Pressroom
-username and password — because minting your first token can't itself
-require a token to prove who you are. Every other endpoint in this API is
-Bearer-only in practice. **A Bearer-authenticated caller (an existing API
-token) is explicitly refused on all three `/v1/tokens` operations**,
-regardless of that token's own role — a leaked token can never mint itself
-a replacement, list its owner's other tokens, or revoke one, which would
-otherwise turn a single leaked credential into a permanent, self-renewing
-one. This refusal is enforced by `TokensApi` itself, not by Spring Security
-routing — Basic credentials are in fact accepted on every `/api/**` request,
-not just this resource, so do not rely on Basic being *rejected* elsewhere;
-it is simply undocumented and unnecessary anywhere else once you hold a
-token.
+`POST /api/v1/tokens` (mint), plus `GET /api/v1/tokens` (list) and
+`DELETE /api/v1/tokens/{id}` (revoke), is where you use HTTP Basic
+authentication — your Pressroom username and password — because minting your
+first token can't itself require a token to prove who you are. **The token
+resource is the only place a password is accepted.** Every other route under
+`/api/**` takes a bearer token only: a request there carrying
+`Authorization: Basic ...` is a 401 problem whose `detail` is `Password
+authentication is accepted only on /api/v1/tokens. Mint a token there and
+send it as a bearer token.`, whether or not the password is right (it is
+never checked there). `GET /api/v1/ping` needs no credential and ignores
+whatever it is sent.
+
+**A Bearer-authenticated caller (an existing API token) is explicitly refused
+on all three `/v1/tokens` operations** (403 `Token management requires Basic
+authentication.`), regardless of that token's own role — a leaked token can
+never mint itself a replacement, list its owner's other tokens, or revoke one,
+which would otherwise turn a single leaked credential into a permanent,
+self-renewing one.
+
+> **Changed in 0.16.0: HTTP Basic outside `/api/v1/tokens` stops working.**
+> Earlier versions accepted a username and password on every `/api/**` route
+> (undocumented, but it worked). From 0.16.0 every route but the token
+> resource answers a password with the 401 above. A script that sends `-u
+> user:password` to any other route must mint a token once
+> (`bin/pressroom-api auth login`, or `POST /api/v1/tokens`) and send
+> `Authorization: Bearer <token>` instead. An admin-UI session cookie was
+> never a credential on `/api` and still is not.
 
 ```bash
 curl -sS -u alice:hunter2 \
@@ -191,8 +204,8 @@ A handful of routes name no weblog at all (`GET /api/v1/ping`,
 weblog-scoped token must still be able to ask who it is. The two are not
 otherwise equivalent: `GET /api/v1/ping` is the one route in the whole API
 that needs **no credential at all** (`permitAll` in `SecurityConfig`, a bare
-liveness check), while `GET /api/v1/me` still requires a valid Bearer or
-Basic credential — it answers who *that* credential is, so an unauthenticated
+liveness check), while `GET /api/v1/me` still requires a valid bearer
+token — it answers who *that* credential is, so an unauthenticated
 call to it is a 401 like anywhere else. `GET /api/v1/me` also lists the
 `weblogs` the token can act on, each with its `handle`, `name` and highest
 `permission` (`ADMIN`, `POST` or `EDIT_DRAFT`), sorted by handle: the one
@@ -352,7 +365,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | Status | Meaning |
 |--------|---------|
 | 400 | Malformed request: bad JSON, an out-of-range `limit`/`offset`, an unknown status/role, a missing required field. |
-| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked. |
+| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens`; or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
@@ -382,10 +395,9 @@ window** by default (`api.throttle.threshold` / `api.throttle.interval` in
 property changeable from Admin Settings without a restart). The key is the
 token's own SHA-256 digest for a request carrying `Authorization: Bearer
 ...`, or the caller's IP address for any request that does not — in
-practice that means Basic-authenticated calls to `/v1/tokens` (Basic is
-accepted chain-wide, but this resource is the only one actually documented
-to use it), so throttling is per-credential once you hold a token,
-per-source-address before that. A throttled request gets a
+practice that means Basic-authenticated calls to `/v1/tokens`, the only
+route that accepts a password, so throttling is per-credential once you hold
+a token, per-source-address before that. A throttled request gets a
 429 `application/problem+json` body identical in shape to every other error
 here, built and written outside the normal Spring MVC dispatch path (the
 throttle check runs in a servlet filter, ahead of authentication) so a
@@ -1517,7 +1529,9 @@ error details) applies unchanged. A weblog or item the token may not see answers
 action beyond the token's role answers "forbidden", exactly as over REST.
 
 - **API tokens only.** Mint one with `bin/pressroom-api auth login` or `POST /api/v1/tokens`. Username
-  and password are refused at `/api/mcp` with 401 `MCP accepts API tokens only.`
+  and password are refused at `/api/mcp` with the 401 every route but the token resource gives a
+  password ([With the API](#with-the-api)); any other non-token caller gets 401 `MCP accepts API
+  tokens only.`
 - **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
   `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
   admin UI.` Disabling, deleting, re-addressing and role changes for admins happen in the admin UI.
@@ -1576,7 +1590,7 @@ curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
 
 A machine-readable OpenAPI 3 document describing every endpoint above, for
 generating a client or importing into API tooling. **It requires
-authentication like everything else under `/api/**`** (Basic or Bearer) —
+authentication like everything else under `/api/**`** (a bearer token) —
 there is no anonymous browser UI for it (`springdoc-openapi`'s Swagger UI is
 deliberately not installed; see `application.properties`), and it is not
 exempt from the site-wide `/api/**` security chain the way `GET

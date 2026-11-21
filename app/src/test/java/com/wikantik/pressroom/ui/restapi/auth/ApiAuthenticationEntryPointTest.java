@@ -61,4 +61,62 @@ class ApiAuthenticationEntryPointTest {
         assertArrayEquals(responseA.getContentAsByteArray(), responseB.getContentAsByteArray(),
                 "a missing header and a bad token must produce byte-identical bodies");
     }
+
+    /**
+     * Off the token resource (spec 2026-11-20, Task 2) a request that sent a
+     * password is told where a password is accepted. Only the scheme is read,
+     * never the credential, so a right and a wrong password read alike.
+     */
+    @Test
+    void offTheTokenResourceAPasswordIsToldWhereItIsAccepted() throws Exception {
+        ApiAuthenticationEntryPoint refusing =
+                ApiAuthenticationEntryPoint.refusingPasswords(new ApiProblemWriter(OBJECT_MAPPER));
+        for (String authorization : new String[] {"Basic YWxpY2U6cGFzc3dvcmQ=", "basic eA==", "  BASIC eA=="}) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
+            request.addHeader("Authorization", authorization);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            refusing.commence(request, response, new InsufficientAuthenticationException("anonymous"));
+
+            assertEquals(401, response.getStatus());
+            assertEquals("application/problem+json", response.getContentType());
+            assertEquals("Password authentication is accepted only on /api/v1/tokens. "
+                            + "Mint a token there and send it as a bearer token.",
+                    OBJECT_MAPPER.readTree(response.getContentAsByteArray()).get("detail").asString(),
+                    authorization);
+        }
+    }
+
+    /** A request with no password, or a token, keeps the one fixed detail. */
+    @Test
+    void withoutAPasswordTheRefusingEntryPointKeepsTheUsualDetail() throws Exception {
+        ApiAuthenticationEntryPoint refusing =
+                ApiAuthenticationEntryPoint.refusingPasswords(new ApiProblemWriter(OBJECT_MAPPER));
+        for (String authorization : new String[] {null, "Bearer prs_x", "Digest x"}) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
+            if (authorization != null) {
+                request.addHeader("Authorization", authorization);
+            }
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            refusing.commence(request, response, new InsufficientAuthenticationException("anonymous"));
+
+            assertEquals("Authentication required.",
+                    OBJECT_MAPPER.readTree(response.getContentAsByteArray()).get("detail").asString(),
+                    String.valueOf(authorization));
+        }
+    }
+
+    /** The token resource's own entry point never says a password is the wrong credential. */
+    @Test
+    void thePlainEntryPointNeverRefersAPasswordElsewhere() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/tokens");
+        request.addHeader("Authorization", "Basic YWxpY2U6d3Jvbmc=");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        entryPoint.commence(request, response, new BadCredentialsException("bad"));
+
+        assertEquals("Authentication required.",
+                OBJECT_MAPPER.readTree(response.getContentAsByteArray()).get("detail").asString());
+    }
 }
