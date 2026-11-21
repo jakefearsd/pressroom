@@ -1,8 +1,10 @@
 package com.wikantik.pressroom.ui.restapi.mcp;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -29,10 +31,7 @@ public final class ApiRouteTables {
     /** The mapping {@link #real()} reads, for a test that must register it as a bean. */
     public static RequestMappingHandlerMapping realMapping() {
         GenericWebApplicationContext ctx = new GenericWebApplicationContext(new MockServletContext());
-        ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
-        scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
-        for (BeanDefinition candidate : scanner.findCandidateComponents(ApiRouteTable.API_PACKAGE)) {
-            Class<?> type = load(candidate.getBeanClassName());
+        for (Class<?> type : controllerTypes()) {
             register(ctx, type);
         }
         ctx.refresh();
@@ -42,18 +41,42 @@ public final class ApiRouteTables {
         return mapping;
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * One instance of every API controller, built as {@link #real()} builds
+     * them (collaborators null, nothing injected), for a test that dispatches
+     * to them but never lets a handler run.
+     */
+    public static List<Object> controllers() {
+        List<Object> controllers = new ArrayList<>();
+        for (Class<?> type : controllerTypes()) {
+            controllers.add(instantiate(type));
+        }
+        return controllers;
+    }
+
+    private static List<Class<?>> controllerTypes() {
+        ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
+        scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
+        List<Class<?>> types = new ArrayList<>();
+        for (BeanDefinition candidate : scanner.findCandidateComponents(ApiRouteTable.API_PACKAGE)) {
+            types.add(load(candidate.getBeanClassName()));
+        }
+        return types;
+    }
+
     private static <T> void register(GenericWebApplicationContext ctx, Class<T> type) {
+        ctx.registerBean(type, () -> type.cast(instantiate(type)));
+    }
+
+    private static Object instantiate(Class<?> type) {
         Constructor<?> ctor = Arrays.stream(type.getDeclaredConstructors())
                 .min(Comparator.comparingInt(Constructor::getParameterCount)).orElseThrow();
-        ctx.registerBean(type, () -> {
-            try {
-                ctor.setAccessible(true);
-                return (T) ctor.newInstance(new Object[ctor.getParameterCount()]);
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalStateException(e);
-            }
-        });
+        try {
+            ctor.setAccessible(true);
+            return ctor.newInstance(new Object[ctor.getParameterCount()]);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Class<?> load(String name) {

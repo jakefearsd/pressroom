@@ -78,6 +78,21 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `GlobalPermission`/`WeblogPermission` check would refuse: a `READ` token held
   by a `GlobalPermission.ADMIN` user cannot POST; a pinned token cannot act on
   another weblog its owner could edit.
+- **`ApiAuthorizationMatrixTest` is the oracle for who may call what (2026-11-20).** One
+  hand-written row per route of the API route table states what it requires (least token role,
+  global permission, weblog permission; flags for no credential, a password too, and pin-exempt),
+  and a few-line rule (`expected`) turns each row into the answer for each of 14 callers:
+  anonymous, a password, site-admin tokens of each role and one pinned, an owner's token unpinned,
+  pinned here and pinned elsewhere, members below the level (one pinned elsewhere), no role, and an
+  agent. Requests go through the real chains and the real `WebMvcConfig` interceptors; a test-only
+  terminal interceptor answers 299 where the handler would run, so each cell is reached, 401, 403
+  or 404 (problem+json) and no business code runs. Refusals a handler makes itself (`TokensApi`
+  refusing every token, `AdminAccountGuard`) stay pinned in their own tests. One MCP tool action
+  per controller must answer as its route's cell. **Adding a route means adding its row**, written
+  from the README and the JSP page the route mirrors, never copied from its annotations; a route
+  with no row fails by method and path, and a cell that disagrees means either the row or the
+  route is wrong: deciding which is the point. API writes on entries take `POST` on the weblog
+  (a contributor drafts in the JSP editor only); the matrix records that as it stands.
 - **`EntryFieldRules` and `WeblogOwnership`
   (`com.wikantik.pressroom.ui.controllers`) are shared by JSP editor and
   API — one home each for entry-field rules and by-id ownership checks.**
