@@ -45,9 +45,15 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   filter, so a Basic header there leaves the request anonymous and every route
   but `/api/v1/ping` answers 401. That chain's entry point
   (`ApiAuthenticationEntryPoint.refusingPasswords`) reads only the header's
-  scheme and says a password is accepted only on `/api/v1/tokens`; the token
-  chain keeps the plain entry point, and a wrong password there is still the
-  Basic filter's own 401. Both chains share the one `ApiTokenAuthFilter` bean
+  scheme and says a password is accepted only on `/api/v1/tokens`, with no
+  challenge. On the token chain every 401 is problem+json with
+  `WWW-Authenticate: Basic realm="Pressroom"`: the chain's entry point
+  (`challengingForPassword`, `Authentication required.`) and the Basic
+  filter's (`rejectingPassword`, `The username or password was not accepted.`
+  for a wrong password, disabled account, agent or unknown user alike), so a
+  challenge-driven client still mints. Never leave the Basic filter on
+  Spring's `BasicAuthenticationEntryPoint`: its `sendError(401)` is Boot's
+  `/error` JSON, not problem+json (`ApiPasswordScopeTest`). Both chains share the one `ApiTokenAuthFilter` bean
   (one throttle, keys unchanged; still not container-registered, see
   `apiTokenAuthFilterRegistration`) and each builds an `ApiBodyLimitFilter`.
   A Bearer caller on the token resource still reaches `TokensApi`, which
@@ -58,6 +64,20 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   adding it to `TOKEN_RESOURCE`, which is a decision, not a convenience.
   Browser ITs call the API with `it.support.AdminToken` (minted over Basic,
   revoked by id), never with the admin's password.
+- **How a request authenticated is decided only by `Caller`
+  (`ui.restapi.auth.Caller`, 2026-11-20).** `Caller.current().kind()` is one of
+  `TOKEN` (Bearer; carries the `ApiPrincipal` ceiling), `PASSWORD` (HTTP Basic,
+  recognised positively by the `PasswordCallerDetails` marker the token chain
+  sets), `SESSION` (form login, remember-me, reader SSO: exactly
+  `WebAuthenticationDetails`), `ANONYMOUS`, and `UNRECOGNISED`. Authentication
+  details `Caller` does not recognise are `UNRECOGNISED`, never `SESSION`, so a
+  login mechanism added later gains no session powers until it is recognised
+  there; the guards refuse it as they refuse a token. Decide caller kind only by
+  asking `Caller`: no `instanceof ApiPrincipal`, no reading
+  `Authentication.getDetails()` for it anywhere else
+  (`CallerKindConfinementTest`; the one other `getDetails()` read allowed is
+  `instanceof WeblogPinnedCredential`, a token's pin, in
+  `PressroomHandlerInterceptor`).
 - **The API and the JSP admin UI share exactly one authorization path:
   `PressroomHandlerInterceptor`.** Every `*Api` controller implements
   `UISecurityEnforced` and declares `GlobalPermission`/`WeblogPermission` like
@@ -251,11 +271,18 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   description it meets. So an argument two body records share needs one text that holds for both:
   `EntryWrite.edits` and `PreviewRequest.edits` both use `EntryDtos.EDITS_DESCRIPTION`.
 - **`AdminAccountGuard` is mandatory for any API route that changes a user**: deletion, profile
-  self-edit, role grants or revocations. Admin accounts and the admin role are read-only through the
-  API (403 `Admin accounts are managed in the admin UI.`).
+  self-edit, role grants or revocations. Its checks take a `Caller` (pass `Caller.current()`) and
+  decide by caller kind: a `SESSION` caller (the admin UI) is exempt, and every other kind (`TOKEN`,
+  `PASSWORD`, `UNRECOGNISED`) is refused on an admin account, the admin role, an agent or a UI-only
+  setting. Admin accounts and the admin
+  role are read-only through the API (403 `Admin accounts are managed in the admin UI.`).
   `AdminAccountGuard.UI_ONLY_SETTINGS` (today `site.absoluteurl`, the base of every password-reset
   link) are likewise never written through `PATCH /admin/config` (403, nothing applied); add a
   setting there to protect it. Agent accounts likewise: `requireNotAgent` answers 403 `Agent accounts are managed in the admin UI.`, and `patchUser` calls it before `requireNotAdmin`.
+- **The `SESSION` allowance in `AdminAccountGuard` and `TokensApi` is safe only because no UI-chain
+  request forwards into `/api/**`.** A forwarded request inherits the security context (the MCP
+  in-process forward above is exactly that), so a JSP controller forwarding into `/api/v1` would
+  carry an admin-UI session's powers past both guards. Never add such a forward.
 - `McpEndpointServlet` refuses non-token callers. The chain already refuses Basic on `/api/mcp` (it
   authenticates only the token resource); the servlet's check does not rely on that.
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `pressroom.mcp` INFO line, with no

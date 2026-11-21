@@ -591,10 +591,18 @@ class TokensApiTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * A PASSWORD caller whose principal is the string {@code anonymousUser}
+     * is still nobody: the user lookup's own check, reached because the
+     * caller kind lets the request through (without the details, Caller
+     * would call it UNRECOGNISED and refuse it before the lookup).
+     */
     @Test
     void theAnonymousPrincipalIsNotAUser() throws Exception {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("anonymousUser", null, List.of()));
+        var auth = new UsernamePasswordAuthenticationToken("anonymousUser", null, List.of());
+        auth.setDetails(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE
+                .buildDetails(new org.springframework.mock.web.MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
         Weblogger weblogger = mockedWeblogger();
 
         mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))

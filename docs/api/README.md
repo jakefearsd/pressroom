@@ -110,12 +110,22 @@ send it as a bearer token.`, whether or not the password is right (it is
 never checked there). `GET /api/v1/ping` needs no credential and ignores
 whatever it is sent.
 
-**A Bearer-authenticated caller (an existing API token) is explicitly refused
-on all three `/v1/tokens` operations** (403 `Token management requires Basic
-authentication.`), regardless of that token's own role — a leaked token can
-never mint itself a replacement, list its owner's other tokens, or revoke one,
-which would otherwise turn a single leaked credential into a permanent,
-self-renewing one.
+**A Bearer-authenticated caller (an existing API token) is refused on all
+three `/v1/tokens` operations**, regardless of that token's own role — a
+leaked token can never mint itself a replacement, list its owner's other
+tokens, or revoke one, which would otherwise turn a single leaked credential
+into a permanent, self-renewing one. The refusal is a 403: `A token cannot be
+used to mint another token.` on `POST`, `Token management requires Basic
+authentication.` on list and revoke, except that a `READ` token meets the
+read-only 403 (`This token is read-only.`) on `POST` and `DELETE` first. A
+weblog-pinned token gets a 404 instead (the token resource names no weblog;
+see [Token scopes](#token-scopes)).
+
+A password the token resource turns away (wrong, a disabled account, an agent,
+an unknown user) is a 401 problem whose `detail` is `The username or password
+was not accepted.`. Every 401 on the token resource, that one included,
+carries `WWW-Authenticate: Basic realm="Pressroom"`, so a client that sends a
+password only when challenged still works; no other route challenges.
 
 > **Changed in 0.16.0: HTTP Basic outside `/api/v1/tokens` stops working.**
 > Earlier versions accepted a username and password on every `/api/**` route
@@ -124,7 +134,12 @@ self-renewing one.
 > user:password` to any other route must mint a token once
 > (`bin/pressroom-api auth login`, or `POST /api/v1/tokens`) and send
 > `Authorization: Bearer <token>` instead. An admin-UI session cookie was
-> never a credential on `/api` and still is not.
+> never a credential on `/api` and still is not. Smaller edges of the same
+> change: `GET /api/v1/ping` with a wrong password is now 200 (it was 401);
+> a password on `/api/pressroom-ui/...` is now 401 (it was 403); a wrong
+> password on any route but the token resource is the problem+json 401 above,
+> with no `WWW-Authenticate` challenge; and on the token resource a wrong
+> password is now a problem+json 401 (it was Boot's plain error JSON).
 
 ```bash
 curl -sS -u alice:hunter2 \
@@ -213,11 +228,13 @@ weblog a pinned token is limited to, or every weblog its user belongs to.
 This is how a token that is not a site admin finds its weblogs, since listing
 `/api/v1/weblogs` needs the admin role. `GET /api/v1/me` also reports the account's `kind`: `PERSON` or `AGENT`. Every other route
 that resolves no weblog defaults to **deny**, not "unlimited because there
-was nothing to check": `/api/v1/admin/**` and the site-wide
-`/api/v1/weblogs` resource require `ADMIN` role via a separate, explicit
-annotation on the controller (not the weblog-pin exemption above), and the
-whole `/v1/tokens` resource (mint/list/revoke) refuses a Bearer-authenticated
-caller outright regardless of role — see the next section. A weblog-pinned
+was nothing to check": `/api/v1/admin/**` and the site-wide weblog list
+`GET /api/v1/weblogs` require `ADMIN` role via a separate, explicit
+annotation on the controller (not the weblog-pin exemption above), creating
+a weblog (`POST /api/v1/weblogs`) needs a writing token (`POST` or `ADMIN`)
+held by a user the Create Weblog page lets create one, and the whole
+`/v1/tokens` resource (mint/list/revoke) refuses a Bearer-authenticated
+caller outright regardless of role — see [With the API](#with-the-api). A weblog-pinned
 token, even an `ADMIN` one held by a site administrator, is therefore refused
 on the routes that name no weblog — `/api/v1/admin/users`, `/admin/config`,
 `/admin/revisions` and `/api/v1/weblogs` (list and create) — with a 404 whose
@@ -235,7 +252,8 @@ weblog.`, whether or not that weblog exists.
 
 ## Making a request
 
-Every non-mint call is Bearer-authenticated:
+Every call outside the token resource (mint, list, revoke) is
+Bearer-authenticated:
 
 ```bash
 curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
@@ -420,7 +438,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | Status | Meaning |
 |--------|---------|
 | 400 | Malformed request: bad JSON, an out-of-range `limit`/`offset`, an unknown status/role, a missing required field. |
-| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens`; or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
+| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens` (`detail` `The username or password was not accepted.`; every 401 on the token resource carries `WWW-Authenticate: Basic realm="Pressroom"`); or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |

@@ -38,12 +38,10 @@ public final class AdminToken implements AutoCloseable {
 
     private final String id;
     private final String raw;
-    private final HttpResponse<String> mintResponse;
 
-    private AdminToken(String id, String raw, HttpResponse<String> mintResponse) {
+    private AdminToken(String id, String raw) {
         this.id = id;
         this.raw = raw;
-        this.mintResponse = mintResponse;
     }
 
     /** Mints a token with {@code role} ({@code READ}, {@code POST} or {@code ADMIN}) on every weblog. */
@@ -70,7 +68,7 @@ public final class AdminToken implements AutoCloseable {
                 HttpResponse.BodyHandlers.ofString());
         assertEquals(201, response.statusCode(), response.body());
         JsonNode json = JSON.readTree(response.body());
-        return new AdminToken(json.get("info").get("id").asString(), json.get("token").asString(), response);
+        return new AdminToken(json.get("info").get("id").asString(), json.get("token").asString());
     }
 
     /** The token's id, which is how it is revoked. */
@@ -86,11 +84,6 @@ public final class AdminToken implements AutoCloseable {
     /** The {@code Authorization} header value that sends it. */
     public String bearer() {
         return "Bearer " + raw;
-    }
-
-    /** The mint call's own response. */
-    public HttpResponse<String> mintResponse() {
-        return mintResponse;
     }
 
     /** Revokes this token, with the admin's password, and returns the answer (204 when it was live). */
