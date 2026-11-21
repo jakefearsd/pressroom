@@ -22,7 +22,7 @@ class McpToolCatalogTest {
         assertEquals(Map.ofEntries(
                 Map.entry("whoami", List.of("")),
                 Map.entry("site_info", List.of("")),
-                Map.entry("weblogs", List.of("list", "get", "create", "update")),
+                Map.entry("weblogs", List.of("list", "get", "create", "update", "list_members")),
                 Map.entry("entries", List.of("list", "get", "create", "update", "trash", "restore",
                         "delete_forever", "preview", "revisions", "revision", "restore_revision",
                         "keep_revision", "unkeep_revision")),

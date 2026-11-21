@@ -289,6 +289,9 @@ class ApiAuthorizationMatrixTest {
             // --- Traffic: a weblog admin, as the Traffic page; a READ token is enough
             row("GET    /v1/weblogs/{handle}/traffic",                READ,  SITE_LOGIN, ON_ADMIN),
 
+            // --- Members: the weblog admin reads who holds a role, as the Members page
+            row("GET    /v1/weblogs/{handle}/members",                READ,  SITE_LOGIN, ON_ADMIN),
+
             // --- Weblogs: the list is the site admin's; create follows the Create Weblog page;
             //     one weblog's settings are its owner's, with an ADMIN token
             row("GET    /v1/weblogs",                                 ADMIN, SITE_ADMIN, NO_WEBLOG),
@@ -669,6 +672,16 @@ class ApiAuthorizationMatrixTest {
         }
     }
 
+    /** The members list is asked exactly as the traffic read is: the weblog's admin, any token role. */
+    @Test
+    void membersRowEqualsTheTrafficRow() {
+        Row traffic = ROWS.stream().filter(r -> r.key().equals("GET /v1/weblogs/{handle}/traffic"))
+                .findFirst().orElseThrow();
+        String key = "GET /v1/weblogs/{handle}/members";
+        Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+        assertEquals(new Row(key, traffic.role(), traffic.global(), traffic.weblog(), traffic.flags()), row, key);
+    }
+
     // ------------------------------------------------------------------ criteria 2-4: the cells
 
     @TestFactory
@@ -725,6 +738,7 @@ class ApiAuthorizationMatrixTest {
             new McpSample("comments", "reply", W_ID),
             new McpSample("audits", "seo", W),
             new McpSample("traffic", "get", W),
+            new McpSample("weblogs", "list_members", W),
             new McpSample("users", "list", Map.of()),
             new McpSample("maintenance", "flush_cache", W));
 

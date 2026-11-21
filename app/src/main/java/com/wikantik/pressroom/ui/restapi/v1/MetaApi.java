@@ -10,6 +10,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.ui.controllers.Memberships;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
@@ -156,20 +157,11 @@ public class MetaApi {
             Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
             if (weblog != null) {
                 weblogs.add(new MetaDtos.WeblogMembership(weblog.getHandle(),
-                        Objects.toString(weblog.getName(), ""), highest(permission)));
+                        Objects.toString(weblog.getName(), ""), Memberships.strongestLevel(permission)));
             }
         }
         weblogs.sort(Comparator.comparing(MetaDtos.WeblogMembership::handle));
         return weblogs;
-    }
-
-    /** The strongest action a permission row grants, as the API names it. */
-    private static String highest(WeblogPermission permission) {
-        List<String> actions = permission.getActionsAsList();
-        if (actions.contains(WeblogPermission.ADMIN)) {
-            return "ADMIN";
-        }
-        return actions.contains(WeblogPermission.POST) ? "POST" : "EDIT_DRAFT";
     }
 
     /**

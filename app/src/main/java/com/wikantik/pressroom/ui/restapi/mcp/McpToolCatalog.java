@@ -34,7 +34,8 @@ public final class McpToolCatalog {
                     action("list", "List every weblog on the site (site admins).", "GET /v1/weblogs"),
                     action("get", "One weblog's settings.", "GET " + W),
                     action("create", "Create a weblog; you become its owner.", "POST /v1/weblogs"),
-                    action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W)),
+                    action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W),
+                    action("list_members", "List who holds a role on the weblog (its admin).", "GET " + W + "/members")),
             tool("entries", "Blog entries: write, revise, publish, trash and preview, and read or restore "
                     + "their earlier revisions.", false,
                     action("list", "List entries; without status the trash is excluded.", "GET " + W + "/entries"),

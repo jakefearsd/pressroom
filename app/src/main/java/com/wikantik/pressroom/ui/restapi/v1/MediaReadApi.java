@@ -47,8 +47,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/weblogs/{handle}/media")
 public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
 
-    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
-    // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = Paging.MAX_LIMIT;
 
     /**

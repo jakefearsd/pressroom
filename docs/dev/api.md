@@ -393,6 +393,15 @@ controllers cap against. `ProfileView` is pinned by `MetaApiTest` to its
 component set: a new member is a deliberate change and never a credential.
 The profile is excluded from MCP; `site_info` is the tool for `meta`.
 
+## A weblog's members, read (2026-11-21)
+
+`GET /v1/weblogs/{handle}/members` is `MembersApi`, declaring what `MembersController`
+does (`ADMIN`, login); not `@AdminScoped`, matrix row equal to `.../traffic`. The level
+is `Memberships.strongestLevel`, shared with `/v1/me`'s weblogs. An account that does
+not resolve is skipped (as the Members page does, logging a warning); any lookup that
+throws is a 500. The envelope adds `total` to the house four. Membership WRITES stay
+session-only on purpose (owner decision 2026-11-21): no token route changes a member.
+
 ## The OpenAPI document (2026-11-20)
 
 Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 4. `/api/v1/openapi.json` is

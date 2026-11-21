@@ -58,6 +58,19 @@ public final class Memberships {
     }
 
     /**
+     * The strongest action a permission row grants, as the API names it:
+     * {@code ADMIN}, {@code POST} or {@code EDIT_DRAFT}. The one mapping both
+     * {@code /v1/me}'s weblogs and the weblog's members list use.
+     */
+    public static String strongestLevel(WeblogPermission permission) {
+        List<String> actions = permission.getActionsAsList();
+        if (actions.contains(WeblogPermission.ADMIN)) {
+            return "ADMIN";
+        }
+        return actions.contains(WeblogPermission.POST) ? "POST" : "EDIT_DRAFT";
+    }
+
+    /**
      * The message key refusing {@code value} as a member's level, or null:
      * one of {@link #LEVELS}, or {@link #REMOVE} where the caller allows a
      * removal (the Members page's table). Never an action list, and no value

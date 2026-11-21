@@ -72,6 +72,8 @@ Additive or narrower changes:
   [Errors](#errors).
 - New: `GET /api/v1/meta` (site facts) and `GET /api/v1/me/profile`, the MCP
   `site_info` tool. See [Site facts and your profile](#site-facts-and-your-profile).
+- New: `GET /api/v1/weblogs/{handle}/members`, read only, and the MCP `weblogs`
+  `list_members` action. See [Members](#members).
 - A contributor's (`EDIT_DRAFT`) token writes drafts, a publish being
   submitted for review, and reads the categories, tags and media the entry
   editor shows. See [Entries](#entries) and [Media](#media).
@@ -106,6 +108,7 @@ Additive or narrower changes:
 - [Comments](#comments)
 - [Audits](#audits)
 - [Traffic](#traffic)
+- [Members](#members)
 - [Site administration](#site-administration)
 - [Maintenance actions](#maintenance-actions)
 - [MCP](#mcp)
@@ -378,6 +381,8 @@ array: its length is the total.
   and `MediaView` rows. For users and weblogs `hasMore` comes from one query
   of `limit + 1` rows. `GET .../media` without `limit` returns every file,
   with `limit` equal to the number of items and `hasMore` false.
+- `GET .../members` returns a `MemberPage`: `{items, offset, limit, hasMore,
+  total}`, `total` counting every member, not the page. See [Members](#members).
 
 > **Changed in 0.16.0: three lists answer the envelope, not a bare array.**
 > `GET /api/v1/weblogs`, `GET /api/v1/admin/users` and `GET .../media` now
@@ -1840,6 +1845,33 @@ analytics service. So read `state` and `asOf` before the numbers:
 - With no snapshot, `asOf`, `current` and `previous` are absent and the
   lists and `breakdowns` are empty.
 
+## Members
+
+```
+GET /api/v1/weblogs/{handle}/members[?offset=&limit=]
+```
+
+Who holds a role on one weblog, as its Members page lists them. Only a weblog
+admin may read it (the Members page's permission), with a token of any role: a
+member who can post, or only write drafts, gets 403; a caller with no role on
+the weblog, or the site space, gets 404.
+
+The answer is `{items, offset, limit, hasMore, total}`, sorted by `userName`
+without regard to case; `total` counts every member, across pages. Each item:
+
+| Member | Meaning |
+|---|---|
+| `userName` | The account's user name. |
+| `screenName` | The name it is shown under. |
+| `kind` | `PERSON` or `AGENT`. |
+| `permission` | The strongest action the membership grants: `ADMIN`, `POST` or `EDIT_DRAFT` (as `weblogs[].permission` on `/me`). |
+
+No email address is returned. A membership whose account no longer resolves
+(deleted or disabled) is left out; a lookup that cannot run is a 500, never a
+shorter list. **Membership changes are made in the admin UI**, not over the
+API (they stay session-only, as agent accounts and tokens do). MCP: `weblogs`
+`list_members`.
+
 ## Site administration
 
 An `ADMIN`-role token and a site admin, for all of the below except the
@@ -2084,7 +2116,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 |---|---|
 | `whoami` | |
 | `site_info` | |
-| `weblogs` | `list`, `get`, `create`, `update` |
+| `weblogs` | `list`, `get`, `create`, `update`, `list_members` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
