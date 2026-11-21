@@ -63,6 +63,7 @@ class CategoryProblemCodesTest {
         WeblogCategory made = new WeblogCategory(weblog, name, null, null);
         made.setId(id);
         when(entries.getWeblogCategory(id)).thenReturn(made);
+        when(entries.getWeblogCategoryByName(weblog, name)).thenReturn(made);
         return made;
     }
 

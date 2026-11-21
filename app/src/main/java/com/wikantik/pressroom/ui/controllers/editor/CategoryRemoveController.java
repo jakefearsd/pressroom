@@ -29,6 +29,8 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.CategoryRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -89,8 +91,9 @@ public class CategoryRemoveController extends BaseController {
                 // the catch below can only report as "check the logs". A weblog
                 // needing its last category is an ordinary thing to tell someone,
                 // not a server fault, so say it plainly here.
-                if (getActionWeblog(request).getWeblogCategories().size() <= 1) {
-                    addFlashError(redirectAttributes, "categoryForm.error.lastCategory", request);
+                RuleViolation last = CategoryRules.lastCategoryProblem(getActionWeblog(request));
+                if (last != null) {
+                    addFlashError(redirectAttributes, last.messageKey(), request);
                     return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                             + getActionWeblog(request).getHandle();
                 }

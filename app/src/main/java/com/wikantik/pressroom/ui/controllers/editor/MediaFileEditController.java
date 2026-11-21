@@ -29,7 +29,8 @@ import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
-import com.wikantik.pressroom.ui.controllers.ColumnWidths;
+import com.wikantik.pressroom.ui.controllers.MediaRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -121,17 +122,15 @@ public class MediaFileEditController extends MediaFileBase {
         }
 
         // validate
-        if (StringUtils.isBlank(bean.getName())) {
-            addFieldError(model, "mfedit_bean_name", "MediaFile.error.nameBlank", request);
-        } else if (bean.getName().length() > ColumnWidths.MEDIA_NAME) {
-            addFieldError(model, "mfedit_bean_name", "MediaFile.error.nameTooLong", request);
+        RuleViolation shape = MediaRules.fileNameShapeProblem(bean.getName());
+        if (shape != null) {
+            addFieldError(model, "mfedit_bean_name", shape, request);
         }
         MediaFileDirectory directory = postedDirectory(bean, request, model);
         if (directory != null) {
-            MediaFile fileWithSameName = bean.getName() == null ? null : directory.getMediaFile(bean.getName());
-            if (fileWithSameName != null && !fileWithSameName.getId().equals(mediaFileId)) {
-                addError(model, "MediaFile.error.duplicateName",
-                        StringEscapeUtils.escapeHtml4(bean.getName()), request);
+            RuleViolation taken = MediaRules.fileNameTaken(directory, bean.getName(), mediaFileId);
+            if (taken != null) {
+                addError(model, taken, request);
             }
         }
         if (hasErrors(model)) {

@@ -36,7 +36,9 @@ import com.wikantik.pressroom.pojos.MediaFileComparator;
 import com.wikantik.pressroom.pojos.MediaFileComparator.MediaFileComparatorType;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.MediaFileFilter;
-import com.wikantik.pressroom.ui.controllers.ColumnWidths;
+import com.wikantik.pressroom.ui.controllers.MediaRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.controllers.pagers.MediaFilePager;
 import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
 import com.wikantik.pressroom.util.cache.CacheManager;
@@ -111,28 +113,24 @@ public class MediaFileViewController extends MediaFileBase {
 
         // the folder shown afterwards: the new one once it exists
         String shownId = directoryId;
-        String trimmed = StringUtils.trimToEmpty(newDirectoryName);
-        String folderName = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
-        if (StringUtils.isBlank(folderName)) {
-            addError(model, "mediaFile.error.view.dirNameEmpty", request);
-        } else if ("default".equals(folderName)) {
-            addFieldError(model, "newDirectoryName", "mediaFile.error.view.dirNameReserved", request);
-        } else if (folderName.contains("/")) {
-            addError(model, "mediaFile.error.view.dirNameInvalid", request);
-        } else if (folderName.length() > ColumnWidths.DIRECTORY_NAME) {
-            addFieldError(model, "newDirectoryName", "mediaFile.error.view.dirNameTooLong", request);
+        MediaRules.DirectoryName requested = MediaRules.directoryNameProblem(getActionWeblog(request), newDirectoryName);
+        String folderName = requested.name();
+        RuleViolation problem = requested.violation();
+        if (problem != null) {
+            // the reserved name and the length mark the field; the older refusals never did
+            if (problem.code() == ProblemCode.DIRECTORY_NAME_RESERVED || problem.code() == ProblemCode.FIELD_TOO_LONG) {
+                addFieldError(model, "newDirectoryName", problem, request);
+            } else {
+                addError(model, problem, request);
+            }
         } else {
             try {
                 MediaFileManager manager = weblogger.getMediaFileManager();
-                if (!getActionWeblog(request).hasMediaFileDirectory(folderName)) {
-                    MediaFileDirectory dir = manager.createMediaFileDirectory(getActionWeblog(request), folderName);
-                    weblogger.flush();
-                    addMessage(model, "mediaFile.directoryCreate.success",
-                            StringEscapeUtils.escapeHtml4(folderName), request);
-                    shownId = dir.getId();
-                } else {
-                    addError(model, "mediaFile.directoryCreate.error.exists", StringEscapeUtils.escapeHtml4(folderName), request);
-                }
+                MediaFileDirectory dir = manager.createMediaFileDirectory(getActionWeblog(request), folderName);
+                weblogger.flush();
+                addMessage(model, "mediaFile.directoryCreate.success",
+                        StringEscapeUtils.escapeHtml4(folderName), request);
+                shownId = dir.getId();
             } catch (WebloggerException e) {
                 log.error("Error creating new directory", e);
                 addError(model, "generic.error.check.logs", request);

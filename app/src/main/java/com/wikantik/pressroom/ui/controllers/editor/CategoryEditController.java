@@ -26,13 +26,14 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.ui.controllers.ColumnWidths;
+import com.wikantik.pressroom.ui.controllers.CategoryRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -40,8 +41,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.pojos.Weblog;
 
 /**
  * Edit a new or existing weblog category.
@@ -188,44 +187,18 @@ public class CategoryEditController extends BaseController {
     }
 
     private void myValidate(CategoryBean bean, boolean isAdd, HttpServletRequest request, Model model) {
-        if (bean.getName() == null || bean.getName().isBlank()
-                || !bean.getName().equals(StringEscapeUtils.escapeHtml4(bean.getName()))) {
-            addFieldError(model, "category_bean_name", "categoryForm.error.invalidName", request);
-        } else if (bean.getName().length() > ColumnWidths.CATEGORY_NAME) {
-            addFieldError(model, "category_bean_name", "categoryForm.error.nameTooLong", request);
-        } else if (isAdd) {
-            if (getActionWeblog(request).hasCategory(bean.getName())) {
-                addFieldError(model, "category_bean_name", "categoryForm.error.duplicateName",
-                        new Object[]{bean.getName()}, request);
-            }
-        } else {
-            try {
-                WeblogCategory wc = categoryNamed(getActionWeblog(request), bean.getName());
-                if (wc != null && !wc.getId().equals(bean.getId())) {
-                    addFieldError(model, "category_bean_name", "categoryForm.error.duplicateName",
-                            new Object[]{bean.getName()}, request);
-                }
-            } catch (WebloggerException ex) {
-                // Fail closed. A uniqueness check that could not run is not a
-                // check that passed, and the caller's hasErrors() gate would
-                // otherwise read the empty error list as "this name is free" --
-                // the same shape TemplateEditController's name/link checks had.
-                log.error("Error checking category name uniqueness for {}", bean.getName(), ex);
-                addError(model, "generic.error.check.logs", request);
-            }
+        RuleViolation problem = CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
+                isAdd ? null : bean.getId(), weblogger.getWeblogEntryManager());
+        if (problem == null) {
+            return;
         }
-    }
-
-    /**
-     * The weblog's category of that name, or null when there is none. A
-     * failed lookup propagates rather than answering null: the duplicate-name
-     * check in {@link #myValidate} reads null as "no duplicate", so swallowing
-     * here would let a rename through unchecked exactly when the category
-     * store is unreachable. (It used to, as a move of the fail-open
-     * {@code Weblog.getWeblogCategory} getter it replaced.)
-     */
-    private WeblogCategory categoryNamed(Weblog weblog, String name) throws WebloggerException {
-        return weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, name);
+        if (problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
+            // Fail closed. A uniqueness check that could not run is not a check that passed: the
+            // caller's hasErrors() gate would otherwise read the empty error list as "this name is free".
+            addError(model, problem, request);
+        } else {
+            addFieldError(model, "category_bean_name", problem, request);
+        }
     }
 
     @ModelAttribute("bean")

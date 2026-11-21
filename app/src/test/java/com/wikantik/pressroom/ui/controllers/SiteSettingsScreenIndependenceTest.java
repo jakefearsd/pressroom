@@ -26,7 +26,8 @@ class SiteSettingsScreenIndependenceTest {
     private static final String ROOT = "src/main/java/com/wikantik/pressroom/ui/controllers/";
 
     private static final List<String> FILES = List.of("RuleViolation.java", "SiteSettingsRules.java",
-            "SiteSettingsEffects.java", "AccountRules.java", "Memberships.java");
+            "SiteSettingsEffects.java", "AccountRules.java", "Memberships.java",
+            "CategoryRules.java", "MediaRules.java", "ColumnWidths.java");
 
     private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+)");
 

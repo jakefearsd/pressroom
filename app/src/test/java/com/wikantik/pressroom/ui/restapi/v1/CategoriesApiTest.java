@@ -208,7 +208,8 @@ class CategoriesApiTest {
     void postWithADuplicateNameIsConflict() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        aCategory(weblog, "Recipes");
+        WeblogCategory recipes = aCategory(weblog, "Recipes");
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Recipes")).thenReturn(recipes);
 
         mockMvc(controllerFor(weblogger))
                 .perform(post("/v1/weblogs/myblog/categories")
@@ -443,6 +444,7 @@ class CategoriesApiTest {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogCategory category = aCategory(weblog, "Doomed");
+        category.setId("cat-1");
         aCategory(weblog, "Other"); // so the last-category guard cannot also fire
         when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(category);
 
@@ -553,6 +555,7 @@ class CategoriesApiTest {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogCategory category = aCategory(weblog, "Doomed");
+        category.setId("cat-1");
         aCategory(weblog, "Other");
         when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(category);
 

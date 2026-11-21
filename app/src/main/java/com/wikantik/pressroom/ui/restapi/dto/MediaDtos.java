@@ -7,7 +7,9 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
@@ -246,19 +248,15 @@ public final class MediaDtos {
         }
         String name = patch.name() == null ? null : patch.name().trim();
         if (name != null) {
-            errors.check("name", () -> {
-                if (name.isEmpty()) {
-                    throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
-                }
-                ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
-            });
+            RuleViolation shape = MediaRules.fileNameShapeProblem(name);
+            if (shape != null) {
+                errors.add(shape.field(), shape.code(), shape.codeArgs().toArray(String[]::new));
+            }
         }
         errors.throwIfAny();
-        if (name != null && directory != null) {
-            MediaFile holder = directory.getMediaFile(name);
-            if (holder != null && !holder.getId().equals(file.getId())) {
-                throw ApiException.problemOnField("name", ProblemCode.MEDIA_NAME_IN_USE, name);
-            }
+        RuleViolation taken = MediaRules.fileNameTaken(directory, name, file.getId());
+        if (taken != null) {
+            throw ApiException.problemOnField(taken.field(), taken.code(), taken.codeArgs().toArray(String[]::new));
         }
         if (patch.altText() != null) {
             file.setAltText(patch.altText());

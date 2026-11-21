@@ -70,6 +70,16 @@ final class RuleProblems {
                 v.kind() == RuleViolation.Kind.CONFLICT)).toList());
     }
 
+    /**
+     * The 400 or 409 a violation is, keyed: on its field, or, with {@code onField} false, answered
+     * with no field (a refusal about the whole request, as the category delete's always was).
+     */
+    static ApiException problem(RuleViolation violation, boolean onField) {
+        String[] args = violation.codeArgs().toArray(String[]::new);
+        return onField ? ApiException.problemOnField(violation.field(), violation.code(), args)
+                : ApiException.problem(violation.code(), args);
+    }
+
     /** Records {@code violation}, when there is one, on {@code errors} under its field, code and args. */
     static void add(FieldErrors errors, RuleViolation violation) {
         if (violation != null) {

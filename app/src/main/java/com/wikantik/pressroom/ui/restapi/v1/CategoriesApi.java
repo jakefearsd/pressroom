@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -14,10 +14,11 @@ import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.CategoryRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.CategoryDtos;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,14 +73,9 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         if (name == null || name.isBlank()) {
             throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
         }
-        ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
-        requireNoHtmlCharacters(name);
-        if (body.description() != null) {
-            ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.CATEGORY_DESCRIPTION);
-        }
-        if (weblog.hasCategory(name)) {
-            throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_IN_USE, name);
-        }
+        refuse(CategoryRules.nameShapeProblem(name));
+        refuse(CategoryRules.descriptionProblem(body.description()));
+        refuse(CategoryRules.nameTaken(weblog, name, null, weblogger.getWeblogEntryManager()));
 
         WeblogCategory category = new WeblogCategory(weblog, name, body.description(), null);
         try {
@@ -93,9 +89,10 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDtos.toView(category, 0));
     }
 
-    private static void requireNoHtmlCharacters(String name) {
-        if (!name.equals(StringEscapeUtils.escapeHtml4(name))) {
-            throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_INVALID);
+    /** Raises {@code violation}, when there is one, on its field. */
+    private static void refuse(RuleViolation violation) {
+        if (violation != null) {
+            throw RuleProblems.problem(violation, true);
         }
     }
 
@@ -115,23 +112,16 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             if (name.isBlank()) {
                 throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
             }
-            ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
             if (!name.equals(category.getName())) {
-                requireNoHtmlCharacters(name);
-                // The entity has no category-by-name lookup of its own (it
-                // would need the manager, which entities do not hold), so go
-                // straight through this controller's injected manager
-                // instead, same as every other lookup in this controller.
-                WeblogCategory existing =
-                        weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, name);
-                if (existing != null && !existing.getId().equals(category.getId())) {
-                    throw ApiException.problemOnField("name", ProblemCode.CATEGORY_NAME_IN_USE, name);
-                }
+                refuse(CategoryRules.nameShapeProblem(name));
+                // The entity has no category-by-name lookup of its own (it would need the manager, which
+                // entities do not hold), so the rule goes through this controller's injected manager.
+                refuse(CategoryRules.nameTaken(weblog, name, category.getId(), weblogger.getWeblogEntryManager()));
                 category.setName(name);
             }
         }
         if (body.description() != null) {
-            ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.CATEGORY_DESCRIPTION);
+            refuse(CategoryRules.descriptionProblem(body.description()));
             category.setDescription(body.description());
         }
 
@@ -161,35 +151,21 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             throw ApiException.problem(ProblemCode.CATEGORY_NOT_FOUND);
         }
 
-        if (weblog.getWeblogCategories().size() <= 1) {
-            // saveWeblogEntry() falls back to "the first category found" for
-            // an entry with none, so a weblog left with zero categories can
-            // no longer accept a save at all -- same guard
-            // CategoryRemoveController applies before removeWeblogCategory
-            // (which would otherwise refuse with a bare WebloggerException).
-            throw ApiException.problem(ProblemCode.CATEGORY_LAST_ONE);
-        }
-
         WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
-        if (moveTo != null && !moveTo.isBlank()) {
-            // moveTo naming the SAME category being deleted passes
-            // WeblogOwnership.category (it genuinely belongs to this
-            // weblog), so without this check moveWeblogCategoryContents
-            // would be a self-move no-op and removeWeblogCategory would
-            // then throw a bare WebloggerException -- the same opaque-500
-            // shape the last-category and in-use guards above exist to
-            // intercept.
-            if (moveTo.equals(id)) {
-                throw ApiException.problemOnField("moveTo", ProblemCode.CATEGORY_MOVE_TO_SELF);
-            }
+        // The last category (a weblog with none can no longer save an entry), moveTo naming the category
+        // itself (a self-move is a no-op and the removal would then fail as a bare 500) and entries left
+        // behind with no moveTo are the rule's; only moveTo's own lookup follows it.
+        RuleViolation refusal = CategoryRules.removalProblem(weblog, category, moveTo, wmgr);
+        if (refusal != null) {
+            throw RuleProblems.problem(refusal, refusal.code() == ProblemCode.CATEGORY_MOVE_TO_SELF);
+        }
+        if (StringUtils.isNotBlank(moveTo)) {
             WeblogCategory target = WeblogOwnership.category(weblogger, moveTo, weblog);
             if (target == null) {
                 throw ApiException.problem(ProblemCode.CATEGORY_MOVE_TARGET_NOT_FOUND);
             }
             // One unit of work: a removal that fails rolls the move back too.
             wmgr.removeWeblogCategory(category, target);
-        } else if (wmgr.isWeblogCategoryInUse(category)) {
-            throw ApiException.problem(ProblemCode.CATEGORY_HAS_ENTRIES);
         } else {
             wmgr.removeWeblogCategory(category);
         }

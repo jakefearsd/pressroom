@@ -31,6 +31,7 @@ import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.MediaImports;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import com.wikantik.pressroom.util.PressroomMessages;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -330,26 +331,12 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     }
 
     /**
-     * The blank/reserved/duplicate pre-checks run against the SAME
-     * normalised name {@code JPAMediaFileManagerImpl.createMediaFileDirectory}
-     * will itself compute -- it strips one leading slash before validating,
-     * so a raw pre-check against the client's literal string sees different
-     * input than the manager does. {@code "/"} passes a raw blank check
-     * ("/".isBlank() is false) and a raw duplicate check, then normalises to
-     * "" inside the manager and throws a bare {@code WebloggerException}
-     * ("Invalid name!") that {@code ApiExceptionHandler} can only turn into
-     * an opaque 500; {@code "/existing"} passes the same way and only
-     * collides with an existing "existing" directory AFTER normalisation.
-     * Note this is NOT the same shape as {@code CategoriesApi.create}'s
-     * duplicate guard, despite looking similar -- that guard's manager-side
-     * counterpart (`WeblogCategory`'s constructor) does no normalisation of
-     * its own, so a raw pre-check there really does see what the manager
-     * sees. Here it does not, unless this method replicates the manager's
-     * one normalisation step first. Replicated rather than caught-and-mapped
-     * because the transformation (strip a single leading slash) and the one
-     * reserved name ("default") are small and stable enough that duplicating
-     * them here is lower-risk than parsing the manager's free-text exception
-     * messages to tell "Invalid name!" apart from "Directory exists".
+     * The name is judged by {@link MediaRules#directoryNameProblem}, which
+     * normalises it exactly as {@code JPAMediaFileManagerImpl
+     * .createMediaFileDirectory} will (trimmed, one leading slash dropped)
+     * before judging it, so a name the manager would refuse is refused here
+     * with a code instead of reaching it as a bare exception; the normalised
+     * name is what is created.
      */
     @Operation(operationId = "mediaCreateDirectory")
     @ApiResponse(responseCode = "201", description = "Created.")
@@ -357,25 +344,11 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     public ResponseEntity<MediaDtos.DirectoryView> createDirectory(
             HttpServletRequest request, @RequestBody MediaDtos.DirectoryWrite body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        String name = body.name() == null ? null : body.name().trim();
-        if (name == null || name.isBlank()) {
-            throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
+        MediaRules.DirectoryName requested = MediaRules.directoryNameProblem(weblog, body.name());
+        if (requested.violation() != null) {
+            throw RuleProblems.problem(requested.violation(), true);
         }
-
-        String normalized = name.startsWith("/") ? name.substring(1) : name;
-        if (normalized.isEmpty()) {
-            throw ApiException.problemOnField("name", ProblemCode.FIELD_REQUIRED, "name");
-        }
-        if ("default".equals(normalized)) {
-            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_RESERVED);
-        }
-        if (normalized.contains("/")) {
-            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_INVALID);
-        }
-        ColumnLimits.requireMaxLength("name", normalized, ColumnLimits.DIRECTORY_NAME);
-        if (weblog.hasMediaFileDirectory(normalized)) {
-            throw ApiException.problemOnField("name", ProblemCode.DIRECTORY_NAME_IN_USE, normalized);
-        }
+        String normalized = requested.name();
         if (body.description() != null) {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.DIRECTORY_DESCRIPTION);
         }

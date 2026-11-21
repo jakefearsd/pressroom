@@ -130,6 +130,8 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void addRejectsANameAlreadyUsedOnThisWeblog() throws Exception {
         weblog.getWeblogCategories().add(categoryNamed("cat-1", "Travel"));
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Travel"))
+                .thenReturn(weblog.getWeblogCategories().get(weblog.getWeblogCategories().size() - 1));
         bean.setName("Travel");
 
         controller.categoryAddSave(request, model, bean, redirectAttributes);
@@ -356,6 +358,8 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aRefusedCategoryNameMarksTheNameField() throws Exception {
         weblog.getWeblogCategories().add(categoryNamed("cat-1", "Travel"));
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Travel"))
+                .thenReturn(weblog.getWeblogCategories().get(weblog.getWeblogCategories().size() - 1));
         bean.setName("Travel");
 
         controller.categoryAddSave(request, model, bean, redirectAttributes);
@@ -387,6 +391,8 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
     void addRejectsADuplicateNameAndTheDetailSurvivesTheRedirect() throws Exception {
         registerMessage("categoryForm.error.duplicateName", "duplicate:{0}");
         weblog.getWeblogCategories().add(categoryNamed("cat-1", "Travel"));
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Travel"))
+                .thenReturn(weblog.getWeblogCategories().get(weblog.getWeblogCategories().size() - 1));
         bean.setName("Travel");
 
         controller.categoryAddSave(request, model, bean, redirectAttributes);
