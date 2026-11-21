@@ -14,6 +14,7 @@ import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.util.PressroomMessages;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
@@ -31,6 +32,16 @@ public final class MediaDtos {
             .build();
 
     private MediaDtos() {
+    }
+
+    /** One page of media files. */
+    public record MediaPage(
+            @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            List<MediaView> items,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore) {
     }
 
     /**

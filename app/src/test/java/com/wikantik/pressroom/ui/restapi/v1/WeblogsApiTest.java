@@ -118,7 +118,7 @@ class WeblogsApiTest {
         Weblogger weblogger = mockedWeblogger();
         Weblog mine = aWeblog("mine");
         Weblog theirs = aWeblog("theirs");
-        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 0, 50))
+        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 0, 51))
                 .thenReturn(List.of(mine, theirs));
 
         String body = mockMvc(controllerFor(weblogger))
@@ -127,9 +127,47 @@ class WeblogsApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals(2, json.size());
-        assertEquals("mine", json.get(0).get("handle").asString());
-        assertEquals("theirs", json.get(1).get("handle").asString());
+        assertEquals(2, json.get("items").size());
+        assertEquals("mine", json.get("items").get(0).get("handle").asString());
+        assertEquals("theirs", json.get("items").get(1).get("handle").asString());
+        assertEquals(0, json.get("offset").asInt());
+        assertEquals(50, json.get("limit").asInt());
+        assertFalse(json.get("hasMore").asBoolean());
+    }
+
+    /**
+     * Task 1 (owner decisions): the one page envelope. hasMore comes from ONE query of limit + 1 rows (no
+     * count query): the extra row is read and dropped, and limit=500 is reported as the cap, 200.
+     */
+    @Test
+    void listAnswersTheEnvelopeWithHasMoreFromOneExtraRow() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 10, 3))
+                .thenReturn(List.of(aWeblog("a"), aWeblog("b"), aWeblog("c")));
+        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 20, 3))
+                .thenReturn(List.of(aWeblog("d"), aWeblog("e")));
+        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 0, 201)).thenReturn(List.of());
+
+        tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+        tools.jackson.databind.JsonNode first = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs").param("offset", "10").param("limit", "2"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(2, first.get("items").size(), "the extra row is dropped");
+        assertTrue(first.get("hasMore").asBoolean());
+        assertEquals(10, first.get("offset").asInt());
+        assertEquals(2, first.get("limit").asInt());
+
+        tools.jackson.databind.JsonNode last = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs").param("offset", "20").param("limit", "2"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(2, last.get("items").size());
+        assertFalse(last.get("hasMore").asBoolean());
+
+        tools.jackson.databind.JsonNode capped = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs").param("limit", "500"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(200, capped.get("limit").asInt());
+        verify(weblogger.getWeblogManager()).getWeblogs(null, null, null, null, 0, 201);
     }
 
     @Test

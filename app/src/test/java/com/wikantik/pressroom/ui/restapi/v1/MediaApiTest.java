@@ -228,7 +228,11 @@ class MediaApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals(1, json.size());
+        assertEquals(1, json.get("items").size());
+        assertEquals(1, json.get("limit").asInt(), "no limit asked: limit is the item count");
+        assertEquals(0, json.get("offset").asInt());
+        assertFalse(json.get("hasMore").asBoolean());
+        json = json.get("items");
         assertEquals("cat.jpg", json.get(0).get("name").asString());
         assertEquals("A cat", json.get(0).get("altText").asString());
         assertEquals(dir.getId(), json.get(0).get("directory").asString());
@@ -258,6 +262,10 @@ class MediaApiTest {
         tools.jackson.databind.JsonNode page = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
                         .param("offset", "1").param("limit", "2").requestAttr("actionWeblog", weblog))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertTrue(page.get("hasMore").asBoolean(), "d.jpg and e.jpg follow");
+        assertEquals(1, page.get("offset").asInt());
+        assertEquals(2, page.get("limit").asInt());
+        page = page.get("items");
         assertEquals(2, page.size());
         assertEquals("b.jpg", page.get(0).get("name").asString());
         assertEquals("c.jpg", page.get(1).get("name").asString());
@@ -265,16 +273,22 @@ class MediaApiTest {
         tools.jackson.databind.JsonNode rest = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
                         .param("offset", "3").requestAttr("actionWeblog", weblog))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertEquals(2, rest.size(), "an offset alone gives the rest of the list");
+        assertEquals(2, rest.get("items").size(), "an offset alone gives the rest of the list");
+        assertFalse(rest.get("hasMore").asBoolean());
+        assertEquals(2, rest.get("limit").asInt(), "no limit asked: limit is the item count");
 
         tools.jackson.databind.JsonNode past = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
                         .param("offset", "9").param("limit", "2").requestAttr("actionWeblog", weblog))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertEquals(0, past.size(), "past the end is an empty page, not an error");
+        assertEquals(0, past.get("items").size(), "past the end is an empty page, not an error");
+        assertFalse(past.get("hasMore").asBoolean());
 
-        assertEquals(5, json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
+        tools.jackson.databind.JsonNode all = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
                         .param("limit", "5000").requestAttr("actionWeblog", weblog))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).size());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertEquals(5, all.get("items").size());
+        assertEquals(200, all.get("limit").asInt(), "limit=5000 is reported as the cap");
+        assertFalse(all.get("hasMore").asBoolean());
 
         mvc.perform(get("/v1/weblogs/myblog/media").param("limit", "0").requestAttr("actionWeblog", weblog))
                 .andExpect(status().isBadRequest()).andExpect(errorFieldIs("limit"));
@@ -297,7 +311,7 @@ class MediaApiTest {
         String body = mvc.perform(get("/v1/weblogs/myblog/media").param("directoryId", dir.getId())
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertEquals("beach.jpg", new tools.jackson.databind.ObjectMapper().readTree(body).get(0).get("name").asString());
+        assertEquals("beach.jpg", new tools.jackson.databind.ObjectMapper().readTree(body).get("items").get(0).get("name").asString());
         mvc.perform(get("/v1/weblogs/myblog/media").param("directoryId", dir.getId()).param("dir", dir.getId())
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isOk());
@@ -323,8 +337,8 @@ class MediaApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals(1, json.size());
-        assertEquals("beach.jpg", json.get(0).get("name").asString());
+        assertEquals(1, json.get("items").size());
+        assertEquals("beach.jpg", json.get("items").get(0).get("name").asString());
         verify(weblogger.getMediaFileManager(), never()).searchMediaFiles(any(), any());
     }
 
@@ -352,8 +366,8 @@ class MediaApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals(1, json.size());
-        assertEquals("secret.jpg", json.get(0).get("name").asString());
+        assertEquals(1, json.get("items").size());
+        assertEquals("secret.jpg", json.get("items").get(0).get("name").asString());
     }
 
     /**

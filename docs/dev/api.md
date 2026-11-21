@@ -148,12 +148,12 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   owner, member, no-role, pin and token-role cases through the real interceptors. The form
   reserves no setting to site admins; a field it ever reserves must be refused here through the
   same rule (`WeblogSettingsRules`), not a second check.
-- **List shape (spec 2026-11-20, Task 5, additive part).** Every operation
-  with a `limit` answers `{items|entries, offset, limit, hasMore}`, all
-  required (`ListShapeOpenApiTest`). Three operations (`GET /v1/weblogs`,
-  `GET /v1/admin/users`, `GET .../media`) still answer a bare array: the wrap
-  is a breaking change HELD for the owner, and the test's `HELD_BARE_ARRAYS`
-  exception set names them; wrapping them empties it.
+- **List shape (spec 2026-11-20, Task 5; the wraps landed with the owner decisions, 0.16.0).** Every
+  operation with a `limit` answers `{items|entries, offset, limit, hasMore}`, all required
+  (`OpenApiContractTest`, no exception set). `GET /v1/weblogs`, `GET /v1/admin/users` and
+  `GET .../media` answer `WeblogListPage`, `UserPage` and `MediaPage`; users and weblogs read
+  `limit + 1` rows from the manager (no count query) and drop the extra. Media without `limit`
+  returns every file, `limit` = item count. A new paged list takes the envelope or the test fails.
 - **The OpenAPI document is machine-readable, not a browser explorer.**
   `springdoc-openapi-starter-webmvc-api` serves `GET /api/v1/openapi.json`
   (`/v1/openapi.json` in `application.properties`, per the prefix point),

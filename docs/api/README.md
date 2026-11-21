@@ -312,8 +312,11 @@ entire table. A `limit` above the endpoint's cap (200, uniformly) is
 silently capped rather than rejected — the one place this API *does*
 clamp instead of refusing.
 
-**The page envelope is not uniform across these six endpoints — check the
-shape before assuming a field exists.**
+**Every paged list answers one shape**, `{items, offset, limit, hasMore}`:
+`offset` is the offset asked for, `limit` the page size after the cap of 200,
+and `hasMore` is true while items remain beyond this page. An unpaged list
+(pages, categories, tags, tokens, redirects, revisions, directories) is a bare
+array: its length is the total.
 
 - `GET .../entries` returns an `EntryPage`: `{items, offset, limit, hasMore}`.
   `hasMore` is computed by fetching one row past the requested page — page
@@ -328,11 +331,19 @@ shape before assuming a field exists.**
   agent can read the shape of the problem without paging through it —
   `entries` alone is the `offset`/`limit`-sliced page. It keeps `entries`
   rather than `items` because it is a report with a tally.
-- `GET /api/v1/admin/users`, `GET /api/v1/weblogs` and `GET .../media` return
-  a **bare JSON array**, `[UserView, ...]` / `[WeblogView, ...]` /
-  `[MediaView, ...]` — no envelope, no
-  `total`, no `hasMore` at all. Getting fewer items back than the requested
-  `limit` is the only signal that you have reached the end.
+- `GET /api/v1/admin/users` returns a `UserPage`, `GET /api/v1/weblogs` a
+  `WeblogListPage` and `GET .../media` a `MediaPage`, each the same
+  `{items, offset, limit, hasMore}`; `items` holds `UserView`, `WeblogView`
+  and `MediaView` rows. For users and weblogs `hasMore` comes from one query
+  of `limit + 1` rows. `GET .../media` without `limit` returns every file,
+  with `limit` equal to the number of items and `hasMore` false.
+
+> **Changed in 0.16.0: three lists answer the envelope, not a bare array.**
+> `GET /api/v1/weblogs`, `GET /api/v1/admin/users` and `GET .../media` now
+> return `{items, offset, limit, hasMore}`. A client that read the response
+> as an array reads `items` instead, and may stop when `hasMore` is false
+> rather than on a short page. The MCP `weblogs`, `users` and `media` `list`
+> actions return the same envelope.
 
 ## Errors
 
@@ -1156,12 +1167,12 @@ POST   /api/v1/weblogs/{handle}/media/directories
 > is judged on the name the file keeps: a directory that already holds a file
 > of that name answers the same 409, and the file is neither changed nor moved.
 
-`GET .../media` returns a bare array of `MediaView`s sorted by name. With
+`GET .../media` returns a `MediaPage` (`{items, offset, limit, hasMore}`) of `MediaView`s sorted by name. With
 `directoryId`, only that directory's files (`dir` is its old name and still
 works; sending both with different values is a 400). With `offset`/`limit`, a
 page of the sorted list (limit capped at 200); **without either, every file**,
 as before, which on a large photo library is a long response, blurhashes
-included, so page it. A page shorter than `limit` is the last one.
+included, so page it. Without `limit`, `limit` in the answer is the item count and `hasMore` is false.
 
 **Upload is a batch, and a batch is not a transaction.** Send one or more
 `file` parts (`multipart/form-data`), optionally `directoryId` to file them

@@ -206,7 +206,7 @@ class AgentAccountsIT extends PressroomIT {
             assertEquals(403, problem.get("status").asInt());
             assertEquals("Agent accounts are managed in the admin UI.", problem.get("detail").asString());
 
-            JsonNode users = JSON.readTree(bearerGet(admin.raw(), "/api/v1/admin/users").body());
+            JsonNode users = JSON.readTree(bearerGet(admin.raw(), "/api/v1/admin/users").body()).get("items");
             String kind = null;
             for (JsonNode user : users) {
                 if (agent.equals(user.get("userName").asString())) {

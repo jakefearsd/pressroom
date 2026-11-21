@@ -78,7 +78,7 @@ class MessageUsageScannerTest {
                         .map(u -> u.key() + "=" + u.argCount()).toList());
         assertMissingFromTheBundle("userWeblogs.error.levl");
         // Outside the rule classes the shape is not taken for a key: a dotted literal can be a file name.
-        assertTrue(MessageUsageScanner.scanJavaSource(source, "com/wikantik/pressroom/util/Planted.java").isEmpty());
+        assertTrue(MessageUsageScanner.scanJavaSource(source, "com/wikantik/pressroom/util/DateUtil.java").isEmpty());
     }
 
     @Test

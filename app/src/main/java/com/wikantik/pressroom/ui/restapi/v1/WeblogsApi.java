@@ -46,7 +46,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
 
     @Operation(operationId = "weblogsList")
     @GetMapping("")
-    public List<AdminDtos.WeblogView> list(
+    public AdminDtos.WeblogListPage list(
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
         // Same negative-limit/offset trap as every other list endpoint in
@@ -54,12 +54,14 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         Paging.requireRange(limit, offset);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
 
+        // One row past the page decides hasMore: no count query.
+        List<Weblog> rows = weblogger.getWeblogManager()
+                .getWeblogs(null, null, null, null, offset, boundedLimit + 1);
         List<AdminDtos.WeblogView> views = new ArrayList<>();
-        for (Weblog weblog : weblogger.getWeblogManager()
-                .getWeblogs(null, null, null, null, offset, boundedLimit)) {
+        for (Weblog weblog : rows.subList(0, Math.min(rows.size(), boundedLimit))) {
             views.add(AdminDtos.toView(weblog));
         }
-        return views;
+        return new AdminDtos.WeblogListPage(views, offset, boundedLimit, rows.size() > boundedLimit);
     }
 
     @Override

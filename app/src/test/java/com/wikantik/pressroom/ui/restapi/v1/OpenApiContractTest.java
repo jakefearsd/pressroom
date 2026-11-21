@@ -119,16 +119,6 @@ class OpenApiContractTest {
      */
     private static final Set<String> KEYED_DICTIONARIES = Set.of("SeoAudit.counts", "TrafficView.breakdowns");
 
-    /**
-     * HELD for the owner (2026-11-20): these three still answer a bare array,
-     * and the wrap to an envelope is a breaking change to live agents. The
-     * held wrap would empty this set; when it lands, delete it.
-     */
-    private static final Set<String> HELD_BARE_ARRAYS = Set.of(
-            "GET /v1/weblogs",
-            "GET /v1/admin/users",
-            "GET /v1/weblogs/{handle}/media");
-
     private static final Set<String> PAGING = Set.of("offset", "limit", "hasMore");
 
     private static final String PROBLEM_REF = "#/components/schemas/ApiProblem";
@@ -540,9 +530,8 @@ class OpenApiContractTest {
      * hasMore}, all required.
      */
     @Test
-    void everyPagedOperationAnswersTheOneShapeExceptTheHeldBareArrays() {
+    void everyPagedOperationAnswersTheOneShape() {
         Set<String> seen = new HashSet<>();
-        Set<String> bare = new HashSet<>();
         operations().forEach((name, operation) -> {
             if (!takesLimit(operation)) {
                 return;
@@ -550,10 +539,7 @@ class OpenApiContractTest {
             seen.add(name);
             JsonNode schema = resolve(operation.get("responses").get("200").path("content")
                     .path("application/json").path("schema"));
-            if ("array".equals(schema.path("type").asString())) {
-                bare.add(name);
-                return;
-            }
+            assertFalse("array".equals(schema.path("type").asString()), name + " answers a bare array: " + schema);
             JsonNode properties = schema.path("properties");
             String list = properties.has("items") ? "items" : "entries";
             Set<String> required = strings(schema.path("required"));
@@ -567,9 +553,9 @@ class OpenApiContractTest {
                 assertTrue(properties.has("entries"), name + " keeps entries, a report not a list");
             }
         });
-        assertEquals(HELD_BARE_ARRAYS, bare, "exactly the held operations answer a bare array");
         assertTrue(seen.containsAll(Set.of("GET /v1/weblogs/{handle}/entries", "GET /v1/weblogs/{handle}/comments",
-                "GET /v1/weblogs/{handle}/audit/seo")), "the paged operations were found: " + seen);
+                "GET /v1/weblogs/{handle}/audit/seo", "GET /v1/weblogs", "GET /v1/admin/users",
+                "GET /v1/weblogs/{handle}/media")), "the paged operations were found: " + seen);
     }
 
     private static boolean takesLimit(JsonNode operation) {

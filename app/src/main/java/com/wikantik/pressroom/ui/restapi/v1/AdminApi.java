@@ -90,7 +90,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
     @Operation(operationId = "usersList")
     @GetMapping("/users")
-    public List<AdminDtos.UserView> listUsers(
+    public AdminDtos.UserPage listUsers(
             @RequestParam(value = "enabled", required = false) Boolean enabled,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
@@ -103,11 +103,13 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         int boundedLimit = Math.min(limit, MAX_LIMIT);
 
         UserManager mgr = weblogger.getUserManager();
+        // One row past the page decides hasMore: no count query.
+        List<User> rows = mgr.getUsers(enabled, null, null, offset, boundedLimit + 1);
         List<AdminDtos.UserView> views = new ArrayList<>();
-        for (User user : mgr.getUsers(enabled, null, null, offset, boundedLimit)) {
+        for (User user : rows.subList(0, Math.min(rows.size(), boundedLimit))) {
             views.add(AdminDtos.toView(user, roles(user)));
         }
-        return views;
+        return new AdminDtos.UserPage(views, offset, boundedLimit, rows.size() > boundedLimit);
     }
 
     @Operation(operationId = "usersCreate")

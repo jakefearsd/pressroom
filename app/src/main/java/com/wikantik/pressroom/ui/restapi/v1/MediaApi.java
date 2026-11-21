@@ -89,13 +89,13 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * one on its own.
      *
      * <p>{@code offset}/{@code limit} slice that sorted list, so a large
-     * library can be read a page at a time; the response stays the bare
-     * array it always was, and without either parameter it is the whole
-     * list, as before. A limit is capped at {@link #MAX_LIMIT}.
+     * library can be read a page at a time; the answer is the page
+     * envelope, and without a limit it is every file (limit then the item
+     * count, hasMore false). A limit is capped at {@link #MAX_LIMIT}.
      */
     @Operation(operationId = "mediaList")
     @GetMapping("")
-    public List<MediaDtos.MediaView> list(
+    public MediaDtos.MediaPage list(
             HttpServletRequest request,
             // No @Parameter: the media tool shares one directoryId argument across actions, and
             // MediaImport's text (the import default) is the one it must carry (ToolSchemasTest).
@@ -123,7 +123,11 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         files.sort(Comparator.comparing(MediaFile::getName, Comparator.nullsLast(String::compareToIgnoreCase)));
 
         long size = limit == null ? Long.MAX_VALUE : Math.min(limit, MAX_LIMIT);
-        return files.stream().skip(from).limit(size).map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
+        List<MediaDtos.MediaView> items = files.stream().skip(from).limit(size)
+                .map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
+        // Without a limit, every file: limit is then the item count and nothing follows.
+        int pageSize = limit == null ? items.size() : (int) size;
+        return new MediaDtos.MediaPage(items, from, pageSize, from + items.size() < files.size());
     }
 
     @Operation(operationId = "mediaGet")

@@ -537,12 +537,12 @@ class SsoSignInIT extends PressroomIT {
                         .GET().build(), HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, page.statusCode(), page.body());
                 JsonNode users = JSON.readTree(page.body());
-                for (JsonNode user : users) {
+                for (JsonNode user : users.get("items")) {
                     if (email.equals(user.get("emailAddress").asString())) {
                         byName.put(user.get("userName").asString(), user);
                     }
                 }
-                if (users.size() < PAGE_SIZE) {
+                if (!users.get("hasMore").asBoolean()) {
                     return new ArrayList<>(byName.values());
                 }
             }

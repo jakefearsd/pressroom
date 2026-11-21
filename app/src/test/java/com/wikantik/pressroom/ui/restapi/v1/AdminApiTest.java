@@ -120,7 +120,7 @@ class AdminApiTest {
     void listUsersReturnsUserViewsWithRoles() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
-        when(weblogger.getUserManager().getUsers(null, null, null, 0, 50)).thenReturn(List.of(user));
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 51)).thenReturn(List.of(user));
         when(weblogger.getUserManager().getRoles(user)).thenReturn(List.of("editor", "admin"));
 
         String body = mockMvc(controllerFor(weblogger))
@@ -129,10 +129,44 @@ class AdminApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals(1, json.size());
-        assertEquals("alice", json.get(0).get("userName").asString());
-        assertTrue(json.get(0).get("enabled").asBoolean());
-        assertEquals(2, json.get(0).get("globalRoles").size());
+        assertEquals(1, json.get("items").size());
+        assertEquals("alice", json.get("items").get(0).get("userName").asString());
+        assertTrue(json.get("items").get(0).get("enabled").asBoolean());
+        assertEquals(2, json.get("items").get(0).get("globalRoles").size());
+        assertEquals(0, json.get("offset").asInt());
+        assertEquals(50, json.get("limit").asInt());
+        assertFalse(json.get("hasMore").asBoolean());
+    }
+
+    /** Task 1: hasMore from one query of limit + 1 rows, no count query; limit=500 is reported as 200. */
+    @Test
+    void listUsersAnswersTheEnvelopeWithHasMoreFromOneExtraRow() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 3))
+                .thenReturn(List.of(aUser("a"), aUser("b"), aUser("c")));
+        when(weblogger.getUserManager().getUsers(null, null, null, 4, 3))
+                .thenReturn(List.of(aUser("d"), aUser("e")));
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 201)).thenReturn(List.of());
+        tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+
+        tools.jackson.databind.JsonNode first = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/admin/users").param("limit", "2"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(2, first.get("items").size(), "the extra row is dropped");
+        assertTrue(first.get("hasMore").asBoolean());
+
+        tools.jackson.databind.JsonNode last = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/admin/users").param("offset", "4").param("limit", "2"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(2, last.get("items").size());
+        assertFalse(last.get("hasMore").asBoolean());
+        assertEquals(4, last.get("offset").asInt());
+
+        tools.jackson.databind.JsonNode capped = mapper.readTree(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/admin/users").param("limit", "500"))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(200, capped.get("limit").asInt());
+        verify(weblogger.getUserManager()).getUsers(null, null, null, 0, 201);
     }
 
     @Test
@@ -479,7 +513,7 @@ class AdminApiTest {
         User person = aUser("alice");
         User agent = aUser("bot");
         agent.setKind(User.Kind.AGENT);
-        when(weblogger.getUserManager().getUsers(null, null, null, 0, 50)).thenReturn(List.of(person, agent));
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 51)).thenReturn(List.of(person, agent));
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(get("/v1/admin/users"))
@@ -487,8 +521,8 @@ class AdminApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertEquals("PERSON", json.get(0).get("kind").asString());
-        assertEquals("AGENT", json.get(1).get("kind").asString());
+        assertEquals("PERSON", json.get("items").get(0).get("kind").asString());
+        assertEquals("AGENT", json.get("items").get(1).get("kind").asString());
     }
 
     /** Spec 2026-10-13, section 6: enabling or disabling an account through the API is a pressroom.admin event too. */
@@ -1045,7 +1079,7 @@ class AdminApiTest {
         bound.setSsoIssuer("https://accounts.example");
         bound.setSsoSubject("sub-1");
         User local = aUser("alice");
-        when(weblogger.getUserManager().getUsers(null, null, null, 0, 50)).thenReturn(List.of(bound, local));
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 51)).thenReturn(List.of(bound, local));
         when(weblogger.getUserManager().getRoles(bound)).thenReturn(List.of("reader"));
         when(weblogger.getUserManager().getRoles(local)).thenReturn(List.of("editor"));
 
@@ -1055,8 +1089,8 @@ class AdminApiTest {
                 .andReturn().getResponse().getContentAsString();
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
-        assertTrue(json.get(0).get("sso").asBoolean());
-        assertFalse(json.get(1).get("sso").asBoolean());
+        assertTrue(json.get("items").get(0).get("sso").asBoolean());
+        assertFalse(json.get("items").get(1).get("sso").asBoolean());
     }
 
     @Test
