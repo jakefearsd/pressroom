@@ -269,6 +269,46 @@ class AuditApiTest {
         assertEquals(1, json.get("counts").get("noindex").asInt());
     }
 
+    /**
+     * audit/seo answers the same paging members as every other list:
+     * offset as asked, limit as capped, hasMore true until the last page.
+     * Five gappy entries, paged by two: first, middle and last page.
+     */
+    @Test
+    void seoAuditReportsOffsetLimitAndHasMoreAtEachPage() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        List<WeblogEntry> gappy = new java.util.ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            WeblogEntry entry = new WeblogEntry();
+            entry.setId("e" + i);
+            entry.setAnchor("a" + i);
+            entry.setTitle("T" + i);
+            gappy.add(entry);
+        }
+        when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(gappy);
+
+        assertPage(weblogger, "0", "2", 2, 0, 2, true);
+        assertPage(weblogger, "2", "2", 5, 2, 2, true);
+        assertPage(weblogger, "4", "2", 5, 4, 1, false);
+        assertPage(weblogger, "0", "500", 5, 0, 5, false);
+    }
+
+    private void assertPage(Weblogger weblogger, String offset, String limit, int total, int expectedOffset,
+                            int expectedSize, boolean hasMore) throws Exception {
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo")
+                        .param("offset", offset).param("limit", limit)
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals(expectedOffset, json.get("offset").asInt());
+        assertEquals(Math.min(Integer.parseInt(limit), 200), json.get("limit").asInt());
+        assertEquals(expectedSize, json.get("entries").size());
+        assertEquals(hasMore, json.get("hasMore").asBoolean());
+        assertEquals(5, json.get("total").asInt());
+    }
+
     /** An entry title in the audit list is plain text, though stored escaped. */
     @Test
     void seoAuditRowsCarryThePlainTextTitle() throws Exception {

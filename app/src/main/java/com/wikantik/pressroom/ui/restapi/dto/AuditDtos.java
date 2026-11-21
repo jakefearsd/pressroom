@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
@@ -34,9 +35,15 @@ public final class AuditDtos {
      * {@code total} and {@code counts} describe every gappy entry the
      * search turned up; {@code entries} is only the requested page -- an
      * agent asking for totals does not have to page through everything to
-     * get them.
+     * get them. {@code offset}, {@code limit} (after the cap) and
+     * {@code hasMore} are the paging members every list carries; it keeps
+     * {@code entries} rather than {@code items} because it is a report.
      */
-    public record SeoAudit(int total, Map<String, Integer> counts, List<SeoGap> entries) {
+    public record SeoAudit(int total, Map<String, Integer> counts,
+                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<SeoGap> entries,
+                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
     }
 
     /**

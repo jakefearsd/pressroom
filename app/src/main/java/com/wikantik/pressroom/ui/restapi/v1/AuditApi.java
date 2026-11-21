@@ -140,7 +140,8 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
                 ? List.of()
                 : gappy.subList(offset, Math.min(offset + boundedLimit, total));
 
-        return new AuditDtos.SeoAudit(total, counts, page);
+        return new AuditDtos.SeoAudit(total, counts, page, offset, boundedLimit,
+                (long) offset + boundedLimit < total);
     }
 
     /**

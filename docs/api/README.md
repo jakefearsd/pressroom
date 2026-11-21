@@ -319,12 +319,15 @@ shape before assuming a field exists.**
   `hasMore` is computed by fetching one row past the requested page — page
   until it is `false`, not until a short page arrives. `GET .../comments`
   returns the same envelope.
-- `GET .../audit/seo` returns a `SeoAudit`: `{total, counts, entries}`. There
-  is no `hasMore`; `total` (and `counts`, the same per-gap-type tally, with
+- `GET .../audit/seo` returns a `SeoAudit`: `{total, counts, entries, offset,
+  limit, hasMore}`. `offset` is the requested offset, `limit` the page size
+  after the cap of 200, and `hasMore` is true while entries remain beyond this
+  page. `total` (and `counts`, the same per-gap-type tally, with
   every code the audit can report, zero or not) cover
   **every** gappy entry the search found, not just the current page, so an
   agent can read the shape of the problem without paging through it —
-  `entries` alone is the `offset`/`limit`-sliced page.
+  `entries` alone is the `offset`/`limit`-sliced page. It keeps `entries`
+  rather than `items` because it is a report with a tally.
 - `GET /api/v1/admin/users`, `GET /api/v1/weblogs` and `GET .../media` return
   a **bare JSON array**, `[UserView, ...]` / `[WeblogView, ...]` /
   `[MediaView, ...]` — no envelope, no

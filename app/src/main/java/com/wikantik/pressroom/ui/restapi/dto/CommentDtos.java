@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
@@ -44,7 +45,11 @@ public final class CommentDtos {
             String authorDisplayName, boolean authorIsOwner, String replyTo, String reply) {
     }
 
-    public record CommentPage(List<CommentView> items, int offset, int limit, boolean hasMore) {
+    public record CommentPage(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<CommentView> items,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
     }
 
     /** {@code "PUBLISHED"} or {@code "HIDDEN"}; anything else is a 400. */

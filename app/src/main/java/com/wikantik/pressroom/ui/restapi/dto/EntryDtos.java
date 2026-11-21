@@ -92,7 +92,11 @@ public final class EntryDtos {
             String strand) {
     }
 
-    public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
+    public record EntryPage(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<EntryView> items,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
     }
 
     /**
