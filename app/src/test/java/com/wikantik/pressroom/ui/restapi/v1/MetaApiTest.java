@@ -103,6 +103,19 @@ class MetaApiTest {
     }
 
     /**
+     * Characterisation test (spec 2026-11-20-api-contract-design, Task 1,
+     * criterion 4): written against the code before problem codes existed and
+     * passing immediately. A caller asking for English reads the same detail.
+     */
+    @Test
+    void meWithoutAnAuthenticatedUserIsA401ProblemInEnglishForAnEnglishCaller() throws Exception {
+        JsonNode body = json(mockMvc.perform(get("/v1/me").header("Accept-Language", "en-GB"))
+                .andExpect(status().isUnauthorized()));
+
+        assertEquals("Authentication required.", body.get("detail").asString());
+    }
+
+    /**
      * A Basic-authenticated caller carries no {@link ApiPrincipal}, so there
      * is no token ceiling to report: {@code tokenScope} is an empty object.
      */

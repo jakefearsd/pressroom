@@ -107,6 +107,27 @@ class TokensApiTest {
         assertTrue(body.contains("Authentication required."), body);
     }
 
+    /**
+     * Characterisation test (spec 2026-11-20-api-contract-design, Task 1,
+     * criterion 4): written against the code before problem codes existed and
+     * passing immediately. The exact detail, with and without a header asking
+     * for English.
+     */
+    @Test
+    void noAuthenticatedCallerReadsAuthenticationRequiredInEnglish() throws Exception {
+        for (String language : new String[] {null, "en-GB"}) {
+            var request = get("/v1/tokens");
+            if (language != null) {
+                request.header("Accept-Language", language);
+            }
+            String body = mockMvc(new TokensApi(mockedWeblogger())).perform(request)
+                    .andExpect(status().isUnauthorized())
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals("Authentication required.",
+                    new tools.jackson.databind.ObjectMapper().readTree(body).get("detail").asString(), body);
+        }
+    }
+
     @Test
     void aBearerAuthenticatedCallerCannotMintAToken() throws Exception {
         authenticateWithABearerToken();
