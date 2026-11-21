@@ -235,9 +235,9 @@ final class EntryImports {
                     wanted.url(), null, wanted.alt()).file());
             return null;
         } catch (MediaImports.ImportRefused e) {
-            // The text is the import step's own: passed through whole, as ImportRefused states it.
+            // {1} is the import step's own text, passed through whole, as ImportRefused states it.
             return new Failure(ProblemCode.IMAGE_IMPORT_FAILED,
-                    List.of("Image " + ExternalImages.abbreviate(wanted.url()) + ": " + e.getMessage()));
+                    List.of(ExternalImages.abbreviate(wanted.url()), e.getMessage()));
         }
     }
 

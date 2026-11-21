@@ -238,7 +238,7 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `field.required` takes the field as `{0}`). The bundle value is the old text exactly. A literal brace
   in a value with placeholders cannot be quoted (`MessageFormatRegressionTest` bans a lone apostrophe),
   so it is an argument (`edits.empty`'s `{1}` is `{find, replace}`). Text that is a business exception's
-  message (an image import's refusal) is a passthrough code whose value is `{0}`; they are listed in
+  message (an image import's refusal) is a passthrough code whose last placeholder is that text (`image.scanRefused` is just `{0}`; `image.importFailed` is `Image {0}: {1}`); they are listed in
   `ProblemCode.PASSTHROUGH_CODES`, which `ProblemCodeCatalogTest` pins and which may only shrink. A
   code that has a REST test asserts its `code` (and `errors[].code`): `EntryProblemCodesTest`,
   `EntryImportProblemCodesTest`, `PageProblemCodesTest`.

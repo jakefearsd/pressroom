@@ -469,7 +469,7 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `image.tooManyBodyImages` | 400 | `invalid-request` | More external images in the text than one write imports. |
 | `image.directoryPrivate` | 400 | `invalid-request` | An import was asked for while the default media directory is private. |
 | `image.importBudgetExhausted` | 400 | `invalid-request` | The import step ran out of time before this image. |
-| `image.importFailed` | 400 | `invalid-request` | One image could not be imported; `detail` names it and says why. Text from the import step. |
+| `image.importFailed` | 400 | `invalid-request` | One image could not be imported; `detail` names it (`{0}`) and carries the import step's own reason (`{1}`, English). |
 | `strand.entriesRequired` | 400 | `invalid-request` | `entries` was omitted from a parts replacement. |
 | `strand.pageNotAStrand` | 400 | `invalid-request` | Parts were set on a page that is not a strand. |
 | `strand.tooManyParts` | 400 | `invalid-request` | More parts than a strand holds. |

@@ -151,17 +151,22 @@ class ProblemCodeCatalogTest {
      * fails.
      */
     @Test
-    void thePassthroughCodesArePinnedAndAreExactlyTheCodesWhoseTextIsItsArgument() throws IOException {
+    void thePassthroughCodesArePinnedAndEndInTheForeignText() throws IOException {
         assertEquals(Set.of(ProblemCode.IMAGE_SCAN_REFUSED, ProblemCode.IMAGE_IMPORT_FAILED),
                 ProblemCode.PASSTHROUGH_CODES);
         Properties base = load(BASE_BUNDLE);
         Set<ProblemCode> argumentOnly = new java.util.HashSet<>();
         for (ProblemCode code : ProblemCode.values()) {
-            if ("{0}".equals(base.getProperty(code.key()))) {
+            String english = base.getProperty(code.key());
+            if ("{0}".equals(english)) {
                 argumentOnly.add(code);
             }
+            if (ProblemCode.PASSTHROUGH_CODES.contains(code)) {
+                assertTrue(english.endsWith("{" + (code.arity() - 1) + "}"),
+                        code.code() + ": a passthrough's foreign text is its last placeholder: " + english);
+            }
         }
-        assertEquals(argumentOnly, ProblemCode.PASSTHROUGH_CODES);
+        assertTrue(ProblemCode.PASSTHROUGH_CODES.containsAll(argumentOnly), "a code whose English is {0} is passthrough");
     }
 
     @Test

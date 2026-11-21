@@ -177,7 +177,7 @@ public enum ProblemCode {
     /** The import step ran out of time before this image. */
     IMAGE_IMPORT_BUDGET("image.importBudgetExhausted", ProblemType.INVALID_REQUEST, 2),
     /** One image could not be imported; `detail` names it and says why. Text from the import step. */
-    IMAGE_IMPORT_FAILED("image.importFailed", ProblemType.INVALID_REQUEST, 1),
+    IMAGE_IMPORT_FAILED("image.importFailed", ProblemType.INVALID_REQUEST, 2),
     /** `entries` was omitted from a parts replacement. */
     STRAND_ENTRIES_REQUIRED("strand.entriesRequired", ProblemType.INVALID_REQUEST, 0),
     /** Parts were set on a page that is not a strand. */
@@ -215,12 +215,13 @@ public enum ProblemCode {
     HTTP_ERROR("http.error", null, 0);
 
     /**
-     * The codes whose text is not ours: its English is {@code {0}}, and the
-     * argument is a business exception's own message, passed through whole
+     * The codes whose text is not wholly ours: the last placeholder of its
+     * English is a business exception's own message, passed through whole
      * because the business tier's messages are not a finite set this API can
      * key. This set may only shrink: a code leaves it when its source is
-     * keyed. {@code ProblemCodeCatalogTest} pins it and holds it to the codes
-     * whose English is {@code {0}}.
+     * keyed. {@code ProblemCodeCatalogTest} pins it, holds each member's English
+     * to ending in its last placeholder, and every code whose English is just
+     * {@code {0}} to being a member.
      */
     public static final Set<ProblemCode> PASSTHROUGH_CODES = Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED);
 
