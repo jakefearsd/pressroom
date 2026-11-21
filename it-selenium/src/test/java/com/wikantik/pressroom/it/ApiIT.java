@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.net.HttpCookie;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -27,11 +28,14 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -52,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * unit tests do) answers an unauthenticated call with 401, mints no
  * session on either a failure or a success, and carries that statelessness
  * through the full Basic-auth-mint / Bearer-auth-use / revoke bootstrap
+ * (HTTP Basic authenticates only the token resource since 0.16.0)
  * cycle end to end against a real server; and true multipart handling
  * through the real Tomcat parser and rendition/EXIF/BlurHash pipeline, not
  * {@code MockMultipartFile}. Also confirms (beyond the brief) that
@@ -80,17 +85,18 @@ class ApiIT extends PressroomIT {
         return client.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    /** The admin's password: accepted on the token resource only (spec 2026-11-20, Task 2). */
     private static String basicAuthHeader() {
-        String credentials = ADMIN_USERNAME + ":" + ADMIN_PASSWORD;
-        return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
+        return AdminToken.adminBasic();
     }
 
-    private HttpResponse<String> getWithBasicAuth(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + path))
-                .timeout(Duration.ofSeconds(20))
-                .header("Authorization", basicAuthHeader())
-                .GET().build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    private HttpResponse<String> getWithAuthorization(String path, String authorization) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl() + path))
+                .timeout(Duration.ofSeconds(20));
+        if (authorization != null) {
+            builder.header("Authorization", authorization);
+        }
+        return client.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
     /**
@@ -171,7 +177,10 @@ class ApiIT extends PressroomIT {
      */
     @Test
     void theOpenApiDocumentIsServedAndParses() throws Exception {
-        HttpResponse<String> response = getWithBasicAuth("/api/v1/openapi.json");
+        HttpResponse<String> response;
+        try (AdminToken token = AdminToken.mint("ApiIT openapi", "READ")) {
+            response = get("/api/v1/openapi.json", token.raw());
+        }
         assertEquals(200, response.statusCode(), response.body());
         assertTrue(response.headers().firstValue("Content-Type").orElse("")
                         .startsWith("application/json"),
@@ -220,6 +229,110 @@ class ApiIT extends PressroomIT {
         assertEquals(401, meAfterRevoke.statusCode(),
                 "a revoked token must stop authenticating immediately, not after some later "
                         + "unrelated request happens to flush the database write");
+    }
+
+    // ------------------------------------------- HTTP Basic, token resource only
+
+    private static final String PASSWORD_REFUSED = "Password authentication is accepted only on "
+            + "/api/v1/tokens. Mint a token there and send it as a bearer token.";
+
+    /**
+     * Spec 2026-11-20, Task 2, on the real container: the admin's right
+     * password is refused everywhere but the token resource, with a
+     * problem+json detail that says where a password is accepted.
+     */
+    @Test
+    void aPasswordIsRefusedOffTheTokenResource() throws Exception {
+        for (String path : new String[] {"/api/v1/me", "/api/v1/openapi.json",
+                "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries", "/api/v1/admin/users"}) {
+            HttpResponse<String> response = getWithAuthorization(path, basicAuthHeader());
+            assertEquals(401, response.statusCode(), path + ": " + response.body());
+            assertTrue(response.headers().firstValue("Content-Type").orElse("")
+                    .startsWith("application/problem+json"), path);
+            assertTrue(response.body().contains(PASSWORD_REFUSED), path + ": " + response.body());
+            assertNoSessionCookie(response);
+        }
+        HttpResponse<String> wrong = getWithAuthorization("/api/v1/me",
+                AdminToken.basic(ADMIN_USERNAME, "not-the-password"));
+        assertEquals(401, wrong.statusCode());
+        assertTrue(wrong.body().contains(PASSWORD_REFUSED), wrong.body());
+    }
+
+    /** The token resource still checks the password: a wrong one is a 401, the right one lists tokens. */
+    @Test
+    void theTokenResourceStillTakesAPassword() throws Exception {
+        HttpResponse<String> wrong = getWithAuthorization("/api/v1/tokens",
+                AdminToken.basic(ADMIN_USERNAME, "not-the-password"));
+        assertEquals(401, wrong.statusCode(), wrong.body());
+        assertNoSessionCookie(wrong);
+
+        HttpResponse<String> right = getWithAuthorization("/api/v1/tokens", basicAuthHeader());
+        assertEquals(200, right.statusCode(), right.body());
+        assertTrue(right.body().trim().startsWith("["), right.body());
+    }
+
+    /** Ping needs no credential, and no credential spoils it. */
+    @Test
+    void pingAnswersWhateverCredentialComesWithIt() throws Exception {
+        for (String authorization : new String[] {null, basicAuthHeader(),
+                AdminToken.basic(ADMIN_USERNAME, "not-the-password"), "Bearer prs_definitelynotreal"}) {
+            HttpResponse<String> response = getWithAuthorization("/api/v1/ping", authorization);
+            assertEquals(200, response.statusCode(), authorization + ": " + response.body());
+        }
+    }
+
+    /**
+     * No spelling of a path, as the real container parses it, widens Basic
+     * past the token resource: each is refused, or reaches the token list
+     * (a JSON array), never another handler.
+     */
+    @Test
+    void pathTricksDoNotWidenBasicOnTheRealContainer() throws Exception {
+        for (String path : new String[] {"/api/v1/tokens/../me", "/api/v1/tokens/%2E%2E/me",
+                "/api/v1/%74okens", "/api/v1/tokens;x=1", "/api/v1/tokens;x=1/../me", "/api/v1/tokensX",
+                "/api/v1/tokens/abc%2Fdef", "/api/v1/tokens/abc%2F..%2F..%2Fme", "/api/v1/tokens/"}) {
+            HttpResponse<String> response = getWithAuthorization(path, basicAuthHeader());
+            int status = response.statusCode();
+            String body = response.body();
+            if (status == 200) {
+                assertTrue(body.trim().startsWith("["), path + " reached something else: " + body);
+            } else {
+                assertTrue(status == 400 || status == 401 || status == 404 || status == 405,
+                        path + " answered " + status + ": " + body);
+            }
+            assertFalse(body.contains("\"userName\""), path + " answered as /me: " + body);
+        }
+    }
+
+    /**
+     * Criterion 5 on the real container: a signed-in admin-UI session is no
+     * credential on the API. The API chains are stateless and never read it.
+     */
+    @Test
+    void anAdminUiSessionIsNoCredentialOnTheApi() throws Exception {
+        Map<String, String> cookies = new LinkedHashMap<>();
+        for (HttpCookie cookie : authenticateOverHttp(ADMIN_USERNAME, ADMIN_PASSWORD)) {
+            cookies.put(cookie.getName(), cookie.getValue());
+        }
+        String header = cookies.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining("; "));
+        try {
+            // The control: the same cookie is signed in on the admin UI (no redirect to log in).
+            HttpResponse<String> menu = client.send(HttpRequest.newBuilder(
+                            URI.create(baseUrl() + "/pressroom-ui/menu.rol"))
+                    .timeout(Duration.ofSeconds(20)).header("Cookie", header).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, menu.statusCode(), "the session is not signed in");
+
+            for (String path : new String[] {"/api/v1/me", "/api/v1/tokens"}) {
+                HttpResponse<String> api = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + path))
+                        .timeout(Duration.ofSeconds(20)).header("Cookie", header).GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(401, api.statusCode(), path + ": " + api.body());
+            }
+        } finally {
+            invalidateServerSession(cookies);
+        }
     }
 
     /**

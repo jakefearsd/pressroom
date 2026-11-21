@@ -26,7 +26,6 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,7 @@ import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.KeycloakLoginPage;
@@ -211,6 +211,8 @@ class CommentsIT extends PressroomIT {
     // ------------------------------------------------------------- fixture
 
     private boolean fixtureStarted;
+    /** The admin's API token for this class: minted on first use, revoked after the class. */
+    private AdminToken adminToken;
     private boolean fixtureBuilt;
     private boolean absoluteUrlSet;
     private String priorAbsoluteUrl;
@@ -278,6 +280,14 @@ class CommentsIT extends PressroomIT {
 
         logout();
         fixtureBuilt = true;
+    }
+
+    /** Revokes the admin's API token, if a test minted it. */
+    @AfterAll
+    void revokeTheAdminToken() throws Exception {
+        if (adminToken != null) {
+            adminToken.close();
+        }
     }
 
     /**
@@ -729,7 +739,7 @@ class CommentsIT extends PressroomIT {
         } finally {
             // Best effort, unasserted: a failure here must not replace the test's own.
             for (String tokenId : minted.values()) {
-                send("DELETE", "/api/v1/tokens/" + tokenId, null, Map.of("Authorization", adminBasicAuth()), -1);
+                AdminToken.revoke(tokenId);
             }
         }
     }
@@ -837,22 +847,22 @@ class CommentsIT extends PressroomIT {
         return comments(handle) + "/" + id;
     }
 
-    /** An API call as the seeded admin, over Basic auth as {@code RedirectIT} does. */
+    /** An API call as the seeded admin, with the class's admin token. */
     private JsonNode adminApi(String method, String path, String body, int expected) throws Exception {
         return api(new ArrayList<>(), null, method, path, body, expected);
     }
 
     private int adminApiStatus(String method, String path) throws Exception {
-        return send(method, path, null, Map.of("Authorization", adminBasicAuth()), -1).statusCode();
+        return send(method, path, null, Map.of("Authorization", adminBearer()), -1).statusCode();
     }
 
     /**
-     * An API call with a bearer token ({@code null}: the admin's Basic auth), asserting
+     * An API call with a bearer token ({@code null}: the class's admin token), asserting
      * the status and recording the answer's body.
      */
     private JsonNode api(List<String> answers, String token, String method, String path, String body,
             int expected) throws Exception {
-        String authorization = token == null ? adminBasicAuth() : "Bearer " + token;
+        String authorization = token == null ? adminBearer() : "Bearer " + token;
         HttpResponse<String> response = send(method, path, body,
                 Map.of("Authorization", authorization, "Accept", "application/json"), expected);
         answers.add(response.body());
@@ -862,21 +872,26 @@ class CommentsIT extends PressroomIT {
     /** Mints a token for the admin, remembering its id in {@code minted} for revoking. */
     private String mint(Map<String, String> minted, String role, String weblog) throws Exception {
         String label = "CommentsIT " + role + " " + weblog;
-        JsonNode token = JSON.readTree(send("POST", "/api/v1/tokens",
-                json(Map.of("label", label, "role", role, "weblog", weblog)),
-                Map.of("Authorization", adminBasicAuth()), 201).body());
-        minted.put(label, token.get("info").get("id").asString());
-        return token.get("token").asString();
+        AdminToken token = AdminToken.mint(label, role, weblog);
+        minted.put(label, token.id());
+        return token.raw();
+    }
+
+    /**
+     * The admin's bearer token, minted with the admin's password the first time it is
+     * needed: since 0.16.0 a password is accepted only on /api/v1/tokens.
+     */
+    private String adminBearer() throws Exception {
+        if (adminToken == null) {
+            adminToken = AdminToken.mint("CommentsIT admin", "ADMIN");
+        }
+        return adminToken.bearer();
     }
 
     private static List<String> ids(JsonNode page) {
         List<String> ids = new ArrayList<>();
         page.get("items").forEach(item -> ids.add(item.get("id").asString()));
         return ids;
-    }
-
-    private static String adminBasicAuth() {
-        return "Basic " + Base64.getEncoder().encodeToString((ADMIN_USERNAME + ":" + ADMIN_PASSWORD).getBytes(UTF_8));
     }
 
     private static String json(Map<String, String> fields) {

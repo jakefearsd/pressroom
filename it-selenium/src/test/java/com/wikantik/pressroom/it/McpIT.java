@@ -146,6 +146,11 @@ class McpIT extends PressroomIT {
         assertEquals(unknown.body(), old.body());
     }
 
+    /**
+     * A password is refused by the security chain before the endpoint runs:
+     * since 0.16.0 HTTP Basic authenticates only /api/v1/tokens, and the 401
+     * says so.
+     */
     @Test
     void basicCredentialsAreRefused() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
@@ -157,7 +162,8 @@ class McpIT extends PressroomIT {
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(401, response.statusCode());
-        assertTrue(response.body().contains("MCP accepts API tokens only."), response.body());
+        assertTrue(response.body().contains("Password authentication is accepted only on /api/v1/tokens."),
+                response.body());
     }
 
     @Test

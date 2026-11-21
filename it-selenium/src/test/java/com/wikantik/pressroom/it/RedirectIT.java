@@ -22,10 +22,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,28 +116,32 @@ class RedirectIT extends PressroomIT {
                 "and the new URL serves directly, no redirect involved");
 
         // --- a manual rule over the API covers a migrated path ------------
-        HttpResponse<String> created = apiPost("/api/v1/weblogs/" + handle + "/redirects",
-                "{\"source\":\"/2019/05/legacy-post.html\",\"target\":\"/new-name\"}");
-        assertEquals(201, created.statusCode(), "mint failed: " + created.body());
+        // A token, minted with the admin's password: since 0.16.0 a password is
+        // accepted only on /api/v1/tokens.
+        try (AdminToken token = AdminToken.mint("RedirectIT", "ADMIN")) {
+            HttpResponse<String> created = apiPost(token, "/api/v1/weblogs/" + handle + "/redirects",
+                    "{\"source\":\"/2019/05/legacy-post.html\",\"target\":\"/new-name\"}");
+            assertEquals(201, created.statusCode(), "mint failed: " + created.body());
 
-        String migratedUrl = baseUrl() + "/" + handle + "/2019/05/legacy-post.html";
-        HttpResponse<Void> migrated = send(raw, migratedUrl);
-        assertEquals(301, migrated.statusCode(),
-                "a manual rule must answer a migrated multi-segment path");
-        assertTrue(sendForBody(following, migratedUrl).body().contains("Moving Target"));
+            String migratedUrl = baseUrl() + "/" + handle + "/2019/05/legacy-post.html";
+            HttpResponse<Void> migrated = send(raw, migratedUrl);
+            assertEquals(301, migrated.statusCode(),
+                    "a manual rule must answer a migrated multi-segment path");
+            assertTrue(sendForBody(following, migratedUrl).body().contains("Moving Target"));
 
-        // --- the hit bookkeeping is readable back over the API ------------
-        HttpResponse<String> listed = apiGet("/api/v1/weblogs/" + handle + "/redirects");
-        assertEquals(200, listed.statusCode(), listed.body());
-        String slugRule = ruleObject(listed.body(), "/old-name");
-        String manualRule = ruleObject(listed.body(), "/2019/05/legacy-post.html");
-        assertTrue(slugRule.contains("\"origin\":\"SLUG_HISTORY\""),
-                "the rename-minted rule must say where it came from: " + slugRule);
-        assertTrue(manualRule.contains("\"origin\":\"MANUAL\""), manualRule);
-        assertTrue(hitCountOf(slugRule) >= 2,
-                "both probes of the old URL must have been counted: " + slugRule);
-        assertTrue(slugRule.contains("\"lastHitAt\":\""), slugRule);
-        assertTrue(hitCountOf(manualRule) >= 1, manualRule);
+            // --- the hit bookkeeping is readable back over the API ------------
+            HttpResponse<String> listed = apiGet(token, "/api/v1/weblogs/" + handle + "/redirects");
+            assertEquals(200, listed.statusCode(), listed.body());
+            String slugRule = ruleObject(listed.body(), "/old-name");
+            String manualRule = ruleObject(listed.body(), "/2019/05/legacy-post.html");
+            assertTrue(slugRule.contains("\"origin\":\"SLUG_HISTORY\""),
+                    "the rename-minted rule must say where it came from: " + slugRule);
+            assertTrue(manualRule.contains("\"origin\":\"MANUAL\""), manualRule);
+            assertTrue(hitCountOf(slugRule) >= 2,
+                    "both probes of the old URL must have been counted: " + slugRule);
+            assertTrue(slugRule.contains("\"lastHitAt\":\""), slugRule);
+            assertTrue(hitCountOf(manualRule) >= 1, manualRule);
+        }
     }
 
     // ---------------------------------------------------------------- helpers
@@ -182,27 +186,22 @@ class RedirectIT extends PressroomIT {
                 .GET().build();
     }
 
-    private HttpResponse<String> apiGet(String path) throws Exception {
+    private HttpResponse<String> apiGet(AdminToken token, String path) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + path))
                 .timeout(Duration.ofSeconds(20))
-                .header("Authorization", basicAuthHeader())
+                .header("Authorization", token.bearer())
                 .GET().build();
         return raw.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    private HttpResponse<String> apiPost(String path, String json) throws Exception {
+    private HttpResponse<String> apiPost(AdminToken token, String path, String json) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + path))
                 .timeout(Duration.ofSeconds(20))
-                .header("Authorization", basicAuthHeader())
+                .header("Authorization", token.bearer())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
         return raw.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    private static String basicAuthHeader() {
-        String credentials = ADMIN_USERNAME + ":" + ADMIN_PASSWORD;
-        return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
     }
 
     /** The one JSON object in an array whose "source" equals the given path. */

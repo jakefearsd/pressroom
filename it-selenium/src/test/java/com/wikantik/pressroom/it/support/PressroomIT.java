@@ -405,7 +405,7 @@ public abstract class PressroomIT {
      * Every cookie the exchange produced is returned rather than {@code JSESSIONID} alone,
      * so a deployment that renames the session cookie, or adds one, still works.
      */
-    private static List<HttpCookie> authenticateOverHttp(String username, String password) {
+    protected static List<HttpCookie> authenticateOverHttp(String username, String password) {
         CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
         HttpClient http = HttpClient.newBuilder()
                 .cookieHandler(cookies)
@@ -545,7 +545,7 @@ public abstract class PressroomIT {
     }
 
     /** GETs {@code logout.rol} carrying {@code cookies}, so the server drops the session. */
-    private static void invalidateServerSession(Map<String, String> cookies) {
+    protected static void invalidateServerSession(Map<String, String> cookies) {
         if (cookies.isEmpty()) {
             return;
         }

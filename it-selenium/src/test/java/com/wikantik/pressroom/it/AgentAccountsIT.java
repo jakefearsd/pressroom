@@ -6,12 +6,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.codeborne.selenide.Selenide;
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,6 @@ import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,8 +88,11 @@ class AgentAccountsIT extends PressroomIT {
             entryId = JSON.readTree(toolText(created)).get("id").asString();
         } finally {
             if (entryId != null) {
-                adminRest("DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId);
-                adminRest("POST", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId + "/delete-forever");
+                try (AdminToken admin = AdminToken.mint("AgentAccountsIT cleanup", "POST")) {
+                    adminRest(admin, "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId);
+                    adminRest(admin, "POST",
+                            "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId + "/delete-forever");
+                }
             }
         }
 
@@ -108,7 +110,11 @@ class AgentAccountsIT extends PressroomIT {
         logout();
     }
 
-    /** Criterion 4: HTTP Basic as an agent is a 401 on /api/v1/me. */
+    /**
+     * Criterion 4: HTTP Basic as an agent is a 401. On the token resource, the
+     * one place a password is checked at all (since 0.16.0), and on
+     * /api/v1/me, where no password is accepted.
+     */
     @Test
     void httpBasicAsAnAgentIs401() throws Exception {
         String agent = "itbasic" + nonce();
@@ -116,10 +122,11 @@ class AgentAccountsIT extends PressroomIT {
         createAgent(agent, false);
         logout();
 
-        HttpResponse<String> me = send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/me"))
-                .header("Authorization", basic(agent, "any-password-at-all")).GET());
-
-        assertEquals(401, me.statusCode(), me.body());
+        for (String path : new String[] {"/api/v1/tokens", "/api/v1/me"}) {
+            HttpResponse<String> response = send(HttpRequest.newBuilder(URI.create(baseUrl() + path))
+                    .header("Authorization", AdminToken.basic(agent, "any-password-at-all")).GET());
+            assertEquals(401, response.statusCode(), path + ": " + response.body());
+        }
     }
 
     /**
@@ -182,8 +189,7 @@ class AgentAccountsIT extends PressroomIT {
         loginAsAdmin();
         createAgent(agent, false);
         logout();
-        Token admin = mintAsAdmin("AgentAccountsIT admin");
-        try {
+        try (AdminToken admin = AdminToken.mint("AgentAccountsIT admin", "ADMIN")) {
             HttpResponse<String> patch = send(HttpRequest.newBuilder(
                             URI.create(baseUrl() + "/api/v1/admin/users/" + agent))
                     .header("Authorization", "Bearer " + admin.raw())
@@ -208,8 +214,6 @@ class AgentAccountsIT extends PressroomIT {
                 }
             }
             assertEquals("AGENT", kind, "the newest account is on the first page, with its kind");
-        } finally {
-            revokeAsAdmin(admin.id());
         }
     }
 
@@ -279,28 +283,9 @@ class AgentAccountsIT extends PressroomIT {
         });
     }
 
-    record Token(String id, String raw) { }
-
-    private Token mintAsAdmin(String label) throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("label", label);
-        body.put("role", "ADMIN");
-        HttpResponse<String> response = send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/tokens"))
-                .header("Authorization", basic(ADMIN_USERNAME, ADMIN_PASSWORD))
-                .header("Content-Type", "application/json")
-                .POST(BodyPublishers.ofString(JSON.writeValueAsString(body))));
-        assertEquals(201, response.statusCode(), response.body());
-        JsonNode json = JSON.readTree(response.body());
-        return new Token(json.get("info").get("id").asString(), json.get("token").asString());
-    }
-
-    private void revokeAsAdmin(String id) throws Exception {
-        adminRest("DELETE", "/api/v1/tokens/" + id);
-    }
-
-    private HttpResponse<String> adminRest(String method, String path) throws Exception {
+    private HttpResponse<String> adminRest(AdminToken admin, String method, String path) throws Exception {
         return send(HttpRequest.newBuilder(URI.create(baseUrl() + path))
-                .header("Authorization", basic(ADMIN_USERNAME, ADMIN_PASSWORD))
+                .header("Authorization", admin.bearer())
                 .method(method, BodyPublishers.noBody()));
     }
 
@@ -347,10 +332,6 @@ class AgentAccountsIT extends PressroomIT {
 
     private static boolean isError(JsonNode result) {
         return result.path("isError").asBoolean(false);
-    }
-
-    private static String basic(String user, String password) {
-        return "Basic " + Base64.getEncoder().encodeToString((user + ":" + password).getBytes(UTF_8));
     }
 
     private static String nonce() {
