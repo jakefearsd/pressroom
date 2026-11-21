@@ -1,13 +1,16 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MaintenanceService;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
+import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,38 +45,46 @@ import org.springframework.web.bind.annotation.RestController;
  * too, since {@code CacheManager.invalidate} only marks the cache stale
  * rather than eagerly repopulating it.
  */
+@Tag(name = "Maintenance", description = "The maintenance actions a site admin starts on one weblog: flush its page "
+        + "cache, rebuild its search index, regenerate its media renditions.")
 @RestController
 @RequestMapping("/v1/admin/weblogs/{handle}/actions")
 @AdminScoped
 public class AdminActionsApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "maintenanceFlushCache")
+    @ApiResponse(responseCode = "202", description = "Started; the work finishes after the response.")
     @PostMapping("/flush-cache")
-    public ResponseEntity<Map<String, String>> flushCache(HttpServletRequest request)
+    public ResponseEntity<AdminDtos.MaintenanceAccepted> flushCache(HttpServletRequest request)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         new MaintenanceService(weblogger).flushCache(weblog);
         return accepted("flush-cache", weblog);
     }
 
+    @Operation(operationId = "maintenanceRebuildIndex")
+    @ApiResponse(responseCode = "202", description = "Started; the work finishes after the response.")
     @PostMapping("/rebuild-index")
-    public ResponseEntity<Map<String, String>> rebuildIndex(HttpServletRequest request)
+    public ResponseEntity<AdminDtos.MaintenanceAccepted> rebuildIndex(HttpServletRequest request)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         new MaintenanceService(weblogger).rebuildIndex(weblog);
         return accepted("rebuild-index", weblog);
     }
 
+    @Operation(operationId = "maintenanceRegenerateRenditions")
+    @ApiResponse(responseCode = "202", description = "Started; the work finishes after the response.")
     @PostMapping("/regenerate-renditions")
-    public ResponseEntity<Map<String, String>> regenerateRenditions(HttpServletRequest request)
+    public ResponseEntity<AdminDtos.MaintenanceAccepted> regenerateRenditions(HttpServletRequest request)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         new MaintenanceService(weblogger).regenerateRenditions(weblog);
         return accepted("regenerate-renditions", weblog);
     }
 
-    private static ResponseEntity<Map<String, String>> accepted(String action, Weblog weblog) {
+    private static ResponseEntity<AdminDtos.MaintenanceAccepted> accepted(String action, Weblog weblog) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(Map.of("action", action, "weblog", weblog.getHandle()));
+                .body(new AdminDtos.MaintenanceAccepted(action, weblog.getHandle()));
     }
 
     @Override

@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -75,6 +78,8 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * that a blank password is only safe to accept when a link can actually be
  * delivered.
  */
+@Tag(name = "Site administration", description = "Site-wide administration (site admins): user accounts, revision "
+        + "retention, runtime properties.")
 @RestController
 @RequestMapping("/v1/admin")
 @AdminScoped
@@ -103,6 +108,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
     // ------------------------------------------------------------- users
 
+    @Operation(operationId = "usersList")
     @GetMapping("/users")
     public List<AdminDtos.UserView> listUsers(
             @RequestParam(value = "enabled", required = false) Boolean enabled,
@@ -124,6 +130,8 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         return views;
     }
 
+    @Operation(operationId = "usersCreate")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("/users")
     public ResponseEntity<AdminDtos.UserView> createUser(@RequestBody AdminDtos.UserCreate body)
             throws WebloggerException {
@@ -202,6 +210,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
     }
 
+    @Operation(operationId = "usersUpdate")
     @PatchMapping("/users/{userName}")
     public AdminDtos.UserView patchUser(HttpServletRequest request,
             @PathVariable("userName") String userName, @RequestBody AdminDtos.UserPatch body)
@@ -288,6 +297,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * pages, kept revisions, the largest items, the last sweep, and what the
      * next sweep would remove at the current limits.
      */
+    @Operation(operationId = "revisionsGetStats")
     @GetMapping("/revisions")
     public RevisionSweep.Stats revisions() throws WebloggerException {
         return weblogger.getWeblogEntryManager().revisionStats();
@@ -298,6 +308,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * remove: removal is asked for in so many words ({@code "dryRun":
      * false}), never by leaving the body out.
      */
+    @Operation(operationId = "revisionsSweep")
     @PostMapping("/revisions/sweep")
     public RevisionSweep.Report sweepRevisions(@RequestBody(required = false) RevisionSweepRequest body) {
         boolean dryRun = body == null || !Boolean.FALSE.equals(body.dryRun());
@@ -308,6 +319,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * Every runtime-settable property, current value first, falling back to
      * its declared default when no row has ever been saved for it.
      */
+    @Operation(operationId = "configList")
     @GetMapping("/config")
     public List<AdminDtos.ConfigEntry> listConfig() throws WebloggerException {
         List<AdminDtos.ConfigEntry> entries = new ArrayList<>();
@@ -331,6 +343,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      * against its declared type, so a whole-request failure never leaves a
      * partial write behind.
      */
+    @Operation(operationId = "configUpdate")
     @PatchMapping("/config")
     public List<AdminDtos.ConfigEntry> patchConfig(@RequestBody Map<String, String> body)
             throws WebloggerException {

@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -36,6 +38,7 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * {@code PressroomHandlerInterceptor} is what actually enforces it; this
  * controller adds no permission checking of its own.
  */
+@Tag(name = "Audits", description = "Work lists for one weblog: entries with SEO gaps, and images without alt text.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/audit")
 public class AuditApi extends BaseApiController implements UISecurityEnforced {
@@ -75,6 +78,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
      * everything to see it. Only {@code entries} is sliced by
      * {@code offset}/{@code limit}.
      */
+    @Operation(operationId = "auditsGetSeo")
     @GetMapping("/seo")
     public AuditDtos.SeoAudit seo(
             HttpServletRequest request,
@@ -153,6 +157,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
      * {@code status=TRASHED}, and with the same 409 every other entry route
      * gives it. Another weblog's entry is a 404, as a missing one is.
      */
+    @Operation(operationId = "auditsGetSeoEntry")
     @GetMapping("/seo/entries/{id}")
     public AuditDtos.SeoEntryAudit seoEntry(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -181,6 +186,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
      * UI's own marker use, so this list never disagrees with what a reader
      * actually sees rendered.
      */
+    @Operation(operationId = "auditsGetMedia")
     @GetMapping("/media")
     public AuditDtos.MediaAudit media(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);

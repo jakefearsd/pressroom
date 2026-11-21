@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -39,7 +40,13 @@ public final class RedirectDtos {
     }
 
     /** A create. The API can only ever mint MANUAL rules. */
-    public record RedirectWrite(String source, String target) {
+    public record RedirectWrite(
+            @Schema(description = "The weblog-relative path to redirect, such as /old-path: no handle, no query "
+                    + "string. Only a path that would otherwise 404 is ever redirected.")
+            String source,
+            @Schema(description = "The weblog-relative path it answers with a 301, such as /new-path. Not off-site, "
+                    + "and not itself redirected.")
+            String target) {
     }
 
     public static RedirectView toView(WeblogRedirect rule) {

@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.ArrayList;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code ApiScopeInterceptor} reads {@code @AdminScoped} off the class, not
  * the route.
  */
+@Tag(name = "Weblogs", description = "Every weblog on the site (site admins).")
 @RestController
 @RequestMapping("/v1/weblogs")
 @AdminScoped
@@ -41,6 +44,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
     // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
+    @Operation(operationId = "weblogsList")
     @GetMapping("")
     public List<AdminDtos.WeblogView> list(
             @RequestParam(value = "offset", defaultValue = "0") int offset,

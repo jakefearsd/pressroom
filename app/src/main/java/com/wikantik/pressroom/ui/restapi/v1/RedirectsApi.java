@@ -17,6 +17,9 @@
  */
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -54,10 +57,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * duplicates); this controller maps those refusals to readable 400s and adds
  * only the column-length check the manager answers with a bare exception.
  */
+@Tag(name = "Redirects", description = "A weblog's redirect rules: 301s for URLs that would otherwise 404.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/redirects")
 public class RedirectsApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "redirectsList")
     @GetMapping("")
     public List<RedirectDtos.RedirectView> list(HttpServletRequest request)
             throws WebloggerException {
@@ -67,6 +72,8 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
                 .toList();
     }
 
+    @Operation(operationId = "redirectsCreate")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("")
     public ResponseEntity<RedirectDtos.RedirectView> create(
             HttpServletRequest request, @RequestBody RedirectDtos.RedirectWrite body)
@@ -109,6 +116,8 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
         return ResponseEntity.created(location).body(RedirectDtos.toView(rule));
     }
 
+    @Operation(operationId = "redirectsDelete")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> remove(HttpServletRequest request,
             @PathVariable("id") String id) throws WebloggerException {

@@ -87,7 +87,13 @@ public final class PageDtos {
      * The SEO card's fields follow the entry's rules ({@link SeoFields}).
      */
     public record PageWrite(
-            String slug, String title, String text,
+            @Schema(description = "The page's URL path segment: no slash, not a reserved name, unique in the "
+                    + "weblog.")
+            String slug,
+            @Schema(description = "The page's title, as plain text.")
+            String title,
+            @Schema(description = "The page's text, in Markdown.")
+            String text,
             @Schema(description = "DRAFT or PUBLISHED; a new page without one is a DRAFT.")
             String status,
             @Schema(description = "List the page in the blog's navigation.")
@@ -129,8 +135,13 @@ public final class PageDtos {
             + "the page was read with. If the page's text is no longer that, the request is a 409 page-changed "
             + "whose currentContentHash is the stored text's hash, and nothing is saved. Optional.";
 
-    /** The optional body of a page revision restore. */
-    public record RevisionRestore(
+    /**
+     * The optional body of a page revision restore. Not {@code
+     * RevisionRestore}: that is the entry's ({@code RevisionDtos}), and
+     * springdoc merged the two schemas under the one simple name, giving the
+     * page's restore the entry's text in openapi.json.
+     */
+    public record PageRevisionRestore(
             @Schema(description = EXPECTED_CONTENT_HASH_DESCRIPTION)
             String expectedContentHash) {
     }

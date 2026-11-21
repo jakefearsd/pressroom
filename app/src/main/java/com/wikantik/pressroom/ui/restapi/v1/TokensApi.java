@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -73,6 +76,8 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * MockMvc test cannot see because it never runs a real transaction boundary
  * at all.
  */
+@Tag(name = "Tokens", description = "Minting, listing and revoking the caller's own API tokens, with a password (HTTP "
+        + "Basic).")
 @RestController
 @RequestMapping("/v1/tokens")
 public class TokensApi {
@@ -83,6 +88,8 @@ public class TokensApi {
         this.weblogger = weblogger;
     }
 
+    @Operation(operationId = "tokensIssue")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("")
     public ResponseEntity<TokenDtos.IssuedToken> issue(@RequestBody TokenDtos.IssueRequest request)
             throws WebloggerException {
@@ -113,6 +120,7 @@ public class TokensApi {
         return ResponseEntity.status(HttpStatus.CREATED).body(new TokenDtos.IssuedToken(issued.rawToken(), view));
     }
 
+    @Operation(operationId = "tokensList")
     @GetMapping("")
     public List<TokenDtos.TokenView> list() throws WebloggerException {
         // The whole /v1/tokens resource is Basic-only, the same as issue():
@@ -125,6 +133,8 @@ public class TokensApi {
                 .toList();
     }
 
+    @Operation(operationId = "tokensRevoke")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> revoke(@PathVariable("id") String id) throws WebloggerException {
         // Same as list(): a leaked token must not be able to revoke any of

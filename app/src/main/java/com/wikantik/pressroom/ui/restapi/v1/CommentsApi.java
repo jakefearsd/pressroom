@@ -17,6 +17,9 @@
  */
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -60,6 +63,7 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * switched off on the weblog. The token's user is the actor, and replies are
  * written as that user.
  */
+@Tag(name = "Comments", description = "Readers' comments on a weblog's entries: read, moderate, delete and reply.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/comments")
 public class CommentsApi extends BaseApiController implements UISecurityEnforced {
@@ -72,6 +76,7 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
     @Lazy
     CommentService commentService;
 
+    @Operation(operationId = "commentsList")
     @GetMapping("")
     public CommentDtos.CommentPage list(HttpServletRequest request,
             @RequestParam(value = "status", required = false) String status,
@@ -102,11 +107,13 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         return new CommentDtos.CommentPage(items, offset, bounded, hasMore);
     }
 
+    @Operation(operationId = "commentsGet")
     @GetMapping("/{id}")
     public CommentDtos.CommentView get(HttpServletRequest request, @PathVariable("id") String id) {
         return CommentDtos.toView(requireComment(request, id));
     }
 
+    @Operation(operationId = "commentsUpdate")
     @PatchMapping("/{id}")
     public CommentDtos.CommentView update(HttpServletRequest request, @PathVariable("id") String id,
             @RequestBody CommentDtos.CommentPatch body) throws WebloggerException {
@@ -122,6 +129,8 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         return CommentDtos.toView(comment);
     }
 
+    @Operation(operationId = "commentsDelete")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> remove(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -130,6 +139,8 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(operationId = "commentsReply")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("/{id}/replies")
     public ResponseEntity<CommentDtos.CommentView> reply(HttpServletRequest request,
             @PathVariable("id") String id, @RequestBody CommentDtos.CommentReply body)

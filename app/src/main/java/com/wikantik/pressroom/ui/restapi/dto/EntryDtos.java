@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.restapi.Paging;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.nio.charset.StandardCharsets;
@@ -93,10 +94,12 @@ public final class EntryDtos {
     }
 
     public record EntryPage(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<EntryView> items,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
+            @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            List<EntryView> items,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore) {
     }
 
     /**
@@ -110,6 +113,7 @@ public final class EntryDtos {
      * repeating the featured image, retired with spec 2026-11-07.
      */
     public record PreviewRequest(
+            @Schema(description = "The text to render, in Markdown; absent renders an empty draft.")
             String text,
             @Schema(description = EDITS_DESCRIPTION)
             List<TextEdit> edits,
@@ -238,6 +242,8 @@ public final class EntryDtos {
                     + "feed's summary. Markdown is accepted; lists show it as plain text. Without one, lists show "
                     + "the first couple of sentences of the text.")
             String summary,
+            @Schema(description = "The entry's text, in Markdown. On update it replaces the whole text; not with "
+                    + "edits.")
             String text,
             @Schema(description = "DRAFT, PUBLISHED, PENDING or SCHEDULED; a new entry without one is a "
                     + "DRAFT. TRASHED is not writable: trash, restore and delete-forever are their own calls.")
@@ -259,10 +265,15 @@ public final class EntryDtos {
             @Schema(description = "The meta description search engines and share previews show: one or two whole sentences, "
                     + "50 to 160 characters (longer is cut off in a search result), saying what a reader will find.")
             String searchDescription,
+            @Schema(description = "An absolute http(s) URL this entry canonicalises to, when it was first "
+                    + "published elsewhere.")
             String canonicalUrl,
+            @Schema(description = "True asks search engines not to index the entry. Not clearable.")
             Boolean noindex,
             @Schema(description = "Id of a media file in this weblog, used as the featured image.")
             String featuredImageId,
+            @Schema(description = "Id of an image in this weblog's media, outside any private directory, "
+                    + "used as the share image.")
             String ogImageId,
             @Schema(description = "Structured data the permalink emits beside BlogPosting: BLOG_POSTING "
                     + "(the default), TOURIST_ATTRACTION, TOURIST_TRIP, EVENT, FAQ_PAGE or TECH_ARTICLE (which makes the article block a TechArticle instead of a BlogPosting).")

@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -23,7 +24,11 @@ public final class CategoryDtos {
      * com.wikantik.pressroom.ui.restapi.v1.CategoriesApi} enforces that,
      * not this record.
      */
-    public record CategoryWrite(String name, String description) {
+    public record CategoryWrite(
+            @Schema(description = "The category's name, unique in the weblog. Required on create.")
+            String name,
+            @Schema(description = "What the category is for.")
+            String description) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

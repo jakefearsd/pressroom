@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Set;
@@ -45,16 +47,19 @@ import org.springframework.web.bind.annotation.RestController;
  * is the Theme page's switch, through the page's own {@code SharedThemeRules}. Neither page
  * restricts any field to site admins, so neither does this.
  */
+@Tag(name = "Weblog settings", description = "A weblog's settings and theme, for its owner.")
 @RestController
 @RequestMapping("/v1/weblogs")
 @AdminScoped
 public class WeblogSettingsApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "weblogsGet")
     @GetMapping("/{handle}")
     public AdminDtos.WeblogView get(HttpServletRequest request) {
         return AdminDtos.toView(requireActionWeblog(request));
     }
 
+    @Operation(operationId = "weblogsUpdate")
     @PatchMapping("/{handle}")
     public AdminDtos.WeblogView update(HttpServletRequest request, @RequestBody AdminDtos.WeblogPatch body)
             throws WebloggerException {

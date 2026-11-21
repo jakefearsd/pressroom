@@ -1859,6 +1859,12 @@ and open it in any external OpenAPI viewer/editor. It is not part of one weblog,
 token pinned to a weblog is refused with the 404 problem every such route
 gives it ([Token scopes](#token-scopes)); fetch it with an unpinned token.
 
+Every operation has an explicit `operationId` (`entriesList`, `pagesRestoreRevision`), which generated
+clients name their methods after, and a tag naming its group of routes. Success bodies are
+`application/json`. Every operation's `default` response is an `ApiProblem` served as
+`application/problem+json` (see [Errors](#errors)); its `code` is a plain string whose known values are
+listed as `x-extensible-enum`, so a client should accept a code it does not know.
+
 ## `bin/pressroom-api`
 
 A thin `curl`+`jq` wrapper covering most of the above:

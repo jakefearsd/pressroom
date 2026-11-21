@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -27,10 +29,12 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * interceptor withholds it from every API handler, so it answers as an unknown weblog. And unlike the
  * page, an unknown {@code period} is refused rather than shown as 30d.
  */
+@Tag(name = "Traffic", description = "A weblog's visitor figures, from the site's analytics.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/traffic")
 public class TrafficApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "trafficGet")
     @GetMapping("")
     public TrafficDtos.TrafficView get(HttpServletRequest request,
             @Parameter(description = "One of 24h, 7d, 30d (the default) or 90d.")

@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,10 +45,12 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * second file -- {@code /categories/**} and {@code /tags} are two independent
  * suffixes under the same {@code {handle}} prefix, not a parent/child pair.
  */
+@Tag(name = "Categories and tags", description = "A weblog's categories, and the tags its entries carry.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}")
 public class CategoriesApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "categoriesList")
     @GetMapping("/categories")
     public List<CategoryDtos.CategoryView> list(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
@@ -56,6 +61,8 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         return views;
     }
 
+    @Operation(operationId = "categoriesCreate")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("/categories")
     public ResponseEntity<CategoryDtos.CategoryView> create(
             HttpServletRequest request, @RequestBody CategoryDtos.CategoryWrite body) throws WebloggerException {
@@ -84,6 +91,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDtos.toView(category, 0));
     }
 
+    @Operation(operationId = "categoriesUpdate")
     @PatchMapping("/categories/{id}")
     public CategoryDtos.CategoryView update(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -132,6 +140,8 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
      * category. Both go through {@link WeblogOwnership#category}, and a null
      * result on either is 404.
      */
+    @Operation(operationId = "categoriesDelete")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/categories/{id}")
     public ResponseEntity<Void> delete(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -183,6 +193,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
      * tag cloud uses -- no offset/limit, since a per-weblog tag cloud is
      * small enough that pagination has never been worth the API surface.
      */
+    @Operation(operationId = "tagsList")
     @GetMapping("/tags")
     public List<CategoryDtos.TagView> tags(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);

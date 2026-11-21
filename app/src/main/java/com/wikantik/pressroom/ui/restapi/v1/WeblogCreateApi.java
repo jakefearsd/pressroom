@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -30,10 +33,13 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * token limited to one weblog meets ApiScopeInterceptor's default (no weblog
  * on this route, so 404), and a READ token its 403.
  */
+@Tag(name = "Weblog creation", description = "Creating a weblog; the caller becomes its owner.")
 @RestController
 @RequestMapping("/v1/weblogs")
 public class WeblogCreateApi extends BaseApiController implements UISecurityEnforced {
 
+    @Operation(operationId = "weblogsCreate")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("")
     public ResponseEntity<AdminDtos.WeblogView> create(HttpServletRequest request,
             @RequestBody AdminDtos.WeblogCreate body) throws WebloggerException {

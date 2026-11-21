@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.restapi.Paging;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -46,17 +47,24 @@ public final class CommentDtos {
     }
 
     public record CommentPage(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<CommentView> items,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
+            @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            List<CommentView> items,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore) {
     }
 
     /** {@code "PUBLISHED"} or {@code "HIDDEN"}; anything else is a 400. */
-    public record CommentPatch(String status) {
+    public record CommentPatch(
+            @Schema(description = "On update: PUBLISHED or HIDDEN, the only statuses a comment can be set to.")
+            String status) {
     }
 
-    public record CommentReply(String body) {
+    public record CommentReply(
+            @Schema(description = "The reply's text, written as the token's user and published at once; at most "
+                    + "4000 characters.")
+            String body) {
     }
 
     public static CommentView toView(ReaderComment c) {

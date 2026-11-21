@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
@@ -64,7 +65,8 @@ public interface RevisionSweep {
     }
 
     /** An item and how many revisions it holds. A post's title is stored escaped, a page's raw. */
-    record ItemCount(ItemKind kind, String id, String title, long revisions) {
+    record ItemCount(@Schema(description = "ENTRY or PAGE: whose revisions these are.") ItemKind kind,
+                     String id, String title, long revisions) {
     }
 
     /**

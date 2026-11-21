@@ -66,7 +66,18 @@ public final class MediaDtos {
      * no business making, so the controller applies it after an explicit
      * lookup of its own.
      */
-    public record MediaPatch(String altText, Double focalX, Double focalY, String directoryId, String name,
+    public record MediaPatch(
+            @Schema(description = "Alt text for the image; an empty string marks it decorative. Remove with clear.")
+            String altText,
+            @Schema(description = "The focal point's left-to-right position, a fraction of the width from 0 to 1. "
+                    + "A file has both coordinates or neither.")
+            Double focalX,
+            @Schema(description = "The focal point's top-to-bottom position, a fraction of the height from 0 to 1.")
+            Double focalY,
+            @Schema(description = "A directory id: moves the file there.")
+            String directoryId,
+            @Schema(description = "The file's name; not blank.")
+            String name,
             @Schema(description = "Fields to remove: altText, focalX with focalY.")
             List<String> clear) {
     }
@@ -80,7 +91,11 @@ public final class MediaDtos {
      * optional; {@code name} is required, enforced by {@code MediaApi}, not
      * this record.
      */
-    public record DirectoryWrite(String name, String description) {
+    public record DirectoryWrite(
+            @Schema(description = "The directory's name, unique in the weblog. Required.")
+            String name,
+            @Schema(description = "What the directory holds.")
+            String description) {
     }
 
     /**

@@ -48,7 +48,13 @@ public final class AdminDtos {
      * creates the account disabled and emails a set-password link instead,
      * so no plaintext password ever crosses this API.
      */
-    public record UserCreate(String userName, String screenName, String emailAddress) {
+    public record UserCreate(
+            @Schema(description = "The account's user name, which it signs in with; it never changes.")
+            String userName,
+            @Schema(description = "The account's display name.")
+            String screenName,
+            @Schema(description = "The account's email address; the set-password link is sent to it.")
+            String emailAddress) {
     }
 
     /**
@@ -56,7 +62,28 @@ public final class AdminDtos {
      * property unchanged; {@code userName} is the path variable and is not
      * itself patchable.
      */
-    public record UserPatch(Boolean enabled, String screenName, String emailAddress) {
+    public record UserPatch(
+            @Schema(description = "Whether the account may sign in.")
+            Boolean enabled,
+            @Schema(description = "The account's display name.")
+            String screenName,
+            @Schema(description = "The account's email address. On a single-sign-on account, replaced at its next "
+                    + "sign-in.")
+            String emailAddress) {
+    }
+
+    /**
+     * The answer to a maintenance action ({@code AdminActionsApi}): which
+     * action was started, on which weblog. It was a {@code Map}; the record
+     * fixes the member order as {@code action}, {@code weblog}.
+     */
+    public record MaintenanceAccepted(
+            @Schema(description = "flush-cache, rebuild-index or regenerate-renditions: the action started.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String action,
+            @Schema(description = "The handle of the weblog it was started on.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String weblog) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -95,9 +122,12 @@ public final class AdminDtos {
             @Schema(description = "The weblog's name.") String name,
             @Schema(description = THEME_DESCRIPTION)
             String theme,
+            @Schema(description = "A line under the weblog's name.")
             String tagline,
             @Schema(description = "The footer's copyright notice, plain text, at most 255 characters.")
-            String copyright, String emailAddress,
+            String copyright,
+            @Schema(description = "The weblog's contact email address. On create, defaults to the user's own.")
+            String emailAddress,
             @Schema(description = "A locale such as en_US. On create, defaults to the user's own.") String locale,
             @Schema(description = "A time zone id such as Europe/Berlin. On create, defaults to the user's own.")
             String timeZone) {
@@ -123,18 +153,44 @@ public final class AdminDtos {
      * explicit blank {@code customDomain} still clears the domain (the
      * JSP editor's convention), but {@code clear} is the way to say it.
      */
-    public record WeblogPatch(String name, String tagline, String copyright, String emailAddress, String locale,
-                               String timeZone, Integer entryDisplayCount, Boolean active,
-                               String customDomain, String icon, String about,
+    public record WeblogPatch(@Schema(description = "The weblog's name.") String name,
+                               @Schema(description = "A line under the weblog's name. Remove with clear.")
+                               String tagline,
+                               @Schema(description = "The footer's copyright notice, plain text, at most 255 "
+                                       + "characters. Remove with clear.")
+                               String copyright,
+                               @Schema(description = "The weblog's contact email address.") String emailAddress,
+                               @Schema(description = "A locale such as en_US.") String locale,
+                               @Schema(description = "A time zone id such as Europe/Berlin.") String timeZone,
+                               @Schema(description = "How many entries a page of the weblog shows: at least 1, "
+                                       + "at most the site's limit.")
+                               Integer entryDisplayCount,
+                               @Schema(description = "False takes the weblog offline.") Boolean active,
+                               @Schema(description = "A hostname the weblog is served at, such as "
+                                       + "blog.example.com; an empty string or clear removes it.")
+                               String customDomain,
+                               @Schema(description = "The path of the weblog's icon image, at most 255 "
+                                       + "characters. Remove with clear.")
+                               String icon,
+                               @Schema(description = "A short text about this weblog, at most 255 "
+                                       + "characters. Remove with clear.")
+                               String about,
+                               @Schema(description = "The UUID of the newsletter list readers subscribe to. "
+                                       + "Remove with clear.")
                                String newsletterListUuid,
                                @Schema(description = "Id of an existing business profile") String businessId,
                                @Schema(description = "LodgingBusiness, or omit; needs placeLocality") String placeType,
-                               String placeLocality, String placeRegion,
+                               @Schema(description = "The place's town or city, at most 128 characters")
+                               String placeLocality,
+                               @Schema(description = "The place's region, at most 128 characters")
+                               String placeRegion,
                                @Schema(description = "Two-letter country code") String placeCountry,
                                @Schema(description = "Decimal degrees, given as a pair; stored to two decimals")
                                Double placeLat,
                                @Schema(description = "Decimal degrees, given as a pair; stored to two decimals")
                                Double placeLng,
+                               @Schema(description = "An http or https URL where the place is booked, at most "
+                                       + "255 characters")
                                String bookingUrl,
                                @Schema(description = "Allow signed-in readers to comment. Not clearable.")
                                Boolean commentsEnabled,

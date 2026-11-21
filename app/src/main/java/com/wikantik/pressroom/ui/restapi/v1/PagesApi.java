@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.ArrayList;
@@ -55,6 +58,8 @@ import org.apache.commons.lang3.StringUtils;
  * {@code WebloggerException} that the generic handler can only render as an
  * opaque 500.
  */
+@Tag(name = "Pages", description = "A weblog's pages: write, trash and restore them, their revisions, and a strand's "
+        + "parts.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/pages")
 public class PagesApi extends BaseApiController implements UISecurityEnforced {
@@ -68,6 +73,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * view is complete, {@code trashedAt} included). No other status filters
      * the list, so any other value is refused, not ignored.
      */
+    @Operation(operationId = "pagesList")
     @GetMapping("")
     public List<PageDtos.PageView> list(
             HttpServletRequest request,
@@ -96,12 +102,15 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
     }
 
+    @Operation(operationId = "pagesGet")
     @GetMapping("/{id}")
     public PageDtos.PageView get(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
         return view(requirePage(request, id));
     }
 
+    @Operation(operationId = "pagesCreate")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("")
     public ResponseEntity<PageDtos.PageView> create(
             HttpServletRequest request, @RequestBody PageDtos.PageWrite body) throws WebloggerException {
@@ -150,6 +159,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         return ResponseEntity.created(location).body(view(page));
     }
 
+    @Operation(operationId = "pagesUpdate")
     @PatchMapping("/{id}")
     public PageDtos.PageView update(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -199,6 +209,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * save replaced, with who saved, when and its note. No content here;
      * {@link #revision} has it. As readable as the page itself.
      */
+    @Operation(operationId = "pagesListRevisions")
     @GetMapping("/{id}/revisions")
     public List<RevisionDtos.RevisionSummary> revisions(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -214,6 +225,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * {@code against}. Either id naming another page's revision is the 404
      * an unknown id gets.
      */
+    @Operation(operationId = "pagesGetRevision")
     @GetMapping("/{id}/revisions/{revisionId}")
     public RevisionDtos.RevisionView revision(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -232,11 +244,12 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * {@code expectedContentHash} that is not the stored content's (409
      * page-changed).
      */
+    @Operation(operationId = "pagesRestoreRevision")
     @PostMapping("/{id}/revisions/{revisionId}/restore")
     public PageDtos.PageView restoreRevision(
             HttpServletRequest request, @PathVariable("id") String id,
             @PathVariable("revisionId") String revisionId,
-            @RequestBody(required = false) PageDtos.RevisionRestore body) throws WebloggerException {
+            @RequestBody(required = false) PageDtos.PageRevisionRestore body) throws WebloggerException {
         WeblogPage page = requireLivePageForWrite(request, id);
         WeblogPageRevision revision = pageContent().requireRevision(page, revisionId);
         // The manager's restore, not a plain save: a restore is never
@@ -252,6 +265,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * limit and the site-wide ceiling until it is released. At most ten per
      * page; an eleventh is a 409.
      */
+    @Operation(operationId = "pagesKeepRevision")
     @PostMapping("/{id}/revisions/{revisionId}/keep")
     public RevisionDtos.RevisionSummary keepPageRevision(
             HttpServletRequest request, @PathVariable("id") String pageId,
@@ -260,6 +274,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     }
 
     /** Releases a kept revision to the ordinary retention rules; nothing is removed by the call itself. */
+    @Operation(operationId = "pagesUnkeepRevision")
     @PostMapping("/{id}/revisions/{revisionId}/unkeep")
     public RevisionDtos.RevisionSummary unkeepPageRevision(
             HttpServletRequest request, @PathVariable("id") String pageId,
@@ -286,6 +301,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * {@code weblog.lastModified}, which expires the rendered strand page and
      * its parts.
      */
+    @Operation(operationId = "pagesReplaceParts")
     @PutMapping("/{id}/parts")
     public PageDtos.PageView replaceParts(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -379,6 +395,8 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * page already in the trash is a 409, so a retried DELETE does not move
      * the purge clock.
      */
+    @Operation(operationId = "pagesTrash")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -393,6 +411,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * nothing, and a page that was the front door is not made the front door
      * again. A page that is not trashed is a 409.
      */
+    @Operation(operationId = "pagesRestore")
     @PostMapping("/{id}/restore")
     public PageDtos.PageView restore(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -407,6 +426,8 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * published, outside any strand. A second, deliberate step after
      * trashing, never a way around it: a live page's id is a 409.
      */
+    @Operation(operationId = "pagesDeleteForever")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @PostMapping("/{id}/delete-forever")
     public ResponseEntity<Void> deleteForever(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {

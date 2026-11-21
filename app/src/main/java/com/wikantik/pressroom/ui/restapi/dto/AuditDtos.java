@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import com.wikantik.pressroom.ui.restapi.Paging;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -39,11 +40,17 @@ public final class AuditDtos {
      * {@code hasMore} are the paging members every list carries; it keeps
      * {@code entries} rather than {@code items} because it is a report.
      */
-    public record SeoAudit(int total, Map<String, Integer> counts,
-                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<SeoGap> entries,
-                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int offset,
-                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit,
-                           @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore) {
+    public record SeoAudit(
+            @Schema(description = "How many entries have a gap, across every page.") int total,
+            @Schema(description = "Per gap code, how many entries have that gap, across every page; every code "
+                    + "the audit can report is a key, zero or not.")
+            Map<String, Integer> counts,
+            @Schema(description = "This page of the entries with gaps.", requiredMode = Schema.RequiredMode.REQUIRED)
+            List<SeoGap> entries,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore) {
     }
 
     /**

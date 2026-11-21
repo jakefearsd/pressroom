@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
  * type is {@code Object}; the {@code @ApiResponse} keeps openapi.json naming
  * the view (or page) a caller gets without it.
  */
+@Tag(name = "Entries", description = "Reading a weblog's entries and their revisions.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesApi extends BaseApiController implements UISecurityEnforced {
@@ -55,6 +58,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
     // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
+    @Operation(operationId = "entriesList")
     @GetMapping("")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryPage.class)))
     public Object list(
@@ -112,6 +116,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         return shown.project(new EntryDtos.EntryPage(items, offset, boundedLimit, hasMore));
     }
 
+    @Operation(operationId = "entriesGet")
     @GetMapping("/{id}")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object get(HttpServletRequest request, @PathVariable("id") String id,
@@ -128,6 +133,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      * action weblog; a miss, another weblog's entry and a failed lookup are
      * all the one 404 an unknown id gets.
      */
+    @Operation(operationId = "entriesGetByAnchor")
     @GetMapping("/by-anchor/{anchor}")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object getByAnchor(HttpServletRequest request,
@@ -157,6 +163,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      * answer; {@link #revision} has it. As readable as the entry itself, a
      * trashed one included, as {@link #get} is.
      */
+    @Operation(operationId = "entriesListRevisions")
     @GetMapping("/{id}/revisions")
     public List<RevisionDtos.RevisionSummary> revisions(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -172,6 +179,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      * by {@code against}. Both ids are checked against the entry: another
      * entry's revision is the 404 an unknown id gets.
      */
+    @Operation(operationId = "entriesGetRevision")
     @GetMapping("/{id}/revisions/{revisionId}")
     public RevisionDtos.RevisionView revision(
             HttpServletRequest request, @PathVariable("id") String id,

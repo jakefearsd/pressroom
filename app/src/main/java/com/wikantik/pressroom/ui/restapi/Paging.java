@@ -3,6 +3,14 @@ package com.wikantik.pressroom.ui.restapi;
 /** The limit/offset guard every list endpoint of {@code /api/v1} shares. */
 public final class Paging {
 
+    /** The text openapi.json gives each member of the one page shape ({@code EntryPage} and the rest). */
+    public static final String ITEMS_DESCRIPTION = "This page of the list.";
+    public static final String OFFSET_DESCRIPTION = "How many items before this page were skipped: the offset asked "
+            + "for.";
+    public static final String LIMIT_DESCRIPTION = "The page size asked for, after the cap of 200.";
+    public static final String HAS_MORE_DESCRIPTION = "True while items remain beyond this page: page until it is "
+            + "false, not until a short page arrives.";
+
     private Paging() {
     }
 

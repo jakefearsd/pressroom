@@ -1,6 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
 import java.time.Instant;
 import com.wikantik.pressroom.pojos.ApiToken;
@@ -14,7 +15,17 @@ public final class TokenDtos {
     public record TokenView(String id, String label, String scopeWeblog, String scopeRole,
                             Instant created, Instant lastUsedAt, Instant expiresAt, Instant revokedAt) { }
 
-    public record IssueRequest(String label, String weblog, String role, Instant expiresAt) { }
+    public record IssueRequest(
+            @Schema(description = "A name for the token, so its owner can tell it from the others.")
+            String label,
+            @Schema(description = "The handle of the one weblog the token may act on; omitted, every weblog its "
+                    + "user can reach.")
+            String weblog,
+            @Schema(description = "READ, POST or ADMIN: what the token may do.")
+            String role,
+            @Schema(description = "When the token stops working, an ISO-8601 instant in the future; omitted, it "
+                    + "works until revoked.")
+            Instant expiresAt) { }
 
     /** The one response carrying a raw secret. Returned once, never again. */
     public record IssuedToken(String token, TokenView info) { }

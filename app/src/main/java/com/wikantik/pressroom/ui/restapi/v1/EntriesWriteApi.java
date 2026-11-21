@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -67,6 +69,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * {@code @ApiResponse} keeps openapi.json naming the view a caller gets
  * without it.
  */
+@Tag(name = "Entry writes", description = "Writing entries: create, update, trash, restore and delete forever, "
+        + "preview, and restore or keep a revision.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesWriteApi extends BaseApiController implements UISecurityEnforced {
@@ -79,6 +83,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     /** The import step's budget is measured on this; a test replaces it. */
     Clock clock = Clock.systemUTC();
 
+    @Operation(operationId = "entriesCreate")
     @PostMapping("")
     @ApiResponse(responseCode = "201", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public ResponseEntity<Object> create(
@@ -144,6 +149,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         return ResponseEntity.created(location).body(shown.project(EntryDtos.toView(entry, permalink(entry))));
     }
 
+    @Operation(operationId = "entriesUpdate")
     @PatchMapping("/{id}")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object update(
@@ -223,6 +229,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * text's is the 409 {@code entry-changed}, with nothing saved. Another
      * entry's revision is the 404 an unknown id gets.
      */
+    @Operation(operationId = "entriesRestoreRevision")
     @PostMapping("/{id}/revisions/{revisionId}/restore")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object restoreRevision(
@@ -248,6 +255,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * limit and the site-wide ceiling until it is released. At most ten per
      * entry; an eleventh is a 409.
      */
+    @Operation(operationId = "entriesKeepRevision")
     @PostMapping("/{id}/revisions/{revisionId}/keep")
     public RevisionDtos.RevisionSummary keepRevision(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -256,6 +264,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /** Releases a kept revision to the ordinary retention rules; nothing is removed by the call itself. */
+    @Operation(operationId = "entriesUnkeepRevision")
     @PostMapping("/{id}/revisions/{revisionId}/unkeep")
     public RevisionDtos.RevisionSummary unkeepRevision(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -288,6 +297,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * but a caller asking to trash something already trashed almost always
      * means the caller's view of the entry is stale.
      */
+    @Operation(operationId = "entriesTrash")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> trash(HttpServletRequest request,
                                       @PathVariable("id") String id) throws WebloggerException {
@@ -313,6 +324,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * DRAFT -- exactly the side-door resurrection/demotion hazard {@code
      * TrashController.trashedEntry} exists to close off on the JSP side.
      */
+    @Operation(operationId = "entriesRestore")
     @PostMapping("/{id}/restore")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object restore(HttpServletRequest request,
@@ -337,6 +349,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * shortcut around it, so a live entry's id here is a 409 rather than an
      * undocumented hard-delete endpoint.
      */
+    @Operation(operationId = "entriesDeleteForever")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @PostMapping("/{id}/delete-forever")
     public ResponseEntity<Void> deleteForever(HttpServletRequest request,
                                               @PathVariable("id") String id) throws WebloggerException {
@@ -375,6 +389,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * publishing it. With {@code edits} in place of {@code text}, it renders
      * what an update with those edits would store.
      */
+    @Operation(operationId = "entriesPreview")
     @PostMapping("/{id}/preview")
     public EntryDtos.PreviewView previewExisting(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -394,6 +409,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * preview call carries no {@code id}. {@code edits} need a stored text to
      * apply to, so here they are a 400.
      */
+    @Operation(operationId = "entriesPreviewNew")
     @PostMapping("/preview")
     public EntryDtos.PreviewView previewNew(
             HttpServletRequest request,

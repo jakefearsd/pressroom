@@ -1,16 +1,17 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.auth.WeblogScopeExempt;
@@ -29,6 +30,7 @@ import org.springframework.context.annotation.Lazy;
  * strips the {@code /api} prefix -- see ServletRegistrationConfig's
  * API_URL_PATTERNS.
  */
+@Tag(name = "Meta", description = "Liveness, and who the caller is.")
 @RestController
 @RequestMapping("/v1")
 public class MetaApi {
@@ -48,9 +50,10 @@ public class MetaApi {
      * own self-check out of its own scope.
      */
     @WeblogScopeExempt
+    @Operation(operationId = "pingGet")
     @GetMapping("/ping")
-    public ResponseEntity<Map<String, String>> ping() {
-        return ResponseEntity.ok(Map.of("status", "ok"));
+    public ResponseEntity<MetaDtos.PingView> ping() {
+        return ResponseEntity.ok(MetaDtos.PING_OK);
     }
 
     /**
@@ -65,23 +68,18 @@ public class MetaApi {
      * able to ask who it is.
      */
     @WeblogScopeExempt
+    @Operation(operationId = "meGet")
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) throws WebloggerException {
+    public ResponseEntity<MetaDtos.MeView> me(HttpServletRequest request) throws WebloggerException {
         User user = (User) request.getAttribute("authenticatedUser");
         if (user == null) {
             throw ApiException.authenticationRequired();
         }
         ApiPrincipal principal = Caller.current().principal();
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("userName", user.getUserName());
-        body.put("screenName", user.getScreenName());
-        body.put("kind", user.getKind().name());
-        body.put("globalAdmin", isGlobalAdmin(user));
-        body.put("tokenScope", principal == null ? Map.of() : Map.of(
-                "weblog", principal.scopeWeblog() == null ? "" : principal.scopeWeblog(),
-                "role", principal.scopeRole().name()));
-        body.put("weblogs", weblogsFor(user, principal));
-        return ResponseEntity.ok(body);
+        MetaDtos.TokenScope scope = principal == null ? MetaDtos.NO_TOKEN_SCOPE : new MetaDtos.TokenScope(
+                principal.scopeWeblog() == null ? "" : principal.scopeWeblog(), principal.scopeRole().name());
+        return ResponseEntity.ok(new MetaDtos.MeView(user.getUserName(), user.getScreenName(), user.getKind().name(),
+                isGlobalAdmin(user), scope, weblogsFor(user, principal)));
     }
 
     /**
@@ -90,8 +88,9 @@ public class MetaApi {
      * (WeblogPermission carries no such flag), so membership is the permission
      * row. A failed lookup propagates as a 500, never as an empty list.
      */
-    private List<Map<String, String>> weblogsFor(User user, ApiPrincipal principal) throws WebloggerException {
-        List<Map<String, String>> weblogs = new ArrayList<>();
+    private List<MetaDtos.WeblogMembership> weblogsFor(User user, ApiPrincipal principal)
+            throws WebloggerException {
+        List<MetaDtos.WeblogMembership> weblogs = new ArrayList<>();
         for (WeblogPermission permission : weblogger.getUserManager().getWeblogPermissions(user)) {
             String handle = permission.getObjectId();
             if (principal != null && principal.scopeWeblog() != null
@@ -100,13 +99,11 @@ public class MetaApi {
             }
             Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
             if (weblog != null) {
-                weblogs.add(Map.of(
-                        "handle", weblog.getHandle(),
-                        "name", Objects.toString(weblog.getName(), ""),
-                        "permission", highest(permission)));
+                weblogs.add(new MetaDtos.WeblogMembership(weblog.getHandle(),
+                        Objects.toString(weblog.getName(), ""), highest(permission)));
             }
         }
-        weblogs.sort(Comparator.comparing(w -> w.get("handle")));
+        weblogs.sort(Comparator.comparing(MetaDtos.WeblogMembership::handle));
         return weblogs;
     }
 

@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -58,6 +61,8 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * through otherwise -- so nothing here excludes a private directory or its
  * files from a caller who reached this controller at all.
  */
+@Tag(name = "Media", description = "A weblog's media files and directories: upload, import from a URL, describe, move "
+        + "and delete.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/media")
 public class MediaApi extends BaseApiController implements UISecurityEnforced {
@@ -83,6 +88,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * array it always was, and without either parameter it is the whole
      * list, as before. A limit is capped at {@link #MAX_LIMIT}.
      */
+    @Operation(operationId = "mediaList")
     @GetMapping("")
     public List<MediaDtos.MediaView> list(
             HttpServletRequest request,
@@ -115,6 +121,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         return files.stream().skip(from).limit(size).map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
     }
 
+    @Operation(operationId = "mediaGet")
     @GetMapping("/{id}")
     public MediaDtos.MediaView get(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -143,6 +150,9 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * opaque 500 -- {@code ApiExceptionHandler} has no mapping for that
      * exception. This method rejects it itself, as a 400.
      */
+    @Operation(operationId = "mediaUpload")
+    @ApiResponse(responseCode = "201", description = "Every file was stored.")
+    @ApiResponse(responseCode = "207", description = "Some files were refused; results says which and why.")
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaDtos.UploadResponse> upload(
             HttpServletRequest request,
@@ -178,6 +188,9 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * request are this endpoint's own and log their refusal on the same
      * import logger.
      */
+    @Operation(operationId = "mediaImport")
+    @ApiResponse(responseCode = "201", description = "Imported as a new file.")
+    @ApiResponse(responseCode = "200", description = "The directory already holds these bytes; that file.")
     @PostMapping("/imports")
     public ResponseEntity<MediaDtos.MediaView> importImage(HttpServletRequest request,
             @RequestBody MediaDtos.MediaImport body) throws WebloggerException {
@@ -254,6 +267,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * resolved, the move itself happens after the metadata update,
      * matching the order {@code MediaFileEditController.save} uses.
      */
+    @Operation(operationId = "mediaUpdate")
     @PatchMapping("/{id}")
     public MediaDtos.MediaView update(
             HttpServletRequest request, @PathVariable("id") String id,
@@ -274,6 +288,8 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         return MediaDtos.toView(file, url(weblog, file));
     }
 
+    @Operation(operationId = "mediaDelete")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
@@ -284,6 +300,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(operationId = "mediaListDirectories")
     @GetMapping("/directories")
     public List<MediaDtos.DirectoryView> directories(HttpServletRequest request) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
@@ -317,6 +334,8 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * them here is lower-risk than parsing the manager's free-text exception
      * messages to tell "Invalid name!" apart from "Directory exists".
      */
+    @Operation(operationId = "mediaCreateDirectory")
+    @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("/directories")
     public ResponseEntity<MediaDtos.DirectoryView> createDirectory(
             HttpServletRequest request, @RequestBody MediaDtos.DirectoryWrite body) throws WebloggerException {
