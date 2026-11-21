@@ -1152,7 +1152,9 @@ POST   /api/v1/weblogs/{handle}/media/directories
 > name. `PATCH .../media/{id}` answers 409 on `name`, code `media.nameInUse`,
 > when the new `name` is held by another file in the directory the file will be
 > in (the `directoryId` sent, else its current one), and changes nothing; it used
-> to store two files of one name.
+> to store two files of one name. A move alone (`directoryId` with no `name`)
+> is judged on the name the file keeps: a directory that already holds a file
+> of that name answers the same 409, and the file is neither changed nor moved.
 
 `GET .../media` returns a bare array of `MediaView`s sorted by name. With
 `directoryId`, only that directory's files (`dir` is its old name and still
@@ -1815,6 +1817,10 @@ request never leaves a partial write behind.
 > - Several bad values, type errors included, are one 400
 >   (`request.invalidFields` when there are several) rather than the first
 >   alone. A single type error answers exactly as before.
+> - A name the allowlist does not declare, or a `null` value, is refused on
+>   its own (as before) and before any value is judged, so a request mixing
+>   one with a type error answers the unknown name or the null; the first bad
+>   entry used to win.
 >
 > String settings are stored trimmed, and the answer echoes the stored value.
 > A change to `site.name`, `site.shortName`, `site.description`,
@@ -1822,6 +1828,8 @@ request never leaves a partial write behind.
 > `site.absoluteurl` now expires every cached page (every weblog's
 > `lastModified` moves), as a Global Config save does; a change to a
 > `site.discovery.*` value still rebuilds the front page's discovery snapshot.
+> That expiry runs after the values are stored, so a 5xx from this `PATCH` does
+> not prove nothing was saved: `GET /api/v1/admin/config` to see what was.
 
 **`GET/PATCH /api/v1/weblogs/{handle}` is the weblog's owner's, as the
 Weblog Settings and Theme pages are.** They need the weblog's `ADMIN`

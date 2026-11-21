@@ -239,8 +239,10 @@ and the trash rule (trash only when `TRASHED` is asked for by name) inside, one
 extra row fetched to answer "more?", an `EntryListPage` out. Each surface keeps
 its own parameter parsing. `EntryListView` (`ui.view`) is what `Entries.jsp`
 shows, as plain values; `EntriesController` only adds the urls. An unknown
-`bean.status` on `entries.rol` is no filter (the whole list); the API answers 400
-for the same value.
+`bean.status` on `entries.rol` is no filter (the whole list), and so not counted
+as one: `EntryListView.Filters.any()` reads the status through
+`EntryListQuery.lenientStatus`, so an empty list under a stale status says "no
+entries yet", not "nothing matched". The API answers 400 for the same value.
 
 ## Tag counts
 

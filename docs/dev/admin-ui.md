@@ -189,7 +189,12 @@ resolves through the index at the end of `CLAUDE.md`.
   no field, as before. Error order is unchanged: each property's own, in stored
   order, then the front door's, then the privacy page's (`GlobalConfigCharacterisationTest`).
   One answer changed with the move: `site.frontpage.page` posted by hand without the
-  select used to be stored unchecked; a changed one is now judged like any other.
+  select used to be stored unchecked; a changed one is now judged like any other,
+  including the both-set rule: posted beside a non-empty `site.frontpage.weblog.handle`
+  it is refused with `configForm.error.frontpage.bothSet` (the select can never post
+  both). The labels the error messages quote are `escapeHtml4`'d, so the two that hold
+  U+2019 (`configForm.revisionsCoalesceMinutes`, `configForm.revisionsMaxAgeDays`) now
+  carry `&rsquo;` in the error string; it renders the same.
 - **The Site section (global admins only).** The main menu (`MainMenuController`
   adds `siteSpace`, creating the hidden `site-space` weblog on first use; null
   for everyone else) shows a Site row with Pages, Media and Theme, the only
@@ -368,7 +373,21 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   blank or over 255 characters is refused on `mfedit_bean_name` (`MediaFile.error.nameBlank`,
   `nameTooLong`); a taken name keeps `MediaFile.error.duplicateName`, unmarked. New keys go into the
   bundles that carry their neighbours (English until translated). `escapeHtml4` leaves an apostrophe
-  alone, so a category name may hold one on both surfaces.
+  alone, so a category name may hold one on both surfaces. The rules run in the spec's order (blank,
+  length, escaping, taken), so a name both over 255 characters and holding `&` answers
+  `categoryForm.error.nameTooLong`, where the screen used to answer `invalidName`. A whitespace-only
+  folder name is `mediaFile.error.view.dirNameEmpty` (it used to create a folder named by the spaces).
+  The category screens also refuse a description over 255 characters on `category_bean_description`
+  (`categoryForm.error.descriptionTooLong`, `CategoryRules.descriptionProblem`, as the API does; final
+  review M4); it used to overflow the column and answer "check the logs".
+- **A category name in a flash is escaped** (final review, 0.16.0): the created, saved and removed
+  messages and the duplicate-name error pass the name through `escapeHtml4`, because
+  `tiles/messages.jsp` renders messages bare and the API accepted any name before 0.16.0.
+  `WeblogCategory.setName` strips whole tags but keeps a `<` never closed, so a stored
+  `<img src=x onerror=alert(1) ` became an image with a handler in the "deleted" banner. A valid name is
+  a fixed point of `escapeHtml4`, so nothing visible changes for one; `MessageArgumentEscapingTest` no
+  longer allowlists `category.getName()`. The set-password-link banner escapes the stored address the
+  same way.
 - **Page slugs** (2026-11-21, spec `2026-11-20-jsp-rules-and-view-models-design.md`, Task 4): the page
   editor refuses a slug a live page of the same weblog holds on `page_bean_slug` (`pageEdit.error.slugTaken`;
   it used to reach the unique index and answer "check the logs") and a slug over 255 characters

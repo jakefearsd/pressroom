@@ -187,7 +187,9 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   PATCH resending the category's own name is never judged again, so an `&` stored before the rule stays
   editable. A folder name loses one leading slash, then may hold no slash (`directory.nameInvalid`). A file
   rename is judged against the directory the file will be in (`media.nameInUse`, a 409 raised in
-  `MediaDtos.applyPatch` after every 400 and before anything is applied).
+  `MediaDtos.applyPatch` after every 400 and before anything is applied). A move with no `name` is
+  judged on the name the file keeps whenever the target folder is not its current one (final review
+  I1; it used to pass unjudged and leave two files at one public address).
 - **A category name lost to an overlapping create** is a
   `DuplicateCategoryNameException` from the manager's locked check: the API
   answers 409 on `name`, the category screen its duplicate-name error.
@@ -328,8 +330,11 @@ the wire bodies; `GlobalConfigCharacterisationTest` the screen's.
 
 Spec `docs/superpowers/specs/2026-11-20-jsp-rules-and-view-models-design.md`, Task 2.
 `AdminApi.createUser`/`patchUser` call `AccountRules` (`ui.controllers`), the rules the person and
-agent screens call, through `RuleProblems.add` (field errors) and `refuseViolations` (the 409 for a
-taken name). The API keeps its trimming, the screen name's default (the username; a blank default is
+agent screens call, through `RuleProblems.add` (field errors); the 409 for a taken name is
+`createUser`'s own `ApiException.problemOnField` from `userNameTaken`'s violation. The API keeps its
+trimming, its blank test (`StringUtils.isBlank` before `userNameProblem`, so a name of Unicode
+whitespace such as U+2003, which `trim()` keeps, is `field.required` as it always was; the screens
+judge what was typed with `isEmpty`), the screen name's default (the username; a blank default is
 not judged, since the blank username already is), and the order: field checks, then the taken check
 (`userNameTaken`, whose lookup failure is the opaque 500), then the mail check. Agent writes stay
 refused by `AdminAccountGuard` before any of this. `emailAddress` is judged with commons
