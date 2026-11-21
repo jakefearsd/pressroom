@@ -16,6 +16,8 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.PageRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -135,7 +137,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         RevisionedContent.refuseExpectedHash(errors, body.expectedContentHash());
         // No slug named: the title's, held to the rules a typed one is.
         String wanted = body.slug() == null || body.slug().isBlank()
-                ? WeblogPage.slugFromTitle(body.title()) : body.slug();
+                ? PageRules.defaultSlug(body.title()) : body.slug();
         Optional<String> slug = errors.value("slug", () -> PageDtos.requireUsableSlug(wanted));
         checkWrite(errors, weblog, body, Set.of(), null);
         checkStrand(errors, weblog, null, body.strand());
@@ -364,15 +366,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      */
     private void checkStrand(FieldErrors errors, Weblog weblog, WeblogPage page, Boolean strand)
             throws WebloggerException {
-        if (Boolean.TRUE.equals(strand) && weblog.isSiteSpace()) {
-            errors.add("strand", ProblemCode.STRAND_SITE_PAGE);
-        }
-        if (Boolean.FALSE.equals(strand) && page != null && Boolean.TRUE.equals(page.getStrand())) {
-            long parts = weblogger.getWeblogEntryManager().getStrandPartCount(page);
-            if (parts > 0) {
-                errors.add("strand", ProblemCode.STRAND_HAS_PARTS, Long.toString(parts), "{id}");
-            }
-        }
+        RuleProblems.add(errors, PageRules.strandProblem(weblog, page, strand, weblogger.getWeblogEntryManager()));
     }
 
     /**
@@ -496,12 +490,9 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
      * unchanged is not refused as colliding with itself.
      */
     private void requireSlugAvailable(Weblog weblog, String slug, String excludingId) throws WebloggerException {
-        WeblogPage existing = weblogger.getWeblogPageManager().getPageBySlug(weblog, slug);
-        if (existing != null && !existing.getId().equals(excludingId)) {
-            // A trashed page keeps its address until it is restored or
-            // deleted for good; say so, since the pages list will not show it.
-            throw ApiException.problemOnField("slug", existing.getStatus() == WeblogPage.PubStatus.TRASHED
-                    ? ProblemCode.SLUG_HELD_BY_TRASH : ProblemCode.SLUG_IN_USE, slug);
+        RuleViolation taken = PageRules.slugHolderProblem(weblog, slug, excludingId, weblogger.getWeblogPageManager());
+        if (taken != null) {
+            throw RuleProblems.problem(taken, true);
         }
     }
 

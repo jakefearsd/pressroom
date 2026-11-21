@@ -408,6 +408,12 @@ and each part shows "Part N of M" with steps to the parts either side.
 ## Pages
 Static pages (`WeblogPage`, V014) are a separate entity from `WeblogEntry` on
 purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
+- **Page slug, strand and pin rules have one home** (spec `2026-11-20-jsp-rules-and-view-models-design.md`,
+  Task 4): `PageRules` (slug shape, holder, strand switch), `StrandChoice` (the strand an entry joins) and
+  `EntryPinRules` (the pin limit; in `ui.controllers`, not `business.EntryPins`, which must not import a
+  controller type). The editors and `PagesApi`/`EntriesWriteApi` call them; the page editor judges the slug
+  before the save and no longer reads `WebloggerException` text. Rules needing the store throw on a failed
+  lookup (the API's opaque 500); the screens catch it and refuse.
 - **Page trash** (V050; spec `2026-11-15-page-revisions-and-trash-design.md`,
   Part 1). Deleting a page sets `PubStatus.TRASHED` and `trashed_at`; nothing
   but the trash's own "delete forever" and the purge calls `removePage`.

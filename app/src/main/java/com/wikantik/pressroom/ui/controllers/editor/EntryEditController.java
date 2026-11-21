@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.EntryPins;
 import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.WeblogEntryManager;
@@ -51,6 +50,9 @@ import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.EntryPinRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
+import com.wikantik.pressroom.ui.controllers.StrandChoice;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.util.MailUtil;
 import org.springframework.stereotype.Controller;
@@ -658,20 +660,19 @@ public class EntryEditController extends BaseController {
      * the field is absent (keep), empty (none) or names the strand the post
      * is already in. Anything else must be one of this blog's strand pages --
      * a page of another blog, an unknown id and a plain page are one field
-     * error, so nothing is saved ({@link #lookupPage} is the ownership check).
+     * error, so nothing is saved ({@link StrandChoice} is the rule, and its ownership check).
      */
     private WeblogPage checkedStrand(EntryBean bean, WeblogEntry entry, Model model,
                                      HttpServletRequest request) {
         String id = bean.getStrandPageId();
-        if (StringUtils.isBlank(id) || id.equals(entry.getStrandPageId())) {
+        if (StringUtils.isBlank(id)) {
             return null;
         }
-        WeblogPage page = lookupPage(id, request);
-        if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
-            addFieldError(model, "entry_bean_strandPageId", "weblogEdit.error.notAStrand", request);
-            return null;
+        StrandChoice.Choice choice = StrandChoice.resolve(weblogger, getActionWeblog(request), entry, id);
+        if (choice.violation() != null) {
+            addFieldError(model, "entry_bean_strandPageId", choice.violation(), request);
         }
-        return page;
+        return choice.page();
     }
 
     /** Applies the checked choice; an absent field (null) keeps the stored strand. */
@@ -689,20 +690,16 @@ public class EntryEditController extends BaseController {
 
     /**
      * Refuses a save that would pin one post more than the blog allows
-     * ({@link EntryPins}), as a field error on the checkbox, before anything
+     * ({@link EntryPinRules}), as a field error on the checkbox, before anything
      * is applied. A count that cannot be read refuses the pin too: it cannot
      * vouch for the limit.
      */
     private void checkPinLimit(Model model, WeblogEntry entry, boolean requested, HttpServletRequest request) {
-        if (!requested || entry.getPinned()) {
-            // neither unpinning nor re-saving a pinned post adds a pin
-            return;
-        }
         try {
-            long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(entry.getWebsite());
-            if (EntryPins.wouldExceed(entry.getPinned(), requested, pinned)) {
-                addFieldError(model, "entry_bean_pinned", "weblogEdit.error.pinLimit",
-                        new Object[] {EntryPins.MAX_PER_WEBLOG}, request);
+            RuleViolation problem = EntryPinRules.roomProblem(weblogger.getWeblogEntryManager(), entry.getWebsite(),
+                    entry.getPinned(), requested);
+            if (problem != null) {
+                addFieldError(model, "entry_bean_pinned", problem, request);
             }
         } catch (WebloggerException e) {
             log.error("Error counting the pinned posts of weblog {}", entry.getWebsite().getHandle(), e);

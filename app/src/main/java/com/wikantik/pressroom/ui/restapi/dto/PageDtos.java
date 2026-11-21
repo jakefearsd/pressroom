@@ -1,6 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.PageRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
@@ -8,8 +10,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import com.wikantik.pressroom.pojos.ReservedSlugs;
-import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -269,40 +269,20 @@ public final class PageDtos {
     }
 
     /**
-     * Refuses a slug {@code ReservedSlugs} would refuse to route -- blank,
-     * or a name reserved for a context {@code WeblogPageRequest} parses --
-     * before the controller ever calls {@code WeblogPageManager.savePage},
-     * which enforces the same rule but only as a bare {@code
-     * WebloggerException} the generic handler can only render as an opaque
-     * 500. {@code ReservedSlugs.isReserved} already treats null/blank as
-     * reserved ("nothing to route"), so this is a thin wrapper turning that
-     * boolean into the 400 an API caller needs.
-     *
-     * <p>Delegates to {@code ReservedSlugs} rather than restating its list --
-     * see CLAUDE.md's Pages section: two lists would drift, and a slug that
-     * collided with a routed context would make the page unreachable at its
-     * own URL.
-     *
-     * <p>Also mirrors {@code JPAWeblogPageManagerImpl.savePage}'s separate
-     * refusal of a slug containing {@code '/'} -- a rule {@code
-     * ReservedSlugs.isReserved} does not and should not express, since it
-     * only tests membership in a fixed set of whole names, not shape. There
-     * is no shared constant on the manager side for this one to delegate to
-     * (the manager expresses it as an inline {@code indexOf('/') >= 0}), so
-     * it is restated here; if a future change touches that check, this is
-     * the second place to update.
+     * Refuses a slug the page rules refuse -- blank, reserved, a locale, with
+     * a {@code '/'}, or over its column ({@link PageRules#slugShapeProblem}) --
+     * as the 400 an API caller needs, before the controller ever calls
+     * {@code WeblogPageManager.savePage}, which would only refuse it as a bare
+     * {@code WebloggerException} the generic handler renders as an opaque 500.
      *
      * @return the trimmed, usable slug
      */
     public static String requireUsableSlug(String slug) {
-        String trimmed = slug == null ? null : slug.trim();
-        if (ReservedSlugs.isReserved(trimmed) || LocaleSegment.isLocale(trimmed)) {
-            throw ApiException.problemOnField("slug", ProblemCode.SLUG_RESERVED, String.valueOf(slug));
+        RuleViolation problem = PageRules.slugShapeProblem(slug);
+        if (problem != null) {
+            throw ApiException.problemOnField(problem.field(), problem.code(),
+                    problem.codeArgs().toArray(String[]::new));
         }
-        if (trimmed.indexOf('/') >= 0) {
-            throw ApiException.problemOnField("slug", ProblemCode.SLUG_HAS_SLASH, slug);
-        }
-        ColumnLimits.requireMaxLength("slug", trimmed, ColumnLimits.PAGE_SLUG);
-        return trimmed;
+        return slug.trim();
     }
 }

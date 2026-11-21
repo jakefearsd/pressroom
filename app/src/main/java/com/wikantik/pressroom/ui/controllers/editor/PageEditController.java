@@ -44,6 +44,8 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.PageRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -56,6 +58,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
@@ -164,7 +167,7 @@ public class PageEditController extends BaseController {
                 page.getOgImageId(), request);
         // The strand switch and the Parts panel, validated like the fields
         // above: a refused id or a refused untick saves nothing at all.
-        checkSlugNotInTrash(bean, page, isNew, model, request);
+        checkSlug(bean, page, isNew, model, request);
         StrandSave strand = checkedStrandParts(bean, page, model, request);
         boolean saved = !hasErrors(model) && saved(bean, page, Optional.ofNullable(strand.store), model, request);
         if (saved || !isNew) {
@@ -193,35 +196,29 @@ public class PageEditController extends BaseController {
     }
 
     /**
-     * A trashed page keeps its address for as long as it can be restored, so
-     * a new page or a rename may not take it: a field error that names the
-     * trash, where the database's unique index would only have said "error".
-     * The slug checked is the one the save would store (a new page left
-     * without one takes its title's). A check that cannot run refuses the
-     * save.
+     * The slug the save would store (a new page left without one takes its
+     * title's) judged by {@link PageRules} before anything is saved: blank,
+     * reserved, a locale, with a slash, over its column, held by a trashed
+     * page (which keeps its address while it can be restored) or by a live
+     * one. A check that cannot run refuses the save. The manager's own
+     * refusal of a slug stays as the backstop, answered as an error to check
+     * the logs, and its typed {@link SiteSlugClashException} below.
      */
-    private void checkSlugNotInTrash(PageBean bean, WeblogPage page, boolean isNew, Model model,
-                                     HttpServletRequest request) {
+    private void checkSlug(PageBean bean, WeblogPage page, boolean isNew, Model model,
+                           HttpServletRequest request) {
         String wanted = StringUtils.trimToNull(bean.getSlug());
         if (wanted == null && isNew) {
-            wanted = StringUtils.trimToNull(WeblogPage.slugFromTitle(bean.getTitle()));
+            wanted = StringUtils.trimToNull(PageRules.defaultSlug(bean.getTitle()));
         }
-        if (wanted == null) {
+        RuleViolation problem = PageRules.slugProblem(page.getWeblog(), wanted == null ? "" : wanted, page.getId(),
+                weblogger.getWeblogPageManager());
+        if (problem == null) {
             return;
         }
-        if (wanted.length() > com.wikantik.pressroom.ui.controllers.ColumnWidths.PAGE_SLUG) {
-            addFieldError(model, "page_bean_slug", "pageEdit.error.slugTooLong", request);
-            return;
-        }
-        try {
-            WeblogPage holder = weblogger.getWeblogPageManager().getPageBySlug(page.getWeblog(), wanted);
-            if (holder != null && !holder.getId().equals(page.getId())) {
-                addFieldError(model, "page_bean_slug", holder.getStatus() == WeblogPage.PubStatus.TRASHED
-                        ? "pageEdit.error.slugInTrash" : "pageEdit.error.slugTaken", request);
-            }
-        } catch (WebloggerException ex) {
-            log.error("Error checking slug {} against the page trash", wanted, ex);
-            addError(model, "generic.error.check.logs", request);
+        if (problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
+            addError(model, problem, request);
+        } else {
+            addFieldError(model, "page_bean_slug", problem, request);
         }
     }
 
@@ -374,10 +371,10 @@ public class PageEditController extends BaseController {
 
     private void checkUntick(PageBean bean, WeblogPage page, Model model, HttpServletRequest request) {
         try {
-            long count = weblogger.getWeblogEntryManager().getStrandPartCount(page);
-            if (count > 0) {
-                addFieldError(model, "page_bean_strand", "pageEdit.error.strandHasParts",
-                        new Object[] {count}, request);
+            RuleViolation problem = PageRules.strandProblem(getActionWeblog(request), page, false,
+                    weblogger.getWeblogEntryManager());
+            if (problem != null) {
+                addFieldError(model, "page_bean_strand", problem, request);
                 bean.setStrand(true);
             }
         } catch (WebloggerException ex) {
@@ -417,7 +414,7 @@ public class PageEditController extends BaseController {
             if (isNew && StringUtils.isBlank(page.getSlug())) {
                 // A new page left without a slug is addressed by its title;
                 // an existing page's emptied slug stays a mistake to report.
-                page.setSlug(WeblogPage.slugFromTitle(page.getTitle()));
+                page.setSlug(PageRules.defaultSlug(page.getTitle()));
             }
             // As the signed-in user: a revision this save leaves is theirs.
             weblogger.getWeblogPageManager().savePage(page, getAuthenticatedUser(request), null);
@@ -440,21 +437,9 @@ public class PageEditController extends BaseController {
             // <spring:message arguments> does not escape.
             addFieldError(model, "page_bean_slug", ex.getMessageKey(),
                     new Object[] {StringEscapeUtils.escapeHtml4(ex.getArgument())}, request);
-        } catch (WebloggerException ex) {
-            // A reserved or malformed slug is the one expected failure mode
-            // here (see WeblogPageManager#savePage), and it must surface as a
-            // field error the author can fix, not a 500.
-            String message = ex.getMessage() == null ? "" : ex.getMessage();
-            if (message.contains("reserved")) {
-                addFieldError(model, "page_bean_slug", "pageEdit.error.slugReserved", request);
-            } else if (message.contains("slug")) {
-                addFieldError(model, "page_bean_slug", "pageEdit.error.slugInvalid", request);
-            } else {
-                log.error("Error saving page {}", bean.getId(), ex);
-                addError(model, "generic.error.check.logs", request);
-            }
         } catch (Exception ex) {
-            // Catch-all, matching EntryEditController#doSave's shape.
+            // Catch-all, matching EntryEditController#doSave's shape. The slug was judged before the save
+            // (PageRules), so whatever the manager still refuses is not the author's to fix.
             log.error("Error saving page {}", bean.getId(), ex);
             addError(model, "generic.error.check.logs", request);
         }

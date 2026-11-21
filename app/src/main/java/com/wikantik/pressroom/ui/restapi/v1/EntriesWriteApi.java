@@ -29,6 +29,9 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.EntryDeletion;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.EntryPinRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
+import com.wikantik.pressroom.ui.controllers.StrandChoice;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -509,7 +512,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         checkImageId(errors, weblog, "featuredImageId", body.featuredImageId(), entry.getFeaturedImageId());
         checkImageId(errors, weblog, "ogImageId", body.ogImageId(), entry.getOgImageId());
         if (Boolean.TRUE.equals(body.pinned()) && !entry.getPinned()) {
-            errors.check("pinned", () -> requirePinRoom(weblog));
+            errors.check("pinned", () -> requirePinRoom(weblog, entry.getPinned()));
         }
         errors.check("strand", () -> strandFor(weblog, entry, body.strand()));
     }
@@ -525,26 +528,23 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * Joining needs POST, which every write here requires.
      */
     private WeblogPage strandFor(Weblog weblog, WeblogEntry entry, String strandId) {
-        if (strandId == null || strandId.equals(entry.getStrandPageId())) {
-            return null;
+        StrandChoice.Choice choice = StrandChoice.resolve(weblogger, weblog, entry, strandId);
+        if (choice.violation() != null) {
+            throw RuleProblems.problem(choice.violation(), true);
         }
-        WeblogPage page = WeblogOwnership.page(weblogger, strandId, weblog);
-        if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
-            throw ApiException.problemOnField("strand", ProblemCode.STRAND_ID_NOT_STRAND_PAGE);
-        }
-        return page;
+        return choice.page();
     }
 
     /**
      * A new pin is refused once the blog has {@link EntryPins#MAX_PER_WEBLOG}
-     * (the editor's rule, {@code EntryEditController.checkPinLimit}). Pinning
+     * (the editor's rule, {@link EntryPinRules}). Pinning
      * needs POST, which every write here already requires
      * ({@link #requiredWeblogPermissionActions}), as publishing does.
      */
-    private void requirePinRoom(Weblog weblog) throws WebloggerException {
-        long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog);
-        if (EntryPins.wouldExceed(false, true, pinned)) {
-            throw ApiException.problemOnField("pinned", ProblemCode.PINNED_TOO_MANY, Integer.toString(EntryPins.MAX_PER_WEBLOG));
+    private void requirePinRoom(Weblog weblog, boolean wasPinned) throws WebloggerException {
+        RuleViolation full = EntryPinRules.roomProblem(weblogger.getWeblogEntryManager(), weblog, wasPinned, true);
+        if (full != null) {
+            throw RuleProblems.problem(full, true);
         }
     }
 

@@ -488,7 +488,7 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
 
     @Test
     void aRefusedSaveOfAStrandReShowsThePostedOrderIncludingANewRow() throws Exception {
-        WeblogPage page = pageOn(weblogA, "trip");
+        WeblogPage page = pageOn(weblogA, "feed");
         page.setStrand(true);
         WeblogEntry a = postOn(weblogA, "a");
         a.setStrandPageId(page.getId());
@@ -496,8 +496,6 @@ class PageEditControllerStrandTest extends EditorControllerTestSupport {
         WeblogEntry free = postOn(weblogA, "free");
         members(page, a);
         when(entries.getWeblogEntries(any(WeblogEntrySearchCriteria.class))).thenReturn(List.of(b, free));
-        doThrow(new WebloggerException("page slug is reserved: feed"))
-                .when(weblogger.getWeblogPageManager()).savePage(any(), any(), any());
 
         controller.save(requestFor(weblogA), model, shown(strandBean(page, "post-b", "post-a"), "post-a"));
 

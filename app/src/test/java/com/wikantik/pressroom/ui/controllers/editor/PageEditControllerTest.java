@@ -778,7 +778,9 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         controller.save(requestFor(weblogA), model, bean);
 
-        assertEquals("", existing.getSlug(), "the blank slug reaches the manager, which refuses it");
+        assertEquals("about", existing.getSlug(),
+                "the blank slug is refused by the page rules before the form is applied");
+        assertEquals(List.of("pageEdit.error.slugInvalid"), errors(model));
     }
 
     @Test
