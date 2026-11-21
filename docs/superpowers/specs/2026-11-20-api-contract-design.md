@@ -130,8 +130,8 @@ field-error equivalents on `ApiException` and `FieldErrors`, builds a keyed
 problem. Arguments are `String`s, so `MessageFormat` never formats a number
 (`1000` would otherwise render as `1,000`). The call site formats numbers
 exactly as the concatenation did. A count of arguments that differs from the
-code's declared arity throws `IllegalArgumentException` when the exception is
-built.
+code's declared arity logs a WARN and renders with the arguments given; the
+status is unchanged (amended by the controller, see AC5).
 
 This task keys the problems whose text is fixed and does not depend on the
 call site:
@@ -432,11 +432,11 @@ code catalogue.
    `request.invalidFields`.** If wrong, clients that read only the top-level
    code see a less specific value for multi-field 400s, and `errors[].code`
    still carries the detail.
-6. **A wrong argument count throws at construction** (a 500 at runtime) rather
-   than rendering a broken message. Display paths may be lenient under
-   CLAUDE.md, but the coverage floors mean every API error path runs in a test,
-   so the throw fails a test first. If wrong, an untested path answers 500
-   instead of its 4xx.
+6. **A wrong argument count logs and renders; it does not throw** (amended by
+   the controller on 2026-11-20; the draft said throw). The status is the
+   decision and the text is display, so a mismatch must not turn a 4xx into a
+   500. A test pins each code's arity against its English placeholders, so a
+   mismatch is caught at build time anyway.
 7. **No `Content-Language` and no `Vary: Accept-Language`.** A matched
    language can still fall back to English key by key, so a
    `Content-Language` would sometimes be false, and problem responses are not
