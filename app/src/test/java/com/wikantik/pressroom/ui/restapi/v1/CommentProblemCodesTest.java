@@ -11,6 +11,9 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -23,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static com.wikantik.pressroom.ui.restapi.v1.ProblemAsserts.oneField;
 import static com.wikantik.pressroom.ui.restapi.v1.ProblemAsserts.problem;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -100,11 +104,31 @@ class CommentProblemCodesTest {
                 "comment.deletedByAuthor", "Its author deleted this comment; it cannot be published.");
     }
 
-    /** {0} is the refusal's constant name: a token the client can branch on, not prose. */
+    /**
+     * Each refusal of a reply has its own code (final review, 2026-11-21: one
+     * code per {@link CommentRefusal}, so a client branches on {@code code}
+     * rather than parsing the name out of {@code detail}). The English and the
+     * 400 are what the one {@code comment.replyRefused} answered before.
+     */
     @Test
-    void aRefusedReplyIsCommentReplyRefused() throws Exception {
-        when(service.reply(owner, comment, "x")).thenReturn(CommentOutcome.refused(CommentRefusal.BAD_REPLY));
-        problem(answer(status().isBadRequest(), post(BASE + "/c1/replies").content("{\"body\":\"x\"}")),
-                "comment.replyRefused", "The reply was refused: BAD_REPLY");
+    void eachRefusedReplyHasItsOwnCode() throws Exception {
+        Map<CommentRefusal, String> codes = new EnumMap<>(CommentRefusal.class);
+        codes.put(CommentRefusal.NOT_SIGNED_IN, "comment.replyNotSignedIn");
+        codes.put(CommentRefusal.NO_PERMISSION, "comment.replyNoPermission");
+        codes.put(CommentRefusal.DISABLED, "comment.replyAccountDisabled");
+        codes.put(CommentRefusal.NOT_FOUND, "comment.replyParentUnknown");
+        codes.put(CommentRefusal.CLOSED, "comment.replyEntryClosed");
+        codes.put(CommentRefusal.COMMENTS_OFF, "comment.replyCommentsOff");
+        codes.put(CommentRefusal.CUSTOM_DOMAIN, "comment.replyCustomDomain");
+        codes.put(CommentRefusal.EMPTY_BODY, "comment.replyEmptyBody");
+        codes.put(CommentRefusal.BODY_TOO_LONG, "comment.replyBodyTooLong");
+        codes.put(CommentRefusal.BAD_REPLY, "comment.replyNotAccepted");
+        codes.put(CommentRefusal.RATE_LIMITED, "comment.replyRateLimited");
+        assertEquals(EnumSet.allOf(CommentRefusal.class), codes.keySet(), "every refusal is pinned here");
+        for (Map.Entry<CommentRefusal, String> refusal : codes.entrySet()) {
+            when(service.reply(owner, comment, "x")).thenReturn(CommentOutcome.refused(refusal.getKey()));
+            problem(answer(status().isBadRequest(), post(BASE + "/c1/replies").content("{\"body\":\"x\"}")),
+                    refusal.getValue(), "The reply was refused: " + refusal.getKey().name());
+        }
     }
 }

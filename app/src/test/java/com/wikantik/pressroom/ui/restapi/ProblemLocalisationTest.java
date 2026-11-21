@@ -47,6 +47,11 @@ class ProblemLocalisationTest {
             throw ApiException.notFound("No such entry.");
         }
 
+        @GetMapping("/v1/l10n/large")
+        Map<String, String> large() {
+            throw ApiException.problem(ProblemCode.REQUEST_TOO_LARGE, "10");
+        }
+
         @GetMapping("/v1/l10n/fields")
         Map<String, String> fields() {
             FieldErrors errors = new FieldErrors();
@@ -154,6 +159,26 @@ class ProblemLocalisationTest {
         ApiExceptionHandler bare = new ApiExceptionHandler(new StaticMessageSource());
 
         assertEquals(ENGLISH_500, bare.handleUnexpected(new IllegalStateException("x"), request).getBody().detail());
+    }
+
+    /**
+     * A translation MessageFormat will not parse ({@code {name}}) makes the
+     * message source throw IllegalArgumentException. The renderer falls back
+     * to the English: the status and code stand, and the advice still writes
+     * a problem body instead of failing into Boot's non-problem 500.
+     */
+    @Test
+    void aMalformedTranslationRendersTheEnglish() throws Exception {
+        StaticMessageSource broken = new StaticMessageSource();
+        broken.addMessage(ProblemCode.REQUEST_TOO_LARGE.key(), Locale.FRENCH, "Bonjour {name} {0}");
+        MockMvc french = MockMvcBuilders.standaloneSetup(new ProbeApi())
+                .setControllerAdvice(new ApiExceptionHandler(broken)).build();
+
+        var response = french.perform(get("/v1/l10n/large").header("Accept-Language", "fr")).andReturn().getResponse();
+        assertEquals(413, response.getStatus());
+        JsonNode body = JSON.readTree(response.getContentAsString());
+        assertEquals("The request body is over 10 bytes.", body.get("detail").asString());
+        assertEquals("request.tooLarge", body.get("code").asString());
     }
 
     @Test

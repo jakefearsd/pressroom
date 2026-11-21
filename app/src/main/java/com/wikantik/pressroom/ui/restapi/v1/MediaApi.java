@@ -4,6 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.ArrayList;
@@ -150,14 +154,27 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
      * opaque 500 -- {@code ApiExceptionHandler} has no mapping for that
      * exception. This method rejects it itself, as a 400.
      */
-    @Operation(operationId = "mediaUpload")
+    // The parts are documented as the multipart body, not as query parameters
+    // (springdoc's reading of @RequestParam), so a generated client sends a working
+    // upload (OpenApiContractTest.theUploadIsAMultipartBodyOfBinaryFileParts).
+    @Operation(operationId = "mediaUpload", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true, content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(type = "object", requiredProperties = {"file"}),
+                    schemaProperties = {
+                        @SchemaProperty(name = "file", array = @ArraySchema(
+                                schema = @Schema(type = "string", format = "binary"),
+                                arraySchema = @Schema(description = "One part per file; repeat the part to upload several."))),
+                        @SchemaProperty(name = "directoryId", schema = @Schema(type = "string",
+                                description = "The directory to store the files in; the weblog's default directory if omitted."))
+                    })))
     @ApiResponse(responseCode = "201", description = "Every file was stored.")
     @ApiResponse(responseCode = "207", description = "Some files were refused; results says which and why.")
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaDtos.UploadResponse> upload(
             HttpServletRequest request,
-            @RequestParam(value = "file", required = false) MultipartFile[] files,
-            @RequestParam(value = "directoryId", required = false) String directoryId) throws WebloggerException {
+            @Parameter(hidden = true) @RequestParam(value = "file", required = false) MultipartFile[] files,
+            @Parameter(hidden = true) @RequestParam(value = "directoryId", required = false) String directoryId)
+            throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (files == null || files.length == 0) {
             throw ApiException.problemOnField("file", ProblemCode.MEDIA_FILE_REQUIRED);

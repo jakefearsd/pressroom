@@ -95,7 +95,7 @@ class TokenProblemCodesTest {
     void aTokenCallerIsRefusedWithTheTokenCodes() throws Exception {
         bearer();
         problem(answer(status().isForbidden(), post("/v1/tokens").content("{\"label\":\"x\",\"role\":\"READ\"}")),
-                "token.cannotMintToken", "A token cannot be used to mint another token.");
+                "token.mintRefused", "A token cannot be used to mint another token.");
         problem(answer(status().isForbidden(), get("/v1/tokens")),
                 "token.managementNeedsPassword", "Token management requires Basic authentication.");
         problem(answer(status().isForbidden(), delete("/v1/tokens/t1")),

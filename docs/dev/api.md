@@ -208,6 +208,23 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   placeholders goes through `MessageFormat`, so a literal apostrophe is `''` and a literal `{` is quoted
   (`MessageFormatRegressionTest`). Arity is the count of distinct `{n}`, held to the English and every
   translation by the catalogue test. A code names a meaning, not a call site.
+- **Naming convention** (final review, 2026-11-21; `ProblemCodeCatalogTest` holds the first two):
+  `<resource or field>.<condition>`, exactly two lowerCamel segments. `notFound` (or a condition
+  ending in `NotFound`) is a 404 and only a 404 says it; a 400 for text that is not there says what
+  did not match (`edits.findNotMatched`). `inUse` is a uniqueness conflict (`slug.inUse`,
+  `redirect.sourceInUse`). `tooMany` is a count over a cap (`edits.tooMany`, `pinned.tooMany`,
+  `revision.tooMany`, `strand.tooMany`), `tooMany<Thing>` only where one resource has two caps.
+  Before the 0.16.0 tag the final review renamed the codes that broke this (old to new:
+  `edits.notFound` `edits.findNotMatched`, `strand.notAStrandPage` `strand.idNotStrandPage` (an
+  entry's `strand` is not a strand page's id), `strand.pageNotAStrand` `strand.flagNotSet` (parts set
+  on a page whose `strand` flag is off), `entry.status.trashNotWritable`
+  `entry.trashStatusNotWritable`, `page.status.trashNotWritable` `page.trashStatusNotWritable`,
+  `token.cannotMintToken` `token.mintRefused`, `pinned.limit` `pinned.tooMany`,
+  `revision.keepLimit` `revision.tooMany`, `strand.tooManyParts` `strand.tooMany`,
+  `redirect.sourceExists` `redirect.sourceInUse`), split `comment.replyRefused` into one code per
+  `CommentRefusal` (`CommentsApi.code`, an exhaustive switch; the English is unchanged, `The reply
+  was refused: <NAME>`) and dropped `redirect.refused`. From the tag on, the rule above stands: never
+  rename or remove one.
 - **Raising one**: `ApiException.problem(code, args...)`, `ApiException.problemOnField(field, code,
   args...)`, `FieldErrors.add`/`addIfAbsent(field, code, args...)`. Arguments are `String`s: format a
   number at the call site exactly as it should read, or `MessageFormat` would print `1,000`. A wrong
@@ -228,14 +245,18 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `FieldErrors.throwIfAny` always joined them.
 - **Localisation**: `getMessage()` is always the English, read from the base bundle with
   `ResourceBundle` at `Locale.ROOT` (`ProblemMessages.english`), for logs and every existing assertion.
-  Only `ApiExceptionHandler` localises: it reads the `Accept-Language` header itself (never
+  `ApiExceptionHandler` and `ApiProblemWriter` (below) localise: each reads the `Accept-Language` header itself (never
   `request.getLocale()`, which Tomcat answers with the JVM default when the header is absent) and
   `ProblemMessages.localeFor` matches it against the shipped bundles in q order, basic filtering then
   lookup (so `fr-CA` reaches `fr`). English, no match, or no header renders at `Locale.ROOT`, because a
   `ResourceBundleMessageSource` lookup for a locale with no bundle (English has none) falls back to the JVM
   default locale (`ProblemLocalisationTest` runs with German as the default). No `Content-Language` or
   `Vary`: a matched language can fall back to English key by key. `title` is not localised. No
-  translations of `api.problem.*` ship yet.
+  translations of `api.problem.*` ship yet. A translation `MessageFormat` will not parse (`{name}`)
+  makes the source throw `IllegalArgumentException`; `ProblemMessages.renderer` catches it, logs a WARN
+  and renders the English, so the advice and the security writers never fail into a non-problem 500
+  (`ProblemLocalisationTest`, `SecurityChainProblemCodesTest`). `ProblemCodeCatalogTest` refuses such a
+  value in any shipped bundle.
 - **Writers outside the advice localise too (Task 3)**: `ApiProblemWriter.write(request, response,
   ApiException)` renders as `ApiExceptionHandler` does (both go through `ApiException.toProblem(request,
   messages)`); the bean takes the application's `messageSource`, and the one-argument constructor builds
@@ -246,8 +267,8 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   bundle). English only: `toProblem(instance)` for MCP, its tool errors and the endpoint's own 401
   (`mcp.tokenRequired`, decision 8). MCP is always English: `DispatchedRequest` exposes no
   `Accept-Language` (`DispatchedRequestTest` pins it).
-- **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`; it exists so
-  `PressroomHandlerInterceptor` keeps its two permitted `ui.restapi` imports (above).
+- **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`
+  (`auth.unauthorized`), raised by `TokensApi` and `MetaApi` when the caller is not authenticated.
 - **Content routes are fully keyed (Task 2)**: `EntriesApi`, `EntriesWriteApi`, `EntryContent`,
   `EntryEdits`, `EntryFields`, `EntryImports`, `RevisionedContent`, `PagesApi`, `PageContent`,
   `BaseApiController`, `ColumnLimits`, `EntryDtos`, `PageDtos`, `SeoFields` and `ClearFields` raise
@@ -269,9 +290,11 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   the forms (`WeblogCreationRules`, `WeblogSettingsRules`) give each `Violation` a `Reason` and `args`
   beside its form key and English; `v1/RuleProblems` maps reason to code with an exhaustive switch, so a
   new rule does not compile without a code. A redirect refusal is `RedirectRefusedException` (a
-  `WebloggerException` with a `Reason`); any other `saveRedirect` refusal is passed through as
-  `redirect.refused`. `PASSTHROUGH_CODES` is final at four: `image.scanRefused`, `image.importFailed`,
-  `media.importRefused` (an import's own refusal text) and `redirect.refused`; it may only shrink.
+  `WebloggerException` with a `Reason`), every one of the manager's refusals included (a rule with no
+  weblog, a blank path); any other `WebloggerException` from `saveRedirect` is a failure, not a
+  refusal, and is the opaque 500 (the final review dropped `redirect.refused`, whose detail could carry
+  the persistence layer's text). `PASSTHROUGH_CODES` is final at three: `image.scanRefused`,
+  `image.importFailed` and `media.importRefused` (an import's own refusal text); it may only shrink.
   `auth.notAuthenticated` and `auth.unauthorized` mean the same (README says so); both stay published.
 - **Cross-product check** (2026-11-20): `SimpleAgilityDecisionLog` (SA-1 to SA-17) holds no suite-wide
   error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.
@@ -315,6 +338,10 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
   `SeoAudit.counts` and `TrafficView.breakdowns`, each listed in the test.
 - **Descriptions**: every enum property or parameter, every request-body property (and anything nested
   in one) and every `required` property needs one.
+- **A multipart upload documents its parts as the body**: springdoc reads a `@RequestParam
+  MultipartFile` as a query parameter, so `MediaApi.upload` hides its two parameters
+  (`@Parameter(hidden = true)`) and declares the `multipart/form-data` body on its `@Operation`
+  (`file`, an array of binary parts, required; `directoryId`). `OpenApiContractTest` pins it.
 - **No two API types share a simple name**: springdoc names a schema by it and silently merges two
   (`PageDtos.RevisionRestore` once gave the page's restore the entry's text; it is
   `PageRevisionRestore` now). The test scans `ui.restapi.dto` and `ui.restapi.v1`.

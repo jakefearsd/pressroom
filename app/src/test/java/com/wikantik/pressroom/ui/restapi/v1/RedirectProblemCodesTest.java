@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.RedirectRefusedException;
 import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
@@ -24,6 +25,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import static com.wikantik.pressroom.ui.restapi.v1.ProblemAsserts.oneField;
 import static com.wikantik.pressroom.ui.restapi.v1.ProblemAsserts.problem;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -129,7 +133,7 @@ class RedirectProblemCodesTest {
     @Test
     void aRuleThatWouldDuplicateOrChainHasItsCode() throws Exception {
         rulesFrom.put("/a", List.of(rule("r1", "/a", "/z")));
-        problem(create("/a", "/b"), "redirect.sourceExists", "a redirect for /a already exists");
+        problem(create("/a", "/b"), "redirect.sourceInUse", "a redirect for /a already exists");
 
         rulesFrom.clear();
         rulesTo.put("/a", List.of(rule("r2", "/old", "/a")));
@@ -141,18 +145,57 @@ class RedirectProblemCodesTest {
     }
 
     /**
-     * A refusal the manager raises without a reason of its own is passed
-     * through whole, as it always was: its text is not a finite set.
+     * The manager's last two refusals, a rule with no weblog and a blank path,
+     * have reasons and codes of their own (final review, 2026-11-21). The API
+     * never reaches either (it sets the weblog and refuses a blank path
+     * first), so the manager is asked directly, and a manager that raised
+     * them is mocked to show their codes.
      */
     @Test
-    void aRefusalWithNoReasonIsRedirectRefused() throws Exception {
+    void theManagersOwnRefusalsHaveReasons() throws Exception {
+        WeblogRedirectManager manager = new JPAWeblogRedirectManagerImpl(mock(JPAPersistenceStrategy.class)) { };
+        RedirectRefusedException noWeblog = assertThrows(RedirectRefusedException.class,
+                () -> manager.saveRedirect(rule(null, "/a", "/b")));
+        assertEquals(RedirectRefusedException.Reason.WEBLOG_REQUIRED, noWeblog.reason());
+        assertEquals("redirect must belong to a weblog", noWeblog.getMessage());
+
+        WeblogRedirect blank = rule(null, " ", "/b");
+        blank.setWeblog(weblog);
+        RedirectRefusedException noPath = assertThrows(RedirectRefusedException.class,
+                () -> manager.saveRedirect(blank));
+        assertEquals(RedirectRefusedException.Reason.PATH_REQUIRED, noPath.reason());
+        assertEquals(List.of("source"), noPath.args());
+        assertEquals("redirect source is required", noPath.getMessage());
+
+        for (RedirectRefusedException refusal : List.of(noWeblog, noPath)) {
+            Weblogger mocked = mock(Weblogger.class);
+            WeblogRedirectManager refusing = mock(WeblogRedirectManager.class);
+            when(mocked.getWeblogRedirectManager()).thenReturn(refusing);
+            doThrow(refusal).when(refusing).saveRedirect(any());
+            problem(answer(mvc(mocked), status().isBadRequest(),
+                            post(REDIRECTS).content("{\"source\":\"/a\",\"target\":\"/b\"}")),
+                    refusal == noWeblog ? "redirect.weblogRequired" : "redirect.pathRequired", refusal.getMessage());
+        }
+    }
+
+    /**
+     * Any other failure of the save (a store failure wrapping the
+     * persistence layer's text) is the opaque 500: nothing of its message
+     * reaches the wire. Before the final review it was passed through as a
+     * 400 {@code redirect.refused}.
+     */
+    @Test
+    void aStoreFailureIsTheOpaque500() throws Exception {
         Weblogger mocked = mock(Weblogger.class);
         WeblogRedirectManager manager = mock(WeblogRedirectManager.class);
         when(mocked.getWeblogRedirectManager()).thenReturn(manager);
-        doThrow(new WebloggerException("redirect must belong to a weblog")).when(manager).saveRedirect(any());
+        doThrow(new WebloggerException("ERROR: duplicate key value violates unique constraint \"weblog_redirect_pk\""))
+                .when(manager).saveRedirect(any());
 
-        problem(answer(mvc(mocked), status().isBadRequest(), post(REDIRECTS).content("{\"source\":\"/a\",\"target\":\"/b\"}")),
-                "redirect.refused", "redirect must belong to a weblog");
+        JsonNode body = answer(mvc(mocked), status().isInternalServerError(),
+                post(REDIRECTS).content("{\"source\":\"/a\",\"target\":\"/b\"}"));
+        problem(body, "server.internalError", "The request could not be completed.");
+        assertFalse(body.toString().contains("duplicate key"), body.toString());
     }
 
     @Test

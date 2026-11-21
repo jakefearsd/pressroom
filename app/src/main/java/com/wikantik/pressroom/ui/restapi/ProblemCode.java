@@ -79,7 +79,7 @@ public enum ProblemCode {
     /** Delete-forever was asked for a page that is not in the trash. */
     PAGE_DELETE_NEEDS_TRASH("page.deleteForeverNeedsTrash", ProblemType.CONFLICT, 0),
     /** The entry or page already has its 10 kept revisions; release one first. */
-    REVISION_KEEP_LIMIT("revision.keepLimit", ProblemType.CONFLICT, 0),
+    REVISION_TOO_MANY("revision.tooMany", ProblemType.CONFLICT, 0),
     /** A required field is missing or blank; `{0}` is its name. */
     FIELD_REQUIRED("field.required", ProblemType.INVALID_REQUEST, 1),
     /** A field that may be omitted was sent blank. */
@@ -93,9 +93,9 @@ public enum ProblemCode {
     /** `status` is not one of the known statuses. */
     STATUS_UNKNOWN("status.unknown", ProblemType.INVALID_REQUEST, 1),
     /** An entry write set `status` to TRASHED. */
-    ENTRY_STATUS_TRASH("entry.status.trashNotWritable", ProblemType.INVALID_REQUEST, 0),
+    ENTRY_TRASH_STATUS_NOT_WRITABLE("entry.trashStatusNotWritable", ProblemType.INVALID_REQUEST, 0),
     /** A page write set `status` to TRASHED. */
-    PAGE_STATUS_TRASH("page.status.trashNotWritable", ProblemType.INVALID_REQUEST, 0),
+    PAGE_TRASH_STATUS_NOT_WRITABLE("page.trashStatusNotWritable", ProblemType.INVALID_REQUEST, 0),
     /** The pages list `status` filter is not TRASHED. */
     PAGE_STATUS_FILTER("page.statusFilterInvalid", ProblemType.INVALID_REQUEST, 0),
     /** An entry's `expectedContentHash` is not a 64-digit hex hash. */
@@ -117,7 +117,7 @@ public enum ProblemCode {
     /** An `edits` item has no `replace`. */
     EDITS_NO_REPLACE("edits.noReplace", ProblemType.INVALID_REQUEST, 1),
     /** An edit's `find` is not in the stored text. */
-    EDITS_NOT_FOUND("edits.notFound", ProblemType.INVALID_REQUEST, 1),
+    EDITS_FIND_NOT_MATCHED("edits.findNotMatched", ProblemType.INVALID_REQUEST, 1),
     /** An edit's `find` matches more than once. */
     EDITS_AMBIGUOUS("edits.ambiguous", ProblemType.INVALID_REQUEST, 2),
     /** `edits` was sent on a create. */
@@ -144,10 +144,10 @@ public enum ProblemCode {
     JSONLD_TYPE_UNKNOWN("jsonLdType.unknown", ProblemType.INVALID_REQUEST, 2),
     /** `geoLatitude` or `geoLongitude` is off the globe. */
     GEO_OUT_OF_RANGE("geo.outOfRange", ProblemType.INVALID_REQUEST, 2),
-    /** An entry's `strand` is not one of the blog's strand pages. */
-    STRAND_NOT_A_STRAND("strand.notAStrandPage", ProblemType.INVALID_REQUEST, 0),
+    /** An entry's `strand` is not the id of one of the blog's strand pages. */
+    STRAND_ID_NOT_STRAND_PAGE("strand.idNotStrandPage", ProblemType.INVALID_REQUEST, 0),
     /** The weblog already has its most pinned posts. */
-    PINNED_LIMIT("pinned.limit", ProblemType.INVALID_REQUEST, 1),
+    PINNED_TOO_MANY("pinned.tooMany", ProblemType.INVALID_REQUEST, 1),
     /** `category` names no category of the weblog. */
     CATEGORY_UNKNOWN("category.unknown", ProblemType.INVALID_REQUEST, 2),
     /** An image id field does not name a public image of the weblog. */
@@ -180,10 +180,10 @@ public enum ProblemCode {
     IMAGE_IMPORT_FAILED("image.importFailed", ProblemType.INVALID_REQUEST, 2),
     /** `entries` was omitted from a parts replacement. */
     STRAND_ENTRIES_REQUIRED("strand.entriesRequired", ProblemType.INVALID_REQUEST, 0),
-    /** Parts were set on a page that is not a strand. */
-    STRAND_NOT_STRAND("strand.pageNotAStrand", ProblemType.INVALID_REQUEST, 0),
+    /** Parts were set on a page whose {@code strand} flag is not set. */
+    STRAND_FLAG_NOT_SET("strand.flagNotSet", ProblemType.INVALID_REQUEST, 0),
     /** More parts than a strand holds. */
-    STRAND_TOO_MANY("strand.tooManyParts", ProblemType.INVALID_REQUEST, 1),
+    STRAND_TOO_MANY("strand.tooMany", ProblemType.INVALID_REQUEST, 1),
     /** A listed post belongs to another strand. */
     STRAND_IN_ANOTHER("strand.postInAnotherStrand", ProblemType.INVALID_REQUEST, 1),
     /** A post id is repeated in `entries`. */
@@ -221,7 +221,7 @@ public enum ProblemCode {
     /** A token limited to one weblog called a route that belongs to no weblog. */
     TOKEN_WEBLOG_SCOPED_ROUTE("token.weblogScopedRoute", ProblemType.NOT_FOUND, 1),
     /** A token was used to mint a token; minting takes a password. */
-    TOKEN_CANNOT_MINT("token.cannotMintToken", ProblemType.FORBIDDEN, 0),
+    TOKEN_MINT_REFUSED("token.mintRefused", ProblemType.FORBIDDEN, 0),
     /** A token was used to list or revoke tokens; that takes a password. */
     TOKEN_MANAGEMENT_NEEDS_PASSWORD("token.managementNeedsPassword", ProblemType.FORBIDDEN, 0),
     /** The caller has no token with this id. */
@@ -322,8 +322,31 @@ public enum ProblemCode {
     COMMENT_STATUS_UNKNOWN("comment.statusUnknown", ProblemType.INVALID_REQUEST, 0),
     /** A comment its author deleted cannot be published. */
     COMMENT_DELETED_BY_AUTHOR("comment.deletedByAuthor", ProblemType.CONFLICT, 0),
-    /** The reply was not stored; {0} is the refusal's name ({@code BAD_REPLY}, {@code EMPTY_BODY}, {@code BODY_TOO_LONG}, ...). */
-    COMMENT_REPLY_REFUSED("comment.replyRefused", ProblemType.INVALID_REQUEST, 1),
+    /** A reply refused: no account ({@code CommentRefusal.NOT_SIGNED_IN}). Each reply refusal has its own code. */
+    COMMENT_REPLY_NOT_SIGNED_IN("comment.replyNotSignedIn", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the account lacks the comment permission ({@code NO_PERMISSION}). */
+    COMMENT_REPLY_NO_PERMISSION("comment.replyNoPermission", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the account is disabled or gone ({@code DISABLED}). */
+    COMMENT_REPLY_ACCOUNT_DISABLED("comment.replyAccountDisabled", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the comment replied to is unknown ({@code NOT_FOUND}). */
+    COMMENT_REPLY_PARENT_UNKNOWN("comment.replyParentUnknown", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the entry is closed to comments ({@code CLOSED}). */
+    COMMENT_REPLY_ENTRY_CLOSED("comment.replyEntryClosed", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the weblog has comments off ({@code COMMENTS_OFF}). */
+    COMMENT_REPLY_COMMENTS_OFF("comment.replyCommentsOff", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the weblog has a custom domain ({@code CUSTOM_DOMAIN}). */
+    COMMENT_REPLY_CUSTOM_DOMAIN("comment.replyCustomDomain", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the body is empty ({@code EMPTY_BODY}). */
+    COMMENT_REPLY_EMPTY_BODY("comment.replyEmptyBody", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the body is too long ({@code BODY_TOO_LONG}). */
+    COMMENT_REPLY_BODY_TOO_LONG("comment.replyBodyTooLong", ProblemType.INVALID_REQUEST, 0),
+    /**
+     * A reply refused ({@code BAD_REPLY}): not a member's reply to a published,
+     * unanswered top-level comment, or the store refused it.
+     */
+    COMMENT_REPLY_NOT_ACCEPTED("comment.replyNotAccepted", ProblemType.INVALID_REQUEST, 0),
+    /** A reply refused: the account has posted its share for now ({@code RATE_LIMITED}). */
+    COMMENT_REPLY_RATE_LIMITED("comment.replyRateLimited", ProblemType.INVALID_REQUEST, 0),
     /** No redirect of the weblog has this id. */
     REDIRECT_NOT_FOUND("redirect.notFound", ProblemType.NOT_FOUND, 0),
     /** A redirect's {@code source} or {@code target} ({0}) is not a path starting with one {@code /}. */
@@ -337,13 +360,15 @@ public enum ProblemCode {
     /** A redirect's {@code target} is its {@code source}. */
     REDIRECT_TARGET_IS_SOURCE("redirect.targetIsSource", ProblemType.INVALID_REQUEST, 1),
     /** The weblog already redirects this {@code source}. */
-    REDIRECT_SOURCE_EXISTS("redirect.sourceExists", ProblemType.INVALID_REQUEST, 1),
+    REDIRECT_SOURCE_IN_USE("redirect.sourceInUse", ProblemType.INVALID_REQUEST, 1),
     /** The {@code source} is another redirect's target: redirects are one hop. */
     REDIRECT_SOURCE_IS_TARGET("redirect.sourceIsTarget", ProblemType.INVALID_REQUEST, 2),
     /** The {@code target} is itself redirected: redirects are one hop. */
     REDIRECT_TARGET_REDIRECTED("redirect.targetRedirected", ProblemType.INVALID_REQUEST, 2),
-    /** The redirect could not be saved for a reason with no code of its own; {@code detail} says why. Text from the business tier. */
-    REDIRECT_REFUSED("redirect.refused", ProblemType.INVALID_REQUEST, 1),
+    /** The rule names no weblog (the manager's own check; the API always sets one). */
+    REDIRECT_WEBLOG_REQUIRED("redirect.weblogRequired", ProblemType.INVALID_REQUEST, 0),
+    /** A redirect path ({0}: source or target) is blank after normalising. */
+    REDIRECT_PATH_REQUIRED("redirect.pathRequired", ProblemType.INVALID_REQUEST, 1),
     /** The SEO audit was asked for trashed entries. */
     AUDIT_TRASHED_NOT_COVERED("audit.trashedNotCovered", ProblemType.INVALID_REQUEST, 0),
     /** {@code period} is not one of the traffic periods. */
@@ -412,15 +437,15 @@ public enum ProblemCode {
      * because the business tier's messages are not a finite set this API can
      * key. Task 3 fixed its final members (spec 2026-11-20): an image import's
      * refusal ({@code image.scanRefused}, {@code image.importFailed} and the
-     * media route's {@code media.importRefused}) and a redirect refusal the
-     * manager raised with no reason of its own ({@code redirect.refused}).
-     * This set may only shrink: a code leaves it when its source is
+     * media route's {@code media.importRefused}). The final review dropped
+     * {@code redirect.refused}: every redirect refusal has a reason, and any
+     * other save failure is the opaque 500. This set may only shrink: a code leaves it when its source is
      * keyed. {@code ProblemCodeCatalogTest} pins it, holds each member's English
      * to ending in its last placeholder, and every code whose English is just
      * {@code {0}} to being a member.
      */
     public static final Set<ProblemCode> PASSTHROUGH_CODES =
-            Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED, MEDIA_IMPORT_REFUSED, REDIRECT_REFUSED);
+            Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED, MEDIA_IMPORT_REFUSED);
 
     private static final String KEY_PREFIX = "api.problem.";
 

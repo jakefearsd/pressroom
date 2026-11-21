@@ -76,15 +76,15 @@ class ProblemCodeCatalogTest {
                         "page.alreadyTrashed",
                         "page.notInTrash",
                         "page.deleteForeverNeedsTrash",
-                        "revision.keepLimit",
+                        "revision.tooMany",
                         "field.required",
                         "field.blank",
                         "field.tooLong",
                         "field.updateOnly",
                         "revisionNote.onCreate",
                         "status.unknown",
-                        "entry.status.trashNotWritable",
-                        "page.status.trashNotWritable",
+                        "entry.trashStatusNotWritable",
+                        "page.trashStatusNotWritable",
                         "page.statusFilterInvalid",
                         "entry.expectedContentHashInvalid",
                         "page.expectedContentHashInvalid",
@@ -95,7 +95,7 @@ class ProblemCodeCatalogTest {
                         "edits.empty",
                         "edits.noFind",
                         "edits.noReplace",
-                        "edits.notFound",
+                        "edits.findNotMatched",
                         "edits.ambiguous",
                         "edits.onCreate",
                         "edits.previewNeedsEntry",
@@ -109,8 +109,8 @@ class ProblemCodeCatalogTest {
                         "eventEnd.beforeStart",
                         "jsonLdType.unknown",
                         "geo.outOfRange",
-                        "strand.notAStrandPage",
-                        "pinned.limit",
+                        "strand.idNotStrandPage",
+                        "pinned.tooMany",
                         "category.unknown",
                         "image.notPublic",
                         "canonicalUrl.notAbsolute",
@@ -127,8 +127,8 @@ class ProblemCodeCatalogTest {
                         "image.importBudgetExhausted",
                         "image.importFailed",
                         "strand.entriesRequired",
-                        "strand.pageNotAStrand",
-                        "strand.tooManyParts",
+                        "strand.flagNotSet",
+                        "strand.tooMany",
                         "strand.postInAnotherStrand",
                         "strand.postListedTwice",
                         "strand.postUnknown",
@@ -147,7 +147,7 @@ class ProblemCodeCatalogTest {
                         "token.notAdminScoped",
                         "token.readOnly",
                         "token.weblogScopedRoute",
-                        "token.cannotMintToken",
+                        "token.mintRefused",
                         "token.managementNeedsPassword",
                         "token.notFound",
                         "token.weblogNotMember",
@@ -198,17 +198,28 @@ class ProblemCodeCatalogTest {
                         "comment.statusNotSettable",
                         "comment.statusUnknown",
                         "comment.deletedByAuthor",
-                        "comment.replyRefused",
+                        "comment.replyNotSignedIn",
+                        "comment.replyNoPermission",
+                        "comment.replyAccountDisabled",
+                        "comment.replyParentUnknown",
+                        "comment.replyEntryClosed",
+                        "comment.replyCommentsOff",
+                        "comment.replyCustomDomain",
+                        "comment.replyEmptyBody",
+                        "comment.replyBodyTooLong",
+                        "comment.replyNotAccepted",
+                        "comment.replyRateLimited",
                         "redirect.notFound",
                         "redirect.pathNotRelative",
                         "redirect.pathHasQuery",
                         "redirect.pathHasBackslash",
                         "redirect.pathHasControlCharacters",
                         "redirect.targetIsSource",
-                        "redirect.sourceExists",
+                        "redirect.sourceInUse",
                         "redirect.sourceIsTarget",
                         "redirect.targetRedirected",
-                        "redirect.refused",
+                        "redirect.weblogRequired",
+                        "redirect.pathRequired",
                         "audit.trashedNotCovered",
                         "traffic.periodUnknown",
                         "theme.customNotAllowed",
@@ -249,8 +260,9 @@ class ProblemCodeCatalogTest {
     @Test
     void thePassthroughCodesArePinnedAndEndInTheForeignText() throws IOException {
         // Task 3 pinned the final set; it may only shrink from here.
+        // The final-review fix wave dropped redirect.refused (a store failure is the opaque 500).
         assertEquals(Set.of(ProblemCode.IMAGE_SCAN_REFUSED, ProblemCode.IMAGE_IMPORT_FAILED,
-                        ProblemCode.MEDIA_IMPORT_REFUSED, ProblemCode.REDIRECT_REFUSED),
+                        ProblemCode.MEDIA_IMPORT_REFUSED),
                 ProblemCode.PASSTHROUGH_CODES);
         Properties base = load(BASE_BUNDLE);
         Set<ProblemCode> argumentOnly = new java.util.HashSet<>();
@@ -265,6 +277,70 @@ class ProblemCodeCatalogTest {
             }
         }
         assertTrue(ProblemCode.PASSTHROUGH_CODES.containsAll(argumentOnly), "a code whose English is {0} is passthrough");
+    }
+
+    /**
+     * The naming convention (docs/dev/api.md, "Problem codes"): exactly two
+     * segments, {@code <resource or field>.<condition>}, each lowerCamel.
+     */
+    @Test
+    void everyCodeHasExactlyTwoSegments() {
+        Set<String> offenders = new TreeSet<>();
+        for (ProblemCode code : ProblemCode.values()) {
+            if (!code.code().matches("[a-z][a-zA-Z0-9]*\\.[a-z][a-zA-Z0-9]*")) {
+                offenders.add(code.code());
+            }
+        }
+        assertEquals(Set.of(), offenders, "codes that are not <resource>.<condition>");
+    }
+
+    /** A condition that says "not found" is a 404, and only a 404 says it. */
+    @Test
+    void everyNotFoundCodeIsA404() {
+        Set<String> offenders = new TreeSet<>();
+        for (ProblemCode code : ProblemCode.values()) {
+            String condition = code.code().substring(code.code().indexOf('.') + 1);
+            boolean saysNotFound = "notFound".equals(condition) || condition.endsWith("NotFound");
+            if (saysNotFound && (code.type() == null || code.type().status() != 404)) {
+                offenders.add(code.code());
+            }
+        }
+        assertEquals(Set.of(), offenders, "a *.notFound code that is not a 404");
+    }
+
+    /**
+     * A value with placeholders is rendered by {@code MessageFormat}, which
+     * throws on a malformed pattern ({@code {name}}, a lone brace). The
+     * renderer falls back to the English, but a broken translation should
+     * not ship: every bundle that defines a code taking arguments parses.
+     */
+    @Test
+    void everyBundlesValueForACodeWithArgumentsIsAValidPattern() throws IOException {
+        Properties broken = new Properties();
+        broken.setProperty(ProblemCode.REQUEST_TOO_LARGE.key(), "Bonjour {name} {0}");
+        assertEquals(Set.of("request.tooLarge in test"), malformed(broken, "test"), "the check sees a {word}");
+
+        Set<String> offenders = new TreeSet<>(malformed(load(BASE_BUNDLE), "base"));
+        for (String language : TRANSLATIONS) {
+            offenders.addAll(malformed(load("/ApplicationResources_" + language + ".properties"), language));
+        }
+        assertEquals(Set.of(), offenders, "values MessageFormat will not parse");
+    }
+
+    private static Set<String> malformed(Properties bundle, String name) {
+        Set<String> offenders = new TreeSet<>();
+        for (ProblemCode code : ProblemCode.values()) {
+            String value = bundle.getProperty(code.key());
+            if (value == null || code.arity() == 0) {
+                continue;
+            }
+            try {
+                new java.text.MessageFormat(value, java.util.Locale.ROOT);
+            } catch (IllegalArgumentException e) {
+                offenders.add(code.code() + " in " + name);
+            }
+        }
+        return offenders;
     }
 
     @Test

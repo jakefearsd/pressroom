@@ -2,6 +2,7 @@ package com.wikantik.pressroom.ui.restapi.auth;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import com.wikantik.pressroom.business.ApiTokenManager;
 import com.wikantik.pressroom.business.Weblogger;
@@ -15,6 +16,7 @@ import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -176,6 +178,24 @@ class SecurityChainProblemCodesTest {
                     ? "The request body is over 4048576 bytes."
                     : "Le corps de la requête dépasse 4048576 octets.");
         }
+    }
+
+    /**
+     * A writer outside the advice falls back to the English too when a
+     * translation will not parse: the 413 stays a 413 with a problem body,
+     * not a container 500.
+     */
+    @Test
+    void aMalformedTranslationLeavesTheBodyLimitA413InEnglish() throws Exception {
+        StaticMessageSource broken = new StaticMessageSource();
+        broken.addMessage("api.problem.request.tooLarge", Locale.FRENCH, "Bonjour {name} {0}");
+        MockHttpServletRequest request = request("POST", "/api/v1/weblogs/b/entries", "fr");
+        request.setContentType("application/json");
+        request.setContent(new byte[ApiBodyLimitFilter.MAX_BODY_BYTES + 1]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        new ApiBodyLimitFilter(new ApiProblemWriter(JSON, broken)).doFilter(request, response, mock(FilterChain.class));
+        assertEquals(413, response.getStatus());
+        assertProblem(body(response), "request.tooLarge", "The request body is over 4048576 bytes.");
     }
 
     // ---- the token-scope refusals: thrown to ApiExceptionHandler, so their codes are what matter here ----

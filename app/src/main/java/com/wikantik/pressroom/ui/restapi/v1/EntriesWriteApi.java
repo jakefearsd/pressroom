@@ -530,7 +530,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         WeblogPage page = WeblogOwnership.page(weblogger, strandId, weblog);
         if (page == null || !Boolean.TRUE.equals(page.getStrand())) {
-            throw ApiException.problemOnField("strand", ProblemCode.STRAND_NOT_A_STRAND);
+            throw ApiException.problemOnField("strand", ProblemCode.STRAND_ID_NOT_STRAND_PAGE);
         }
         return page;
     }
@@ -544,7 +544,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     private void requirePinRoom(Weblog weblog) throws WebloggerException {
         long pinned = weblogger.getWeblogEntryManager().getPinnedEntryCount(weblog);
         if (EntryPins.wouldExceed(false, true, pinned)) {
-            throw ApiException.problemOnField("pinned", ProblemCode.PINNED_LIMIT, Integer.toString(EntryPins.MAX_PER_WEBLOG));
+            throw ApiException.problemOnField("pinned", ProblemCode.PINNED_TOO_MANY, Integer.toString(EntryPins.MAX_PER_WEBLOG));
         }
     }
 

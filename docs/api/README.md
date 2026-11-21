@@ -363,13 +363,13 @@ from every other failure in this document.
   "status": 404,
   "detail": "No such entry.",
   "instance": "/api/v1/weblogs/myblog/entries/does-not-exist",
-  "code": "resource.notFound"
+  "code": "entry.notFound"
 }
 ```
 
 Every problem body carries a `code`, and so does every `errors` entry: a
-stable, case-sensitive string of dotted lowerCamel segments
-(`resource.notFound`, `request.invalid`). `type` is the coarse category;
+stable, case-sensitive string of two dotted lowerCamel segments,
+`<resource or field>.<condition>` (`entry.notFound`, `slug.inUse`). `type` is the coarse category;
 `code` refines it, and several codes can share a type.
 
 - **Branch on `code`, never on `detail`.** A code is never renamed or
@@ -377,14 +377,13 @@ stable, case-sensitive string of dotted lowerCamel segments
   refusals precisely, so treat one you do not know by its `type` and status.
 - **Every refusal has a code of its own.** The generic codes
   (`request.invalid`, `resource.notFound`, `resource.conflict`,
-  `upstream.failure`) stay in the table, but no route answers with them any
-  more: before 0.16.0 they stood for any refusal not yet given its own.
+  `upstream.failure`) are the category fallbacks: no route answers with them
+  today, and a client that meets one treats it by its `type` and status.
   `auth.notAuthenticated` means the same as `auth.unauthorized`; treat them alike.
 - **A few `detail`s are not the API's own text** but the message of the step
-  that refused (an image import, a redirect rule the manager refused without
-  a reason of its own). Their codes are `image.scanRefused`,
-  `image.importFailed`, `media.importRefused` and `redirect.refused`; such
-  text is English whatever the caller asks for.
+  that refused (an image import). Their codes are `image.scanRefused`,
+  `image.importFailed` and `media.importRefused`; such text is English
+  whatever the caller asks for.
 - **`detail` is plain text for a person, and may be localised.** Send
   `Accept-Language` and a problem whose text the server holds in that
   language reads in it; anything else reads in English. No translations
@@ -392,14 +391,17 @@ stable, case-sensitive string of dotted lowerCamel segments
   Over MCP a tool error is always English.
 - A 400 or 409 about exactly one field carries that field error's `code` as
   its own. A 400 naming several fields has the code `request.invalidFields`,
-  and each `errors` entry has its own.
+  and each `errors` entry has its own. So an `errors[].code` inside that 400
+  can be one the table lists as a 409 (`handle.inUse`, `customDomain.inUse`
+  beside another bad field of a weblog create or settings change): the
+  problem's status is the request's, the entry's code is the field's.
 - The bodies Boot's own `/error` writes (the unmapped-path 404, the 405, and
   the multipart 413 and 415, described above) are not problem bodies and
   carry no `code`.
 
 | Code | Status | Type | Meaning |
 |------|--------|------|---------|
-| `request.invalid` | 400 | `invalid-request` | The request is not valid. The generic 400: before 0.16.0, a 400 not yet given its own code; no route answers it now. |
+| `request.invalid` | 400 | `invalid-request` | The request is not valid. The category fallback for a 400; no route answers it today. |
 | `request.invalidFields` | 400 | `invalid-request` | More than one field is invalid; each `errors` entry carries its own code. |
 | `request.malformedBody` | 400 | `invalid-request` | The body could not be parsed as JSON (or was missing where one is required). |
 | `parameter.notWholeNumber` | 400 | `invalid-request` | A query parameter or path variable that must be a whole number is not one. |
@@ -433,15 +435,15 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `page.alreadyTrashed` | 409 | `conflict` | Trash was asked for a page already in the trash. |
 | `page.notInTrash` | 409 | `conflict` | Restore was asked for a page that is not in the trash. |
 | `page.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for a page that is not in the trash. |
-| `revision.keepLimit` | 409 | `conflict` | The entry or page already has its 10 kept revisions; release one first. |
+| `revision.tooMany` | 409 | `conflict` | The entry or page already has its 10 kept revisions; release one first. |
 | `field.required` | 400 | `invalid-request` | A required field is missing or blank; `{0}` is its name. |
 | `field.blank` | 400 | `invalid-request` | A field that may be omitted was sent blank. |
 | `field.tooLong` | 400 | `invalid-request` | A value is longer than its column allows. |
 | `field.updateOnly` | 400 | `invalid-request` | A field that acts on stored content (`clear`, `expectedContentHash`) was sent on a create. |
 | `revisionNote.onCreate` | 400 | `invalid-request` | `revisionNote` was sent on a create. |
 | `status.unknown` | 400 | `invalid-request` | `status` is not one of the known statuses. |
-| `entry.status.trashNotWritable` | 400 | `invalid-request` | An entry write set `status` to TRASHED. |
-| `page.status.trashNotWritable` | 400 | `invalid-request` | A page write set `status` to TRASHED. |
+| `entry.trashStatusNotWritable` | 400 | `invalid-request` | An entry write set `status` to TRASHED. |
+| `page.trashStatusNotWritable` | 400 | `invalid-request` | A page write set `status` to TRASHED. |
 | `page.statusFilterInvalid` | 400 | `invalid-request` | The pages list `status` filter is not TRASHED. |
 | `entry.expectedContentHashInvalid` | 400 | `invalid-request` | An entry's `expectedContentHash` is not a 64-digit hex hash. |
 | `page.expectedContentHashInvalid` | 400 | `invalid-request` | A page's `expectedContentHash` is not a 64-digit hex hash. |
@@ -452,7 +454,7 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `edits.empty` | 400 | `invalid-request` | An `edits` item is null. |
 | `edits.noFind` | 400 | `invalid-request` | An `edits` item has no `find`. |
 | `edits.noReplace` | 400 | `invalid-request` | An `edits` item has no `replace`. |
-| `edits.notFound` | 400 | `invalid-request` | An edit's `find` is not in the stored text. |
+| `edits.findNotMatched` | 400 | `invalid-request` | An edit's `find` is not in the stored text. |
 | `edits.ambiguous` | 400 | `invalid-request` | An edit's `find` matches more than once. |
 | `edits.onCreate` | 400 | `invalid-request` | `edits` was sent on a create. |
 | `edits.previewNeedsEntry` | 400 | `invalid-request` | `edits` was sent to preview without an entry id. |
@@ -466,8 +468,8 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `eventEnd.beforeStart` | 400 | `invalid-request` | `eventEnd` precedes `eventStart`. |
 | `jsonLdType.unknown` | 400 | `invalid-request` | `jsonLdType` is not a known type. |
 | `geo.outOfRange` | 400 | `invalid-request` | `geoLatitude` or `geoLongitude` is off the globe. |
-| `strand.notAStrandPage` | 400 | `invalid-request` | An entry's `strand` is not one of the blog's strand pages. |
-| `pinned.limit` | 400 | `invalid-request` | The weblog already has its most pinned posts. |
+| `strand.idNotStrandPage` | 400 | `invalid-request` | An entry's `strand` is not the id of one of the blog's strand pages. |
+| `pinned.tooMany` | 400 | `invalid-request` | The weblog already has its most pinned posts. |
 | `category.unknown` | 400 | `invalid-request` | `category` names no category of the weblog. |
 | `image.notPublic` | 400 | `invalid-request` | An image id field does not name a public image of the weblog. |
 | `canonicalUrl.notAbsolute` | 400 | `invalid-request` | `canonicalUrl` is not an absolute http(s) URL. |
@@ -484,8 +486,8 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `image.importBudgetExhausted` | 400 | `invalid-request` | The import step ran out of time before this image. |
 | `image.importFailed` | 400 | `invalid-request` | One image could not be imported; `detail` names it (`{0}`) and carries the import step's own reason (`{1}`, English). |
 | `strand.entriesRequired` | 400 | `invalid-request` | `entries` was omitted from a parts replacement. |
-| `strand.pageNotAStrand` | 400 | `invalid-request` | Parts were set on a page that is not a strand. |
-| `strand.tooManyParts` | 400 | `invalid-request` | More parts than a strand holds. |
+| `strand.flagNotSet` | 400 | `invalid-request` | Parts were set on a page whose `strand` flag is not set; set `strand` true on it first. |
+| `strand.tooMany` | 400 | `invalid-request` | More parts than a strand holds. |
 | `strand.postInAnotherStrand` | 400 | `invalid-request` | A listed post belongs to another strand. |
 | `strand.postListedTwice` | 400 | `invalid-request` | A post id is repeated in `entries`. |
 | `strand.postUnknown` | 400 | `invalid-request` | A listed post id is not a post of the weblog. |
@@ -504,7 +506,7 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `token.notAdminScoped` | 403 | `forbidden` | An administration route was called with a token whose role is not ADMIN. |
 | `token.readOnly` | 403 | `forbidden` | A write was sent with a READ token. |
 | `token.weblogScopedRoute` | 404 | `not-found` | A token limited to one weblog called a route that belongs to no weblog. |
-| `token.cannotMintToken` | 403 | `forbidden` | A token was used to mint a token; minting takes a password. |
+| `token.mintRefused` | 403 | `forbidden` | A token was used to mint a token; minting takes a password. |
 | `token.managementNeedsPassword` | 403 | `forbidden` | A token was used to list or revoke tokens; that takes a password. |
 | `token.notFound` | 404 | `not-found` | The caller has no token with this id. |
 | `token.weblogNotMember` | 400 | `invalid-request` | A token's `weblog` names a weblog the caller is not a member of. |
@@ -555,17 +557,28 @@ stable, case-sensitive string of dotted lowerCamel segments
 | `comment.statusNotSettable` | 400 | `invalid-request` | A comment's `status` may be set only to PUBLISHED or HIDDEN. |
 | `comment.statusUnknown` | 400 | `invalid-request` | A comment `status` that is not a status. |
 | `comment.deletedByAuthor` | 409 | `conflict` | A comment its author deleted cannot be published. |
-| `comment.replyRefused` | 400 | `invalid-request` | The reply was not stored; `{0}` is the refusal's name (`BAD_REPLY`, `EMPTY_BODY`, `BODY_TOO_LONG`, ...). |
+| `comment.replyNotSignedIn` | 400 | `invalid-request` | The reply was not stored: the caller has no account (`detail` ends in `NOT_SIGNED_IN`). |
+| `comment.replyNoPermission` | 400 | `invalid-request` | The reply was not stored: the account may not comment (`detail` ends in `NO_PERMISSION`). |
+| `comment.replyAccountDisabled` | 400 | `invalid-request` | The reply was not stored: the account is disabled or no longer exists (`detail` ends in `DISABLED`). |
+| `comment.replyParentUnknown` | 400 | `invalid-request` | The reply was not stored: the comment replied to is unknown (`detail` ends in `NOT_FOUND`). |
+| `comment.replyEntryClosed` | 400 | `invalid-request` | The reply was not stored: the entry is closed to comments (`detail` ends in `CLOSED`). The reply route does not refuse for this today (replies keep existing comments moderatable); it is coded so that it can. |
+| `comment.replyCommentsOff` | 400 | `invalid-request` | The reply was not stored: the weblog has comments off (`detail` ends in `COMMENTS_OFF`). The reply route does not refuse for this today (replies keep existing comments moderatable); it is coded so that it can. |
+| `comment.replyCustomDomain` | 400 | `invalid-request` | The reply was not stored: the weblog has a custom domain (`detail` ends in `CUSTOM_DOMAIN`). The reply route does not refuse for this today (replies keep existing comments moderatable); it is coded so that it can. |
+| `comment.replyEmptyBody` | 400 | `invalid-request` | The reply was not stored: the body is empty (`detail` ends in `EMPTY_BODY`). |
+| `comment.replyBodyTooLong` | 400 | `invalid-request` | The reply was not stored: the body is over 4000 code points (`detail` ends in `BODY_TOO_LONG`). |
+| `comment.replyNotAccepted` | 400 | `invalid-request` | The reply was not stored: not a member's reply to a published, unanswered top-level comment, or the store refused it (`detail` ends in `BAD_REPLY`). |
+| `comment.replyRateLimited` | 400 | `invalid-request` | The reply was not stored: the account has posted its share for now (`detail` ends in `RATE_LIMITED`). |
 | `redirect.notFound` | 404 | `not-found` | No redirect of the weblog has this id. |
 | `redirect.pathNotRelative` | 400 | `invalid-request` | A redirect's `source` or `target` (`{0}`) is not a path starting with one `/`. |
 | `redirect.pathHasQuery` | 400 | `invalid-request` | A redirect path carries a query string. |
 | `redirect.pathHasBackslash` | 400 | `invalid-request` | A redirect path contains a backslash. |
 | `redirect.pathHasControlCharacters` | 400 | `invalid-request` | A redirect path contains a control character. |
 | `redirect.targetIsSource` | 400 | `invalid-request` | A redirect's `target` is its `source`. |
-| `redirect.sourceExists` | 400 | `invalid-request` | The weblog already redirects this `source`. |
+| `redirect.sourceInUse` | 400 | `invalid-request` | The weblog already redirects this `source`. |
 | `redirect.sourceIsTarget` | 400 | `invalid-request` | The `source` is another redirect's target: redirects are one hop. |
 | `redirect.targetRedirected` | 400 | `invalid-request` | The `target` is itself redirected: redirects are one hop. |
-| `redirect.refused` | 400 | `invalid-request` | The redirect could not be saved for a reason with no code of its own; `detail` says why. Text from the business tier. |
+| `redirect.weblogRequired` | 400 | `invalid-request` | The rule names no weblog. The API always sets one, so no route answers it today. |
+| `redirect.pathRequired` | 400 | `invalid-request` | A redirect path is blank. The API refuses a blank `source` or `target` first (`field.required`), so no route answers it today. |
 | `audit.trashedNotCovered` | 400 | `invalid-request` | The SEO audit was asked for trashed entries. |
 | `traffic.periodUnknown` | 400 | `invalid-request` | `period` is not one of the traffic periods. |
 | `theme.customNotAllowed` | 400 | `invalid-request` | `theme` is `custom`, which only the admin UI sets. |
@@ -614,8 +627,8 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
   "detail": "geoLatitude must be between -90 and 90. Unknown category 'Travle'; it is one of: Food, Travel.",
   "instance": "/api/v1/weblogs/myblog/entries",
   "errors": [
-    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90.", "code": "request.invalid"},
-    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel.", "code": "request.invalid"}
+    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90.", "code": "geo.outOfRange"},
+    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel.", "code": "category.unknown"}
   ],
   "code": "request.invalidFields"
 }
@@ -1386,8 +1399,16 @@ A rule is `{"source": "/old-path", "target": "/new-path"}` — both
 weblog-relative (no handle, no context path, no query string; the request's
 query string is preserved on the 301 automatically). Off-site targets,
 query strings in either path, duplicate sources, and anything that would
-chain two rules together are refused as 400s with the reason in the body.
-There is no update verb: delete and recreate. The list echoes each rule's
+chain two rules together are refused as 400s with the reason in the body,
+each with its own `code` (`redirect.pathNotRelative`, `redirect.sourceInUse`,
+...; see [Errors](#errors)). There is no update verb: delete and recreate.
+
+> **Changed in 0.16.0: a failure to store a rule is a 500, not a 400.**
+> Earlier versions answered any failure of the save with a 400 whose
+> `detail` was the failure's own message, which for a database error could
+> carry the database's text. Every refusal still is a 400 with its reason;
+> anything else is the opaque 500 problem (`server.internalError`), with the
+> cause logged on the server only. The list echoes each rule's
 `hitCount` and `lastHitAt` — the way to see whether a stale URL is still
 being asked for — and every *served* redirect also logs one line to the
 `pressroom.redirects` logger with the requested URI, referer, and user-agent
@@ -1443,10 +1464,13 @@ Publishing a comment its author deleted (a `HIDDEN` comment with an empty
 `DELETE` removes the comment and its reply (204). A reply is written as the
 token's user, published at once, and answers 201 with its view; a reply the
 service refuses (for example the comment already has one, or the body is empty
-or over 4000 code points) is a 400 naming the refusal code, such as `BAD_REPLY`,
-`EMPTY_BODY`, `BODY_TOO_LONG` or `RATE_LIMITED` (replies count toward the
-per-account comment rate limit). Replies are for the weblog's members: a global
-admin whose token reaches a weblog they are not a member of gets `BAD_REPLY`.
+or over 4000 code points) is a 400 whose `code` names the refusal, such as
+`comment.replyNotAccepted`, `comment.replyEmptyBody`, `comment.replyBodyTooLong`
+or `comment.replyRateLimited` (replies count toward the per-account comment
+rate limit); its `detail` ends in the refusal's name (`BAD_REPLY`,
+`EMPTY_BODY`, ...), as it always has. Replies are for the weblog's members: a
+global admin whose token reaches a weblog they are not a member of gets
+`comment.replyNotAccepted`.
 
 **Settings.** A weblog's `commentsEnabled` and `commentNotify` (email the
 weblog's admins when a comment is held), `showMoreFromSite` (default true;
@@ -1791,7 +1815,7 @@ action beyond the token's role answers "forbidden", exactly as over REST.
 - **API tokens only.** Mint one with `bin/pressroom-api auth login` or `POST /api/v1/tokens`. Username
   and password are refused at `/api/mcp` with the 401 every route but the token resource gives a
   password ([With the API](#with-the-api)); any other non-token caller gets 401 `MCP accepts API
-  tokens only.`
+  tokens only.` (code `mcp.tokenRequired`).
 - **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
   `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
   admin UI.` Disabling, deleting, re-addressing and role changes for admins happen in the admin UI.
@@ -1836,7 +1860,9 @@ must be one path segment: an empty value, `.`, `..`, or a value containing `/`, 
 refused. A refusal from the API is a tool error whose text is the API's problem body. A refusal
 the MCP endpoint makes itself (an unknown action, a missing or inapplicable argument) is a tool
 error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid request`, `status`,
-`detail`, `instance`), and a failure it cannot explain is REST's opaque internal-error problem. A
+`detail`, `instance`, `code`), its `code` one of the `mcp.*` codes in [Errors](#errors)
+(`mcp.actionUnknown`, `mcp.argumentMissing`, ...), and a failure it cannot explain is REST's opaque
+internal-error problem. A
 503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
 through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
 through MCP: minting, listing or revoking tokens, and uploading media from local files.
@@ -1864,6 +1890,11 @@ clients name their methods after, and a tag naming its group of routes. Success 
 `application/json`. Every operation's `default` response is an `ApiProblem` served as
 `application/problem+json` (see [Errors](#errors)); its `code` is a plain string whose known values are
 listed as `x-extensible-enum`, so a client should accept a code it does not know.
+
+New in 0.16.0: the operation ids and tags, every `DELETE` documented as a 204 with no body, the page
+revision restore's body schema named `PageRevisionRestore`, and the media upload described as a
+`multipart/form-data` body of `file` parts. A client generated from an earlier document gets new
+method names when regenerated.
 
 ## `bin/pressroom-api`
 

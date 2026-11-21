@@ -263,7 +263,7 @@ public final class PageDtos {
             throw ApiException.problemOnField("status", ProblemCode.STATUS_UNKNOWN, e, raw);
         }
         if (status == WeblogPage.PubStatus.TRASHED) {
-            throw ApiException.problemOnField("status", ProblemCode.PAGE_STATUS_TRASH);
+            throw ApiException.problemOnField("status", ProblemCode.PAGE_TRASH_STATUS_NOT_WRITABLE);
         }
         return status;
     }

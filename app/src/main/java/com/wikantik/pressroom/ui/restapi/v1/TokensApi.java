@@ -95,7 +95,7 @@ public class TokensApi {
             throws WebloggerException {
         // A token cannot be used to mint another token: that would turn any
         // leaked token into a permanent one, with a scope the thief picks.
-        requireCredentialCaller(ProblemCode.TOKEN_CANNOT_MINT);
+        requireCredentialCaller(ProblemCode.TOKEN_MINT_REFUSED);
 
         ApiToken.Role role = parseRole(request.role());
         // pressroom_api_token.label is VARCHAR(255) NOT NULL (V026) and

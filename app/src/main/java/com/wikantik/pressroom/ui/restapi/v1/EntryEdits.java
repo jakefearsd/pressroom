@@ -67,7 +67,7 @@ final class EntryEdits {
         }
         int at = text.indexOf(edit.find());
         if (at < 0) {
-            errors.add(field, ProblemCode.EDITS_NOT_FOUND, field);
+            errors.add(field, ProblemCode.EDITS_FIND_NOT_MATCHED, field);
             return text;
         }
         int matches = matches(text, edit.find(), at);

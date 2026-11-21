@@ -20,7 +20,7 @@ package com.wikantik.pressroom.ui.restapi.v1;
 import java.sql.Timestamp;
 import java.util.List;
 
-import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.RedirectRefusedException;
 import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -142,14 +142,18 @@ class RedirectsApiTest {
     /**
      * saveRedirect's refusals (off-site target, chaining, duplicate source)
      * are validation with readable messages, and must surface as 400s --
-     * not fall through the generic handler as opaque 500s.
+     * not fall through the generic handler as opaque 500s. Since the final
+     * review (2026-11-21) every refusal is a RedirectRefusedException with a
+     * reason; any other WebloggerException is a failure, not a refusal, and
+     * is the opaque 500 (RedirectProblemCodesTest.aStoreFailureIsTheOpaque500).
      */
     @Test
     void aManagerRefusalIsBadRequestNotA500() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         WeblogRedirectManager redirectManager = weblogger.getWeblogRedirectManager();
-        doThrow(new WebloggerException("redirect target must be a weblog-relative path"))
+        doThrow(new RedirectRefusedException("redirect target must be a weblog-relative path starting with '/': //evil.example",
+                RedirectRefusedException.Reason.PATH_NOT_RELATIVE, "target", "//evil.example"))
                 .when(redirectManager).saveRedirect(any());
 
         mockMvc(controllerFor(weblogger))

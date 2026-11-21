@@ -581,6 +581,30 @@ class OpenApiContractTest {
         return false;
     }
 
+    /**
+     * The upload takes its files as multipart parts, not query parameters: a
+     * generator builds the request from the request body, so {@code file}
+     * (one or more binary parts) and {@code directoryId} are properties of a
+     * {@code multipart/form-data} body, and neither is a parameter.
+     */
+    @Test
+    void theUploadIsAMultipartBodyOfBinaryFileParts() {
+        JsonNode upload = document.get("paths").get("/v1/weblogs/{handle}/media").get("post");
+        for (JsonNode parameter : upload.path("parameters")) {
+            String name = parameter.path("name").asString();
+            assertFalse("file".equals(name) || "directoryId".equals(name), "mediaUpload: " + name + " is a parameter: "
+                    + upload);
+        }
+        JsonNode content = upload.path("requestBody").path("content");
+        assertEquals(List.of("multipart/form-data"), new ArrayList<>(content.propertyNames()), "mediaUpload: " + upload);
+        JsonNode schema = resolve(content.get("multipart/form-data").path("schema"));
+        JsonNode file = schema.path("properties").path("file");
+        assertEquals("array", file.path("type").asString(), "file is one or more parts: " + schema);
+        assertEquals("binary", file.path("items").path("format").asString(), "each part is binary: " + schema);
+        assertEquals("string", schema.path("properties").path("directoryId").path("type").asString(), schema.toString());
+        assertTrue(strings(schema.path("required")).contains("file"), "file is required: " + schema);
+    }
+
     /** The entry routes still document fields with its shared text (EntriesOpenApiTest pins the rest). */
     @Test
     void theEntryFieldsParameterKeepsItsSharedDescription() {

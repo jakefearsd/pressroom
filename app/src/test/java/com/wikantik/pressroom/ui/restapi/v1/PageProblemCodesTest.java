@@ -132,7 +132,7 @@ class PageProblemCodesTest {
     }
 
     @Test
-    void anUnknownRevisionIsRevisionNotFoundAndAnEleventhKeptOneRevisionKeepLimit() throws Exception {
+    void anUnknownRevisionIsRevisionNotFoundAndAnEleventhKeptOneRevisionTooMany() throws Exception {
         problem(answer(status().isNotFound(), post(P1 + "/revisions/nope/keep")),
                 "revision.notFound", "No such revision.");
 
@@ -142,7 +142,7 @@ class PageProblemCodesTest {
         when(pages.getRevision("r1")).thenReturn(revision);
         doThrow(new RevisionKeepLimitException()).when(pages).setRevisionKept(revision, true);
         problem(answer(status().isConflict(), post(P1 + "/revisions/r1/keep")),
-                "revision.keepLimit", "At most 10 kept revisions for one item.");
+                "revision.tooMany", "At most 10 kept revisions for one item.");
     }
 
     // ------------------------------------------------------------ fields
@@ -183,7 +183,7 @@ class PageProblemCodesTest {
     @Test
     void anUnknownStatusIsStatusUnknownAndATrashedOneIsNotWritable() throws Exception {
         oneField(update("{\"status\":\"NOPE\"}"), "status", "status.unknown", "Unknown status 'NOPE'.");
-        oneField(update("{\"status\":\"TRASHED\"}"), "status", "page.status.trashNotWritable",
+        oneField(update("{\"status\":\"TRASHED\"}"), "status", "page.trashStatusNotWritable",
                 "Use DELETE to trash a page and POST .../restore to bring it back.");
     }
 
@@ -229,12 +229,12 @@ class PageProblemCodesTest {
     void thePartsRefusalsEachHaveTheirOwnCode() throws Exception {
         oneField(putParts("{}"), "entries", "strand.entriesRequired",
                 "entries is required: the strand's post ids in reading order. An empty list removes every part.");
-        oneField(putParts("{\"entries\":[]}"), "entries", "strand.pageNotAStrand",
+        oneField(putParts("{\"entries\":[]}"), "entries", "strand.flagNotSet",
                 "This page is not a strand; set strand true on it first.");
 
         page.setStrand(true);
         String many = "\"x\",".repeat(PagesApi.MAX_PARTS) + "\"x\"";
-        oneField(putParts("{\"entries\":[" + many + "]}"), "entries", "strand.tooManyParts",
+        oneField(putParts("{\"entries\":[" + many + "]}"), "entries", "strand.tooMany",
                 "At most " + PagesApi.MAX_PARTS + " parts.");
     }
 

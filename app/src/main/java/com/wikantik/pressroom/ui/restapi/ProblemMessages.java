@@ -4,6 +4,8 @@ import java.text.MessageFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.support.ResourceBundleMessageSource;
@@ -30,6 +32,8 @@ public final class ProblemMessages {
     private static final List<String> SHIPPED = List.of("en", "de", "es", "fr", "ja", "ko", "ru", "zh-CN");
 
     private static final String ENGLISH = "en";
+
+    private static final Logger log = LoggerFactory.getLogger(ProblemMessages.class);
 
     private ProblemMessages() {
     }
@@ -80,13 +84,21 @@ public final class ProblemMessages {
      * Renders through {@code messages} in {@code locale}. A key the source
      * lacks (it cannot lack one the base bundle has, unless a test hands it a
      * narrower source) falls back to the English: the text is display, and
-     * the status and code have already been decided.
+     * the status and code have already been decided. So does a translation
+     * {@code MessageFormat} will not parse ({@code {name}}, a lone brace),
+     * which the source answers with {@code IllegalArgumentException}: an
+     * error path never throws, or the advice's handler fails into a
+     * non-problem 500 and a security writer's 401 becomes a container 500.
      */
     static Renderer renderer(MessageSource messages, Locale locale) {
         return (code, args) -> {
             try {
                 return messages.getMessage(code.key(), formats(code, args) ? args.toArray() : null, locale);
             } catch (NoSuchMessageException e) {
+                return english(code, args);
+            } catch (IllegalArgumentException malformed) {
+                log.warn("The {} text for problem code {} will not format; rendering the English", locale,
+                        code.code(), malformed);
                 return english(code, args);
             }
         };

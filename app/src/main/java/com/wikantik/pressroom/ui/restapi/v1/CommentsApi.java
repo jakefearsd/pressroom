@@ -28,6 +28,7 @@ import java.util.Locale;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.comments.CommentOutcome;
+import com.wikantik.pressroom.business.comments.CommentRefusal;
 import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.ReaderComment.Status;
@@ -149,12 +150,29 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         User actor = requireAuthenticatedUser(request);
         CommentOutcome outcome = commentService.reply(actor, parent, body == null ? null : body.body());
         if (!outcome.ok()) {
-            throw ApiException.problem(ProblemCode.COMMENT_REPLY_REFUSED, outcome.refusal().name());
+            throw ApiException.problem(code(outcome.refusal()));
         }
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .replacePath(request.getRequestURI().replaceFirst("/[^/]+/replies$", "/" + outcome.comment().getId()))
                 .build().toUri();
         return ResponseEntity.created(location).body(CommentDtos.toView(outcome.comment()));
+    }
+
+    /** A reply refusal's code: exhaustive, so a new refusal does not compile without one. */
+    private static ProblemCode code(CommentRefusal refusal) {
+        return switch (refusal) {
+            case NOT_SIGNED_IN -> ProblemCode.COMMENT_REPLY_NOT_SIGNED_IN;
+            case NO_PERMISSION -> ProblemCode.COMMENT_REPLY_NO_PERMISSION;
+            case DISABLED -> ProblemCode.COMMENT_REPLY_ACCOUNT_DISABLED;
+            case NOT_FOUND -> ProblemCode.COMMENT_REPLY_PARENT_UNKNOWN;
+            case CLOSED -> ProblemCode.COMMENT_REPLY_ENTRY_CLOSED;
+            case COMMENTS_OFF -> ProblemCode.COMMENT_REPLY_COMMENTS_OFF;
+            case CUSTOM_DOMAIN -> ProblemCode.COMMENT_REPLY_CUSTOM_DOMAIN;
+            case EMPTY_BODY -> ProblemCode.COMMENT_REPLY_EMPTY_BODY;
+            case BODY_TOO_LONG -> ProblemCode.COMMENT_REPLY_BODY_TOO_LONG;
+            case BAD_REPLY -> ProblemCode.COMMENT_REPLY_NOT_ACCEPTED;
+            case RATE_LIMITED -> ProblemCode.COMMENT_REPLY_RATE_LIMITED;
+        };
     }
 
     private static Status parse(String value) {

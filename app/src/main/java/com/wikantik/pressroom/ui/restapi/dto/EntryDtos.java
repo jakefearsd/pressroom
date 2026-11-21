@@ -195,7 +195,7 @@ public final class EntryDtos {
     public static WeblogEntry.PubStatus parseWritableStatus(String raw) {
         WeblogEntry.PubStatus status = parseStatus(raw);
         if (status == WeblogEntry.PubStatus.TRASHED) {
-            throw ApiException.problem(ProblemCode.ENTRY_STATUS_TRASH);
+            throw ApiException.problem(ProblemCode.ENTRY_TRASH_STATUS_NOT_WRITABLE);
         }
         return status;
     }

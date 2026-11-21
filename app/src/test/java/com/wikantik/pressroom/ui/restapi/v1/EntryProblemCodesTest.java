@@ -132,7 +132,7 @@ class EntryProblemCodesTest {
     }
 
     @Test
-    void anEleventhKeptRevisionIsRevisionKeepLimit() throws Exception {
+    void anEleventhKeptRevisionIsRevisionTooMany() throws Exception {
         WeblogEntryRevision revision = new WeblogEntryRevision();
         revision.setId("r1");
         revision.setWeblogEntry(stored);
@@ -140,7 +140,7 @@ class EntryProblemCodesTest {
         doThrow(new RevisionKeepLimitException()).when(fx.entries).setRevisionKept(revision, true);
 
         problem(refusedWith(status().isConflict(), post(E1 + "/revisions/r1/keep")),
-                "revision.keepLimit", "At most 10 kept revisions for one item.");
+                "revision.tooMany", "At most 10 kept revisions for one item.");
     }
 
     // ------------------------------------------------------------ several fields
@@ -188,7 +188,7 @@ class EntryProblemCodesTest {
     @Test
     void aTrashedStatusIsNotWritable() throws Exception {
         oneField(create("{\"title\":\"t\",\"text\":\"x\",\"status\":\"TRASHED\"}"), "status",
-                "entry.status.trashNotWritable", "Use DELETE to trash an entry and POST .../restore to bring it back.");
+                "entry.trashStatusNotWritable", "Use DELETE to trash an entry and POST .../restore to bring it back.");
     }
 
     @Test
@@ -243,19 +243,19 @@ class EntryProblemCodesTest {
     }
 
     @Test
-    void aStrandThatIsNoStrandPageIsStrandNotAStrandPage() throws Exception {
+    void aStrandThatIsNoStrandPageIsStrandIdNotStrandPage() throws Exception {
         when(fx.weblogger.getWeblogPageManager()).thenReturn(mock(WeblogPageManager.class));
 
         oneField(create("{\"title\":\"t\",\"text\":\"x\",\"strand\":\"nope\"}"), "strand",
-                "strand.notAStrandPage", "strand must be the id of one of this blog's strand pages; "
+                "strand.idNotStrandPage", "strand must be the id of one of this blog's strand pages; "
                         + "pages list shows which pages are strands.");
     }
 
     @Test
-    void aFourthPinIsPinnedLimit() throws Exception {
+    void aFourthPinIsPinnedTooMany() throws Exception {
         when(fx.entries.getPinnedEntryCount(fx.weblog)).thenReturn((long) EntryPins.MAX_PER_WEBLOG);
 
-        oneField(update("{\"pinned\":true}"), "pinned", "pinned.limit", "This blog already has "
+        oneField(update("{\"pinned\":true}"), "pinned", "pinned.tooMany", "This blog already has "
                 + EntryPins.MAX_PER_WEBLOG + " pinned posts, the most it allows. Unpin one first.");
     }
 
@@ -387,7 +387,7 @@ class EntryProblemCodesTest {
                 "edits[0] has no find; give the exact text to change.");
         oneField(update("{\"edits\":[{\"find\":\"The pier.\"}]}"), "edits[0]", "edits.noReplace",
                 "edits[0] has no replace; send \"\" to delete the text found.");
-        oneField(update("{\"edits\":[{\"find\":\"zzz\",\"replace\":\"x\"}]}"), "edits[0]", "edits.notFound",
+        oneField(update("{\"edits\":[{\"find\":\"zzz\",\"replace\":\"x\"}]}"), "edits[0]", "edits.findNotMatched",
                 "edits[0] not found in the entry's text.");
         oneField(update("{\"edits\":[{\"find\":\"The beach.\",\"replace\":\"x\"}]}"), "edits[0]",
                 "edits.ambiguous", "edits[0] found 2 times; include more surrounding text so it matches once.");

@@ -54,7 +54,8 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
     @Override
     public void saveRedirect(WeblogRedirect redirect) throws WebloggerException {
         if (redirect.getWeblog() == null) {
-            throw new WebloggerException("redirect must belong to a weblog");
+            throw new RedirectRefusedException("redirect must belong to a weblog",
+                    RedirectRefusedException.Reason.WEBLOG_REQUIRED);
         }
 
         String source = validatedPath("source", redirect.getSourcePath());
@@ -239,7 +240,8 @@ public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
             throws WebloggerException {
         String normalized = WeblogRedirect.normalizePath(path);
         if (normalized == null || normalized.isBlank()) {
-            throw new WebloggerException("redirect " + label + " is required");
+            throw new RedirectRefusedException("redirect " + label + " is required",
+                    RedirectRefusedException.Reason.PATH_REQUIRED, label);
         }
         if (!normalized.startsWith("/") || normalized.startsWith("//")) {
             throw new RedirectRefusedException("redirect " + label

@@ -312,7 +312,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             throw ApiException.problemOnField("entries", ProblemCode.STRAND_ENTRIES_REQUIRED);
         }
         if (!Boolean.TRUE.equals(page.getStrand())) {
-            throw ApiException.problemOnField("entries", ProblemCode.STRAND_NOT_STRAND);
+            throw ApiException.problemOnField("entries", ProblemCode.STRAND_FLAG_NOT_SET);
         }
         // One lookup per id follows: a list longer than any strand is refused
         // whole, before the first.
