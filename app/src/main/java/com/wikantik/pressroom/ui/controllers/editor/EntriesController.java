@@ -121,6 +121,22 @@ public class EntriesController extends BaseController {
         model.addAttribute("entryViews", cells);
     }
 
+    /**
+     * The status filter a query-string value means: blank, "ALL" and anything
+     * that is not a status name all mean no filter -- a stale bookmark or a
+     * hand-built url gets the whole list, not a 500.
+     */
+    private static WeblogEntry.PubStatus filterStatus(String status) {
+        if (StringUtils.isBlank(status) || "ALL".equals(status)) {
+            return null;
+        }
+        try {
+            return WeblogEntry.PubStatus.valueOf(status);
+        } catch (IllegalArgumentException unknown) {
+            return null;
+        }
+    }
+
     @GetMapping("/entries.rol")
     public String execute(HttpServletRequest request, Model model,
                           @ModelAttribute("bean") EntriesBean bean) {
@@ -144,8 +160,7 @@ public class EntriesController extends BaseController {
             // and PubStatus.valueOf("") is an uncaught IllegalArgumentException,
             // outside the catch below, i.e. a 500 rather than an unfiltered
             // list).
-            wesc.setStatus(StringUtils.isBlank(status) || "ALL".equals(status)
-                    ? null : WeblogEntry.PubStatus.valueOf(status));
+            wesc.setStatus(filterStatus(status));
             wesc.setText(bean.getText());
             wesc.setSortBy(bean.getSortBy());
             wesc.setOffset(bean.getPage() * COUNT);

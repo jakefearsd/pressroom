@@ -160,6 +160,27 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         assertNull(captor.getValue().getStatus(), "a blank status must not be passed through to PubStatus.valueOf");
     }
 
+    /**
+     * Intended change (Task 5, spec 2026-11-20-jsp-rules-and-view-models-design):
+     * a status the list does not know, as in a hand-built or stale bookmarked
+     * query string, is treated like a blank one -- the unfiltered list -- where
+     * it used to be an uncaught IllegalArgumentException, a 500. The API still
+     * answers 400 for the same value.
+     */
+    @Test
+    void anUnknownStatusRendersTheUnfilteredListRatherThanThrowing() throws Exception {
+        bean.setStatus("NOPE");
+
+        String view = controller.execute(request, model, bean);
+
+        assertEquals(".Entries", view);
+        ArgumentCaptor<WeblogEntrySearchCriteria> captor =
+                ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        org.mockito.Mockito.verify(weblogger.getWeblogEntryManager()).getWeblogEntries(captor.capture());
+        assertNull(captor.getValue().getStatus());
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
+    }
+
     @Test
     void aSpecificStatusIsPassedThroughAsItsPubStatusEnumValue() throws Exception {
         bean.setStatus("DRAFT");
