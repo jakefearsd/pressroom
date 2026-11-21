@@ -132,6 +132,9 @@ class EntryListViewTest {
         assertFalse(NO_FILTERS.any());
         assertFalse(new Filters("", "", "", "", "", "", SortBy.PUBLICATION_TIME).any());
         assertTrue(new Filters("DRAFT", null, null, null, null, null, null).any());
+        // A status the list does not know is shown unfiltered (EntryListQuery.lenientStatus),
+        // so it is not a filter either: the empty list must not say "nothing matched".
+        assertFalse(new Filters("BOGUS", null, null, null, null, null, null).any());
         assertTrue(new Filters(null, "c", null, null, null, null, null).any());
         assertTrue(new Filters(null, null, "t", null, null, null, null).any());
         assertTrue(new Filters(null, null, null, "x", null, null, null).any());

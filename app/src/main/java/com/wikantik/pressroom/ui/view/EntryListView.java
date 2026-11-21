@@ -31,6 +31,7 @@ import com.wikantik.pressroom.business.analytics.TrafficState;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria.SortBy;
+import com.wikantik.pressroom.ui.controllers.EntryListQuery;
 import com.wikantik.pressroom.ui.controllers.EntryListQuery.EntryListPage;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
 import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
@@ -68,12 +69,16 @@ public record EntryListView(List<WeblogEntry> entries, List<Row> rows, int pageN
     public record Filters(String status, String categoryName, String tags, String text, String startDate,
                           String endDate, SortBy sortBy) {
 
-        /** Whether any of them narrows the list. The sort order and the "ALL" status are defaults, not filters. */
+        /**
+         * Whether any of them narrows the list. The sort order is a default, not a
+         * filter, and so is a status the list reads as none ("ALL", or one it does
+         * not know: {@link EntryListQuery#lenientStatus}).
+         */
         public boolean any() {
             return StringUtils.isNotEmpty(categoryName) || StringUtils.isNotEmpty(tags)
                     || StringUtils.isNotEmpty(text) || StringUtils.isNotEmpty(startDate)
                     || StringUtils.isNotEmpty(endDate)
-                    || StringUtils.isNotEmpty(status) && !"ALL".equals(status);
+                    || EntryListQuery.lenientStatus(status) != null;
         }
     }
 

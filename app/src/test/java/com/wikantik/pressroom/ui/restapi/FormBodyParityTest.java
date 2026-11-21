@@ -93,6 +93,13 @@ class FormBodyParityTest {
     }
 
     @ParameterizedTest(name = "{0}")
+    @MethodSource("com.wikantik.pressroom.ui.restapi.EditableFieldManifest#resources")
+    void everyApiOnlyEntryIsABodyFieldOffTheManifest(EditableFieldManifest.Resource resource) {
+        assertEquals(List.of(), badApiOnly(resource),
+                resource + ": API-only entries that name no body field, or a field the screens also edit");
+    }
+
+    @ParameterizedTest(name = "{0}")
     @MethodSource("parities")
     void everyFormFieldReachesTheManifest(Parity parity) {
         assertEquals(List.of(), missing(parity),
@@ -202,6 +209,18 @@ class FormBodyParityTest {
     record FakeBodyPlus(String kept, String extra) {
     }
 
+    @Test
+    void anApiOnlyEntryNamingNoBodyFieldOrAManifestFieldIsReported() {
+        var resource = new EditableFieldManifest.Resource("fake", FakeBodyPlus.class, Set.of("kept"),
+                Map.of("extra", "an agent-only convenience", "kept", "also on the screens",
+                        "ghost", "a component since removed"));
+        assertEquals(List.of("api-only 'ghost' names no body field", "api-only 'kept' is also a manifest field"),
+                badApiOnly(resource));
+        var sound = new EditableFieldManifest.Resource("fake", FakeBodyPlus.class, Set.of("kept"),
+                Map.of("extra", "an agent-only convenience"));
+        assertEquals(List.of(), badApiOnly(sound));
+    }
+
     // ---------------------------------------------------------- the rules
 
     static List<String> droppedFromBody(EditableFieldManifest.Resource resource) {
@@ -213,6 +232,20 @@ class FormBodyParityTest {
         return components(resource.body()).stream()
                 .filter(c -> !resource.fields().contains(c) && !resource.apiOnly().containsKey(c))
                 .sorted().toList();
+    }
+
+    static List<String> badApiOnly(EditableFieldManifest.Resource resource) {
+        Set<String> body = components(resource.body());
+        List<String> problems = new ArrayList<>();
+        resource.apiOnly().keySet().forEach(name -> {
+            if (!body.contains(name)) {
+                problems.add("api-only '" + name + "' names no body field");
+            } else if (resource.fields().contains(name)) {
+                problems.add("api-only '" + name + "' is also a manifest field");
+            }
+        });
+        problems.sort(null);
+        return problems;
     }
 
     static List<String> missing(Parity parity) {

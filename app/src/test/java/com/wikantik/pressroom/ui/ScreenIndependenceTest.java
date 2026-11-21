@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -43,7 +44,9 @@ class ScreenIndependenceTest {
             "controllers/ColumnWidths.java", "controllers/PageRules.java", "controllers/StrandChoice.java",
             "controllers/EntryPinRules.java", "controllers/EntryListQuery.java",
             "controllers/WeblogPermissionView.java", "controllers/editor/TrafficView.java",
-            "controllers/admin/SiteTrafficView.java");
+            "controllers/admin/SiteTrafficView.java", "controllers/BusinessRules.java",
+            "controllers/CustomDomainRules.java", "controllers/EntryFieldRules.java",
+            "controllers/PasswordRules.java", "controllers/SharedThemeRules.java");
 
     private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+)");
 
@@ -78,6 +81,14 @@ class ScreenIndependenceTest {
             view.filter(p -> p.toString().endsWith(".java")).forEach(p -> files.add("view/" + p.getFileName()));
         }
         assertTrue(files.size() > NAMED.size(), "ui.view has classes to scan");
+        assertEquals(List.of(), scan(files));
+    }
+
+    /**
+     * The violations in {@code files} (relative to {@code ui/}). A file that does
+     * not exist fails the scan, so a renamed class cannot leave it silently.
+     */
+    static List<String> scan(List<String> files) throws IOException {
         List<String> found = new ArrayList<>();
         long imports = 0;
         for (String file : files) {
@@ -87,8 +98,8 @@ class ScreenIndependenceTest {
             imports += IMPORT.matcher(source).results().count();
             found.addAll(violations(file, source));
         }
-        assertEquals(List.of(), found);
         assertTrue(imports > 30, "the scan read the files: " + imports + " imports");
+        return found;
     }
 
     @Test
@@ -115,6 +126,10 @@ class ScreenIndependenceTest {
 
     @Test
     void aNamedClassThatNoLongerExistsFailsTheScan() {
-        assertFalse(Files.exists(resolve("controllers/NoSuchRules.java")));
+        List<String> files = new ArrayList<>(NAMED);
+        files.add("controllers/NoSuchRules.java");
+        AssertionError failure = assertThrows(AssertionError.class, () -> scan(files));
+        assertTrue(failure.getMessage().startsWith("controllers/NoSuchRules.java is named in the scan"),
+                failure.getMessage());
     }
 }
