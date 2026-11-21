@@ -235,21 +235,23 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep", POST, SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep", POST, SITE_LOGIN, ON_DRAFT),
 
-            // --- Categories and tags: blog-wide structure, a publisher's (POST), as on the Categories page
-            row("GET    /v1/weblogs/{handle}/categories",             READ,  SITE_LOGIN, ON_POST),
+            // --- Categories and tags: reading them is a contributor's too, as the entry editor shows them
+            //     (CategoriesReadApi); changing them is a publisher's (POST), as on the Categories page
+            row("GET    /v1/weblogs/{handle}/categories",             READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/categories",             POST,  SITE_LOGIN, ON_POST),
             row("PATCH  /v1/weblogs/{handle}/categories/{id}",        POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/categories/{id}",        POST,  SITE_LOGIN, ON_POST),
-            row("GET    /v1/weblogs/{handle}/tags",                   READ,  SITE_LOGIN, ON_POST),
+            row("GET    /v1/weblogs/{handle}/tags",                   READ,  SITE_LOGIN, ON_DRAFT),
 
-            // --- Media: as the Media Files pages (POST)
-            row("GET    /v1/weblogs/{handle}/media",                  READ,  SITE_LOGIN, ON_POST),
-            row("GET    /v1/weblogs/{handle}/media/{id}",             READ,  SITE_LOGIN, ON_POST),
+            // --- Media: reading is a contributor's too, as the editor's image chooser (MediaReadApi);
+            //     every change is as the Media Files pages (POST)
+            row("GET    /v1/weblogs/{handle}/media",                  READ,  SITE_LOGIN, ON_DRAFT),
+            row("GET    /v1/weblogs/{handle}/media/{id}",             READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media",                  POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/media/imports",          POST,  SITE_LOGIN, ON_POST),
             row("PATCH  /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
-            row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_POST),
+            row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media/directories",      POST,  SITE_LOGIN, ON_POST),
 
             // --- Pages: as the Pages page (POST)
@@ -714,7 +716,9 @@ class ApiAuthorizationMatrixTest {
             new McpSample("entries", "get", W_ID),
             new McpSample("entries", "create", W),
             new McpSample("entries", "restore", W_ID),
+            new McpSample("categories", "list", W),
             new McpSample("categories", "create", W),
+            new McpSample("media", "list", W),
             new McpSample("media", "import", W),
             new McpSample("pages", "update", W_ID),
             new McpSample("redirects", "delete", W_ID),

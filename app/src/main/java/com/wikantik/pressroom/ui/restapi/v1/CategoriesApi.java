@@ -4,13 +4,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
-import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
@@ -23,7 +21,6 @@ import com.wikantik.pressroom.ui.restapi.dto.CategoryDtos;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,34 +31,20 @@ import org.springframework.web.bind.annotation.RestController;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
- * Category CRUD and the tag list, both blog-wide structure rather than a
- * single draft -- {@code UISecurityEnforced} declares {@code
+ * Category changes: create, rename or describe, delete. Blog-wide structure
+ * rather than a single draft -- {@code UISecurityEnforced} declares {@code
  * WeblogPermission.POST}, the same level {@code CategoryEditController}/
  * {@code CategoryRemoveController} require for the JSP admin UI (see
- * {@code ControllerMetadataTest}), not the looser {@code EDIT_DRAFT} entry
- * reads use. {@code PressroomHandlerInterceptor} enforces it; this controller
- * adds no permission checking of its own.
- *
- * <p>Mapped at the weblog root rather than at {@code .../categories} so a
- * sibling {@code GET .../tags} can live on the same controller without a
- * second file -- {@code /categories/**} and {@code /tags} are two independent
- * suffixes under the same {@code {handle}} prefix, not a parent/child pair.
+ * {@code ControllerMetadataTest}). {@code PressroomHandlerInterceptor}
+ * enforces it; this controller adds no permission checking of its own.
+ * Reading the categories and tags is a contributor's too, as the entry
+ * editor shows them, so those reads live in {@link CategoriesReadApi}.
  */
-@Tag(name = "Categories and tags", description = "A weblog's categories, and the tags its entries carry.")
+@Tag(name = "Category writes", description = "Changing a weblog's categories: create, rename or describe, and "
+        + "delete. Needs publish rights, as the Categories page does.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}")
 public class CategoriesApi extends BaseApiController implements UISecurityEnforced {
-
-    @Operation(operationId = "categoriesList")
-    @GetMapping("/categories")
-    public List<CategoryDtos.CategoryView> list(HttpServletRequest request) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        List<CategoryDtos.CategoryView> views = new ArrayList<>();
-        for (WeblogCategory category : weblogger.getWeblogEntryManager().getWeblogCategories(weblog)) {
-            views.add(CategoryDtos.toView(category, entryCount(category)));
-        }
-        return views;
-    }
 
     @Operation(operationId = "categoriesCreate")
     @ApiResponse(responseCode = "201", description = "Created.")
@@ -128,7 +111,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         weblogger.getWeblogEntryManager().saveWeblogCategory(category);
         weblogger.flush();
 
-        return CategoryDtos.toView(category, entryCount(category));
+        return CategoryDtos.toView(category, CategoriesReadApi.entryCount(weblogger, category));
     }
 
     /**
@@ -171,28 +154,6 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         }
         weblogger.flush();
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * The weblog's tags with counts, from the same {@code getTags} query the
-     * tag cloud uses -- no offset/limit, since a per-weblog tag cloud is
-     * small enough that pagination has never been worth the API surface.
-     */
-    @Operation(operationId = "tagsList")
-    @GetMapping("/tags")
-    public List<CategoryDtos.TagView> tags(HttpServletRequest request) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        List<TagStat> stats = weblogger.getWeblogEntryManager().getTags(weblog, null, null, 0, -1);
-        return stats.stream().map(CategoryDtos::toView).toList();
-    }
-
-    /**
-     * Not a stored column -- counted per request, trash excluded as every
-     * filtered read in this API excludes it by default. A count query: this
-     * once loaded every entry of the category, text included, on every list.
-     */
-    private int entryCount(WeblogCategory category) throws WebloggerException {
-        return Math.toIntExact(weblogger.getWeblogEntryManager().getLiveEntryCount(category));
     }
 
     @Override

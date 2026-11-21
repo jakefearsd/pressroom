@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
@@ -21,15 +20,12 @@ import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
-import com.wikantik.pressroom.pojos.MediaFileFilter;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
-import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.MediaImports;
-import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
@@ -39,7 +35,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,92 +47,23 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
- * Media read, patch, delete and directory listing/creation.
- * {@code UISecurityEnforced} declares {@code WeblogPermission.POST} -- media
- * management is blog-wide structure, the same level {@code CategoriesApi}
- * requires -- and {@code PressroomHandlerInterceptor} is what actually enforces
- * it; this controller adds no permission checking of its own.
- *
- * <p>Private directories are a pure visibility flag with no bypass of any
- * kind (see CLAUDE.md's Media Pipeline section): they 404 on the public
- * media path for everyone except a signed-in editor of the owning weblog. A
- * caller holding a weblog-scoped token for this weblog already IS such an
- * editor -- {@code PressroomHandlerInterceptor} would not have let the request
- * through otherwise -- so nothing here excludes a private directory or its
- * files from a caller who reached this controller at all.
+ * Media changes: upload, import from a URL, patch, delete, and directory
+ * creation. {@code UISecurityEnforced} declares {@code WeblogPermission.POST}
+ * -- media management is blog-wide structure, the level the Media Files pages
+ * and {@code CategoriesApi} require -- and {@code PressroomHandlerInterceptor}
+ * is what actually enforces it; this controller adds no permission checking
+ * of its own. Reading the files and directories is a contributor's too, as
+ * the editor's image chooser shows them, so those reads live in
+ * {@link MediaReadApi}; the by-id lookups both use are {@link MediaApiBase}'s.
  */
-@Tag(name = "Media", description = "A weblog's media files and directories: upload, import from a URL, describe, move "
-        + "and delete.")
+@Tag(name = "Media writes", description = "Changing a weblog's media: upload, import from a URL, describe, move "
+        + "and delete files, and create directories. Needs publish rights, as the Media Files pages do.")
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/media")
-public class MediaApi extends BaseApiController implements UISecurityEnforced {
-
-    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
-    // repeated in each controller, so change all of them together.
-    private static final int MAX_LIMIT = Paging.MAX_LIMIT;
+public class MediaApi extends MediaApiBase implements UISecurityEnforced {
 
     @Autowired
     RemoteImageFetcher imageFetcher;
-
-    /**
-     * The weblog's media files. With {@code directoryId} (or its old name
-     * {@code dir}), only that directory's files (ownership-checked, 404 for
-     * an unknown or foreign directory id); without it, every file in the
-     * weblog regardless of directory, via the same {@code searchMediaFiles}
-     * path the JSP search screen uses with an otherwise-empty filter. Sorted
-     * by name for a stable, deterministic order -- neither source guarantees
-     * one on its own.
-     *
-     * <p>{@code offset}/{@code limit} slice that sorted list, so a large
-     * library can be read a page at a time; the answer is the page
-     * envelope, and without a limit it is every file (limit then the item
-     * count, hasMore false). A limit is capped at {@link #MAX_LIMIT}.
-     */
-    @Operation(operationId = "mediaList")
-    @GetMapping("")
-    public MediaDtos.MediaPage list(
-            HttpServletRequest request,
-            // No @Parameter: the media tool shares one directoryId argument across actions, and
-            // MediaImport's text (the import default) is the one it must carry (ToolSchemasTest).
-            @RequestParam(value = "directoryId", required = false) String directoryId,
-            @Parameter(description = "Deprecated: the old name of directoryId.")
-            @RequestParam(value = "dir", required = false) String dir,
-            @Parameter(description = "Skip this many files of the name-sorted list. Default 0.")
-            @RequestParam(value = "offset", required = false) Integer offset,
-            @Parameter(description = "At most this many files (capped at 200). Without it, every file.")
-            @RequestParam(value = "limit", required = false) Integer limit) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        int from = offset == null ? 0 : offset;
-        Paging.requireRange(limit == null ? 1 : limit, from);
-        String wanted = eitherName("directoryId", directoryId, "dir", dir);
-
-        List<MediaFile> files;
-        if (StringUtils.isNotBlank(wanted)) {
-            files = new ArrayList<>(requireDirectory(request, wanted).getMediaFiles());
-        } else {
-            // Copied into a mutable list -- searchMediaFiles's contract
-            // makes no promise the returned list supports sort(), and this
-            // controller needs a deterministic order regardless.
-            files = new ArrayList<>(weblogger.getMediaFileManager().searchMediaFiles(weblog, new MediaFileFilter()));
-        }
-        files.sort(Comparator.comparing(MediaFile::getName, Comparator.nullsLast(String::compareToIgnoreCase)));
-
-        long size = limit == null ? Long.MAX_VALUE : Math.min(limit, MAX_LIMIT);
-        List<MediaDtos.MediaView> items = files.stream().skip(from).limit(size)
-                .map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
-        // Without a limit, every file: limit is then the item count and nothing follows.
-        int pageSize = limit == null ? items.size() : (int) size;
-        return new MediaDtos.MediaPage(items, from, pageSize, from + items.size() < files.size());
-    }
-
-    @Operation(operationId = "mediaGet")
-    @GetMapping("/{id}")
-    public MediaDtos.MediaView get(HttpServletRequest request, @PathVariable("id") String id)
-            throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        MediaFile file = requireMedia(request, id);
-        return MediaDtos.toView(file, url(weblog, file));
-    }
 
     /**
      * Multipart batch upload. A batch is not a transaction --
@@ -322,18 +248,6 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(operationId = "mediaListDirectories")
-    @GetMapping("/directories")
-    public List<MediaDtos.DirectoryView> directories(HttpServletRequest request) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        List<MediaFileDirectory> directories = weblogger.getMediaFileManager().getMediaFileDirectories(weblog);
-        return directories.stream()
-                .sorted(Comparator.comparing(
-                        MediaFileDirectory::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
-                .map(MediaDtos::toView)
-                .toList();
-    }
-
     /**
      * The name is judged by {@link MediaRules#directoryNameProblem}, which
      * normalises it exactly as {@code JPAMediaFileManagerImpl
@@ -364,47 +278,6 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         weblogger.flush();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(MediaDtos.toView(directory));
-    }
-
-    /**
-     * The media file with this id, but only when it belongs to the action
-     * weblog. Delegates to {@link WeblogOwnership#mediaFile}, the by-id
-     * ownership check the entry write's image-id check shares, so both
-     * agree on what "this weblog's file" means.
-     */
-    private MediaFile requireMedia(HttpServletRequest request, String id) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        if (StringUtils.isBlank(id)) {
-            throw ApiException.problem(ProblemCode.MEDIA_NOT_FOUND);
-        }
-        MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
-        if (file == null) {
-            throw ApiException.problem(ProblemCode.MEDIA_NOT_FOUND);
-        }
-        return file;
-    }
-
-    /**
-     * The directory with this id, but only when it belongs to the action
-     * weblog; 404 for a blank, unknown, or foreign id -- {@code
-     * getMediaFileDirectory} is a global by-id lookup, and both the {@code
-     * dir} filter and a PATCH's {@code directoryId} are client input.
-     */
-    private MediaFileDirectory requireDirectory(HttpServletRequest request, String id) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
-        if (StringUtils.isBlank(id)) {
-            throw ApiException.problem(ProblemCode.DIRECTORY_NOT_FOUND);
-        }
-        MediaFileDirectory directory = weblogger.getMediaFileManager().getMediaFileDirectory(id);
-        if (directory == null || directory.getWeblog() == null
-                || !directory.getWeblog().getId().equals(weblog.getId())) {
-            throw ApiException.problem(ProblemCode.DIRECTORY_NOT_FOUND);
-        }
-        return directory;
-    }
-
-    private String url(Weblog weblog, MediaFile file) {
-        return weblogger.getUrlStrategy().getMediaFileURL(weblog, file.getId(), true);
     }
 
     @Override

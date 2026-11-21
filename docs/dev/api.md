@@ -133,7 +133,21 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   controller would duplicate the write path. Restore and delete-forever are the exception, moved to
   `EntriesTrashApi` (`POST`), because the Trash page (`TrashController`) takes `POST` and the
   declaration is per controller: their matrix rows stay as they were. The token role stays the
-  ceiling (`ApiScopeInterceptor`, by HTTP method): a `READ` token writes nothing.
+  ceiling (`ApiScopeInterceptor`, by HTTP method): a `READ` token writes nothing. The reviewers'
+  notice goes out only when a write moves the entry into `PENDING` (`notifyReviewers` takes the
+  status before the write; final review I1: a contributor's agent patching its pending entry mailed
+  them on every PATCH).
+- **A contributor reads what the editor shows them (owner decisions final review, I3, 0.16.0).**
+  The editor lists the categories and tags, and its image chooser (`MediaFileImageChooserController`,
+  `EDIT_DRAFT`) the media files and directories, so those five `GET`s live in `CategoriesReadApi`
+  and `MediaReadApi`, which declare `EDIT_DRAFT`; every change stays on `CategoriesApi`/`MediaApi`
+  (`POST`). Same split as `EntriesApi`/`EntriesWriteApi`, for the same reason: the declared
+  permission is per controller. Paths, operationIds and MCP action names did not move; the OpenAPI
+  tags did, because each controller owns one (`OpenApiContractTest`): the reads keep "Categories
+  and tags" and "Media", the writes are "Category writes" and "Media writes". `MediaApiBase` holds
+  the by-id lookups both media controllers use. The directories read is in the split although the
+  ruling named four routes, because the chooser lists directories and `GET .../media?directoryId=`
+  is blind without them. Pinned by the matrix rows (`ON_DRAFT`) and `ContributorReadsDispatchTest`.
 - **`EntryFieldRules` and `WeblogOwnership`
   (`com.wikantik.pressroom.ui.controllers`) are shared by JSP editor and
   API — one home each for entry-field rules and by-id ownership checks.**
@@ -241,8 +255,8 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `<resource or field>.<condition>`, exactly two lowerCamel segments. `notFound` (or a condition
   ending in `NotFound`) is a 404 and only a 404 says it; a 400 for text that is not there says what
   did not match (`edits.findNotMatched`). `inUse` is a uniqueness conflict (`slug.inUse`,
-  `redirect.sourceInUse`, a 409 since 0.16.0; every `*.inUse` code is, `ProblemCodeCatalogTest`). `tooMany` is a count over a cap (`edits.tooMany`, `pinned.tooMany`,
-  `revision.tooMany`, `strand.tooMany`), `tooMany<Thing>` only where one resource has two caps.
+  `redirect.sourceInUse`, a 409 since 0.16.0; every `*.inUse` code is, `ProblemCodeCatalogTest`).
+  `tooMany` is a count over a cap (`edits.tooMany`, `pinned.tooMany`, `revision.tooMany`, `strand.tooMany`), `tooMany<Thing>` only where one resource has two caps.
   Before the 0.16.0 tag the final review renamed the codes that broke this (old to new:
   `edits.notFound` `edits.findNotMatched`, `strand.notAStrandPage` `strand.idNotStrandPage` (an
   entry's `strand` is not a strand page's id), `strand.pageNotAStrand` `strand.flagNotSet` (parts set
@@ -401,7 +415,7 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
   the names). Argument descriptions are shared, though: `ArgumentDeriver` reads the same
   `@Schema`/`@Parameter` text, and a property several actions take keeps the first described one
   (`ToolSchemas`). Adding a description to a query parameter can therefore replace the body's text an
-  agent sees; that is why `MediaApi.list`'s `directoryId` and the list filters carry none.
+  agent sees; that is why `MediaReadApi.list`'s `directoryId` and the list filters carry none.
 - **One tag per controller**: `@Tag(name, description)` on the class.
 - **Every operation's `default` response is the problem**: `ApiDocumentCustomizer` (an
   `OpenApiCustomizer`) adds `ApiProblem` and `ProblemFieldError` as component schemas from

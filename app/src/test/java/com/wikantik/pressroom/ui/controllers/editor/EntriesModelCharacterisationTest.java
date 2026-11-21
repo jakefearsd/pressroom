@@ -263,6 +263,23 @@ class EntriesModelCharacterisationTest extends EditorControllerTestSupport {
         assertNull(pager().getPrevLink());
     }
 
+    /**
+     * A page past the last whose offset fits an int is that last page: the
+     * offset (page times the page size) once overflowed to a negative number
+     * above page 71,582,788 and answered the same 500 as a negative page.
+     */
+    @Test
+    void aHugePageDoesNotOverflowIntoANegativeOffset() throws Exception {
+        bean.setPage(Integer.MAX_VALUE);
+        entries(0);
+
+        WeblogEntrySearchCriteria wesc = run();
+
+        assertTrue(wesc.getOffset() >= 0, "offset " + wesc.getOffset());
+        assertTrue(wesc.getOffset() <= Integer.MAX_VALUE - wesc.getMaxResults(), "offset " + wesc.getOffset());
+        assertEquals(COUNT + 1, wesc.getMaxResults());
+    }
+
     @Test
     void exactlyOnePageOfEntriesHasNoMore() throws Exception {
         entries(COUNT);

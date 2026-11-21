@@ -92,8 +92,11 @@ class CategoriesApiTest {
     // they run against a Mockito-mocked Weblogger.
     // -----------------------------------------------------------------
 
+    /** The changes and, alongside on the same tier, the reads CategoriesReadApi answers. */
     private MockMvc mockMvc(CategoriesApi controller) {
-        return MockMvcBuilders.standaloneSetup(controller)
+        CategoriesReadApi reads = new CategoriesReadApi();
+        reads.weblogger = controller.weblogger;
+        return MockMvcBuilders.standaloneSetup(controller, reads)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
@@ -548,6 +551,19 @@ class CategoriesApiTest {
                 new CategoriesApi().requiredWeblogPermissionActions());
         assertTrue(new CategoriesApi().isUserRequired());
         assertTrue(new CategoriesApi().isWeblogRequired());
+    }
+
+    /**
+     * CategoriesReadApi declares EDIT_DRAFT: the entry editor shows a
+     * contributor the categories and tags (owner decisions, editor parity).
+     */
+    @Test
+    void theReadsDeclareTheEditorsLevel() {
+        assertEquals(List.of(com.wikantik.pressroom.pojos.WeblogPermission.EDIT_DRAFT),
+                new CategoriesReadApi().requiredWeblogPermissionActions());
+        assertTrue(new CategoriesReadApi().isUserRequired());
+        assertTrue(new CategoriesReadApi().isWeblogRequired());
+        assertEquals(List.of(), new CategoriesReadApi().requiredGlobalPermissionActions());
     }
 
     @Test

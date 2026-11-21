@@ -44,13 +44,16 @@ public final class McpToolCatalog {
                             + "PUBLISHED or SCHEDULED is saved as PENDING, for review).",
                             "POST " + W + "/entries"),
                     action("update", "Change the fields given; others are left alone. edits change part of the "
-                            + "text; expectedContentHash refuses the update if the entry changed since it was read.",
+                            + "text; expectedContentHash refuses the update if the entry changed since it was read. "
+                            + "Without publish rights, only your own DRAFT or PENDING entry, and a publish is saved "
+                            + "as PENDING.",
                             "PATCH " + W + "/entries/{id}"),
-                    action("trash", "Move an entry to the trash.", "DELETE " + W + "/entries/{id}"),
-                    action("restore", "Bring an entry back from the trash, as a DRAFT.",
+                    action("trash", "Move an entry to the trash (without publish rights, only your own DRAFT or "
+                            + "PENDING entry).", "DELETE " + W + "/entries/{id}"),
+                    action("restore", "Bring an entry back from the trash, as a DRAFT. Needs publish rights.",
                             "POST " + W + "/entries/{id}/restore"),
-                    action("delete_forever", "Permanently delete an entry that is already in the trash.",
-                            "POST " + W + "/entries/{id}/delete-forever"),
+                    action("delete_forever", "Permanently delete an entry that is already in the trash. Needs "
+                            + "publish rights.", "POST " + W + "/entries/{id}/delete-forever"),
                     action("preview", "Render text exactly as it would publish, without saving, with warnings "
                             + "about what will render badly or hurt search; with id, in that entry's context, and "
                             + "edits in place of text show what an update with them would store.",

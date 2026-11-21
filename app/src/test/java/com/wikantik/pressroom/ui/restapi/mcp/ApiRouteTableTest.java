@@ -17,6 +17,8 @@ class ApiRouteTableTest {
         // + keep and unkeep of a revision, on entries and on pages (2026-11-16).
         // + the admin's revision figures and sweep (2026-11-16).
         // + GET /v1/meta and GET /v1/me/profile (2026-11-21).
+        // The reads a contributor may make moved to CategoriesReadApi and MediaReadApi (2026-11-21): the
+        // same five routes on new controllers, so the count is unchanged.
         assertEquals(74, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
@@ -34,6 +36,29 @@ class ApiRouteTableTest {
         assertTrue(table.find("GET /v1/weblogs").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/preview").isPresent());
         assertTrue(table.find("GET /v1/nothing").isEmpty());
+    }
+
+    /**
+     * The reads the entry editor shows a contributor answer from their own
+     * controllers, which declare EDIT_DRAFT; every change on the same paths
+     * stays on the publisher's controller (owner decisions, editor parity).
+     */
+    @Test
+    void theReadsAContributorMayMakeHaveTheirOwnControllers() {
+        ApiRouteTable table = ApiRouteTables.real();
+        java.util.Map<String, String> owners = new java.util.LinkedHashMap<>();
+        String w = "/v1/weblogs/{handle}";
+        owners.put("GET " + w + "/categories", "CategoriesReadApi");
+        owners.put("GET " + w + "/tags", "CategoriesReadApi");
+        owners.put("POST " + w + "/categories", "CategoriesApi");
+        owners.put("PATCH " + w + "/categories/{id}", "CategoriesApi");
+        owners.put("GET " + w + "/media", "MediaReadApi");
+        owners.put("GET " + w + "/media/{id}", "MediaReadApi");
+        owners.put("GET " + w + "/media/directories", "MediaReadApi");
+        owners.put("PATCH " + w + "/media/{id}", "MediaApi");
+        owners.put("POST " + w + "/media/directories", "MediaApi");
+        owners.forEach((route, owner) -> assertEquals(owner,
+                table.find(route).orElseThrow().handler().getBeanType().getSimpleName(), route));
     }
 
     @Test

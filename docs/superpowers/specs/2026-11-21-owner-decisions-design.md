@@ -117,6 +117,35 @@ a negative page is treated as page 0. Write the test first, seeing the 500,
 then clamp it in `EntryListQuery` or its caller. Note it in
 `docs/dev/entries.md`.
 
+## Final review rulings (2026-11-21)
+
+The whole-branch review found four things the tasks left open. Rulings and
+their criteria:
+
+1. **Reviewers hear once.** A write tells the reviewers only when it moves an
+   entry into `PENDING`. Test: a `PATCH` of an entry already `PENDING` (no
+   status, `PENDING` again, or a contributor's `PUBLISHED` capped back to
+   `PENDING`) sends no notice; a create, or an update from another status,
+   still does.
+2. **Contributors read what the editor shows them** (Jake chose editor
+   parity). `GET .../categories`, `GET .../tags`, `GET .../media` and
+   `GET .../media/{id}` answer a member with `EDIT_DRAFT` (and
+   `GET .../media/directories`, which the fix wave added because the image
+   chooser lists directories and the list's `directoryId` filter is blind
+   without them); every write on
+   those resources stays `POST`. Paths, operationIds and MCP action names do
+   not change. Test: a contributor's `POST` token lists the categories, tags
+   and media and gets one media item, a `READ` token reads them too, and each
+   write is still 403 `auth.noPermission`; the matrix rows say `EDIT_DRAFT`.
+3. **The MCP text does not mislead a contributor's agent**: the instructions
+   say image import and `featuredImageUrl` need publish rights, and the
+   `entries` update, trash, restore and delete_forever descriptions say what
+   a contributor may do. `McpInstructions.TEXT` stays under 3,000 characters.
+4. **One index of the 0.16.0 changes** near the top of the README, the three
+   client-breaking changes first.
+5. A page above the last one whose offset fits an int is that last page
+   (the offset overflowed into the same 500 as a negative page).
+
 ## Out of scope
 
 - New roles or permissions.

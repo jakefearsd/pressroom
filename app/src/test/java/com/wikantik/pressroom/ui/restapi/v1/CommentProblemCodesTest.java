@@ -108,7 +108,8 @@ class CommentProblemCodesTest {
      * Each refusal of a reply has its own code (final review, 2026-11-21: one
      * code per {@link CommentRefusal}, so a client branches on {@code code}
      * rather than parsing the name out of {@code detail}). The English and the
-     * 400 (429 for the rate limit, since 0.16.0) are what the one {@code comment.replyRefused} answered before.
+     * 400 (429 for the rate limit, since 0.16.0) are what the one {@code
+     * comment.replyRefused} answered before.
      */
     @Test
     void eachRefusedReplyHasItsOwnCode() throws Exception {

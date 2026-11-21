@@ -157,7 +157,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             throw anchorConflict(taken.getAnchor(), taken.getHolderStatus(), taken);
         }
         weblogger.flush();
-        notifyReviewers(entry);
+        notifyReviewers(entry, null);
 
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .path("/{id}")
@@ -185,6 +185,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // a caller whose view of the text is stale learns that first.
         entryContent().requireUnchanged(entry, sent.expectedContentHash());
         String read = entry.getText();
+        WeblogEntry.PubStatus before = entry.getStatus();
 
         FieldErrors errors = new FieldErrors();
         EntryFields shown = EntryFields.of(fields, errors);
@@ -219,17 +220,23 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // and carries the note when one was sent.
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
         weblogger.flush();
-        notifyReviewers(entry);
+        notifyReviewers(entry, before);
 
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     /**
-     * The editor's pending-review notice, for a write that leaves the entry
-     * pending. The save has committed, so a notice that cannot be sent is
-     * logged rather than failing a write that did succeed.
+     * The editor's pending-review notice, for a write that submitted the
+     * entry for review: it is pending now and was not before ({@code before}
+     * is null for a create). A change to an entry already waiting is not a
+     * second submission, so the reviewers hear once, not on every PATCH.
+     * The save has committed, so a notice that cannot be sent is logged
+     * rather than failing a write that did succeed.
      */
-    private void notifyReviewers(WeblogEntry entry) {
+    private void notifyReviewers(WeblogEntry entry, WeblogEntry.PubStatus before) {
+        if (before == WeblogEntry.PubStatus.PENDING) {
+            return;
+        }
         try {
             MailUtil.sendPendingEntryNoticeIfDue(weblogger, entry);
         } catch (WebloggerException e) {

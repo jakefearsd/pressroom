@@ -63,6 +63,8 @@ public class EntriesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(EntriesController.class);
     private static final int COUNT = 30;
+    /** The last page whose offset, and the one extra row fetched past it, fit an int. */
+    private static final int LAST_PAGE = Integer.MAX_VALUE / COUNT - 1;
 
     /**
      * Context-RELATIVE, with no {@code getRelativeContextURL()} prefix: this
@@ -97,8 +99,9 @@ public class EntriesController extends BaseController {
                           @ModelAttribute("bean") EntriesBean bean) {
         populateCommonModel(request, model);
 
-        // A negative page is page 0: setFirstResult refuses a negative offset (a 500).
-        int pageNumber = Math.max(0, bean.getPage());
+        // A negative page is page 0: setFirstResult refuses a negative offset (a 500). A page past
+        // LAST_PAGE is LAST_PAGE, or page times COUNT overflows into the same negative offset.
+        int pageNumber = Math.min(Math.max(0, bean.getPage()), LAST_PAGE);
         EntryListPage page = null;
         try {
             // A blank status means the same thing as "ALL" (EntriesSidebar.jsp

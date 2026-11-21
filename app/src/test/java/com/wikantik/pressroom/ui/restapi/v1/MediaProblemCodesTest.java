@@ -68,7 +68,10 @@ class MediaProblemCodesTest {
         MediaApi controller = new MediaApi();
         controller.weblogger = weblogger;
         controller.imageFetcher = fetcher;
-        mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
+        MediaReadApi reads = new MediaReadApi();
+        reads.weblogger = weblogger;
+        mvc = MockMvcBuilders.standaloneSetup(controller, reads).setControllerAdvice(new ApiExceptionHandler())
+                .build();
     }
 
     private JsonNode answer(ResultMatcher status, MockHttpServletRequestBuilder request) throws Exception {

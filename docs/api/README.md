@@ -48,8 +48,48 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
     --url https://example.com/pressroom --user admin --password-stdin
 ```
 
+## Changes in 0.16.0
+
+Three changes can break a client written against 0.15:
+
+- **HTTP Basic works only on `/api/v1/tokens`.** Every other route answers a
+  password with a 401: mint a token once and send it as a Bearer. See
+  [With the API](#with-the-api).
+- **Three lists answer the paged envelope, not a bare array:** `GET
+  /api/v1/weblogs`, `GET /api/v1/admin/users` and `GET .../media` return
+  `{items, offset, limit, hasMore}`, over MCP too. See
+  [Pagination](#pagination).
+- **Some statuses changed.** A duplicate redirect source is a 409 (was 400)
+  and a failure to store a rule is a 500 (was a 400 carrying the failure's
+  text), see [Redirects](#redirects); a rate-limited comment reply is a 429
+  (was 400), see [Comments](#comments).
+
+Additive or narrower changes:
+
+- Every problem body, and every entry of its `errors`, carries a stable
+  `code`; branch on it, never on `detail`. `detail` follows
+  `Accept-Language` where the server holds a translation (none ship yet). See
+  [Errors](#errors).
+- New: `GET /api/v1/meta` (site facts) and `GET /api/v1/me/profile`, the MCP
+  `site_info` tool. See [Site facts and your profile](#site-facts-and-your-profile).
+- A contributor's (`EDIT_DRAFT`) token writes drafts, a publish being
+  submitted for review, and reads the categories, tags and media the entry
+  editor shows. See [Entries](#entries) and [Media](#media).
+- An update of an entry already `PENDING` no longer mails the reviewers
+  again. See [Entries](#entries).
+- A category name must survive HTML escaping. See
+  [Categories and tags](#categories-and-tags).
+- Media names are judged more strictly: no slash inside a directory name, no
+  two files of one name in a directory. See [Media](#media).
+- `emailAddress` on the admin user routes is judged as the admin UI judges
+  it, and `PATCH /api/v1/admin/config` applies the Global Config screen's
+  rules. See [Site administration](#site-administration).
+- The OpenAPI document gained operation ids and tags. See
+  [The OpenAPI document](#the-openapi-document).
+
 ## Contents
 
+- [Changes in 0.16.0](#changes-in-0160)
 - [Getting a token](#getting-a-token)
 - [Token scopes](#token-scopes)
 - [Making a request](#making-a-request)
@@ -200,7 +240,7 @@ request: the token's `role`, and its `weblog` pin.
 | Role    | May do |
 |---------|--------|
 | `READ`  | GET only. |
-| `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. Still only what the owner's weblog permission allows: a contributor's (`EDIT_DRAFT`) token writes entries as the entry editor lets them (drafts; a publish is submitted for review, see [Entries](#entries)). |
+| `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. Still only what the owner's weblog permission allows: a contributor's (`EDIT_DRAFT`) token writes entries as the entry editor lets them (drafts; a publish is submitted for review, see [Entries](#entries)) and reads what the editor shows them, the categories, tags and media, but changes none of those. |
 | `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, not the per-weblog content APIs) and the Maintenance actions. |
 
 A non-write method (`GET`/`HEAD`) never needs more than `READ`. Anything else
@@ -659,14 +699,14 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 |--------|---------|
 | 400 | Malformed request: bad JSON, an out-of-range `limit`/`offset`, an unknown status/role, a missing required field. |
 | 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens` (`detail` `The username or password was not accepted.`; every 401 on the token resource carries `WWW-Authenticate: Basic realm="Pressroom"`); or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
-| 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). |
+| 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). Also the entry write's own refusals of a member without publish rights: `entry.notChangeable` (not their own DRAFT or PENDING entry) and `entry.needsPublishRights` (a field only a publisher may set; see [Entries](#entries)). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)). |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)), a redirect whose source another rule holds (`redirect.sourceInUse`), a media file `name` another file of the directory holds (`media.nameInUse`). |
 | 413 | A JSON request body that declares a length over 4,048,576 bytes (room for a 1,000,000-character entry in 3-byte characters plus 1 MiB for the other fields; `/api/mcp` has the same limit): a problem body whose `type` ends in `/too-large`, sent before anything reads the body. A body that declares no length (chunked) is read up to the same cap and then refused as an unreadable body (400). Uploads are not held to it. A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB) is also a 413, but plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 406 | An `Accept` the API cannot answer (`text/html`, say). A problem body (`type` ending in `/not-acceptable`), written as `application/problem+json` regardless. |
 | 415 | A JSON route sent a body in another media type (`application/x-www-form-urlencoded`, `text/plain`): a problem body whose `type` ends in `/unsupported-media-type`. `POST .../media` without a `multipart/form-data` body is also 415, but that one is plain `application/json`, not a problem body — see the note above. |
-| 429 | Throttled — see below. |
+| 429 | Throttled: the request throttle (`request.throttled`, with `Retry-After`; see below), or a comment reply over the account's comment rate limit (`comment.replyRateLimited`, with no `Retry-After`). |
 | 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry save that claims an anchor: a create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. Clients should retry. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
 | 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
@@ -695,10 +735,10 @@ a token, per-source-address before that. A throttled request gets a
 here, built and written outside the normal Spring MVC dispatch path (the
 throttle check runs in a servlet filter, ahead of authentication) so a
 throttled client sees the same error contract as everywhere else, not a
-bare connection reset or an HTML error page. The 429 carries `Retry-After`,
-in seconds: the throttle interval (60 by default). A window opens at the
-caller's first request and lasts the interval, so waiting that long always
-clears it.
+bare connection reset or an HTML error page. The throttle's 429 carries
+`Retry-After`, in seconds: the throttle interval (60 by default). A window
+opens at the caller's first request and lasts the interval, so waiting that
+long always clears it.
 
 ## Site facts and your profile
 
@@ -780,13 +820,29 @@ writes drafts, as the editor lets them:
   run, so images from other sites stay linked;
 - preview works against any entry of the weblog;
 - restore from the trash and delete-forever need publish rights, as the Trash
-  page does (403 `auth.noPermission`).
+  page does (403 `auth.noPermission`);
+- besides entries, a contributor's token reads what the editor shows them:
+  the weblog's categories and tags (`GET .../categories`, `GET .../tags`) and
+  its media (`GET .../media`, `GET .../media/{id}`,
+  `GET .../media/directories`, as the editor's image chooser lists them).
+  Creating, changing or deleting a category or a media file stays a
+  publisher's (403 `auth.noPermission`).
+
+The weblog's reviewers are told once, when a write moves an entry into
+`PENDING` (a create, or an update from another status). A later update of an
+entry that is already `PENDING` tells them nothing new, whoever makes it.
 
 > **Changed in 0.16.0: a contributor's token writes drafts.** Before, every
 > entry write needed publish rights on the weblog, so a contributor's `POST`
 > token got a 403 `auth.noPermission` on any of them. Now it writes as above.
 > A `READ` token still writes nothing, whoever holds it, and nothing changes
-> for a member with publish rights.
+> for a member with publish rights. A contributor's token, `READ` or `POST`,
+> also reads the categories, tags and media (a 403 before).
+
+> **Changed in 0.16.0: an update of a `PENDING` entry does not tell the
+> reviewers again.** Earlier versions mailed them after every write that
+> left the entry `PENDING`, so each `PATCH` of an entry waiting for review
+> sent another notice. Now only the write that submits it does.
 
 **Create:**
 
@@ -1197,9 +1253,14 @@ DELETE /api/v1/weblogs/{handle}/categories/{id}?moveTo={id}
 GET    /api/v1/weblogs/{handle}/tags
 ```
 
-`POST`-role required for all of these (category structure is blog-wide, not
-a single draft's business). Deleting the weblog's last remaining category is
-a 409 — a weblog with zero categories can never save an entry again.
+Reading the categories and tags needs a `READ` token and any role on the
+weblog: a contributor (`EDIT_DRAFT`) reads them, as the entry editor shows
+them. Creating, changing and deleting a category needs a `POST` or `ADMIN`
+token and publish rights on the weblog, as the Categories page does (category
+structure is blog-wide, not a single draft's business).
+
+Deleting the weblog's last remaining category is a 409 — a weblog with zero
+categories can never save an entry again.
 Deleting a category that has entries is also a 409 *unless* `moveTo` names
 another category to move them into first (and `moveTo` naming the category
 being deleted is itself a 400). `GET .../tags` has no pagination — a
@@ -1227,6 +1288,17 @@ GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
 ```
 
+The three `GET`s need a `READ` token and any role on the weblog: a
+contributor (`EDIT_DRAFT`) reads the files and directories, private ones
+included, as the entry editor's image chooser lists them. Every other route
+here needs a `POST` or `ADMIN` token and publish rights on the weblog, as the
+Media Files pages do.
+
+> **Changed in 0.16.0: a contributor reads media, categories and tags.** The
+> three media `GET`s, `GET .../categories` and `GET .../tags` answered a
+> member without publish rights 403 `auth.noPermission`; now they answer as
+> for any member. The writes are unchanged.
+
 > **Changed in 0.16.0: media names are judged more strictly.**
 > `POST .../media/directories` refuses a `name` with a slash anywhere but the
 > first character (one leading slash is dropped, as before): 400 on `name`, code
@@ -1238,12 +1310,13 @@ POST   /api/v1/weblogs/{handle}/media/directories
 > is judged on the name the file keeps: a directory that already holds a file
 > of that name answers the same 409, and the file is neither changed nor moved.
 
-`GET .../media` returns a `MediaPage` (`{items, offset, limit, hasMore}`) of `MediaView`s sorted by name. With
-`directoryId`, only that directory's files (`dir` is its old name and still
-works; sending both with different values is a 400). With `offset`/`limit`, a
-page of the sorted list (limit capped at 200); **without either, every file**,
-as before, which on a large photo library is a long response, blurhashes
-included, so page it. Without `limit`, `limit` in the answer is the item count and `hasMore` is false.
+`GET .../media` returns a `MediaPage` (`{items, offset, limit, hasMore}`) of
+`MediaView`s sorted by name. With `directoryId`, only that directory's files
+(`dir` is its old name and still works; sending both with different values is
+a 400). With `offset`/`limit`, a page of the sorted list (limit capped at 200);
+**without either, every file**, as before, which on a large photo library is a
+long response, blurhashes included, so page it. Without `limit`, `limit` in the
+answer is the item count and `hasMore` is false.
 
 **Upload is a batch, and a batch is not a transaction.** Send one or more
 `file` parts (`multipart/form-data`), optionally `directoryId` to file them
@@ -1508,9 +1581,10 @@ A rule is `{"source": "/old-path", "target": "/new-path"}` — both
 weblog-relative (no handle, no context path, no query string; the request's
 query string is preserved on the 301 automatically). Off-site targets,
 query strings in either path, duplicate sources, and anything that would
-chain two rules together are refused as 400s (a duplicate source, `redirect.sourceInUse`, as a 409)
-with the reason in the body, each with its own `code` (`redirect.pathNotRelative`, `redirect.sourceInUse`,
-...; see [Errors](#errors)). There is no update verb: delete and recreate.
+chain two rules together are refused as 400s (a duplicate source,
+`redirect.sourceInUse`, as a 409) with the reason in the body, each with its
+own `code` (`redirect.pathNotRelative`, `redirect.sourceInUse`, ...; see
+[Errors](#errors)). There is no update verb: delete and recreate.
 
 > **Changed in 0.16.0: a duplicate source is a 409, not a 400.**
 > `redirect.sourceInUse` now answers 409 Conflict, like every other `*.inUse`
@@ -1521,11 +1595,12 @@ with the reason in the body, each with its own `code` (`redirect.pathNotRelative
 > `detail` was the failure's own message, which for a database error could
 > carry the database's text. Every refusal still is a 400 with its reason;
 > anything else is the opaque 500 problem (`server.internalError`), with the
-> cause logged on the server only. The list echoes each rule's
-`hitCount` and `lastHitAt` — the way to see whether a stale URL is still
-being asked for — and every *served* redirect also logs one line to the
-`pressroom.redirects` logger with the requested URI, referer, and user-agent
-for diagnosis.
+> cause logged on the server only.
+
+The list echoes each rule's `hitCount` and `lastHitAt` — the way to see
+whether a stale URL is still being asked for — and every *served* redirect
+also logs one line to the `pressroom.redirects` logger with the requested URI,
+referer, and user-agent for diagnosis.
 
 ## Comments
 
@@ -1577,18 +1652,20 @@ Publishing a comment its author deleted (a `HIDDEN` comment with an empty
 `DELETE` removes the comment and its reply (204). A reply is written as the
 token's user, published at once, and answers 201 with its view; a reply the
 service refuses (for example the comment already has one, or the body is empty
-or over 4000 code points) is a 400 (429 for `comment.replyRateLimited`, see below) whose `code` names the refusal, such as
-`comment.replyNotAccepted`, `comment.replyEmptyBody`, `comment.replyBodyTooLong`
-or `comment.replyRateLimited` (replies count toward the per-account comment
-rate limit); its `detail` ends in the refusal's name (`BAD_REPLY`,
+or over 4000 code points) is a 400 (429 for `comment.replyRateLimited`, see
+below) whose `code` names the refusal, such as `comment.replyNotAccepted`,
+`comment.replyEmptyBody`, `comment.replyBodyTooLong` or
+`comment.replyRateLimited` (replies count toward the per-account comment rate
+limit); its `detail` ends in the refusal's name (`BAD_REPLY`,
 `EMPTY_BODY`, ...), as it always has.
 
 > **Changed in 0.16.0: a rate-limited reply is a 429, not a 400.**
 > `comment.replyRateLimited` now answers 429 with `type` `/throttled`. The
 > `detail` is unchanged. There is no `Retry-After`: the comment limiter counts
-> recent posts and does not know how long the wait is. Replies are for the weblog's members: a
-global admin whose token reaches a weblog they are not a member of gets
-`comment.replyNotAccepted`.
+> recent posts and does not know how long the wait is.
+
+Replies are for the weblog's members: a global admin whose token reaches a
+weblog they are not a member of gets `comment.replyNotAccepted`.
 
 **Settings.** A weblog's `commentsEnabled` and `commentNotify` (email the
 weblog's admins when a comment is held), `showMoreFromSite` (default true;
@@ -1786,7 +1863,9 @@ POST  /api/v1/weblogs
 PATCH /api/v1/weblogs/{handle}
 ```
 
-Each user in `GET /api/v1/admin/users` carries `kind`, `PERSON` or `AGENT`.
+`GET /api/v1/admin/users` answers a `UserPage` and `GET /api/v1/weblogs` a
+`WeblogListPage`, both the paged envelope (see [Pagination](#pagination)).
+Each user in it carries `kind`, `PERSON` or `AGENT`.
 `POST /api/v1/admin/users` creates people only. `PATCH
 /api/v1/admin/users/{userName}` on an agent answers 403 `Agent accounts are
 managed in the admin UI.`, as it does on an admin.

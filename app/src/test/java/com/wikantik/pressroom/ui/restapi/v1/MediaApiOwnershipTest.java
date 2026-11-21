@@ -81,7 +81,10 @@ class MediaApiOwnershipTest {
     }
 
     private static MockMvc mvc(MediaApi controller) {
-        return MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
+        MediaReadApi reads = new MediaReadApi();
+        reads.weblogger = controller.weblogger;
+        return MockMvcBuilders.standaloneSetup(controller, reads).setControllerAdvice(new ApiExceptionHandler())
+                .build();
     }
 
     private static MediaFile file(String name) {

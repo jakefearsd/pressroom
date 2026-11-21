@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -85,19 +86,45 @@ class EntriesWriteApiPendingNoticeTest {
 
     @Test
     void updatingAnEntryToPendingNotifiesReviewers() throws Exception {
+        stored(WeblogEntry.PubStatus.DRAFT);
+
+        patch("{\"status\":\"PENDING\"}");
+
+        assertNotNull(mail.onlyMessage());
+    }
+
+    /**
+     * The reviewers were told when the entry was submitted; a later change
+     * to it, while it waits, is not a second submission (final review, I1:
+     * a contributor's agent patching its pending entry mailed them on every
+     * PATCH).
+     */
+    @Test
+    void changingAnEntryThatIsAlreadyPendingTellsNobody() throws Exception {
+        stored(WeblogEntry.PubStatus.PENDING);
+
+        patch("{\"title\":\"Better\"}");
+        patch("{\"status\":\"PENDING\"}");
+        // maiia holds no POST here: her publish is capped at PENDING, where the entry already is.
+        patch("{\"status\":\"PUBLISHED\"}");
+
+        assertTrue(mail.sent().isEmpty(), mail.sent().size() + " notices");
+    }
+
+    private void stored(WeblogEntry.PubStatus status) throws Exception {
         WeblogEntry entry = new WeblogEntry();
         entry.setId("e1");
         entry.setWebsite(f.weblog);
         entry.setCreatorUserName("maiia");
         entry.setTitle("t");
         entry.setText("x");
-        entry.setStatus(WeblogEntry.PubStatus.DRAFT);
+        entry.setStatus(status);
         when(f.entries.getWeblogEntry("e1")).thenReturn(entry);
+    }
 
+    private void patch(String json) throws Exception {
         f.send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .patch("/v1/weblogs/myblog/entries/e1").content("{\"status\":\"PENDING\"}"))
+                .patch("/v1/weblogs/myblog/entries/e1").content(json))
                 .andExpect(status().isOk());
-
-        assertNotNull(mail.onlyMessage());
     }
 }

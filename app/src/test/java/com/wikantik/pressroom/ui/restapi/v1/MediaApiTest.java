@@ -169,8 +169,11 @@ class MediaApiTest {
     // the DB fixtures.
     // -----------------------------------------------------------------
 
+    /** The changes and, alongside on the same tier, the reads MediaReadApi answers (a contributor's too). */
     private MockMvc mockMvc(MediaApi controller) {
-        return MockMvcBuilders.standaloneSetup(controller)
+        MediaReadApi reads = new MediaReadApi();
+        reads.weblogger = controller.weblogger;
+        return MockMvcBuilders.standaloneSetup(controller, reads)
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
@@ -241,8 +244,8 @@ class MediaApiTest {
 
     /**
      * The list pages when asked: offset and limit slice the name-sorted list
-     * (still a bare array, as before); without either, the whole list, as
-     * before. A limit is capped at 200 like every list; a bad range is a 400.
+     * into the page envelope; without either, the whole list, as before. A
+     * limit is capped at 200 like every list; a bad range is a 400.
      */
     @Test
     void listPagesWhenGivenOffsetAndLimit() throws Exception {
@@ -813,14 +816,26 @@ class MediaApiTest {
 
     /**
      * MediaApi declares UISecurityEnforced.requiredWeblogPermissionActions
-     * as POST -- media management is blog-wide structure, the same level
-     * CategoriesApi requires, not the looser EDIT_DRAFT entry reads use.
+     * as POST -- changing media is blog-wide structure, the same level
+     * CategoriesApi requires.
      */
     @Test
     void declaresPostAsTheRequiredWeblogPermission() {
         assertEquals(List.of(WeblogPermission.POST), new MediaApi().requiredWeblogPermissionActions());
         assertTrue(new MediaApi().isUserRequired());
         assertTrue(new MediaApi().isWeblogRequired());
+    }
+
+    /**
+     * MediaReadApi declares EDIT_DRAFT: the editor's image chooser shows a
+     * contributor the files and directories (owner decisions, editor parity).
+     */
+    @Test
+    void theReadsDeclareTheImageChoosersLevel() {
+        assertEquals(List.of(WeblogPermission.EDIT_DRAFT), new MediaReadApi().requiredWeblogPermissionActions());
+        assertTrue(new MediaReadApi().isUserRequired());
+        assertTrue(new MediaReadApi().isWeblogRequired());
+        assertEquals(List.of(), new MediaReadApi().requiredGlobalPermissionActions());
     }
 
     private MediaFile patchedFile(Weblogger weblogger, Weblog weblog, String json, int expectedStatus)
