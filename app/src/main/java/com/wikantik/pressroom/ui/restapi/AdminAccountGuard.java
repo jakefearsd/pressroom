@@ -7,6 +7,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 
 /**
  * Admin accounts and the admin role are read-only through the API -- and so
@@ -16,6 +17,12 @@ import com.wikantik.pressroom.pojos.User;
  * Every API route that changes a user must call this first: today
  * AdminApi.patchUser; later, user deletion, self-service profile edits and
  * role changes (spec 2026-10-11-mcp-endpoint-design.md, "Admin accounts").
+ *
+ * <p>The rule is about the caller kind: only {@link Caller.Kind#SESSION}, the
+ * admin UI's own login, may do these things. A token, a password (HTTP Basic),
+ * an unrecognised mechanism and an anonymous caller are all refused, so a new
+ * way in is closed until it is named here. No session can reach {@code /api}
+ * today, so every API caller is refused.
  */
 public final class AdminAccountGuard {
 
@@ -27,7 +34,15 @@ public final class AdminAccountGuard {
     private AdminAccountGuard() {
     }
 
-    public static void requireNotAdmin(UserManager users, User user) throws WebloggerException {
+    /** Whether {@code caller} is the admin UI's own login: the only kind these guards let through. */
+    private static boolean isSession(Caller caller) {
+        return caller.kind() == Caller.Kind.SESSION;
+    }
+
+    public static void requireNotAdmin(Caller caller, UserManager users, User user) throws WebloggerException {
+        if (isSession(caller)) {
+            return;
+        }
         GlobalPermission admin = new GlobalPermission(List.of(GlobalPermission.ADMIN));
         if (users.checkPermission(admin, user)) {
             throw ApiException.forbidden(DETAIL);
@@ -40,8 +55,8 @@ public final class AdminAccountGuard {
      * Checked before {@link #requireNotAdmin}, so a site-admin agent is
      * refused as an agent.
      */
-    public static void requireNotAgent(User user) {
-        if (user.isAgent()) {
+    public static void requireNotAgent(Caller caller, User user) {
+        if (!isSession(caller) && user.isAgent()) {
             throw ApiException.forbidden(AGENT_DETAIL);
         }
     }
@@ -57,7 +72,10 @@ public final class AdminAccountGuard {
     public static final Set<String> UI_ONLY_SETTINGS = Set.of("site.absoluteurl");
 
     /** Refuses, before anything is applied, a request naming a UI-only setting. */
-    public static void requireApiManageable(Collection<String> settingNames) {
+    public static void requireApiManageable(Caller caller, Collection<String> settingNames) {
+        if (isSession(caller)) {
+            return;
+        }
         for (String name : settingNames) {
             if (UI_ONLY_SETTINGS.contains(name)) {
                 throw ApiException.forbidden(name + " is managed in the admin UI.");

@@ -66,7 +66,6 @@ class CallerTest {
         Caller caller = Caller.current();
         assertEquals(Caller.Kind.TOKEN, caller.kind());
         assertEquals("blog", caller.principal().scopeWeblog());
-        assertEquals("blog", caller.pin());
     }
 
     @Test
@@ -88,7 +87,6 @@ class CallerTest {
         Caller caller = Caller.current();
         assertEquals(Caller.Kind.PASSWORD, caller.kind());
         assertNull(caller.principal());
-        assertNull(caller.pin());
     }
 
     /** The counterpart: without the marker source the same Basic login is indistinguishable from a session. */

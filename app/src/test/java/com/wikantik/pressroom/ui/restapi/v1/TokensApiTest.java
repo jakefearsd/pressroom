@@ -73,6 +73,8 @@ class TokensApiTest {
         var principal = org.springframework.security.core.userdetails.User
                 .withUsername("owner").password("n/a").authorities(List.of()).build();
         var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+        auth.setDetails(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE
+                .buildDetails(new org.springframework.mock.web.MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
@@ -314,6 +316,7 @@ class TokensApiTest {
 
     @Test
     void anUnknownRoleIsRejected() throws Exception {
+        authenticateWithBasicAuth();
         mockMvc(new TokensApi(mockedWeblogger()))
                 .perform(post("/v1/tokens")
                         .contentType("application/json")
@@ -501,8 +504,10 @@ class TokensApiTest {
 
     @Test
     void aPlainStringPrincipalIsLookedUpByName() throws Exception {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("owner", null, List.of()));
+        var auth = new UsernamePasswordAuthenticationToken("owner", null, List.of());
+        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
+                new org.springframework.mock.web.MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
         Weblogger weblogger = mockedWeblogger();
         User owner = new User();
         when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
@@ -511,6 +516,58 @@ class TokensApiTest {
         mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
                 .andExpect(status().isOk())
                 .andExpect(r -> assertEquals("[]", r.getResponse().getContentAsString()));
+    }
+
+    /**
+     * The token resource refuses by caller kind: a session caller (the admin
+     * UI's own login) is allowed, as a password caller is. A session cannot
+     * reach /api today, so this is the unit-level reading of the rule.
+     */
+    @Test
+    void aSessionCallerMayListTokens() throws Exception {
+        var auth = new UsernamePasswordAuthenticationToken("owner", null, List.of());
+        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
+                new org.springframework.mock.web.MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        Weblogger weblogger = mockedWeblogger();
+        User owner = new User();
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        when(weblogger.getApiTokenManager().getTokens(owner)).thenReturn(List.of());
+
+        mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens")).andExpect(status().isOk());
+    }
+
+    /** Fail closed: a caller authenticated by an unrecognised mechanism is not let through. */
+    @Test
+    void anUnrecognisedCallerIsRefusedEverywhere() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("owner", null, List.of()));
+        Weblogger weblogger = mockedWeblogger();
+        TokensApi api = new TokensApi(weblogger);
+
+        mockMvc(api).perform(get("/v1/tokens")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(delete("/v1/tokens/{id}", "x")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/v1/tokens")
+                .contentType("application/json").content("{\"label\":\"l\",\"role\":\"POST\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(weblogger.getUserManager(), never()).getUserByUserName(anyString());
+        verify(weblogger.getApiTokenManager(), never()).getTokens(any());
+    }
+
+    @Test
+    void anAnonymousCallerIsRefusedEverywhere() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.AnonymousAuthenticationToken(
+                        "k", "anonymousUser", List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+        Weblogger weblogger = mockedWeblogger();
+        TokensApi api = new TokensApi(weblogger);
+
+        mockMvc(api).perform(get("/v1/tokens")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(delete("/v1/tokens/{id}", "x")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/v1/tokens")
+                .contentType("application/json").content("{\"label\":\"l\",\"role\":\"POST\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

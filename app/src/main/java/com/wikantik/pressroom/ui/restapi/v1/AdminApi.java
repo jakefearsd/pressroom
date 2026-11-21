@@ -32,6 +32,7 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
@@ -216,8 +217,9 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (user == null) {
             throw ApiException.notFound("No such user.");
         }
-        AdminAccountGuard.requireNotAgent(user);
-        AdminAccountGuard.requireNotAdmin(mgr, user);
+        Caller caller = Caller.current();
+        AdminAccountGuard.requireNotAgent(caller, user);
+        AdminAccountGuard.requireNotAdmin(caller, mgr, user);
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
 
         FieldErrors errors = new FieldErrors();
@@ -338,7 +340,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (body == null || body.isEmpty()) {
             throw ApiException.badRequest("At least one property is required.");
         }
-        AdminAccountGuard.requireApiManageable(body.keySet());
+        AdminAccountGuard.requireApiManageable(Caller.current(), body.keySet());
 
         Map<String, RuntimeConfigProperty> toSave = new LinkedHashMap<>();
         List<AdminDtos.ConfigEntry> result = new ArrayList<>();

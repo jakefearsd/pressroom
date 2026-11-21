@@ -14,7 +14,6 @@ import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.TokenPins;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
-import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.dto.TokenDtos;
 import org.springframework.context.annotation.Lazy;
@@ -88,9 +87,7 @@ public class TokensApi {
             throws WebloggerException {
         // A token cannot be used to mint another token: that would turn any
         // leaked token into a permanent one, with a scope the thief picks.
-        if (currentApiPrincipal() != null) {
-            throw ApiException.forbidden("A token cannot be used to mint another token.");
-        }
+        requireCredentialCaller("A token cannot be used to mint another token.");
 
         ApiToken.Role role = parseRole(request.role());
         // pressroom_api_token.label is VARCHAR(255) NOT NULL (V026) and
@@ -120,9 +117,7 @@ public class TokensApi {
         // The whole /v1/tokens resource is Basic-only, the same as issue():
         // a leaked, merely-POST-scoped token must not be able to enumerate
         // every token its owner holds.
-        if (currentApiPrincipal() != null) {
-            throw ApiException.forbidden("Token management requires Basic authentication.");
-        }
+        requireCredentialCaller("Token management requires Basic authentication.");
         User user = requireUser();
         return weblogger.getApiTokenManager().getTokens(user).stream()
                 .map(TokenDtos::toView)
@@ -133,9 +128,7 @@ public class TokensApi {
     public ResponseEntity<Void> revoke(@PathVariable("id") String id) throws WebloggerException {
         // Same as list(): a leaked token must not be able to revoke any of
         // its owner's other tokens, including an ADMIN one.
-        if (currentApiPrincipal() != null) {
-            throw ApiException.forbidden("Token management requires Basic authentication.");
-        }
+        requireCredentialCaller("Token management requires Basic authentication.");
         User user = requireUser();
         // Read first: the log line names the token as the UI's does. A token that is
         // not the caller's is refused below and never logged.
@@ -224,7 +217,19 @@ public class TokensApi {
         }
     }
 
-    private static ApiPrincipal currentApiPrincipal() {
-        return Caller.current().principal();
+    /**
+     * No token may manage tokens: a TOKEN caller is refused with {@code
+     * tokenDetail}. A PASSWORD caller (Basic) and a SESSION caller (the admin
+     * UI's login, which cannot reach /api today) are allowed. Fail closed: a
+     * caller nobody authenticated, or one authenticated by a mechanism
+     * {@link Caller} does not recognise, is a 401 and never reaches the user
+     * lookup.
+     */
+    private static void requireCredentialCaller(String tokenDetail) {
+        switch (Caller.current().kind()) {
+            case TOKEN -> throw ApiException.forbidden(tokenDetail);
+            case ANONYMOUS, UNRECOGNISED -> throw ApiException.unauthorized("Authentication required.");
+            case PASSWORD, SESSION -> { }
+        }
     }
 }

@@ -37,7 +37,7 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         /**
          * Authenticated by a mechanism this class does not recognise. Never
          * {@link #SESSION}, so a future login mechanism gains no session powers;
-         * Task 3's guards (AdminAccountGuard, TokensApi) refuse it, as they
+         * the guards (AdminAccountGuard, TokensApi) refuse it, as they
          * refuse TOKEN. No such caller exists today.
          */
         UNRECOGNISED
@@ -76,10 +76,5 @@ public record Caller(Kind kind, ApiPrincipal principal) {
             return new Caller(Kind.SESSION, null);
         }
         return new Caller(Kind.UNRECOGNISED, null);
-    }
-
-    /** The handle of the one weblog a token caller is pinned to, or null. */
-    public String pin() {
-        return principal == null ? null : principal.scopeWeblog();
     }
 }
