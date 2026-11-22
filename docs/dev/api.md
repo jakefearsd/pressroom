@@ -647,8 +647,8 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
   editor resolves ids globally so `StrandRules` can say "another blog's post"; the API turns another
   blog's post into an unknown one before `StrandRules` sees it, so a refusal never tells a token what
   another blog holds (the 404-never-403 rule, applied to a list). Each refused id is its own `errors`
-  entry on `entries`, naming the id; `PagesApi.refusal` maps the `strand.error.*` keys to English (the
-  API is not localised).
+  entry on `entries`, naming the id; `PagesApi.refusalCode` maps the `strand.error.*` keys to the
+  `strand.*` problem codes, which render localised like any other (see Localisation above).
 - **`PageView.parts` costs one query per strand page** (`getStrandParts(page, false)`, every member,
   any status) and none for a plain page, so a `pages list` stays one query for a blog without strands.
 - **Unsetting `strand` reads the part count before anything is applied** (`PagesApi.checkStrand`);

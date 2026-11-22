@@ -93,10 +93,10 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
      * A ServletFilter runs before, and entirely outside, DispatcherServlet --
      * so {@code ApiExceptionHandler}'s {@code @RestControllerAdvice} can never
      * see an exception thrown from here. Handing the keyed {@code
-     * request.throttled} problem to the shared {@link ApiProblemWriter}
-     * (which renders it in the caller's language) (also used by {@link
+     * request.throttled} problem to the shared {@link ApiProblemWriter}, which
+     * renders it in the caller's language and is also used by {@link
      * ApiAuthenticationEntryPoint} and {@link ApiAccessDeniedHandler}, the
-     * other two writers that run outside this same reach) is what keeps this
+     * other two writers that run outside this same reach, is what keeps this
      * error shape from drifting from {@code ApiExceptionHandler}'s.
      */
     private void writeThrottled(HttpServletRequest request, HttpServletResponse response)

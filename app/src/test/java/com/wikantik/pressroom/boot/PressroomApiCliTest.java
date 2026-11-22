@@ -176,7 +176,7 @@ class PressroomApiCliTest {
     @Test
     void globalUrlAndTokenFlagsRejectAKnownCommandNameAsTheirValue() throws Exception {
         String script = cli();
-        assertTrue(script.contains("auth|entries|media|audit|admin)"),
+        assertTrue(script.contains("auth|entries|media|audit|weblogs|admin)"),
                 "a --url/--token flag with no value must not silently swallow the next command name");
     }
 
@@ -382,7 +382,7 @@ class PressroomApiCliTest {
     void everyGroupAnswersHelpWithItsUsageAndExitsZero(@TempDir Path dir) throws Exception {
         String[][] cases = {
             {"entries", "entries create"}, {"media", "media upload"}, {"audit", "audit seo"},
-            {"admin", "admin rebuild-index"}, {"auth", "auth login"},
+            {"admin", "admin rebuild-index"}, {"auth", "auth login"}, {"weblogs", "weblogs get"},
         };
         for (String[] c : cases) {
             for (String flag : new String[] {"--help", "-h", "help"}) {
@@ -430,6 +430,36 @@ class PressroomApiCliTest {
             assertTrue(r.out().contains("http://pressroom.invalid/api/v1/admin/weblogs/w/actions/rebuild-index"),
                     name + ": " + r.out());
         }
+    }
+
+    /**
+     * {@code weblogs get} and {@code weblogs patch} are the names the API gives
+     * the owner's own weblog (GET and PATCH /v1/weblogs/{handle}); {@code admin
+     * weblogs get/patch} stay as aliases reaching the same routes.
+     */
+    @Test
+    void weblogsGetAndPatchAreTheCommandsAndTheAdminFormsStillWork(@TempDir Path dir) throws Exception {
+        for (String[] prefix : new String[][] {{"weblogs"}, {"admin", "weblogs"}}) {
+            for (String verb : new String[] {"get", "patch"}) {
+                java.util.List<String> args = new java.util.ArrayList<>(java.util.List.of(prefix));
+                args.addAll(java.util.List.of(verb, "--weblog", "w"));
+                Run r = run(dir, true, args.toArray(String[]::new));
+                assertEquals(0, r.exit(), args + ": " + r.out() + r.err());
+                assertTrue(r.out().contains("http://pressroom.invalid/api/v1/weblogs/w"), args + ": " + r.out());
+            }
+        }
+    }
+
+    /** The help says which form to use: {@code weblogs}, with {@code admin weblogs get/patch} named as aliases. */
+    @Test
+    void theHelpNamesWeblogsGetAndPatchAndTheAdminAliases(@TempDir Path dir) throws Exception {
+        String weblogs = run(dir, false, "weblogs", "--help").out();
+        assertTrue(weblogs.contains("weblogs get --weblog H"), weblogs);
+        assertTrue(weblogs.contains("weblogs patch --weblog H"), weblogs);
+        String admin = run(dir, false, "admin", "--help").out();
+        assertTrue(admin.contains("admin weblogs list"), admin);
+        assertTrue(admin.contains("alias"), admin);
+        assertTrue(run(dir, false, "--help").out().contains("weblogs get --weblog H"));
     }
 
     /**

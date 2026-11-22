@@ -55,6 +55,13 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
   always was; it was a 400 `request.malformedBody`. See [Errors](#errors).
 - `image.scanRefused`'s `detail` is the API's own text now, the refused tag
   quoted in it; the wording, status and code are unchanged.
+- `bin/pressroom-api` gains `weblogs get` and `weblogs patch`, the names the API
+  gives the owner's own weblog (`GET` and `PATCH /api/v1/weblogs/{handle}`).
+  `admin weblogs get` and `admin weblogs patch` keep working as aliases; use
+  `weblogs` in new scripts. `admin weblogs list` is unchanged (site admins).
+- `openapi.json` is unchanged in shape: media upload is a `multipart/form-data`
+  body and the entry routes answer `application/json`, as before; only the
+  revision store's `ItemCount.kind` description now comes from the API side.
 
 ## Changes in 0.16.0
 
@@ -280,7 +287,8 @@ pin may act on every weblog its owning user can reach, subject to that
 user's own `WeblogPermission` on each one.
 
 A handful of routes name no weblog at all (`GET /api/v1/ping`,
-`GET /api/v1/me`, `GET /api/v1/meta`, `GET /api/v1/me/profile`) and are exempt from the weblog-pin check by design — a
+`GET /api/v1/me`, `GET /api/v1/meta`, `GET /api/v1/me/profile`) and are exempt
+from the weblog-pin check by design — a
 weblog-scoped token must still be able to ask who it is. The two are not
 otherwise equivalent: `GET /api/v1/ping` is the one route in the whole API
 that needs **no credential at all** (`permitAll` in `SecurityConfig`, a bare
@@ -291,7 +299,10 @@ call to it is a 401 like anywhere else. `GET /api/v1/me` also lists the
 `permission` (`ADMIN`, `POST` or `EDIT_DRAFT`), sorted by handle: the one
 weblog a pinned token is limited to, or every weblog its user belongs to.
 This is how a token that is not a site admin finds its weblogs, since listing
-`/api/v1/weblogs` needs the admin role. `GET /api/v1/me` also reports the account's `kind`: `PERSON` or `AGENT`. Every other route
+every weblog (`GET /api/v1/weblogs`) needs the `ADMIN` role; creating one
+(`POST /api/v1/weblogs`) needs only a writing token (`POST` or `ADMIN`).
+`GET /api/v1/me` also reports the account's `kind`: `PERSON` or `AGENT`. Every
+other route
 that resolves no weblog defaults to **deny**, not "unlimited because there
 was nothing to check": `/api/v1/admin/**` and the site-wide weblog list
 `GET /api/v1/weblogs` require `ADMIN` role via a separate, explicit
@@ -302,7 +313,8 @@ held by a user the Create Weblog page lets create one, and the whole
 caller outright regardless of role — see [With the API](#with-the-api). A weblog-pinned
 token, even an `ADMIN` one held by a site administrator, is therefore refused
 on the routes that name no weblog — `/api/v1/admin/users`, `/admin/config`,
-`/admin/revisions`, `/admin/traffic`, `/admin/businesses` and `/api/v1/weblogs` (list and create) — with a 404 whose
+`/admin/revisions`, `/admin/traffic`, `/admin/businesses` and `/api/v1/weblogs`
+(list and create) — with a 404 whose
 detail says so (`This token is limited to the weblog '<handle>', and this
 route is not part of one weblog.`). The account's own permission is checked
 first, so on the site-admin-only ones a pinned token whose owner is not a
@@ -350,7 +362,9 @@ The clearable fields, per resource:
   `bookingUrl`. `placeLat` and `placeLng` clear together.
 - **Page:** `metaTitle`, `searchDescription`, `canonicalUrl` and `ogImageId`.
 - **Media:** `altText`, `focalX` and `focalY`. `focalX` and `focalY` clear together.
-- **Business profile:** `websiteUrl`, `bookingUrl`, `telephone`, `email`, `logoUrl`, `sameAs`, `areaServed` and `description`; not `name` or `businessType`.
+- **Business profile:** `websiteUrl`, `bookingUrl`, `telephone`, `email`,
+  `logoUrl`, `sameAs`, `areaServed` and `description`; not `name` or
+  `businessType`.
 
 An empty `clear` changes nothing, and a repeated name or one with surrounding
 spaces is tolerated. Naming a field both with a value and in `clear` is a 400,
@@ -463,7 +477,9 @@ stable, case-sensitive string of two dotted lowerCamel segments,
   (`request.invalid`, `resource.notFound`, `resource.conflict`,
   `upstream.failure`) are the category fallbacks: no route answers with them
   today, and a client that meets one treats it by its `type` and status.
-  `auth.notAuthenticated` means the same as `auth.unauthorized`; treat them alike.
+  `auth.notAuthenticated` and `auth.unauthorized` both mean 401, with the
+  same meaning (the first is an older check nearer the route); a client treats
+  them alike and keys on the status, not on which of the two it got.
 - **A few `detail`s are not the API's own text** but the message of the step
   that refused (an image import). Their codes are `image.importFailed` and
   `media.importRefused`; such text is English whatever the caller asks for.
@@ -742,7 +758,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | Status | Meaning |
 |--------|---------|
 | 400 | Malformed request: bad JSON, an out-of-range `limit`/`offset`, an unknown status/role, a missing required field. |
-| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens` (`detail` `The username or password was not accepted.`; every 401 on the token resource carries `WWW-Authenticate: Basic realm="Pressroom"`); or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
+| 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked (`detail` `Authentication required.`); a wrong password on `/api/v1/tokens` (`detail` `The username or password was not accepted.`); a call to `/api/v1/tokens` with no credential at all (`detail` `Authentication required.`; every 401 on the token resource, this one included, carries `WWW-Authenticate: Basic realm="Pressroom"`); or a password sent to any other route (`detail` `Password authentication is accepted only on /api/v1/tokens. ...`, see [With the API](#with-the-api)). |
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). Also the entry write's own refusals of a member without publish rights: `entry.notChangeable` (not their own DRAFT or PENDING entry) and `entry.needsPublishRights` (a field only a publisher may set; see [Entries](#entries)). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
@@ -1197,7 +1213,8 @@ cannot be copied (refused, failed, out of budget, an external `srcset`, or
 past the first 10) stays linked as it was, and the write saves; a site with
 uploads switched off or a private default media directory saves the text as
 sent. Asked for with `true`, it is all or nothing, as listed below. The first
-copied picture becomes the featured image when the entry has none (above). Found are `<img src>` tags in HTML (the first `src` wins, as in a
+copied picture becomes the featured image when the entry has none (above). Found
+are `<img src>` tags in HTML (the first `src` wins, as in a
 browser) and every Markdown image, reference-style ones included, never an
 image inside code. A Markdown image that is a paragraph of its own (not in a
 list, quote or link, and with no title) becomes `[image id="..." alt="..."]`,
@@ -1219,7 +1236,8 @@ Markdown on lines of their own avoids that.
   it counts as not fetched.
 - With `true`, all or nothing for the entry: if any image is refused or not fetched, the
   write is a 400 naming each such image (on `text`, or on `featuredImageUrl` for
-  the featured one), and the entry is not saved. Images that did import stay in the library, and a retry matches
+  the featured one), and the entry is not saved. Images that did import stay in
+  the library, and a retry matches
   them by content hash, so it costs downloads, not copies.
 
 **`featuredImageId` and `ogImageId`** must name an image of this weblog
@@ -1393,7 +1411,8 @@ on ports 80 and 443, following at most 3 redirects (each re-checked), within 30
 seconds overall. The site's per-file size limit and its uploads-enabled switch
 apply as they do for uploads. A refused URL is a 400 on `url` whose `detail` says why.
 Bytes already in the target directory (matched by content hash) answer **200** with that file, with
-no copy and no quota charge. If the existing file has no alt text, it takes the request's `altText`; an existing `""` (decorative) is kept.
+no copy and no quota charge. If the existing file has no alt text, it takes the
+request's `altText`; an existing `""` (decorative) is kept.
 In the MCP endpoint this is `media` with `action: "import"`.
 
 `MediaView.directory` is the owning directory's **id**, not its name —
@@ -1701,7 +1720,8 @@ defaults to 50 with a maximum of 200.
 `authorIsOwner` (the author holds a role on this weblog), `replyTo` (the id of
 the comment this answers) and `reply` (the id of its reply, whatever that
 reply's status). An email address or account id is never part of a view.
-`entryTitle` is the entry's plain-text title, as in the entry view. An empty `body` on a `HIDDEN` comment means its author
+`entryTitle` is the entry's plain-text title, as in the entry view. An empty
+`body` on a `HIDDEN` comment means its author
 deleted it.
 
 ```bash
@@ -2028,7 +2048,8 @@ may do it with a token whose role is `POST` or `ADMIN` and that is not limited
 to one weblog (a token pinned to a weblog answers 404, a `READ` token 403).
 When the site turns creation off, or allows one weblog per user and the caller
 has one, the answer is 403. `handle`, `name` and `theme` are required;
-`tagline`, `copyright` (plain text, at most 255 characters), `emailAddress`, `locale` and `timeZone` are optional, and an omitted
+`tagline`, `copyright` (plain text, at most 255 characters), `emailAddress`,
+`locale` and `timeZone` are optional, and an omitted
 `emailAddress`, `locale` or `timeZone` is the caller's own. A handle that is
 reserved for the site's own pages (`api`, `page`, `search` and the like) is a
 400, a handle already taken is a 409, and `frontpage` (the site-wide
@@ -2244,7 +2265,8 @@ store a value exactly as the screen does: both call the same rules.
 - The rules (each refusal names its field in `errors`, all of them in one
   400): `name` required (`field.required`; blank, `field.blank`) and at most
   255 characters; `businessType` one of `Organization`, `LocalBusiness`,
-  `ProfessionalService` (`businessType.unknown`); `websiteUrl` and `logoUrl` public, absolute `http`/`https` URLs
+  `ProfessionalService` (`businessType.unknown`); `websiteUrl` and `logoUrl`
+  public, absolute `http`/`https` URLs
   (`field.notPublicUrl`; localhost and intranet hosts are refused), and
   `bookingUrl` the same (`bookingUrl.invalid`, as on a weblog) of at most 255 characters;
   `telephone` digits, plus, parentheses, hyphen, dot and space with an
@@ -2280,7 +2302,8 @@ POST /api/v1/admin/weblogs/{handle}/actions/regenerate-renditions
 
 `ADMIN` scope only, and a site admin's — the same three actions the
 Maintenance screen offers, reachable without a browser. A token pinned to the
-weblog in the path may run them; one pinned to another weblog gets 404. All three answer **202 Accepted**, not 200:
+weblog in the path may run them; one pinned to another weblog gets 404. All
+three answer **202 Accepted**, not 200:
 rebuilding the index and regenerating renditions are asynchronous
 background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a
@@ -2308,7 +2331,8 @@ action beyond the token's role answers "forbidden", exactly as over REST.
   `site_settings` tool) naming it answers 403 `site.absoluteurl is managed in the admin UI.` and
   applies nothing: it is the base of every password-reset link, so a stolen token able to change it
   could redirect an admin's reset to another host. Reading it is allowed.
-- A request carrying a browser `Origin` other than the site's own is refused (403); bodies over 4,048,576 bytes
+- A request carrying a browser `Origin` other than the site's own is refused
+  (403); bodies over 4,048,576 bytes
   are refused (413).
 - Each tool call counts once against the token's rate limit.
 
@@ -2337,9 +2361,11 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
 
-A tool takes `action` (except `whoami` and `site_info`) and that action's arguments, named as in this document:
+A tool takes `action` (except `whoami` and `site_info`) and that action's
+arguments, named as in this document:
 `weblog` is a handle, and body fields keep their names. An argument the action does not take is
-refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `revisionId`, `userName`)
+refused, never ignored. An argument that fills part of the route's path
+(`weblog`, `id`, `revisionId`, `userName`)
 must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
 refused. A refusal from the API is a tool error whose text is the API's problem body. A refusal
 the MCP endpoint makes itself (an unknown action, a missing or inapplicable argument) is a tool
@@ -2356,7 +2382,8 @@ through MCP: minting, listing or revoking tokens, uploading media from local fil
 
 A person does these in the admin UI; no token can, and the API has no route for them (weblog memberships
 can be read with a token, not changed): agent accounts, changes to admin accounts or the admin role, weblog
-membership changes, profile changes (email, password, names, locale), another user's email address, the site-wide token list,
+membership changes, profile changes (email, password, names, locale), another
+user's email address, the site-wide token list,
 deleting a weblog, custom templates and stylesheets, and the contact-form inbox. They are reserved for
 an interactive signed-in session by design; a future session-based admin client will cover them.
 

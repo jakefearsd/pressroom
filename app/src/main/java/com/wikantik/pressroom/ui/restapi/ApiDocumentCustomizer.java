@@ -52,11 +52,25 @@ public class ApiDocumentCustomizer implements OpenApiCustomizer {
             Map<String, Schema> properties = schema.getProperties();
             properties.get("code").addExtension("x-extensible-enum", codes);
         }
+        describeBusinessMembers(components);
         if (openApi.getPaths() == null) {
             return;
         }
         openApi.getPaths().values().forEach(item -> item.readOperations().forEach(operation ->
                 operation.getResponses().addApiResponse("default", problemResponse())));
+    }
+
+    /**
+     * Text for members of business-tier records, which import no swagger type
+     * (BusinessTierImportsTest): the revision store's largest-items rows.
+     */
+    @SuppressWarnings("rawtypes") // swagger's model API speaks raw Schema maps
+    private static void describeBusinessMembers(Components components) {
+        Map<String, Schema> schemas = components.getSchemas();
+        Schema<?> item = schemas == null ? null : schemas.get("ItemCount");
+        if (item != null && item.getProperties() != null && item.getProperties().get("kind") != null) {
+            item.getProperties().get("kind").setDescription("ENTRY or PAGE: whose revisions these are.");
+        }
     }
 
     private static ApiResponse problemResponse() {

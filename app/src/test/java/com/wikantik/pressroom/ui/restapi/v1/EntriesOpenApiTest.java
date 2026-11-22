@@ -77,9 +77,11 @@ class EntriesOpenApiTest {
     static void generate() throws Exception {
         context = new AnnotationConfigWebApplicationContext();
         context.setServletContext(new MockServletContext());
-        // as application.properties serves it, relative to the stripped /api prefix
+        // as application.properties serves it: path relative to the stripped /api prefix,
+        // and the real response media type
         context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test",
-                Map.of("springdoc.api-docs.path", "/v1/openapi.json")));
+                Map.of("springdoc.api-docs.path", "/v1/openapi.json",
+                        "springdoc.default-produces-media-type", "application/json")));
         context.register(Config.class);
         context.refresh();
         String document = webAppContextSetup(context).build().perform(get("/v1/openapi.json"))
@@ -109,7 +111,7 @@ class EntriesOpenApiTest {
             JsonNode operation = paths.get(route[1]).get(route[0]);
             JsonNode response = operation.get("responses").get(route[2]);
             assertTrue(response != null, name + " documents a " + route[2] + ": " + operation.get("responses"));
-            JsonNode schema = response.path("content").path("*/*").path("schema");
+            JsonNode schema = response.path("content").path("application/json").path("schema");
             assertEquals("#/components/schemas/" + route[3], schema.path("$ref").asString(), name + ": " + schema);
 
             JsonNode fields = null;
@@ -133,12 +135,12 @@ class EntriesOpenApiTest {
     @Test
     void theRevisionRoutesNameTheirViewsAndTheRestoreBodyIsOptional() {
         String revisions = "/v1/weblogs/{handle}/entries/{id}/revisions";
-        JsonNode list = paths.get(revisions).get("get").get("responses").get("200").path("content").path("*/*")
+        JsonNode list = paths.get(revisions).get("get").get("responses").get("200").path("content").path("application/json")
                 .path("schema");
         assertEquals("array", list.path("type").asString(), list.toString());
         assertEquals("#/components/schemas/RevisionSummary", list.path("items").path("$ref").asString());
         JsonNode one = paths.get(revisions + "/{revisionId}").get("get").get("responses").get("200")
-                .path("content").path("*/*").path("schema");
+                .path("content").path("application/json").path("schema");
         assertEquals("#/components/schemas/RevisionView", one.path("$ref").asString(), one.toString());
         JsonNode body = paths.get(revisions + "/{revisionId}/restore").get("post").get("requestBody");
         assertFalse(body.path("required").asBoolean(false), body.toString());

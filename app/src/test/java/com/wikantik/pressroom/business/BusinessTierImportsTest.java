@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The business tier does not depend on the web tier: no source under
@@ -63,5 +64,32 @@ class BusinessTierImportsTest {
             }
         }
         assertEquals(EXPECTED_LEGACY, found);
+    }
+
+    private static final Path POJOS = Path.of("src/main/java/com/wikantik/pressroom/pojos");
+    private static final Pattern SWAGGER_IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?(io\\.swagger\\.[\\w.]+);");
+
+    /**
+     * The business tier and the entities describe no API: a swagger annotation
+     * there ties the domain to the OpenAPI library. A description of a business
+     * type's field belongs in {@code ApiDocumentCustomizer}, on the API side.
+     */
+    @Test
+    void noBusinessOrPojoClassImportsSwagger() throws IOException {
+        Set<String> found = new TreeSet<>();
+        long scanned = 0;
+        for (Path root : new Path[] {BUSINESS, POJOS}) {
+            try (Stream<Path> files = Files.walk(root)) {
+                for (Path file : files.filter(f -> f.toString().endsWith(".java")).sorted().toList()) {
+                    scanned++;
+                    Matcher imported = SWAGGER_IMPORT.matcher(Files.readString(file, StandardCharsets.UTF_8));
+                    while (imported.find()) {
+                        found.add(file + " imports " + imported.group(1));
+                    }
+                }
+            }
+        }
+        assertTrue(scanned > 50, "the scan read the sources: " + scanned);
+        assertEquals(Set.of(), found);
     }
 }

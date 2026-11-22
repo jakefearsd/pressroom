@@ -799,10 +799,26 @@ usage_admin() {
   admin config list
   admin config set NAME=VALUE [NAME=VALUE ...]
   admin weblogs list [--offset N] [--limit N]
-  admin weblogs get --weblog H
-  admin weblogs patch --weblog H [--name N] [--tagline T] [--active true|false] [--locale L]
-                       [--timezone Z] [--entry-display-count N] [--email E]
+  admin weblogs get --weblog H          (alias of: weblogs get)
+  admin weblogs patch --weblog H [...]  (alias of: weblogs patch; flags as there)
 EOF
+}
+
+usage_weblogs() {
+    cat <<'EOF'
+  weblogs get --weblog H
+  weblogs patch --weblog H [--name N] [--tagline T] [--active true|false] [--locale L]
+                [--timezone Z] [--entry-display-count N] [--email E]
+EOF
+}
+
+cmd_weblogs() {
+    local sub="${1:-}"; shift || true
+    case "$sub" in
+        get)   admin_weblogs_get "$@" ;;
+        patch) admin_weblogs_patch "$@" ;;
+        *) usage_weblogs; exit 1 ;;
+    esac
 }
 
 cmd_admin() {
@@ -1033,12 +1049,16 @@ pressroom-api -- Pressroom automation API client
   audit seo   --weblog H
   audit media --weblog H
 
+  weblogs get --weblog H
+  weblogs patch --weblog H [--name N] [--tagline T] [--active true|false] ...
+                         (admin weblogs get/patch still work, as aliases)
+
   admin rebuild-index --weblog H
   admin flush-cache --weblog H
   admin regenerate-renditions --weblog H
 
 Run 'pressroom-api <group> --help' to see every subcommand of a group and its
-flags (groups: auth, entries, media, audit, admin).
+flags (groups: auth, entries, media, audit, weblogs, admin).
 EOF
 }
 
@@ -1062,7 +1082,7 @@ main() {
                 # that never hints the flag ate the command. Refuse it here
                 # instead, while the actual mistake is still visible.
                 case "$2" in
-                    auth|entries|media|audit|admin)
+                    auth|entries|media|audit|weblogs|admin)
                         die "$flag is missing its value -- got the command '$2' instead. Did you forget the URL/token argument?"
                         ;;
                 esac
@@ -1089,7 +1109,7 @@ main() {
                 *) usage; exit 1 ;;
             esac
             ;;
-        entries|media|audit|admin)
+        entries|media|audit|weblogs|admin)
             # Help needs no credentials, and asking for it is not a usage error.
             case "${1:-}" in
                 -h|--help|help) "usage_${group}"; exit 0 ;;

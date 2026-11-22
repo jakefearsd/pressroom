@@ -593,6 +593,18 @@ class OpenApiContractTest {
         assertTrue(strings(schema.path("required")).contains("file"), "file is required: " + schema);
     }
 
+    /**
+     * The revision store's largest-items rows say what {@code kind} is. The
+     * record lives in the business tier, which imports no swagger type, so
+     * {@code ApiDocumentCustomizer} supplies the text.
+     */
+    @Test
+    void theRevisionItemKindIsDescribedWithoutASwaggerAnnotationOnTheRecord() {
+        JsonNode kind = schemas().path("ItemCount").path("properties").path("kind");
+        assertEquals("ENTRY or PAGE: whose revisions these are.", kind.path("description").asString(),
+                "ItemCount.kind: " + schemas().path("ItemCount"));
+    }
+
     /** The entry routes still document fields with its shared text (EntriesOpenApiTest pins the rest). */
     @Test
     void theEntryFieldsParameterKeepsItsSharedDescription() {

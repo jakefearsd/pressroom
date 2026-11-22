@@ -116,6 +116,12 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
  * ({@code {}}, or a multipart content type for the upload route, whose
  * mapping requires one).
  *
+ * <p><b>Servlet filters outside Spring Security are not dispatched here.</b>
+ * The requests go through the security chains and the {@code
+ * DispatcherServlet} only, so a servlet filter registered with the container
+ * outside Spring Security never runs here: what such a filter answers is
+ * pinned by its own tests.
+ *
  * <p><b>What "reached" means.</b> The authorization layers let the request
  * through. A refusal a handler makes itself is outside this matrix and
  * pinned where it is made: {@code TokensApi} refuses every token caller
