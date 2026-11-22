@@ -20,14 +20,24 @@ package com.wikantik.pressroom.ui.restapi;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.util.Map;
+
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -40,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * /api/v1 read a JSON body of any size: Tomcat's form-size limit does not
@@ -215,5 +226,77 @@ class ApiBodyLimitFilterTest {
         InputStream body = bodySeenDownstream(maximumLengthEntry(false));
 
         assertTrue(body.readAllBytes().length > 3 * ColumnLimits.ENTRY_TEXT);
+    }
+
+    /** A JSON route in the restapi package, so ApiExceptionHandler advises it. */
+    @RestController
+    static class LimitProbeApi {
+        @PostMapping("/api/v1/limit-probe")
+        Map<String, String> body(@RequestBody Map<String, String> body) {
+            return Map.of("keys", Integer.toString(body.size()));
+        }
+    }
+
+    /** Hides the body's length from everything after it, as a chunked request does. */
+    private static final class ChunkedFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response,
+                FilterChain next) throws jakarta.servlet.ServletException, IOException {
+            next.doFilter(new HttpServletRequestWrapper(request) {
+                @Override
+                public int getContentLength() {
+                    return -1;
+                }
+
+                @Override
+                public long getContentLengthLong() {
+                    return -1;
+                }
+            }, response);
+        }
+    }
+
+    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new LimitProbeApi())
+            .setControllerAdvice(new ApiExceptionHandler())
+            .addFilters(new ChunkedFilter(), filter)
+            .build();
+
+    /** A JSON object of {@code bytes} bytes: one key, its value padded out. */
+    private static byte[] jsonObjectOf(int bytes) {
+        String open = "{\"text\":\"";
+        String close = "\"}";
+        return (open + "a".repeat(bytes - open.length() - close.length()) + close)
+                .getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    }
+
+    /**
+     * A streamed body that passes the cap is the same refusal as one that
+     * declares a length over it (0.16.3): 413 {@code request.tooLarge}, not
+     * the 400 {@code request.malformedBody} the JSON reader's failed read
+     * once turned it into.
+     */
+    @Test
+    void aStreamedBodyOverTheCapIs413RequestTooLarge() throws Exception {
+        MockHttpServletResponse answer = mvc.perform(post("/api/v1/limit-probe")
+                .contentType(MediaType.APPLICATION_JSON).content(jsonObjectOf(MAX + 1))).andReturn().getResponse();
+
+        assertEquals(413, answer.getStatus(), answer.getContentAsString());
+        assertEquals("application/problem+json", answer.getContentType());
+        JsonNode problem = JSON.readTree(answer.getContentAsString());
+        assertEquals("request.tooLarge", problem.get("code").asString());
+        assertEquals("The request body is over " + MAX + " bytes.", problem.get("detail").asString());
+    }
+
+    /** The streamed route still reads a body within the cap, and a broken one is still malformed. */
+    @Test
+    void aStreamedBodyWithinTheCapIsReadAndAMalformedOneIsStill400() throws Exception {
+        MockHttpServletResponse ok = mvc.perform(post("/api/v1/limit-probe")
+                .contentType(MediaType.APPLICATION_JSON).content(jsonObjectOf(MAX))).andReturn().getResponse();
+        assertEquals(200, ok.getStatus(), ok.getContentAsString());
+
+        MockHttpServletResponse broken = mvc.perform(post("/api/v1/limit-probe")
+                .contentType(MediaType.APPLICATION_JSON).content("{")).andReturn().getResponse();
+        assertEquals(400, broken.getStatus());
+        assertEquals("request.malformedBody", JSON.readTree(broken.getContentAsString()).get("code").asString());
     }
 }

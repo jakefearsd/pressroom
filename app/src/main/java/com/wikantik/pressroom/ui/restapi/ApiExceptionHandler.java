@@ -67,10 +67,20 @@ public class ApiExceptionHandler {
      * wave. The parser's own message can echo fragments of the request body
      * and internal type names, so -- same rule as {@link #handleUnexpected}
      * -- it is logged, never returned.
+     *
+     * <p>A body that arrived with no declared length and ran past
+     * {@link ApiBodyLimitFilter#MAX_BODY_BYTES} fails here too, its
+     * {@link ApiBodyLimitFilter.BodyTooLargeException} somewhere under the
+     * reader's; it answers the 413 the filter gives a declared one.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiProblem> handleMalformedBody(HttpMessageNotReadableException ex,
                                                            HttpServletRequest request) {
+        for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof ApiBodyLimitFilter.BodyTooLargeException) {
+                return handleApiException(ApiBodyLimitFilter.refusal(), request);
+            }
+        }
         log.info("Malformed request body at {}: {}", request.getRequestURI(), ex.getMessage());
         return handleApiException(ApiException.problem(ProblemCode.REQUEST_MALFORMED_BODY), request);
     }

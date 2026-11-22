@@ -38,8 +38,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>A body that declares a larger length is refused with a 413 before
  * anything reads it. One that declares none (chunked) is read through a
- * stream that fails once it passes the cap, which the JSON reader reports as
- * an unreadable body. Uploads ({@code multipart/*}) keep their own limit,
+ * stream that fails once it passes the cap with {@link BodyTooLargeException};
+ * {@link ApiExceptionHandler} finds it under the JSON reader's failure and
+ * answers the same 413 (0.16.3; it was a 400 unreadable body). Uploads ({@code multipart/*}) keep their own limit,
  * {@code uploads.file.maxsize}; {@code /api/mcp} keeps its transport's.
  *
  * <p>Built inline in the API security chain, never a {@code @Bean}: Boot
@@ -92,8 +93,7 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-            problemWriter.write(request, response,
-                    ApiException.problem(ProblemCode.REQUEST_TOO_LARGE, Integer.toString(MAX_BODY_BYTES)));
+            problemWriter.write(request, response, refusal());
             return;
         }
         chain.doFilter(new HttpServletRequestWrapper(request) {
@@ -107,6 +107,23 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
                 return capped;
             }
         }, response);
+    }
+
+    /** The 413 for a body over the cap, declared or found while reading. */
+    static ApiException refusal() {
+        return ApiException.problem(ProblemCode.REQUEST_TOO_LARGE, Integer.toString(MAX_BODY_BYTES));
+    }
+
+    /**
+     * A read went past the cap. Its own type, so the refusal can be told
+     * from any other failed read once the JSON reader has wrapped it.
+     */
+    static final class BodyTooLargeException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        BodyTooLargeException() {
+            super("The request body is over " + MAX_BODY_BYTES + " bytes.");
+        }
     }
 
     /** Fails a read that goes past the cap rather than buffering on. */
@@ -140,7 +157,7 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
         private void count(int n) throws IOException {
             read += n;
             if (read > MAX_BODY_BYTES) {
-                throw new IOException("The request body is over " + MAX_BODY_BYTES + " bytes.");
+                throw new BodyTooLargeException();
             }
         }
 

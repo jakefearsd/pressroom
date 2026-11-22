@@ -204,7 +204,9 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **Request size (2026-11).** `ApiBodyLimitFilter` (built inline in the API
   chain, before token sign-in) refuses a `/api/v1` body over
   `MAX_BODY_BYTES` with a 413 `too-large`, or fails the read past it when no
-  length is declared; uploads (`multipart/*`) keep their own limit. The limit
+  length is declared with `BodyTooLargeException`, which `ApiExceptionHandler.handleMalformedBody`
+  finds under the reader's failure and answers with the same 413 (0.16.3; it was a 400). The MCP
+  transport answers its own 413 for both cases (`McpServerConfigTest`); uploads (`multipart/*`) keep their own limit. The limit
   is `3 * ColumnLimits.ENTRY_TEXT + HEADROOM_BYTES` (4,048,576 bytes: the
   longest entry in 3-byte characters, plus 1 MiB for the other fields), and
   `/api/mcp`'s transport (`McpServerConfig.MAX_REQUEST_BYTES`) uses the same
@@ -220,7 +222,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **Category and media-folder names (spec 2026-11-20-jsp-rules-and-view-models-design, Task 3)**: a
   category name must survive `escapeHtml4` on both surfaces (`&`, `<`, `>`, `"`; an apostrophe passes), but a
   PATCH resending the category's own name is never judged again, so an `&` stored before the rule stays
-  editable. A folder name loses one leading slash, then may hold no slash (`directory.nameInvalid`). A file
+  editable; the Categories screen's edit does the same through `CategoryRules.keepsItsName` (0.16.3). A folder name loses one leading slash, then may hold no slash (`directory.nameInvalid`). A file
   rename is judged against the directory the file will be in (`media.nameInUse`, a 409 raised in
   `MediaDtos.applyPatch` after every 400 and before anything is applied). A move with no `name` is
   judged on the name the file keeps whenever the target folder is not its current one (final review

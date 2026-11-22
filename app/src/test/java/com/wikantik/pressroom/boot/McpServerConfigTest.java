@@ -192,6 +192,42 @@ class McpServerConfigTest {
         assertEquals(java.util.Set.of("audits", "site_info", "traffic", "whoami"), readOnly);
     }
 
+    /**
+     * A body over the limit is refused 413 whether it declares its length or
+     * streams in with none (characterisation, 0.16.3: the transport reads at
+     * most its limit and answers 413 itself; written to pin that, it passed
+     * as first run). /api/v1's streamed case is ApiBodyLimitFilterTest's.
+     */
+    @Test
+    void aBodyOverTheLimitIs413DeclaredOrStreamed() throws Exception {
+        String overLimit = rpc("tools/call", Map.of("name", "entries", "arguments", Map.of(
+                "action", "create", "weblog", "b", "title", "t",
+                "text", "a".repeat(McpServerConfig.MAX_REQUEST_BYTES))));
+        MockHttpServletRequest streamed = new MockHttpServletRequest("POST", McpServerConfig.ENDPOINT) {
+            @Override
+            public int getContentLength() {
+                return -1;
+            }
+
+            @Override
+            public long getContentLengthLong() {
+                return -1;
+            }
+        };
+        streamed.setContentType("application/json");
+        streamed.addHeader("Accept", "application/json, text/event-stream");
+        streamed.setContent(overLimit.getBytes(StandardCharsets.UTF_8));
+
+        for (MockHttpServletRequest request : List.of(mcpRequest(overLimit), streamed)) {
+            HttpServletStatelessServerTransport transport = config.mcpTransport();
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            config.mcpEndpointRegistration(transport, config.mcpServer(transport,
+                    (r, call) -> fail("an oversized body dispatches nothing"), ROUTES), PROBLEMS)
+                    .getServlet().service(request, response);
+            assertEquals(413, response.getStatus());
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode post(String body, ApiDispatcher dispatcher) throws Exception {
