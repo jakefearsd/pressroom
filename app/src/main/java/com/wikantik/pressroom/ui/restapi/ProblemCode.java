@@ -430,6 +430,22 @@ public enum ProblemCode {
     ENTRY_ORDER_INVALID("entryOrder.invalid", ProblemType.INVALID_REQUEST, 0),
     /** {@code businessId} names no business profile. */
     BUSINESS_UNKNOWN("business.unknown", ProblemType.INVALID_REQUEST, 0),
+    /** No business profile has this id. */
+    BUSINESS_NOT_FOUND("business.notFound", ProblemType.NOT_FOUND, 0),
+    /** The business profile is in use by weblogs and cannot be deleted; the arg is how many. */
+    BUSINESS_IN_USE("business.inUse", ProblemType.CONFLICT, 1),
+    /** {@code businessType} is not one of the known types, which the arg lists. */
+    BUSINESS_TYPE_UNKNOWN("businessType.unknown", ProblemType.INVALID_REQUEST, 1),
+    /** The named URL field is not a public, absolute http or https URL. */
+    FIELD_NOT_PUBLIC_URL("field.notPublicUrl", ProblemType.INVALID_REQUEST, 1),
+    /** {@code telephone} is off the telephone pattern. */
+    TELEPHONE_INVALID("telephone.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code email} is not a valid address. */
+    EMAIL_INVALID("email.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code sameAs} holds more links than the arg allows. */
+    SAME_AS_TOO_MANY("sameAs.tooMany", ProblemType.INVALID_REQUEST, 1),
+    /** A {@code sameAs} link, the arg, is not a public http(s) URL of at most 255 characters. */
+    SAME_AS_ENTRY_INVALID("sameAs.entryInvalid", ProblemType.INVALID_REQUEST, 1),
     /** {@code frontPage} is not a published page of this weblog. */
     FRONT_PAGE_INVALID("frontPage.invalid", ProblemType.INVALID_REQUEST, 0),
     /** {@code placeType} is not LodgingBusiness. */

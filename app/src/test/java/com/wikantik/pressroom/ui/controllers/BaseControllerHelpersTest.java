@@ -1,8 +1,10 @@
 package com.wikantik.pressroom.ui.controllers;
 
 import java.util.List;
+import java.util.Locale;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.context.support.StaticMessageSource;
@@ -41,6 +43,10 @@ class BaseControllerHelpersTest {
 
         boolean errorsPresent(ExtendedModelMap model) {
             return hasErrors(model);
+        }
+
+        void violation(ExtendedModelMap model, RuleViolation violation, MockHttpServletRequest request) {
+            addFieldError(model, "bean_f", violation, request);
         }
     }
 
@@ -115,5 +121,25 @@ class BaseControllerHelpersTest {
         assertFalse(probe.errorsPresent(model));
         model.addAttribute("errors", List.of("x"));
         assertTrue(probe.errorsPresent(model));
+    }
+
+    /**
+     * A rule's {@link RuleViolation.Label} argument is the field's label in the reader's language, the
+     * bundle's own text and so not escaped; every other argument is a raw value and is escaped.
+     */
+    @Test
+    void aLabelArgumentIsResolvedUnescapedAndARawOneEscaped() {
+        Probe probe = probe();
+        StaticMessageSource messages = (StaticMessageSource) probe.messageSource;
+        messages.addMessage("label.key", Locale.ENGLISH, "Lien de réservation");
+        messages.addMessage("rule.key", Locale.ENGLISH, "{0} | {1} | {2}");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        probe.violation(model, RuleViolation.invalid("f", "rule.key",
+                List.of(new RuleViolation.Label("label.key"), "<b>", 255), ProblemCode.FIELD_TOO_LONG, "f", "255"),
+                new MockHttpServletRequest());
+
+        assertEquals(List.of("Lien de réservation | &lt;b&gt; | 255"), model.getAttribute("errors"));
+        assertEquals("bean_f", model.getAttribute("invalidFieldIds"));
     }
 }

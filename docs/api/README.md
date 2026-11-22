@@ -670,6 +670,14 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `entryDisplayCount.outOfRange` | 400 | `invalid-request` | `entryDisplayCount` is below 1 or above the site's limit. |
 | `entryOrder.invalid` | 400 | `invalid-request` | `entryOrder` is not NEWEST or OLDEST. |
 | `business.unknown` | 400 | `invalid-request` | `businessId` names no business profile. |
+| `business.notFound` | 404 | `not-found` | No business profile has this id. |
+| `business.inUse` | 409 | `conflict` | A business profile some weblogs use cannot be deleted; `detail` says how many. |
+| `businessType.unknown` | 400 | `invalid-request` | `businessType` is not `Organization`, `LocalBusiness` or `ProfessionalService`. |
+| `field.notPublicUrl` | 400 | `invalid-request` | A business link (`websiteUrl`, `bookingUrl`, `logoUrl`) is not a public, absolute http(s) URL. |
+| `telephone.invalid` | 400 | `invalid-request` | A business's `telephone` is off the telephone pattern. |
+| `email.invalid` | 400 | `invalid-request` | A business's `email` is not a valid address. |
+| `sameAs.tooMany` | 400 | `invalid-request` | A business has more than 10 `sameAs` links. |
+| `sameAs.entryInvalid` | 400 | `invalid-request` | A `sameAs` link is not a public http(s) URL of at most 255 characters. |
 | `frontPage.invalid` | 400 | `invalid-request` | `frontPage` is not a published page of this weblog. |
 | `placeType.invalid` | 400 | `invalid-request` | `placeType` is not LodgingBusiness. |
 | `placeLocality.required` | 400 | `invalid-request` | A `placeType` was set with no `placeLocality`. |

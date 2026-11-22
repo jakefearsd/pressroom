@@ -33,8 +33,9 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * <ul>
  *   <li>the JSP controller shows {@code messageKey} with {@code args}, each
  *       argument HTML-escaped (they are raw values, user input among them,
- *       and the message sinks do not escape), marking {@code field}'s
- *       control where the form has one;</li>
+ *       and the message sinks do not escape) except a {@link Label}, which
+ *       it resolves to the label's text, marking {@code field}'s control
+ *       where the form has one;</li>
  *   <li>the API raises {@code code} with {@code codeArgs} on {@code field}
  *       through the keyed problem factories: {@link Kind#INVALID} is a 400,
  *       {@link Kind#CONFLICT} a 409.</li>
@@ -51,6 +52,19 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  */
 public record RuleViolation(String field, String messageKey, List<Object> args, ProblemCode code,
         List<String> codeArgs, Kind kind) {
+
+    /**
+     * A screen-message argument that is itself a message: a field's label, which the screen shows
+     * in the reader's language. It is the bundle's own text, so the screen does not escape it; the
+     * API never sees it (its {@code codeArgs} name the field instead).
+     *
+     * @param key the label's message key
+     */
+    public record Label(String key) {
+        public Label {
+            Objects.requireNonNull(key, "key");
+        }
+    }
 
     /** How the API answers a violation. */
     public enum Kind {

@@ -30,10 +30,9 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.pojos.Business;
 import com.wikantik.pressroom.pojos.GlobalPermission;
-import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.BusinessRules;
-import com.wikantik.pressroom.util.cache.CacheManager;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -49,6 +48,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Site admins manage the shared business records that blogs point at. A
  * business is edited once and emitted as schema.org JSON-LD on every blog
  * that uses it, so a value that fails validation is refused, never cleaned.
+ * The rules, and what a save stores, are {@link BusinessRules}'s, shared with
+ * {@code /v1/admin/businesses}.
  */
 @Controller
 @RequestMapping("/pressroom-ui/admin")
@@ -59,7 +60,6 @@ public class BusinessesController extends BaseController {
     private static final String LIST_REDIRECT = "redirect:/pressroom-ui/admin/businesses.rol";
     private static final String LIST_VIEW = ".Businesses";
     private static final String EDIT_VIEW = ".BusinessEdit";
-    private static final int MAX_LENGTH = 255;
 
     @Override
     public boolean isWeblogRequired() {
@@ -143,12 +143,15 @@ public class BusinessesController extends BaseController {
             }
         }
 
-        validate(bean, model, request);
+        BusinessRules.Values values = values(bean);
+        for (RuleViolation violation : BusinessRules.problems(values)) {
+            addFieldError(model, "bean_" + violation.field(), violation, request);
+        }
         if (hasErrors(model)) {
             return EDIT_VIEW;
         }
 
-        apply(bean, business);
+        BusinessRules.apply(values, business);
         try {
             weblogger.getBusinessManager().saveBusiness(business);
             weblogger.flush();
@@ -157,7 +160,7 @@ public class BusinessesController extends BaseController {
             addError(model, "generic.error.check.logs", request);
             return EDIT_VIEW;
         }
-        invalidateUsers(business);
+        BusinessRules.invalidateUsers(business, weblogger.getBusinessManager());
         addFlashMessage(redirectAttributes, "businesses.saved", request);
         return LIST_REDIRECT;
     }
@@ -199,24 +202,6 @@ public class BusinessesController extends BaseController {
         return LIST_REDIRECT;
     }
 
-    /**
-     * Drops the eager site-wide cache for every blog using this business.
-     * The page and feed caches expire through weblog.lastModified, which
-     * saveBusiness touches; SiteWideCache ignores it. The save has already
-     * happened, so a failure here is logged, not reported: the cache still
-     * expires on its own timeout.
-     */
-    private void invalidateUsers(Business business) {
-        try {
-            for (Weblog weblog : weblogger.getBusinessManager().getWeblogsUsing(business)) {
-                CacheManager.invalidate(weblog);
-            }
-        } catch (WebloggerException | RuntimeException ex) {
-            // The save has committed; whatever failed here must not turn it into a 500.
-            log.error("Saved business {} but could not invalidate the blogs using it", business.getId(), ex);
-        }
-    }
-
     /** The business, or null when there is none. A lookup that could not run throws: that is not "none". */
     private Business find(String id) throws WebloggerException {
         return weblogger.getBusinessManager().getBusiness(id);
@@ -247,90 +232,10 @@ public class BusinessesController extends BaseController {
         model.addAttribute("usage", usage);
     }
 
-    private void validate(BusinessBean bean, Model model, HttpServletRequest request) {
-        String name = StringUtils.trimToNull(bean.getName());
-        if (name == null) {
-            addFieldError(model, "bean_name", "businesses.error.nameRequired", request);
-        } else {
-            checkLength(model, request, "bean_name", "businesses.name", name);
-        }
-        if (!isKnownType(bean.getBusinessType())) {
-            addFieldError(model, "bean_businessType", "businesses.error.typeInvalid", request);
-        }
-        checkUrl(model, request, "bean_websiteUrl", "businesses.websiteUrl", bean.getWebsiteUrl());
-        checkUrl(model, request, "bean_bookingUrl", "businesses.bookingUrl", bean.getBookingUrl());
-        checkUrl(model, request, "bean_logoUrl", "businesses.logoUrl", bean.getLogoUrl());
-        String phone = StringUtils.trimToNull(bean.getTelephone());
-        if (phone != null && !BusinessRules.isTelephone(phone)) {
-            addFieldError(model, "bean_telephone", "businesses.error.telephoneInvalid", request);
-        }
-        String email = StringUtils.trimToNull(bean.getEmail());
-        if (email != null) {
-            if (!BusinessRules.isEmail(email)) {
-                addFieldError(model, "bean_email", "businesses.error.emailInvalid", request);
-            } else {
-                checkLength(model, request, "bean_email", "businesses.email", email);
-            }
-        }
-        checkLength(model, request, "bean_areaServed", "businesses.areaServed",
-                StringUtils.trimToNull(bean.getAreaServed()));
-        checkSameAs(bean, model, request);
-    }
-
-    private void checkSameAs(BusinessBean bean, Model model, HttpServletRequest request) {
-        List<String> lines = BusinessRules.sameAsLines(bean.getSameAs());
-        if (lines.size() > BusinessRules.MAX_SAME_AS) {
-            addFieldError(model, "bean_sameAs", "businesses.error.sameAsTooMany",
-                    new Object[] {BusinessRules.MAX_SAME_AS}, request);
-        }
-        for (String line : lines) {
-            if (!BusinessRules.isHttpUrl(line) || line.length() > MAX_LENGTH) {
-                addFieldError(model, "bean_sameAs", "businesses.error.sameAsInvalid",
-                        new Object[] {StringEscapeUtils.escapeHtml4(line)}, request);
-            }
-        }
-    }
-
-    private void checkUrl(Model model, HttpServletRequest request, String fieldId, String labelKey, String raw) {
-        String value = StringUtils.trimToNull(raw);
-        if (value == null) {
-            return;
-        }
-        if (!BusinessRules.isHttpUrl(value)) {
-            addFieldError(model, fieldId, "businesses.error.urlInvalid",
-                    new Object[] {getText(labelKey, request)}, request);
-        } else {
-            checkLength(model, request, fieldId, labelKey, value);
-        }
-    }
-
-    private void checkLength(Model model, HttpServletRequest request, String fieldId, String labelKey, String value) {
-        if (value != null && value.length() > MAX_LENGTH) {
-            addFieldError(model, fieldId, "businesses.error.tooLong",
-                    new Object[] {getText(labelKey, request), MAX_LENGTH}, request);
-        }
-    }
-
-    private static boolean isKnownType(String type) {
-        for (Business.BusinessType known : Business.BusinessType.values()) {
-            if (known.name().equals(type)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static void apply(BusinessBean bean, Business business) {
-        business.setName(bean.getName().trim());
-        business.setBusinessType(Business.BusinessType.valueOf(bean.getBusinessType()));
-        business.setWebsiteUrl(StringUtils.trimToNull(bean.getWebsiteUrl()));
-        business.setBookingUrl(StringUtils.trimToNull(bean.getBookingUrl()));
-        business.setTelephone(StringUtils.trimToNull(bean.getTelephone()));
-        business.setEmail(StringUtils.trimToNull(bean.getEmail()));
-        business.setLogoUrl(StringUtils.trimToNull(bean.getLogoUrl()));
-        List<String> sameAs = BusinessRules.sameAsLines(bean.getSameAs());
-        business.setSameAs(sameAs.isEmpty() ? null : String.join("\n", sameAs));
-        business.setAreaServed(StringUtils.trimToNull(bean.getAreaServed()));
-        business.setDescription(StringUtils.trimToNull(bean.getDescription()));
+    /** The form's fields as the shared rules take them. */
+    private static BusinessRules.Values values(BusinessBean bean) {
+        return new BusinessRules.Values(bean.getName(), bean.getBusinessType(), bean.getWebsiteUrl(),
+                bean.getBookingUrl(), bean.getTelephone(), bean.getEmail(), bean.getLogoUrl(), bean.getSameAs(),
+                bean.getAreaServed(), bean.getDescription());
     }
 }

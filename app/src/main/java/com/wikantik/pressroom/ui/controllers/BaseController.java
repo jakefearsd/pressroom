@@ -259,14 +259,18 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     /**
      * Shows a rule's violation (no control marked): its message key with
      * every argument HTML-escaped, because they are raw values, user input
-     * among them, and {@code tiles/messages.jsp} does not escape.
+     * among them, and {@code tiles/messages.jsp} does not escape. A
+     * {@link RuleViolation.Label} is the exception: it is resolved to the
+     * label's text in the reader's language, the bundle's own words, and
+     * shown as the screen showed labels before the rule moved out of it.
      */
     protected void addError(Model model, RuleViolation violation, HttpServletRequest request) {
         if (violation.args().isEmpty()) {
             addError(model, violation.messageKey(), request);
         } else {
             addError(model, violation.messageKey(), violation.args().stream()
-                    .map(arg -> StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
+                    .map(arg -> arg instanceof RuleViolation.Label label ? getText(label.key(), request)
+                            : StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
         }
     }
 
