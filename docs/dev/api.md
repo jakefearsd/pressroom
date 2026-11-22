@@ -726,3 +726,28 @@ before the manager, as does the rectangle validation. Spec decision 13 was overr
 the weblog (`saveWeblog` -> `lastModified`) so rendered pages expire. `cropMediaFile` already did this for
 both surfaces, so the JSP crop needed no change; `MediaFileCropTest.aCropMovesTheWeblogsLastModified...`
 pins it (red when the `saveWeblog` call is removed).
+
+## Session-only (not over tokens)
+
+Decision: `docs/superpowers/specs/2026-11-21-session-only-policy-decision.md`
+(pending a number in `SimpleAgilityDecisionLog`, shown there as "SA-next").
+
+These are built only for `SESSION` callers, once session login on `/api` exists. Until then they stay
+in the JSP admin UI and have no API route (weblog memberships are readable with a token, never
+writable):
+
+- agent accounts (create, change, site-admin switch, their tokens);
+- admin accounts and the admin role (any change);
+- weblog membership writes (grant, change level, remove);
+- profile writes (email, password, names, locale);
+- the site-wide token list (every user's tokens, revoke any);
+- weblog deletion;
+- custom templates and stylesheets;
+- the contact-form inbox (read or delete).
+
+Rules for building one: the route's caller-kind check refuses `TOKEN` and `PASSWORD` callers with 403
+(`ANONYMOUS` and anything unrecognised fail closed), after the visibility rules (a caller who may not
+see the weblog still gets 404); the route is an MCP `Exclusion` with the reason "session-only" and its
+authorization-matrix row shows 403 for every token caller. **Session writes on `/api` need CSRF
+protection first**: the API chains are CSRF-free today because they are stateless and bearer-only.
+Moving a resource on or off this list is a new decision naming its threat.

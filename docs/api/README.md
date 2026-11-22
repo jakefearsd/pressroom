@@ -102,6 +102,7 @@ Additive or narrower changes:
 ## Contents
 
 - [Changes in 0.16.0](#changes-in-0160)
+- [Not available through the API](#not-available-through-the-api)
 - [Getting a token](#getting-a-token)
 - [Token scopes](#token-scopes)
 - [Making a request](#making-a-request)
@@ -2329,7 +2330,16 @@ error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid re
 internal-error problem. A
 503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
 through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
-through MCP: minting, listing or revoking tokens, and uploading media from local files.
+through MCP: minting, listing or revoking tokens, uploading media from local files, and everything in
+[Not available through the API](#not-available-through-the-api).
+
+## Not available through the API
+
+A person does these in the admin UI; no token can, and the API has no route for them (weblog memberships
+can be read with a token, not changed): agent accounts, admin accounts and the admin role, weblog
+membership changes, profile changes (email, password, names, locale), the site-wide token list,
+deleting a weblog, custom templates and stylesheets, and the contact-form inbox. They are reserved for
+an interactive signed-in session by design; a future session-based admin client will cover them.
 
 ## The OpenAPI document
 
