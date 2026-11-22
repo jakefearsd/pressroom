@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.auth;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -90,6 +91,26 @@ class CallerKindConfinementTest {
             }
         });
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
+    }
+
+    /**
+     * The token filter is the only place an {@code ApiPrincipal} is made, and
+     * it is set on an authenticated {@code Authentication}
+     * ({@code ApiTokenAuthFilterTest}). So no request through the chain
+     * carries an unauthenticated one, and {@code Caller} judging
+     * {@code isAuthenticated()} before the token details (0.16.3) changes no
+     * answer a request can get.
+     */
+    @Test
+    void onlyTheTokenFilterMakesAnApiPrincipal() throws IOException {
+        Pattern made = Pattern.compile("\\bnew\\s+(?:[\\w.]+\\.)?ApiPrincipal\\s*\\(");
+        List<String> makers = new ArrayList<>();
+        javaSources().forEach((file, code) -> {
+            if (made.matcher(code).find()) {
+                makers.add(file);
+            }
+        });
+        assertEquals(List.of("com/wikantik/pressroom/ui/restapi/auth/ApiTokenAuthFilter.java"), makers);
     }
 
     private static Map<String, String> javaSources() throws IOException {

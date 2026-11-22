@@ -61,12 +61,15 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         if (auth == null) {
             return NOBODY;
         }
+        // Judged before the details (0.16.3): token details on an Authentication
+        // that is not authenticated make nobody. The token filter only ever sets
+        // an authenticated one (CallerKindConfinementTest), so no answer moved.
+        if (!auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return NOBODY;
+        }
         Object details = auth.getDetails();
         if (details instanceof ApiPrincipal p) {
             return new Caller(Kind.TOKEN, p);
-        }
-        if (!auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
-            return NOBODY;
         }
         if (details instanceof PasswordCallerDetails) {
             return new Caller(Kind.PASSWORD, null);

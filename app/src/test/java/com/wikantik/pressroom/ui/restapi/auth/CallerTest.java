@@ -148,6 +148,22 @@ class CallerTest {
     }
 
     /**
+     * Token details on an Authentication that is not authenticated do not
+     * make a TOKEN caller (0.16.3: isAuthenticated() is judged first). No
+     * request through the chain carries one (CallerKindConfinementTest).
+     */
+    @Test
+    void anUnauthenticatedAuthenticationCarryingTokenDetailsIsAnonymous() {
+        UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.unauthenticated("a", null);
+        auth.setDetails(new ApiPrincipal("a", null, ApiToken.Role.ADMIN, "tok-1"));
+
+        Caller caller = Caller.of(auth);
+
+        assertEquals(Caller.Kind.ANONYMOUS, caller.kind());
+        assertNull(caller.principal());
+    }
+
+    /**
      * The fail-closed rule: an authenticated Authentication whose details this
      * class does not recognise is never a SESSION, so a future login mechanism
      * cannot silently gain session powers; it is UNRECOGNISED, a kind distinct

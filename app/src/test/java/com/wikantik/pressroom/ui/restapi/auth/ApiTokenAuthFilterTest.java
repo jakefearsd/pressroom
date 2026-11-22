@@ -63,6 +63,8 @@ class ApiTokenAuthFilterTest {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(auth);
+        // Authenticated: Caller judges isAuthenticated() before the token details (CallerKindConfinementTest).
+        assertTrue(auth.isAuthenticated());
         // PressroomHandlerInterceptor.resolveAuthenticatedUser has a branch for a
         // String principal, so identity resolution works unchanged.
         assertEquals("agent", auth.getPrincipal());
