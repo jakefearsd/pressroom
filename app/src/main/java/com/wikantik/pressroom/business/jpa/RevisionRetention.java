@@ -97,7 +97,7 @@ public final class RevisionRetention {
                         + ".id = ?1 AND r.kept = true", Long.class)
                 .setParameter(1, ownerId).getSingleResult();
         if (kept >= MAX_KEPT) {
-            throw new RevisionKeepLimitException();
+            throw new RevisionKeepLimitException(MAX_KEPT);
         }
     }
 

@@ -259,10 +259,12 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     /**
      * Shows a rule's violation (no control marked): its message key with
      * every argument HTML-escaped, because they are raw values, user input
-     * among them, and {@code tiles/messages.jsp} does not escape. A
-     * {@link RuleViolation.Label} is the exception: it is resolved to the
-     * label's text in the reader's language, the bundle's own words, and
-     * shown as the screen showed labels before the rule moved out of it.
+     * among them, and {@code tiles/messages.jsp} does not escape. Two
+     * exceptions: a {@link RuleViolation.Label} is resolved to the label's
+     * text in the reader's language, the bundle's own words, and shown as the
+     * screen showed labels before the rule moved out of it; a {@link Number}
+     * stays a number, so the message formats it for the reader's locale,
+     * grouped (1,000), and its digits and separators need no escaping.
      */
     protected void addError(Model model, RuleViolation violation, HttpServletRequest request) {
         if (violation.args().isEmpty()) {
@@ -270,6 +272,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         } else {
             addError(model, violation.messageKey(), violation.args().stream()
                     .map(arg -> arg instanceof RuleViolation.Label label ? getText(label.key(), request)
+                            : arg instanceof Number ? arg
                             : StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
         }
     }

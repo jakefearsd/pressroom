@@ -101,8 +101,10 @@ class PageRulesTest {
 
     @Test
     void aSlugOverItsColumnIsTooLongOnceTrimmed() {
-        is(PageRules.slugShapeProblem("s".repeat(256)), "pageEdit.error.slugTooLong", ProblemCode.FIELD_TOO_LONG,
-                Kind.INVALID, "slug", "255");
+        RuleViolation tooLong = PageRules.slugShapeProblem("s".repeat(256));
+        is(tooLong, "pageEdit.error.slugTooLong", ProblemCode.FIELD_TOO_LONG, Kind.INVALID, "slug", "255");
+        // The screen's text takes the limit from the column width, not a literal 255 in the bundle (0.16.3).
+        assertEquals(List.of(ColumnWidths.PAGE_SLUG), tooLong.args());
         assertNull(PageRules.slugShapeProblem(" " + "s".repeat(255) + " "));
     }
 

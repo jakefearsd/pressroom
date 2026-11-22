@@ -137,10 +137,23 @@ class EntryProblemCodesTest {
         revision.setId("r1");
         revision.setWeblogEntry(stored);
         when(fx.entries.getRevision("r1")).thenReturn(revision);
-        doThrow(new RevisionKeepLimitException()).when(fx.entries).setRevisionKept(revision, true);
+        doThrow(new RevisionKeepLimitException(10)).when(fx.entries).setRevisionKept(revision, true);
 
         problem(refusedWith(status().isConflict(), post(E1 + "/revisions/r1/keep")),
                 "revision.tooMany", "At most 10 kept revisions for one item.");
+    }
+
+    /** The number in the text is the refusal's own limit, not a literal in the bundle (0.16.3). */
+    @Test
+    void theKeepLimitInTheTextIsTheRefusals() throws Exception {
+        WeblogEntryRevision revision = new WeblogEntryRevision();
+        revision.setId("r1");
+        revision.setWeblogEntry(stored);
+        when(fx.entries.getRevision("r1")).thenReturn(revision);
+        doThrow(new RevisionKeepLimitException(3)).when(fx.entries).setRevisionKept(revision, true);
+
+        problem(refusedWith(status().isConflict(), post(E1 + "/revisions/r1/keep")),
+                "revision.tooMany", "At most 3 kept revisions for one item.");
     }
 
     // ------------------------------------------------------------ several fields

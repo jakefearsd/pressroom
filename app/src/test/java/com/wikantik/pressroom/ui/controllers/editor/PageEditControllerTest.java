@@ -490,7 +490,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     void anEleventhKeptRevisionReportsTheLimit() throws Exception {
         WeblogPage mine = pageOn(weblogA, "about");
         var revision = revisionOf(mine, "r1", "About", "v1");
-        doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+        doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException(10))
                 .when(weblogger.getWeblogPageManager()).setRevisionKept(revision, true);
         var redirect = newRedirectAttributes();
 
@@ -498,6 +498,21 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(java.util.List.of("weblogEdit.revisionKeepLimit"), flashErrors(redirect));
         assertTrue(flashMessages(redirect).isEmpty());
+    }
+
+    /** The screen's text takes the limit from the refusal, not a literal 10 in the bundle (0.16.3). */
+    @Test
+    void theKeepLimitReportedIsTheRefusals() throws Exception {
+        registerMessage("weblogEdit.revisionKeepLimit", "at most {0} kept");
+        WeblogPage mine = pageOn(weblogA, "about");
+        var revision = revisionOf(mine, "r1", "About", "v1");
+        doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException(3))
+                .when(weblogger.getWeblogPageManager()).setRevisionKept(revision, true);
+        var redirect = newRedirectAttributes();
+
+        controller.keepRevision(requestFor(weblogA), mine.getId(), "r1", true, redirect);
+
+        assertEquals(java.util.List.of("at most 3 kept"), flashErrors(redirect));
     }
 
     @Test

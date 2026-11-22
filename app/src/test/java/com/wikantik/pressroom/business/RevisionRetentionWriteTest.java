@@ -240,7 +240,9 @@ class RevisionRetentionWriteTest {
             keep(s, id, i, true);
         }
 
-        assertThrows(RevisionKeepLimitException.class, () -> keep(s, id, 10, true));
+        RevisionKeepLimitException refused =
+                assertThrows(RevisionKeepLimitException.class, () -> keep(s, id, 10, true));
+        assertEquals(com.wikantik.pressroom.business.jpa.RevisionRetention.MAX_KEPT, refused.max());
         TestUtils.endSession(false);
         assertEquals(10, keptCount(s, id));
 

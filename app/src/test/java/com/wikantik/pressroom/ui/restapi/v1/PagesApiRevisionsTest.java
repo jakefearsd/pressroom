@@ -431,7 +431,7 @@ class PagesApiRevisionsTest {
     void anEleventhKeptRevisionIsA409() throws Exception {
         WeblogPage page = page("p1", "About", "v3");
         WeblogPageRevision revision = revision("r1", page, "About", "v1");
-        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException(10))
                 .when(pages).setRevisionKept(revision, true);
 
         String body = mvc.perform(on(post("/v1/weblogs/myblog/pages/{id}/revisions/{rid}/keep", "p1", "r1")))

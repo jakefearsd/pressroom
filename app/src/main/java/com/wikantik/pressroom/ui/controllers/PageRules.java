@@ -79,7 +79,8 @@ public final class PageRules {
                     slug);
         }
         if (trimmed.length() > ColumnWidths.PAGE_SLUG) {
-            return RuleViolation.invalid(SLUG, "pageEdit.error.slugTooLong", List.of(), ProblemCode.FIELD_TOO_LONG,
+            return RuleViolation.invalid(SLUG, "pageEdit.error.slugTooLong", List.of(ColumnWidths.PAGE_SLUG),
+                    ProblemCode.FIELD_TOO_LONG,
                     SLUG, Integer.toString(ColumnWidths.PAGE_SLUG));
         }
         return null;

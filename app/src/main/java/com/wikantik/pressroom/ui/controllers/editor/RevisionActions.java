@@ -63,6 +63,9 @@ final class RevisionActions<R> {
         void message(String key);
 
         void error(String key);
+
+        /** An error whose text quotes {@code param}. */
+        void error(String key, String param);
     }
 
     private final Revisions<R> revisions;
@@ -106,7 +109,7 @@ final class RevisionActions<R> {
             revisions.setKept(revision, kept);
             flash.message(kept ? "weblogEdit.revisionKept" : "weblogEdit.revisionUnkept");
         } catch (RevisionKeepLimitException e) {
-            flash.error("weblogEdit.revisionKeepLimit");
+            flash.error("weblogEdit.revisionKeepLimit", Integer.toString(e.max()));
         } catch (Exception e) {
             log.error("Error keeping revision {}", revisionId, e);
             flash.error("generic.error.check.logs");

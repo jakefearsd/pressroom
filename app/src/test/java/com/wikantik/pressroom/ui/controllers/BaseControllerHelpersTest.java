@@ -142,4 +142,23 @@ class BaseControllerHelpersTest {
         assertEquals(List.of("Lien de réservation | &lt;b&gt; | 255"), model.getAttribute("errors"));
         assertEquals("bean_f", model.getAttribute("invalidFieldIds"));
     }
+
+    /**
+     * A number argument stays a number, so the message formats it in the
+     * reader's locale, grouped (a strand of 1,000 parts, the pin limit);
+     * a string argument is still escaped (0.16.3: every argument had become
+     * an escaped string, so 1000 lost its grouping).
+     */
+    @Test
+    void aNumberArgumentIsFormattedGroupedAndAStringOneStillEscaped() {
+        Probe probe = probe();
+        StaticMessageSource messages = (StaticMessageSource) probe.messageSource;
+        messages.addMessage("rule.key", Locale.ENGLISH, "{0} | {1} | {2}");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        probe.violation(model, RuleViolation.invalid("f", "rule.key", List.of(1000L, 12345, "1000 <b>"),
+                ProblemCode.STRAND_HAS_PARTS, "1000", "{id}"), new MockHttpServletRequest());
+
+        assertEquals(List.of("1,000 | 12,345 | 1000 &lt;b&gt;"), model.getAttribute("errors"));
+    }
 }

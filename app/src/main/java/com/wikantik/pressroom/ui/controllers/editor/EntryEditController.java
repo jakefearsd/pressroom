@@ -316,6 +316,11 @@ public class EntryEditController extends BaseController {
             public void error(String key) {
                 addFlashError(redirectAttributes, key, request);
             }
+
+            @Override
+            public void error(String key, String param) {
+                addFlashError(redirectAttributes, key, param, request);
+            }
         });
     }
 

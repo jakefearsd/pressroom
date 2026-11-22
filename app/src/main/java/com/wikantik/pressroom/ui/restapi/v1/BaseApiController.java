@@ -148,7 +148,7 @@ public abstract class BaseApiController {
         try {
             change.apply();
         } catch (RevisionKeepLimitException e) {
-            throw ApiException.problem(ProblemCode.REVISION_TOO_MANY, e);
+            throw ApiException.problem(ProblemCode.REVISION_TOO_MANY, e, Integer.toString(e.max()));
         }
         weblogger.flush();
     }

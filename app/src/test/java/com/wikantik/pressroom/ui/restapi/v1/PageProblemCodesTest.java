@@ -140,7 +140,7 @@ class PageProblemCodesTest {
         revision.setId("r1");
         revision.setPage(page);
         when(pages.getRevision("r1")).thenReturn(revision);
-        doThrow(new RevisionKeepLimitException()).when(pages).setRevisionKept(revision, true);
+        doThrow(new RevisionKeepLimitException(10)).when(pages).setRevisionKept(revision, true);
         problem(answer(status().isConflict(), post(P1 + "/revisions/r1/keep")),
                 "revision.tooMany", "At most 10 kept revisions for one item.");
     }

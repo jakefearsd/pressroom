@@ -1673,7 +1673,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     void anEleventhKeptRevisionReportsTheLimit() throws Exception {
         WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
         WeblogEntryRevision revision = revisionOf(entry, "r1");
-        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException(10))
                 .when(weblogger.getWeblogEntryManager()).setRevisionKept(revision, true);
         RedirectAttributes redirect = newRedirectAttributes();
 

@@ -29,7 +29,16 @@ public class RevisionKeepLimitException extends WebloggerException {
 
     private static final long serialVersionUID = 1L;
 
-    public RevisionKeepLimitException() {
-        super("At most 10 kept revisions for one item.");
+    private final int max;
+
+    /** @param max the most kept revisions an item may have, which the messages quote */
+    public RevisionKeepLimitException(int max) {
+        super("At most " + max + " kept revisions for one item.");
+        this.max = max;
+    }
+
+    /** The most kept revisions an item may have. */
+    public int max() {
+        return max;
     }
 }

@@ -85,8 +85,8 @@ public enum ProblemCode {
     PAGE_NOT_IN_TRASH("page.notInTrash", ProblemType.CONFLICT, 0),
     /** Delete-forever was asked for a page that is not in the trash. */
     PAGE_DELETE_NEEDS_TRASH("page.deleteForeverNeedsTrash", ProblemType.CONFLICT, 0),
-    /** The entry or page already has its 10 kept revisions; release one first. */
-    REVISION_TOO_MANY("revision.tooMany", ProblemType.CONFLICT, 0),
+    /** The entry or page already has its kept revisions, `{0}` of them (the limit); release one first. */
+    REVISION_TOO_MANY("revision.tooMany", ProblemType.CONFLICT, 1),
     /** A required field is missing or blank; `{0}` is its name. */
     FIELD_REQUIRED("field.required", ProblemType.INVALID_REQUEST, 1),
     /** A field that may be omitted was sent blank. */

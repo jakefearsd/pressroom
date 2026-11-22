@@ -232,7 +232,7 @@ class EntriesWriteApiRevisionsTest {
 
     @Test
     void anEleventhKeptRevisionIsA409() throws Exception {
-        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException())
+        org.mockito.Mockito.doThrow(new com.wikantik.pressroom.business.RevisionKeepLimitException(10))
                 .when(fx.entries).setRevisionKept(revision, true);
 
         fx.send(post(KEEP)).andExpect(status().isConflict());
