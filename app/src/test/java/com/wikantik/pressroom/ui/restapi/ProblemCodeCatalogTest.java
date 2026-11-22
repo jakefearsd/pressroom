@@ -411,6 +411,10 @@ class ProblemCodeCatalogTest {
      */
     @Test
     void everyCodesArityIsItsPlaceholderCountInEveryBundleThatDefinesIt() throws IOException {
+        assertEquals(1, placeholders("Use '{0}' for {1}."), "a quoted '{0}' is MessageFormat literal text");
+        assertEquals(1, placeholders("Don''t send {0} twice: '{0}' stays as written."),
+                "a doubled '' is one literal apostrophe, not the start of a quote");
+        assertEquals(2, placeholders("{0} and {1,number,integer}"), "a formatted placeholder counts");
         Properties base = load(BASE_BUNDLE);
         for (ProblemCode code : ProblemCode.values()) {
             assertEquals(code.arity(), placeholders(base.getProperty(code.key())),
@@ -447,9 +451,14 @@ class ProblemCodeCatalogTest {
         }
     }
 
+    /**
+     * The distinct {@code {n}} in {@code value} as {@code MessageFormat} reads it:
+     * a doubled {@code ''} is one literal apostrophe, and text between single
+     * apostrophes (a quoted {@code '{0}'}) is literal, not a placeholder.
+     */
     private static int placeholders(String value) {
         Set<String> indexes = new TreeSet<>();
-        Matcher matcher = PLACEHOLDER.matcher(value);
+        Matcher matcher = PLACEHOLDER.matcher(value.replace("''", "").replaceAll("'[^']*'?", ""));
         while (matcher.find()) {
             indexes.add(matcher.group(1));
         }
