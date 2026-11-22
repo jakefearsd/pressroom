@@ -19,6 +19,7 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.AuditDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * The "agentic SEO" pair: turns a vague goal ("improve SEO", "describe your

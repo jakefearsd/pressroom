@@ -38,11 +38,11 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.WeblogTheme;
+import com.wikantik.pressroom.util.SafeXml;
 import com.wikantik.pressroom.util.Utilities;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
-import com.wikantik.pressroom.util.SafeXml;
 import org.jdom2.input.SAXBuilder;
 
 /**

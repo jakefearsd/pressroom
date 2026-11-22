@@ -1,8 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -16,9 +16,9 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogCreationRules;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

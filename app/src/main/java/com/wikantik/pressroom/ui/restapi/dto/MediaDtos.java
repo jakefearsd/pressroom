@@ -12,12 +12,12 @@ import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.RuleProblems;
-import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.Paging;
-import com.wikantik.pressroom.util.PressroomMessages;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
+import com.wikantik.pressroom.util.PressroomMessages;
 
 /**
  * Views of a media file and a media file directory, for the automation API.

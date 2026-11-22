@@ -1,8 +1,9 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.RevisionSweep;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
@@ -31,12 +33,13 @@ import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
-import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.RuleProblems;
-import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.Paging;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.http.HttpStatus;
@@ -49,9 +52,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.media.Schema;
-import com.wikantik.pressroom.business.RevisionSweep;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Site-wide user administration and runtime configuration -- {@code

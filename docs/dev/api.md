@@ -282,7 +282,10 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   package-private, kept as fixtures of the mechanism's own unit tests (whose assertions the spec forbids
   editing); `ApiProblemSourceScanTest` scans every main file under `ui.restapi` and
   `PressroomHandlerInterceptor` and fails on a call to one, a literal `FieldErrors.add`, or a wire
-  `FieldError`. `busy(String)` is deleted. A code with no fixed status (`http.error`) asked for as a keyed
+  `FieldError`; since 0.16.3 also on a `FieldErrors.add` whose code is a bare variable (it must be a
+  `ProblemCode` constant or a call answering one, `shape.code()`), a static import of a literal factory,
+  a hand-built `ApiProblem`, and `ApiProblemWriter.write(response, problem)` whose problem is not a keyed
+  `ApiException` rendered on the spot (`...toProblem(uri)`). `busy(String)` is deleted. A code with no fixed status (`http.error`) asked for as a keyed
   problem is the opaque 500 and a WARN, and a null argument array is no arguments: an error path never
   throws.
 - **Codes on the wire**: one field error lends the problem its code; several make it
@@ -338,8 +341,11 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   so it keeps its two imports). Each has a REST test asserting `code` beside the old English
   (`*ProblemCodesTest`; their English half passed on the code before Task 3). The weblog rules shared with
   the forms (`WeblogCreationRules`, `WeblogSettingsRules`) give each `Violation` a `Reason` and `args`
-  beside its form key and English; `v1/RuleProblems` maps reason to code with an exhaustive switch, so a
-  new rule does not compile without a code. A redirect refusal is `RedirectRefusedException` (a
+  beside its form key and English; `RuleProblems` (`ui.restapi` since 0.16.3) maps reason to code with an
+  exhaustive switch, so a new rule does not compile without a code, and `RuleProblemsTest` pins each
+  violation's status (or conflict flag) to its code's `ProblemType`. `RuleProblems` is the one mapping from
+  any broken rule (a `RuleViolation` included) to a problem or field error: nothing unpacks a violation's
+  field, code and args inline. A redirect refusal is `RedirectRefusedException` (a
   `WebloggerException` with a `Reason`), every one of the manager's refusals included (a rule with no
   weblog, a blank path); any other `WebloggerException` from `saveRedirect` is a failure, not a
   refusal, and is the opaque 500 (the final review dropped `redirect.refused`, whose detail could carry

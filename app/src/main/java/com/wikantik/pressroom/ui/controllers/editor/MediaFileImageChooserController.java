@@ -17,7 +17,6 @@
  */
 package com.wikantik.pressroom.ui.controllers.editor;
 
-import com.wikantik.pressroom.WebloggerException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileComparator;

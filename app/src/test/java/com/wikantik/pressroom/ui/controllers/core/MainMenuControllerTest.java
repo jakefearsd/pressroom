@@ -24,6 +24,7 @@ import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 
 /**
  * Tests for {@link MainMenuController}, the page a user lands on after signing

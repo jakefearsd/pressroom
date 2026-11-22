@@ -1,11 +1,11 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.List;
+import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.business.MediaFileManager;
+import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
-import com.wikantik.pressroom.business.EntryRenderer;
-import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;

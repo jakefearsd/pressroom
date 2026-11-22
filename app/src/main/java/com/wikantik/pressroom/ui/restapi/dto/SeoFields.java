@@ -3,8 +3,8 @@ package com.wikantik.pressroom.ui.restapi.dto;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * The SEO card's field rules, shared by the entry and page writes: one rule

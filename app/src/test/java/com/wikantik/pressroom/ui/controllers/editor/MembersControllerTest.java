@@ -25,6 +25,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.Model;
@@ -38,7 +39,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 
 /**
  * Tests for {@link MembersController}, which changes who can do what on a blog.

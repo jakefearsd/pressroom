@@ -17,7 +17,6 @@
  */
 package com.wikantik.pressroom.ui.controllers;
 
-import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,6 +57,7 @@ import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogSettingsApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogsApi;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;

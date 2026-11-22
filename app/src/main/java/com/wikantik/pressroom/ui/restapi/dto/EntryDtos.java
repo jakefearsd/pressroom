@@ -1,6 +1,5 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
-import com.wikantik.pressroom.ui.restapi.Paging;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.nio.charset.StandardCharsets;
@@ -19,9 +18,10 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.FieldErrors;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.Paging;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
  * Views of a weblog entry for the automation API, plus the two status

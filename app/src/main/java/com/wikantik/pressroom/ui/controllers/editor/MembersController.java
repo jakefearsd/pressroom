@@ -30,18 +30,18 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.Memberships;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.wikantik.pressroom.ui.view.WeblogPermissionView;
-import com.wikantik.pressroom.pojos.Weblog;
 
 /**
  * Allows weblog admin to list/modify member permissions, and to grant a

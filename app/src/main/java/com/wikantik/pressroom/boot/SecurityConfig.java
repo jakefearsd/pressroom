@@ -33,8 +33,8 @@ import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAccessDeniedHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAuthenticationEntryPoint;
-import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter;
+import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.MessageSource;
@@ -51,12 +51,12 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import jakarta.servlet.http.HttpServletRequest;
 import tools.jackson.databind.ObjectMapper;
 
 /**

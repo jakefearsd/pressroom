@@ -1,8 +1,5 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
-import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
-import com.wikantik.pressroom.ui.controllers.PageRules;
-import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
@@ -12,11 +9,14 @@ import java.util.Locale;
 import java.util.Set;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.PageRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 
 /**
  * Views of a weblog static page for the automation API.
