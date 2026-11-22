@@ -730,7 +730,7 @@ pins it (red when the `saveWeblog` call is removed).
 ## Session-only (not over tokens)
 
 Decision: `docs/superpowers/specs/2026-11-21-session-only-policy-decision.md`
-(pending a number in `SimpleAgilityDecisionLog`, shown there as "SA-next").
+(pending a number in `SimpleAgilityDecisionLog`, shown there as "SA-18").
 
 These are built only for `SESSION` callers, once session login on `/api` exists. Until then they stay
 in the JSP admin UI and have no API route (weblog memberships are readable with a token, never

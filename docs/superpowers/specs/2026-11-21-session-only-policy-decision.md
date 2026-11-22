@@ -1,12 +1,13 @@
 # Decision-log entry: session-only API resources
 
-Ready to paste into `SimpleAgilityDecisionLog` on Wikantik under the next free
-number (replace `SA-next`). Not written to the wiki from the session, by ruling
-of 2026-11-21. Confirmed by Jake 2026-11-21: membership writes are session-only.
+Posted to `SimpleAgilityDecisionLog` on Wikantik as **SA-18** on 2026-11-21, at
+Jake's instruction. This file is the drafting record; the wiki entry is the
+decision. Confirmed by Jake 2026-11-21: membership writes are session-only, and
+another user's email change is session-only.
 
 Date: 2026-11-21 (drafted 2026-11-20).
 
-**SA-next: Pressroom API resources that only an interactive session may use.**
+**SA-18: Pressroom API resources that only an interactive session may use.**
 
 **Context.** Pressroom's `/api/v1` and its MCP façade authenticate with
 bearer tokens; a token can be pinned to one weblog and limited to a role,
