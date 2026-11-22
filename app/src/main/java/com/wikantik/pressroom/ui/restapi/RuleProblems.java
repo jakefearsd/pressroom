@@ -1,27 +1,30 @@
-package com.wikantik.pressroom.ui.restapi.v1;
+package com.wikantik.pressroom.ui.restapi;
 
 import java.util.List;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.WeblogCreationRules;
 import com.wikantik.pressroom.ui.controllers.WeblogSettingsRules;
-import com.wikantik.pressroom.ui.restapi.ApiException;
-import com.wikantik.pressroom.ui.restapi.FieldErrors;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 
 /**
- * The problem codes of the rules a weblog create and a settings PATCH share
- * with the admin UI's forms (WeblogCreationRules, WeblogSettingsRules): each
- * rule's reason is one meaning, and the switch over it is exhaustive, so a
- * new reason does not compile until it has a code (spec
+ * The API's answers to the rules it shares with the admin UI's forms. Every
+ * broken rule becomes a {@link Broken} (field, code, args, conflict) and only
+ * a {@code Broken} becomes a problem or a field error, so a
+ * {@link RuleViolation} and the weblog rules' own violations reach the client
+ * through one mapping.
+ *
+ * <p>The weblog rules a create and a settings PATCH share with the forms
+ * (WeblogCreationRules, WeblogSettingsRules) give each violation a reason:
+ * each reason is one meaning, and the switch over it is exhaustive, so a new
+ * reason does not compile until it has a code (spec
  * 2026-11-20-api-contract-design, Task 3). A code's English with the
  * violation's args is the violation's {@code detail}, word for word.
  */
-final class RuleProblems {
+public final class RuleProblems {
 
     private RuleProblems() {
     }
 
-    static ProblemCode code(WeblogCreationRules.Reason reason) {
+    public static ProblemCode code(WeblogCreationRules.Reason reason) {
         return switch (reason) {
             case CREATION_DISABLED -> ProblemCode.WEBLOG_CREATION_DISABLED;
             case ONE_BLOG_LIMIT -> ProblemCode.WEBLOG_ONE_BLOG_LIMIT;
@@ -37,7 +40,7 @@ final class RuleProblems {
         };
     }
 
-    static ProblemCode code(WeblogSettingsRules.Reason reason) {
+    public static ProblemCode code(WeblogSettingsRules.Reason reason) {
         return switch (reason) {
             case ENTRY_DISPLAY_COUNT -> ProblemCode.ENTRY_DISPLAY_COUNT_OUT_OF_RANGE;
             case LOCALE_INVALID -> ProblemCode.LOCALE_INVALID;
@@ -65,36 +68,48 @@ final class RuleProblems {
      * refuses broken rules: a conflict alone is its 409, anything else one
      * 400 naming every violation.
      */
-    static void refuseViolations(List<RuleViolation> violations) {
-        refuse(violations.stream().map(v -> new Broken(v.field(), v.code(), v.codeArgs(),
-                v.kind() == RuleViolation.Kind.CONFLICT)).toList());
+    public static void refuseViolations(List<RuleViolation> violations) {
+        refuse(violations.stream().map(Broken::of).toList());
     }
 
     /**
      * The 400 or 409 a violation is, keyed: on its field, or, with {@code onField} false, answered
      * with no field (a refusal about the whole request, as the category delete's always was).
      */
-    static ApiException problem(RuleViolation violation, boolean onField) {
-        String[] args = violation.codeArgs().toArray(String[]::new);
-        return onField ? ApiException.problemOnField(violation.field(), violation.code(), args)
-                : ApiException.problem(violation.code(), args);
+    public static ApiException problem(RuleViolation violation, boolean onField) {
+        return Broken.of(violation).problem(onField);
     }
 
     /** Records {@code violation}, when there is one, on {@code errors} under its field, code and args. */
-    static void add(FieldErrors errors, RuleViolation violation) {
+    public static void add(FieldErrors errors, RuleViolation violation) {
         if (violation != null) {
-            errors.add(violation.field(), violation.code(), violation.codeArgs().toArray(String[]::new));
+            Broken.of(violation).addTo(errors);
         }
     }
 
     /** One broken rule, keyed: its field (as the API names it), code and args. */
-    record Broken(String field, ProblemCode code, List<String> args, boolean conflict) {
-        Broken {
+    public record Broken(String field, ProblemCode code, List<String> args, boolean conflict) {
+        public Broken {
             args = List.copyOf(args);
+        }
+
+        /** {@code violation} as the API answers it: a {@link RuleViolation.Kind#CONFLICT} is a conflict. */
+        static Broken of(RuleViolation violation) {
+            return new Broken(violation.field(), violation.code(), violation.codeArgs(),
+                    violation.kind() == RuleViolation.Kind.CONFLICT);
         }
 
         private String[] arguments() {
             return args.toArray(String[]::new);
+        }
+
+        private ApiException problem(boolean onField) {
+            return onField ? ApiException.problemOnField(field(), code(), arguments())
+                    : ApiException.problem(code(), arguments());
+        }
+
+        private void addTo(FieldErrors errors) {
+            errors.add(field(), code(), arguments());
         }
     }
 
@@ -106,13 +121,12 @@ final class RuleProblems {
      * and nothing else cannot occur; were they to, the first is answered, so
      * the status stays the conflict's.
      */
-    static void refuse(List<Broken> broken) {
+    public static void refuse(List<Broken> broken) {
         if (!broken.isEmpty() && broken.stream().allMatch(Broken::conflict)) {
-            Broken first = broken.get(0);
-            throw ApiException.problemOnField(first.field(), first.code(), first.arguments());
+            throw broken.get(0).problem(true);
         }
         FieldErrors errors = new FieldErrors();
-        broken.forEach(b -> errors.add(b.field(), b.code(), b.arguments()));
+        broken.forEach(b -> b.addTo(errors));
         errors.throwIfAny();
     }
 }

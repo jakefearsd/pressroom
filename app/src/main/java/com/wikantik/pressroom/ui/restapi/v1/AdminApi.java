@@ -33,6 +33,7 @@ import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
@@ -146,7 +147,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // A lookup that fails throws: the opaque 500.
         RuleViolation taken = AccountRules.userNameTaken(userName, mgr);
         if (taken != null) {
-            throw ApiException.problemOnField(taken.field(), taken.code(), taken.codeArgs().toArray(String[]::new));
+            throw RuleProblems.problem(taken, true);
         }
 
         if (!PasswordLinkMailer.isReady()) {

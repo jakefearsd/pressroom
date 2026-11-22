@@ -13,6 +13,7 @@ import java.util.Set;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
@@ -280,8 +281,7 @@ public final class PageDtos {
     public static String requireUsableSlug(String slug) {
         RuleViolation problem = PageRules.slugShapeProblem(slug);
         if (problem != null) {
-            throw ApiException.problemOnField(problem.field(), problem.code(),
-                    problem.codeArgs().toArray(String[]::new));
+            throw RuleProblems.problem(problem, true);
         }
         return slug.trim();
     }

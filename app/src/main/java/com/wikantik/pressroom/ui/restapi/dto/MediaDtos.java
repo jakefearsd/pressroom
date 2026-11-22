@@ -12,6 +12,7 @@ import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.Paging;
@@ -279,10 +280,7 @@ public final class MediaDtos {
         }
         String name = patch.name() == null ? null : patch.name().trim();
         if (name != null) {
-            RuleViolation shape = MediaRules.fileNameShapeProblem(name);
-            if (shape != null) {
-                errors.add(shape.field(), shape.code(), shape.codeArgs().toArray(String[]::new));
-            }
+            RuleProblems.add(errors, MediaRules.fileNameShapeProblem(name));
         }
         errors.throwIfAny();
         // A move keeps the file's name unless a new one is sent, and the target folder must not
@@ -292,7 +290,7 @@ public final class MediaDtos {
         String judged = name != null ? name : moving ? file.getName() : null;
         RuleViolation taken = MediaRules.fileNameTaken(directory, judged, file.getId());
         if (taken != null) {
-            throw ApiException.problemOnField(taken.field(), taken.code(), taken.codeArgs().toArray(String[]::new));
+            throw RuleProblems.problem(taken, true);
         }
         if (patch.altText() != null) {
             file.setAltText(patch.altText());

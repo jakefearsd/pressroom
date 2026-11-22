@@ -14,6 +14,7 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.ui.controllers.BusinessRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
