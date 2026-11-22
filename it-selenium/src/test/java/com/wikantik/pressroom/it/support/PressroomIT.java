@@ -22,6 +22,7 @@ import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.WebDriverRunner;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriverException;
@@ -118,6 +119,64 @@ public abstract class PressroomIT {
     private static final String LOGOUT_LINK = "a[href$='/pressroom-ui/logout.rol']";
 
     private static boolean selenideConfigured;
+
+    /** Set once this JVM has made sure the site space exists; see {@link #theSiteHasItsSiteSpace}. */
+    private static boolean siteSpaceEnsured;
+
+    /**
+     * Gives the run the site space every installed site has, the way an installed site
+     * gets it: an administrator opens the main menu (MainMenuView creates it on a site
+     * admin's first visit). Once per suite JVM, before any test.
+     *
+     * <p>{@code /} is the discovery page only while a site space exists; before that it
+     * is the bare site directory. The seed fixture is SQL and creates none, and
+     * {@link #signInAs} no longer opens the menu, so a test reading {@code /} as a
+     * stranger passed only when some earlier class had happened to show an administrator
+     * the menu. Run first, it failed: PublicSurfaceIT on the nightly runs of 2026-11-20
+     * and 2026-11-22, and every time alone ({@code -Dit.test=PublicSurfaceIT}).
+     *
+     * <p>Over HTTP, so no browser is involved: sign in, GET the menu, drop the session.
+     * The menu's Site section, which links to the site space, is the evidence it exists.
+     *
+     * @throws IllegalStateException if the menu does not show the site space
+     */
+    @BeforeAll
+    static synchronized void theSiteHasItsSiteSpace() {
+        if (siteSpaceEnsured) {
+            return;
+        }
+        Map<String, String> session = new LinkedHashMap<>();
+        for (HttpCookie cookie : authenticateOverHttp(ADMIN_USERNAME, ADMIN_PASSWORD)) {
+            session.put(cookie.getName(), cookie.getValue());
+        }
+        try {
+            HttpResponse<String> menu = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NEVER)
+                    .connectTimeout(Duration.ofSeconds(20)).build()
+                    .send(HttpRequest.newBuilder(URI.create(baseUrl() + MENU_PATH))
+                                    .timeout(Duration.ofSeconds(20))
+                                    .header("Cookie", cookieHeader(session)).GET().build(),
+                            HttpResponse.BodyHandlers.ofString());
+            if (menu.statusCode() != 200 || !menu.body().contains("weblog=site-space")) {
+                throw new IllegalStateException("The main menu (HTTP " + menu.statusCode()
+                        + ") shows no site space, so / is not the discovery page");
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Could not open the main menu to create the site space", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted creating the site space", e);
+        } finally {
+            invalidateServerSession(session);
+        }
+        siteSpaceEnsured = true;
+    }
+
+    private static String cookieHeader(Map<String, String> cookies) {
+        return cookies.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("; "));
+    }
 
     /**
      * Root URL of the Pressroom under test, without a trailing slash.
@@ -549,9 +608,7 @@ public abstract class PressroomIT {
         if (cookies.isEmpty()) {
             return;
         }
-        String header = cookies.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(Collectors.joining("; "));
+        String header = cookieHeader(cookies);
         try {
             HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.NEVER)

@@ -28,6 +28,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import com.wikantik.pressroom.TestUtils;
@@ -35,6 +36,7 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.indirection.IndirectContainer;
@@ -93,8 +95,10 @@ class EntryTagsRetentionTest {
         TestUtils.endSession(true);
         WeblogEntryManager mgr = entries();
         for (int i = 0; i < ENTRIES; i++) {
+            // Drafts: saving a published entry queues a search reindex that
+            // re-reads the entry and its tags on a pool thread, after setUp.
             WeblogEntry entry = TestUtils.setupWeblogEntry("retain-" + i,
-                    TestUtils.getManagedWebsite(weblog), TestUtils.getManagedUser(user));
+                    TestUtils.getManagedWebsite(weblog), TestUtils.getManagedUser(user), PubStatus.DRAFT);
             String prefix = "entry " + i + " ";
             entry.setText(prefix + "x".repeat(TEXT_LENGTH - prefix.length()));
             entry.setTagsAsString("t" + i);
@@ -143,6 +147,35 @@ class EntryTagsRetentionTest {
                 "one entry's tags, not the whole list's: " + reads.get(0));
     }
 
+    /**
+     * The count is the request's own: a tag read on another thread inside the
+     * window is not counted. A search reindex queued by an entry save runs on
+     * a pool thread and reads its entry's tags with the same per-entry query;
+     * one landing in the window made the permalink test above see two reads
+     * on a busy CI runner.
+     */
+    @Test
+    void aTagReadOnAnotherThreadIsNotCountedAsThePermalinks() throws Exception {
+        loadList(0);
+        AtomicReference<String> readElsewhere = new AtomicReference<>();
+        List<String> reads = tagReadsWhile(() -> {
+            Thread elsewhere = new Thread(() -> {
+                try {
+                    readElsewhere.set(entries().getWeblogEntry(ids.get(0)).getTagsAsString());
+                    TestUtils.endSession(false);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            elsewhere.start();
+            elsewhere.join();
+            WeblogEntry entry = entries().getWeblogEntry(ids.get(ENTRIES / 2));
+            assertEquals("t" + ENTRIES / 2, entry.getTagsAsString());
+        });
+        assertEquals("t0", readElsewhere.get(), "the other thread read its entry's tags");
+        assertEquals(1, reads.size(), reads.toString());
+    }
+
     @Test
     void aPermalinkAfterAPagedListReadsNoTags() throws Exception {
         loadList(ENTRIES);
@@ -175,14 +208,17 @@ class EntryTagsRetentionTest {
         void run() throws Exception;
     }
 
+    /** The tag reads {@code body} makes on the calling thread; other threads' reads are not its own. */
     private static List<String> tagReadsWhile(Body body) throws Exception {
         Server server = server();
+        Thread caller = Thread.currentThread();
         TestUtils.endSession(false); // the body's sessions are created after the listener
         List<String> reads = new ArrayList<>();
         SessionEventAdapter counter = new SessionEventAdapter() {
             @Override
             public void preExecuteCall(SessionEvent event) {
-                if (event.getCall() instanceof DatabaseCall call && TAG_READ.matcher(call.getSQLString()).find()) {
+                if (Thread.currentThread() == caller && event.getCall() instanceof DatabaseCall call
+                        && TAG_READ.matcher(call.getSQLString()).find()) {
                     synchronized (reads) {
                         reads.add(call.getSQLString());
                     }

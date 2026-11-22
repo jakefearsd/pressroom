@@ -51,7 +51,8 @@ class PublicSurfaceIT extends PressroomIT {
         // ColophonIT sets a front-page weblog under the GLOBAL_CONFIG write
         // lock and restores it; holding the read lock means no IT has one set. index.jsp used to forward / to the
         // admin-only setup page, so every reader got the sign-in form.
-        // With a site space (every installed tier has one) the root is the
+        // With a site space (every installed tier has one; the harness gives
+        // the run its own, PressroomIT.theSiteHasItsSiteSpace) the root is the
         // discovery page, whose all-blogs list is the public directory; the
         // bare #siteDirectory view is only the fallback before a site space exists.
         openPath("/");

@@ -168,8 +168,8 @@ a race:
   other's flag. **A seventh `setGlobalFlag` class must take this lock** —
   nothing enforces it,
   and the symptom is a wrong-looking assertion, not a concurrency error.
-  Held **read** by `PublicSurfaceIT`'s site-root test (`/` is the site
-  directory only while no front-page weblog is set, and `ColophonIT` sets
+  Held **read** by `PublicSurfaceIT`'s site-root test (`/` is the
+  discovery page only while no front-page weblog is set, and `ColophonIT` sets
   one), and by `RouteSweepIT`, which visits every admin route and so is
   exposed to every site-wide flag (on a `/pressroom`-prefix run with
   `groupblogging.enabled` off, `createWeblog.rol` returned a healthy 200
@@ -189,6 +189,20 @@ a race:
 
 The `GLOBAL_CONFIG` read modes preserve the speed: readers exclude the
 mutators, not each other.
+
+**Order dependence is the other race.** A class that passes only because an
+earlier class left the server in some state fails when it happens to run
+first, which in a class-parallel suite is a nightly coin toss. Run a
+suspect alone (`mvn verify -Pit -DskipUnitTests=true -Dit.test=<Class>`):
+alone, it always runs first. The case that bit: `/` is the discovery page
+only once a site space exists, and the app creates that lazily, on a site
+admin's first visit to the main menu. The SQL seed has none, and the fast
+`signInAs` never opens the menu, so `PublicSurfaceIT`'s anonymous site-root
+test failed whenever no other class had opened it first (nightly runs of
+2026-11-20 and 2026-11-22). `PressroomIT.theSiteHasItsSiteSpace` (a
+`@BeforeAll`, once per JVM) now opens the menu as the admin over HTTP, as
+an installed site would. State that every installed site has belongs in
+the harness, not in whichever test happens to create it.
 
 ## BrowserHealth: three checks, and the third watches the watcher
 
