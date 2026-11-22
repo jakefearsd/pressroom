@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi;
 
+import com.wikantik.pressroom.testsupport.JavaSourceText;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -70,7 +71,7 @@ class ContentProblemSourceScanTest {
 
     /** The source without its comments, which may name a factory in prose. */
     private static String code(String file) throws IOException {
-        return Files.readString(path(file)).replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+        return JavaSourceText.code(Files.readString(path(file)));
     }
 
     /**

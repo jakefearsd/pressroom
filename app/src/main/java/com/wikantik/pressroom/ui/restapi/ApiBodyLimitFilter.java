@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.restapi;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -117,12 +118,28 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
             @Override
             public BufferedReader getReader() throws IOException {
                 if (reader == null) {
-                    String name = getCharacterEncoding();
-                    // an unknown charset name fails closed (unchecked), as no reader is better than an uncapped one
-                    Charset charset = name == null ? StandardCharsets.UTF_8 : Charset.forName(name);
-                    reader = new BufferedReader(new InputStreamReader(getInputStream(), charset));
+                    reader = new BufferedReader(new InputStreamReader(getInputStream(), charset()));
                 }
                 return reader;
+            }
+
+            /**
+             * The request's charset, UTF-8 when it names none. An unknown name throws
+             * UnsupportedEncodingException, as the container's own reader does (an
+             * IOException, which Spring answers with a 400), never an unchecked one.
+             */
+            private Charset charset() throws UnsupportedEncodingException {
+                String name = getCharacterEncoding();
+                if (name == null) {
+                    return StandardCharsets.UTF_8;
+                }
+                try {
+                    return Charset.forName(name);
+                } catch (IllegalArgumentException e) {
+                    UnsupportedEncodingException refused = new UnsupportedEncodingException(name);
+                    refused.initCause(e);
+                    throw refused;
+                }
             }
         }, response);
     }

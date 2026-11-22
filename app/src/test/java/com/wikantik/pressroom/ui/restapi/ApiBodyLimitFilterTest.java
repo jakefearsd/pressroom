@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.restapi;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 
 import java.util.Map;
@@ -150,6 +151,21 @@ class ApiBodyLimitFilterTest {
         filter.doFilter(undeclared(MAX), response, atCap);
         Reader whole = ((HttpServletRequest) atCap.getRequest()).getReader();
         assertEquals(MAX, whole.transferTo(Writer.nullWriter()));
+    }
+
+    /**
+     * An unknown charset on the reader answers as the container's own reader does
+     * (UnsupportedEncodingException, an IOException Spring turns into a 400), never
+     * an unchecked exception that would surface as a 500.
+     */
+    @Test
+    void aReaderWithAnUnknownCharsetFailsAsTheContainerDoes() throws Exception {
+        MockHttpServletRequest request = undeclared(3);
+        request.setCharacterEncoding("x-bogus");
+        filter.doFilter(request, response, chain);
+
+        HttpServletRequest seen = (HttpServletRequest) chain.getRequest();
+        assertThrows(UnsupportedEncodingException.class, seen::getReader);
     }
 
     @Test

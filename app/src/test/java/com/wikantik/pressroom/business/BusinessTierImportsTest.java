@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
+import com.wikantik.pressroom.testsupport.JavaSourceText;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -72,7 +73,7 @@ class BusinessTierImportsTest {
 
     /** The lines of {@code source} that name io.swagger, comments excluded (they may name it in prose). */
     static java.util.List<String> swaggerReferences(String source) {
-        String code = source.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+        String code = JavaSourceText.code(source);
         Matcher m = SWAGGER_REFERENCE.matcher(code);
         java.util.List<String> lines = new java.util.ArrayList<>();
         while (m.find()) {
@@ -89,6 +90,11 @@ class BusinessTierImportsTest {
         assertEquals(1, swaggerReferences("import io.swagger.v3.oas.annotations.media.*;\nclass A {}").size());
         assertEquals(1, swaggerReferences("class A { @io.swagger.v3.oas.annotations.media.Schema(name = \"x\") int f; }").size());
         assertEquals(0, swaggerReferences("/* see io.swagger.v3.Foo */\n// io.swagger.v3.Bar\nclass A {}").size());
+        // A comment marker inside a literal is not a comment: "*/*" once hid the lines after it.
+        assertEquals(1, swaggerReferences(
+                "class A { String t = \"*/*\";\n@io.swagger.v3.Foo int f; /* x */ }").size());
+        assertEquals(1, swaggerReferences(
+                "class A { String u = \"http://x\"; @io.swagger.v3.Foo int f; }").size());
     }
 
     /**
