@@ -40,8 +40,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * anything reads it. One that declares none (chunked) is read through a
  * stream that fails once it passes the cap with {@link BodyTooLargeException};
  * {@link ApiExceptionHandler} finds it under the JSON reader's failure and
- * answers the same 413 (0.16.3; it was a 400 unreadable body). Uploads ({@code multipart/*}) keep their own limit,
- * {@code uploads.file.maxsize}; {@code /api/mcp} keeps its transport's.
+ * answers the same 413 (0.16.3; it was a 400 unreadable body). Uploads
+ * ({@code multipart/*}) keep their own limit, {@code uploads.file.maxsize};
+ * {@code /api/mcp} keeps its transport's.
  *
  * <p>Built inline in the API security chain, never a {@code @Bean}: Boot
  * would register a bean filter for every request in the container.
