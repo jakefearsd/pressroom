@@ -125,10 +125,13 @@ resolves through the index at the end of `CLAUDE.md`.
   every weblog using it (`BusinessManager.saveBusiness`); otherwise their cards
   and JSON-LD would stay stale. The exception is `SiteWideCache` (the front
   page's blog), which ignores `lastModified` and is dropped only by
-  `CacheManager.invalidate(...)`; `BusinessesController.save` therefore
-  invalidates each weblog from `BusinessManager.getWeblogsUsing` after the
-  flush. Unit-tested only (`BusinessManagerTest`, `BusinessesControllerTest`):
-  `BusinessProfileIT` does not cover cache expiry.
+  `CacheManager.invalidate(...)`; every save (the Businesses screen and
+  `/v1/admin/businesses`) therefore calls `BusinessRules.invalidateUsers`,
+  which invalidates each weblog from `BusinessManager.getWeblogsUsing` after
+  the flush. Unit-tested only (`BusinessManagerTest`, `BusinessRecordRulesTest`,
+  `BusinessesControllerTest`, `BusinessesApiTest`): `BusinessProfileIT` does
+  not cover cache expiry. The record's field rules are `BusinessRules`, shared
+  by both surfaces (docs/dev/api.md, "Business profiles").
 
 ### Breadcrumbs (0.9.1)
 

@@ -99,6 +99,8 @@ class OpenApiContractTest {
             "redirectsList", "redirectsCreate", "redirectsDelete",
             "auditsGetSeo", "auditsGetSeoEntry", "auditsGetMedia",
             "trafficGet", "membersList", "siteTrafficGet",
+            "businessesList", "businessesGet", "businessesCreate", "businessesUpdate", "businessesDelete",
+            "weblogBusinessesList",
             "usersList", "usersCreate", "usersUpdate", "revisionsGetStats", "revisionsSweep", "configList",
             "configUpdate",
             "maintenanceFlushCache", "maintenanceRebuildIndex", "maintenanceRegenerateRenditions");

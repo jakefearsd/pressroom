@@ -20,7 +20,8 @@ class ApiRouteTableTest {
         // The reads a contributor may make moved to CategoriesReadApi and MediaReadApi (2026-11-21): the
         // same five routes on new controllers, so the count is unchanged.
         // + POST /v1/weblogs/{handle}/media/{id}/crop (2026-11-21).
-        assertEquals(77, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // + the business profiles: five /v1/admin/businesses routes and the weblog's picker (2026-11-21).
+        assertEquals(83, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep").isPresent());

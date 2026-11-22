@@ -299,6 +299,9 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs",                                 POST,  SITE_LOGIN, NO_WEBLOG),
             row("GET    /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN),
             row("PATCH  /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN),
+            // --- The business profiles a weblog may point at: its owner's, with an ADMIN token, as the
+            //     settings form that offers them
+            row("GET    /v1/weblogs/{handle}/businesses",             ADMIN, SITE_LOGIN, ON_ADMIN),
 
             // --- Site administration: a site admin with an ADMIN token
             row("GET    /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
@@ -309,6 +312,12 @@ class ApiAuthorizationMatrixTest {
             row("PATCH  /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/revisions",                         ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/revisions/sweep",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
+            // --- Business profiles: the site admin's, as the Businesses screen
+            row("GET    /v1/admin/businesses",                        ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/businesses/{id}",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("POST   /v1/admin/businesses",                        ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("PATCH  /v1/admin/businesses/{id}",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("DELETE /v1/admin/businesses/{id}",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
 
             // --- Maintenance actions: the site admin's, as the Maintenance screen. They name a
             //     weblog, so a token pinned to it may run them (the pin is a ceiling on weblogs);
@@ -703,6 +712,27 @@ class ApiAuthorizationMatrixTest {
         assertEquals(new Row(key, users.role(), users.global(), users.weblog(), users.flags()), row, key);
     }
 
+    /**
+     * The business profiles (spec 2026-11-20-api-gap-resources-design, Task 5, criterion 5): the
+     * admin reads are asked as the user list, the writes as the user create and patch, and the
+     * weblog's picker as the weblog's settings read.
+     */
+    @Test
+    void businessRowsEqualTheirReferenceRows() {
+        Map<String, String> references = Map.of(
+                "GET /v1/admin/businesses", "GET /v1/admin/users",
+                "GET /v1/admin/businesses/{id}", "GET /v1/admin/users",
+                "POST /v1/admin/businesses", "POST /v1/admin/users",
+                "PATCH /v1/admin/businesses/{id}", "PATCH /v1/admin/users/{userName}",
+                "DELETE /v1/admin/businesses/{id}", "PATCH /v1/admin/users/{userName}",
+                "GET /v1/weblogs/{handle}/businesses", "GET /v1/weblogs/{handle}");
+        references.forEach((key, reference) -> {
+            Row ref = ROWS.stream().filter(r -> r.key().equals(reference)).findFirst().orElseThrow();
+            Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+            assertEquals(new Row(key, ref.role(), ref.global(), ref.weblog(), ref.flags()), row, key);
+        });
+    }
+
     // ------------------------------------------------------------------ criteria 2-4: the cells
 
     @TestFactory
@@ -762,6 +792,8 @@ class ApiAuthorizationMatrixTest {
             new McpSample("traffic", "get", W),
             new McpSample("traffic", "site", Map.of()),
             new McpSample("weblogs", "list_members", W),
+            new McpSample("businesses", "list", Map.of()),
+            new McpSample("weblogs", "list_businesses", W),
             new McpSample("users", "list", Map.of()),
             new McpSample("maintenance", "flush_cache", W));
 

@@ -412,6 +412,33 @@ not resolve is skipped (as the Members page does, logging a warning); any lookup
 throws is a 500. The envelope adds `total` to the house four. Membership WRITES stay
 session-only on purpose (owner decision 2026-11-21): no token route changes a member.
 
+## Business profiles (2026-11-21)
+
+`/v1/admin/businesses` is `BusinessesApi` (`GlobalPermission.ADMIN`, no weblog,
+`@AdminScoped`, as `BusinessesController`); the owner's picker `GET
+/v1/weblogs/{handle}/businesses` is `WeblogBusinessesApi` (weblog `ADMIN`, `@AdminScoped`,
+as `WeblogSettingsApi`). Matrix rows equal `GET`/`POST /v1/admin/users`, `PATCH
+.../users/{userName}` and `GET /v1/weblogs/{handle}` (`businessRowsEqualTheirReferenceRows`).
+
+- **One set of rules**: `BusinessRules.problems/apply/invalidateUsers` over a
+  `BusinessRules.Values` record (raw strings; `sameAs` newline-separated). The JSP save maps
+  its bean to `Values` and marks `bean_<field>`; the API lays the body over
+  `Values.of(business)` (`BusinessDtos.overlay`) and refuses through
+  `RuleProblems.refuseViolations`, so every violation is one 400. Nothing touches the
+  managed entity before the rules pass. `BusinessesControllerRulesTest` is the
+  characterisation pin of the screen's messages.
+- **A label argument is a `RuleViolation.Label`**: the shared adapter
+  (`BaseController.addError(RuleViolation)`) resolves it with `getText` and does not escape it
+  (bundle text); every other argument is escaped. A message whose label used to be
+  `getText(labelKey)` in a controller moves to a rule this way.
+- **Codes**: the spec asked for `businesses.error.inUse`, but codes are two segments
+  (`ProblemCodeCatalogTest`), so it is `business.inUse` (409, arg = the count) beside
+  `business.notFound`. The in-use check stays per surface: the screen's message takes a
+  `{1,choice}` number, which the adapter's string arguments cannot feed.
+- `sameAs` arrives as a list and is joined with newlines before the rules (null entries
+  skipped), so an entry holding a line break is judged as two links. `[]` and `clear` both
+  remove the list.
+
 ## The OpenAPI document (2026-11-20)
 
 Spec `docs/superpowers/specs/2026-11-20-api-contract-design.md`, Task 4. `/api/v1/openapi.json` is

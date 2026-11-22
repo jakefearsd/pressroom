@@ -35,7 +35,9 @@ public final class McpToolCatalog {
                     action("get", "One weblog's settings.", "GET " + W),
                     action("create", "Create a weblog; you become its owner.", "POST /v1/weblogs"),
                     action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W),
-                    action("list_members", "List who holds a role on the weblog (its admin).", "GET " + W + "/members")),
+                    action("list_members", "List who holds a role on the weblog (its admin).", "GET " + W + "/members"),
+                    action("list_businesses", "List the business profiles the weblog may point at; send one's id as "
+                            + "businessId on update.", "GET " + W + "/businesses")),
             tool("entries", "Blog entries: write, revise, publish, trash and preview, and read or restore "
                     + "their earlier revisions.", false,
                     action("list", "List entries; without status the trash is excluded.", "GET " + W + "/entries"),
@@ -160,6 +162,16 @@ public final class McpToolCatalog {
                             "POST /v1/admin/users"),
                     action("update", "Change a non-admin account's email, screen name or enabled flag.",
                             "PATCH /v1/admin/users/{userName}")),
+            tool("businesses", "Site-wide business profiles that blogs show as schema.org data. Needs a site "
+                    + "admin and an ADMIN token.", false,
+                    action("list", "List business profiles, with how many weblogs use each.",
+                            "GET /v1/admin/businesses"),
+                    action("get", "One business profile.", "GET /v1/admin/businesses/{id}"),
+                    action("create", "Create a business profile (name required; businessType defaults to "
+                            + "Organization).", "POST /v1/admin/businesses"),
+                    action("update", "Change the fields given; name fields in clear to remove them.",
+                            "PATCH /v1/admin/businesses/{id}"),
+                    action("delete", "Delete a business profile no weblog uses.", "DELETE /v1/admin/businesses/{id}")),
             tool("site_settings", "Site-wide runtime settings. Needs an ADMIN token.", false,
                     action("get", "Every runtime setting and its value.", "GET /v1/admin/config"),
                     action("update", "Set runtime settings by name (values as strings).",

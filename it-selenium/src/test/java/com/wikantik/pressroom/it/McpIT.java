@@ -223,12 +223,12 @@ class McpIT extends PressroomIT {
     }
 
     @Test
-    void toolsListHasTheFourteenToolsAndTheInstructionsArrive() throws Exception {
+    void toolsListHasTheFifteenToolsAndTheInstructionsArrive() throws Exception {
         Token token = mint("McpIT list", "READ", null);
         try {
             HttpResponse<String> listed = post(token.raw(), rpcBody("tools/list", Map.of()), Map.of());
             JsonNode tools = JSON.readTree(listed.body()).get("result").get("tools");
-            assertEquals(14, tools.size(), listed.body()); // site_info made 14 (0.16.0)
+            assertEquals(15, tools.size(), listed.body()); // site_info made 14, businesses 15 (0.16.0)
             HttpResponse<String> init = post(token.raw(), rpcBody("initialize", Map.of("protocolVersion",
                     "2025-06-18", "capabilities", Map.of(), "clientInfo", Map.of("name", "McpIT", "version", "1"))),
                     Map.of());

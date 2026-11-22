@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -75,7 +76,11 @@ class FormBodyParityTest {
                                         + "PUT .../pages/{id}/parts (PartsWrite.entries), not the page body.",
                                 "shownPartIds", "The rows the Parts panel was built with, so a browser form "
                                         + "keeps parts appended meanwhile; the API's set_parts states the "
-                                        + "whole list instead.")));
+                                        + "whole list instead.")),
+                new Parity("BusinessBean -> business", BusinessBean.class, EditableFieldManifest.business(),
+                        Map.of(),
+                        Map.of("id", "The business's id is the update route's path variable; create assigns "
+                                + "one.")));
     }
 
     @ParameterizedTest(name = "{0}")

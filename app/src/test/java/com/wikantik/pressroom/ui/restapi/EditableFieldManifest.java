@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
+import com.wikantik.pressroom.ui.restapi.dto.BusinessDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 
@@ -38,7 +39,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page());
+        return List.of(entry(), weblogSettings(), page(), business());
     }
 
     static Resource entry() {
@@ -79,6 +80,14 @@ final class EditableFieldManifest {
                         "clear", CLEAR,
                         "revisionNote", NOTE,
                         "expectedContentHash", CONCURRENCY)));
+    }
+
+    /** The Businesses screen's edit form (spec 2026-11-20-api-gap-resources-design, Task 5). */
+    static Resource business() {
+        return new Resource("business", BusinessDtos.BusinessWrite.class, sorted(
+                "name", "businessType", "websiteUrl", "bookingUrl", "telephone", "email", "logoUrl", "sameAs",
+                "areaServed", "description"),
+                new TreeMap<>(Map.of("clear", CLEAR)));
     }
 
     private static Set<String> sorted(String... names) {

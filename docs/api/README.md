@@ -76,6 +76,11 @@ Additive or narrower changes:
   `list_members` action. See [Members](#members).
 - New: `GET /api/v1/admin/traffic` (every blog's traffic, site admins) and the
   MCP `traffic` `site` action. See [Traffic](#traffic).
+- New: business profiles. Site admins create, read, change and delete them at
+  `/api/v1/admin/businesses` (the MCP `businesses` tool), and a weblog's owner
+  lists the ones a weblog may point at with `GET
+  /api/v1/weblogs/{handle}/businesses` (the MCP `weblogs` `list_businesses`
+  action). See [Business profiles](#business-profiles).
 - A contributor's (`EDIT_DRAFT`) token writes drafts, a publish being
   submitted for review, and reads the categories, tags and media the entry
   editor shows. See [Entries](#entries) and [Media](#media).
@@ -249,7 +254,7 @@ request: the token's `role`, and its `weblog` pin.
 |---------|--------|
 | `READ`  | GET only. |
 | `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. Still only what the owner's weblog permission allows: a contributor's (`EDIT_DRAFT`) token writes entries as the entry editor lets them (drafts; a publish is submitted for review, see [Entries](#entries)) and reads what the editor shows them, the categories, tags and media, but changes none of those. |
-| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, not the per-weblog content APIs) and the Maintenance actions. |
+| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, and its business picker `GET /api/v1/weblogs/{handle}/businesses`; not the per-weblog content APIs) and the Maintenance actions. |
 
 A non-write method (`GET`/`HEAD`) never needs more than `READ`. Anything else
 needs `POST` or `ADMIN`; a `READ`-role token gets a 403
@@ -351,7 +356,8 @@ In the MCP endpoint `clear` is an argument of the `update` actions.
 ## Pagination
 
 List endpoints (`GET .../entries`, `GET .../comments`, `GET .../audit/seo`,
-`GET .../media`, `GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept
+`GET .../media`, `GET .../members`, `GET .../businesses`, `GET /api/v1/admin/users`,
+`GET /api/v1/admin/businesses`, `GET /api/v1/weblogs`) accept
 `?offset=` and `?limit=` (`GET .../media` only pages when asked; see
 [Media](#media)). **Out-of-range values are a 400, never silently clamped or
 wrapped**: `limit` below 1, or a negative `offset`, is rejected outright
@@ -388,6 +394,10 @@ array: its length is the total.
   with `limit` equal to the number of items and `hasMore` false.
 - `GET .../members` returns a `MemberPage`: `{items, offset, limit, hasMore,
   total}`, `total` counting every member, not the page. See [Members](#members).
+- `GET /api/v1/admin/businesses` returns a `BusinessPage` and `GET
+  .../businesses` a `BusinessChoicePage`, both `{items, offset, limit, hasMore,
+  total}`, `total` counting every business profile. See
+  [Business profiles](#business-profiles).
 
 > **Changed in 0.16.0: three lists answer the envelope, not a bare array.**
 > `GET /api/v1/weblogs`, `GET /api/v1/admin/users` and `GET .../media` now
@@ -724,7 +734,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs (with a token that may act on that weblog: one pinned to another weblog gets 404 there, whatever its owner's role). Also the entry write's own refusals of a member without publish rights: `entry.notChangeable` (not their own DRAFT or PENDING entry) and `entry.needsPublishRights` (a field only a publisher may set; see [Entries](#entries)). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)), a redirect whose source another rule holds (`redirect.sourceInUse`), a media file `name` another file of the directory holds (`media.nameInUse`), a crop of a file that is not a JPEG or PNG (`media.notCroppable`) or of a size the file no longer has (`media.cropStale`). |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)), a redirect whose source another rule holds (`redirect.sourceInUse`), a media file `name` another file of the directory holds (`media.nameInUse`), a crop of a file that is not a JPEG or PNG (`media.notCroppable`) or of a size the file no longer has (`media.cropStale`), deleting a business profile some weblog uses (`business.inUse`). |
 | 413 | A JSON request body that declares a length over 4,048,576 bytes (room for a 1,000,000-character entry in 3-byte characters plus 1 MiB for the other fields; `/api/mcp` has the same limit): a problem body whose `type` ends in `/too-large`, sent before anything reads the body. A body that declares no length (chunked) is read up to the same cap and then refused as an unreadable body (400). Uploads are not held to it. A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB) is also a 413, but plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 406 | An `Accept` the API cannot answer (`text/html`, say). A problem body (`type` ending in `/not-acceptable`), written as `application/problem+json` regardless. |
 | 415 | A JSON route sent a body in another media type (`application/x-www-form-urlencoded`, `text/plain`): a problem body whose `type` ends in `/unsupported-media-type`. `POST .../media` without a `multipart/form-data` body is also 415, but that one is plain `application/json`, not a problem body — see the note above. |
@@ -1982,6 +1992,9 @@ PATCH /api/v1/admin/config
 GET   /api/v1/admin/revisions          what the revision store holds
 POST  /api/v1/admin/revisions/sweep    run the sweep, or report what it would remove
 
+GET/POST /api/v1/admin/businesses, GET/PATCH/DELETE /api/v1/admin/businesses/{id}
+                                       business profiles (see Business profiles below)
+
 GET   /api/v1/weblogs[?offset=&limit=]
 GET   /api/v1/weblogs/{handle}
 POST  /api/v1/weblogs
@@ -2024,7 +2037,9 @@ property of either name is ignored and naming one in `clear` is a 400 on `clear`
 - `icon`: at most 255 characters.
 - `about`: at most 255 characters.
 - `newsletterListUuid`: the newsletter list's UUID.
-- `businessId`: the id of an existing business profile; otherwise 400 `No such business.`
+- `businessId`: the id of an existing business profile; otherwise 400 `No such business.` `GET
+  /api/v1/weblogs/{handle}/businesses` lists the ids the weblog may use (see
+  [Business profiles](#business-profiles)).
 - `placeType`: `LodgingBusiness`; needs a `placeLocality`.
 - `placeLocality`: at most 128 characters.
 - `placeRegion`: at most 128 characters.
@@ -2156,6 +2171,85 @@ that view is the single place mapping a Search Console property (keyed by
 hostname) back to the weblog an agent can edit through this API (keyed by
 handle).
 
+### Business profiles
+
+```
+GET    /api/v1/admin/businesses[?offset=&limit=]
+GET    /api/v1/admin/businesses/{id}
+POST   /api/v1/admin/businesses
+PATCH  /api/v1/admin/businesses/{id}
+DELETE /api/v1/admin/businesses/{id}
+
+GET    /api/v1/weblogs/{handle}/businesses[?offset=&limit=]
+```
+
+> **New in 0.16.0.**
+
+A business profile is stored once and shared by the weblogs that point at it
+(`businessId`); every one of them shows it as schema.org data. The
+`/admin/businesses` routes are the Businesses screen's, so they need a site
+admin and an `ADMIN` token (a weblog-pinned token gets 404). They judge and
+store a value exactly as the screen does: both call the same rules.
+
+```json
+{
+  "id": "4f1c...",
+  "name": "Casa Azul",
+  "businessType": "LocalBusiness",
+  "websiteUrl": "https://casa.example.com",
+  "bookingUrl": "https://book.example.com/casa",
+  "telephone": "+351 912 345 678",
+  "email": "hi@casa.example.com",
+  "logoUrl": "https://casa.example.com/logo.png",
+  "sameAs": ["https://www.instagram.com/casaazul"],
+  "areaServed": "Azores",
+  "description": "A guest house.",
+  "weblogCount": 2,
+  "created": "2026-11-21T10:15:00Z",
+  "lastModified": "2026-11-21T10:15:00Z"
+}
+```
+
+- The list is `{items, offset, limit, hasMore, total}`, sorted by `name`
+  without regard to case, then `id`; `total` counts every profile.
+  `weblogCount` is how many weblogs use the profile, as the Businesses list
+  shows.
+- **Create** needs `name`; `businessType` defaults to `Organization`.
+  `clear` is a 400 on create. The answer is 201 with the profile.
+- **Update** changes only the fields sent, and judges the profile as it will
+  be. `clear` removes `websiteUrl`, `bookingUrl`, `telephone`, `email`,
+  `logoUrl`, `sameAs`, `areaServed` or `description`; naming `name` or
+  `businessType` there is a 400 (`clear.notClearable`). `sameAs` replaces the
+  whole list.
+- The rules (each refusal names its field in `errors`, all of them in one
+  400): `name` required (`field.required`; blank, `field.blank`) and at most
+  255 characters; `businessType` one of `Organization`, `LocalBusiness`,
+  `ProfessionalService` (`businessType.unknown`); `websiteUrl`, `bookingUrl`
+  and `logoUrl` public, absolute `http`/`https` URLs (`field.notPublicUrl`;
+  localhost and intranet hosts are refused) of at most 255 characters;
+  `telephone` digits, plus, parentheses, hyphen, dot and space with an
+  optional extension, 3 to 32 characters (`telephone.invalid`); `email` a
+  valid address (`email.invalid`) of at most 255; `areaServed` at most 255;
+  at most 10 `sameAs` links (`sameAs.tooMany`), each a public `http`/`https`
+  URL of at most 255 (`sameAs.entryInvalid`). Too long is `field.tooLong`.
+  Values are stored trimmed, and a blank optional value as `null`.
+- A save expires the rendered pages of every weblog using the profile, as
+  the screen's does.
+- **Delete** of a profile some weblog uses is a 409 (`business.inUse`) whose
+  `detail` says how many; nothing is removed. Point each weblog elsewhere
+  first. An unused profile answers 204. An unknown id, on get, update or
+  delete, is a 404 (`business.notFound`).
+
+**`GET /api/v1/weblogs/{handle}/businesses`** is the weblog owner's picker:
+what the Weblog Settings form offers, `{items, offset, limit, hasMore,
+total}` of `{id, name, businessType}`, in the same order. It needs what
+`GET /api/v1/weblogs/{handle}` needs (the weblog's `ADMIN` permission and an
+`ADMIN` token; a pinned token reaches its own weblog). Send an item's `id` as
+`businessId` on `PATCH /api/v1/weblogs/{handle}`.
+
+MCP: the `businesses` tool (`list`, `get`, `create`, `update`, `delete`) and
+the `weblogs` `list_businesses` action.
+
 ## Maintenance actions
 
 ```
@@ -2209,7 +2303,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 |---|---|
 | `whoami` | |
 | `site_info` | |
-| `weblogs` | `list`, `get`, `create`, `update`, `list_members` |
+| `weblogs` | `list`, `get`, `create`, `update`, `list_members`, `list_businesses` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `crop`, `delete`, `list_directories`, `create_directory` |
@@ -2219,6 +2313,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `audits` | `seo`, `seo_entry`, `media` |
 | `traffic` | `get`, `site` |
 | `users` | `list`, `create`, `update` |
+| `businesses` | `list`, `get`, `create`, `update`, `delete` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
 

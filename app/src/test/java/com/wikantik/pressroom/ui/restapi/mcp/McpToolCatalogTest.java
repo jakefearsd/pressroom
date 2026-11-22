@@ -16,13 +16,13 @@ class McpToolCatalogTest {
     }
 
     @Test
-    void exactlyTheFourteenToolsWithTheirActions() {
+    void exactlyTheFifteenToolsWithTheirActions() {
         Map<String, List<String>> actual = TOOLS.stream().collect(Collectors.toMap(ResolvedTool::name,
                 t -> List.copyOf(t.actions().keySet())));
         assertEquals(Map.ofEntries(
                 Map.entry("whoami", List.of("")),
                 Map.entry("site_info", List.of("")),
-                Map.entry("weblogs", List.of("list", "get", "create", "update", "list_members")),
+                Map.entry("weblogs", List.of("list", "get", "create", "update", "list_members", "list_businesses")),
                 Map.entry("entries", List.of("list", "get", "create", "update", "trash", "restore",
                         "delete_forever", "preview", "revisions", "revision", "restore_revision",
                         "keep_revision", "unkeep_revision")),
@@ -37,6 +37,7 @@ class McpToolCatalogTest {
                 Map.entry("audits", List.of("seo", "seo_entry", "media")),
                 Map.entry("traffic", List.of("get", "site")),
                 Map.entry("users", List.of("list", "create", "update")),
+                Map.entry("businesses", List.of("list", "get", "create", "update", "delete")),
                 Map.entry("site_settings", List.of("get", "update")),
                 Map.entry("maintenance", List.of("flush_cache", "rebuild_index", "regenerate_renditions"))),
                 actual);
