@@ -58,7 +58,10 @@ public final class ExternalImages {
     public record Ref(Kind kind, int start, int end, String url, String alt, String altSource, String title,
                       boolean standalone) { }
 
-    /** Every external image in text order, and the tags refused outright. */
+    /**
+     * Every external image in text order, and the tags refused outright (an
+     * external {@code srcset}), each abbreviated, with no sentence around it.
+     */
     public record Scan(List<Ref> refs, List<String> refusals) {
         /** Each URL once, in order of first appearance. */
         public List<String> distinctUrls() {
@@ -256,8 +259,8 @@ public final class ExternalImages {
             ImgAttributes img = new ImgAttributes(ownHosts);
             int tagEnd = closingOf(text, img.read(text, open.end(), limit), limit);
             if (img.srcsetExternal) {
-                refusals.add("srcset is not imported; use one src, or [image id=...] for a "
-                        + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));
+                // The tag alone: the sentence around it is the API's keyed image.scanRefused text.
+                refusals.add(abbreviate(text.substring(open.start(), tagEnd)));
             }
             if (open.group(1) != null && isExternal(img.src, ownHosts)) {
                 refs.add(new Ref(Kind.HTML_SRC, img.srcStart, img.srcEnd, img.src, img.alt, null, null, false));

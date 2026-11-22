@@ -328,7 +328,7 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `field.required` takes the field as `{0}`). The bundle value is the old text exactly. A literal brace
   in a value with placeholders cannot be quoted (`MessageFormatRegressionTest` bans a lone apostrophe),
   so it is an argument (`edits.empty`'s `{1}` is `{find, replace}`). Text that is a business exception's
-  message (an image import's refusal) is a passthrough code whose last placeholder is that text (`image.scanRefused` is just `{0}`; `image.importFailed` is `Image {0}: {1}`); they are listed in
+  message (an image import's refusal) is a passthrough code whose last placeholder is that text (`image.importFailed` is `Image {0}: {1}`); they are listed in
   `ProblemCode.PASSTHROUGH_CODES`, which `ProblemCodeCatalogTest` pins and which may only shrink. A
   code that has a REST test asserts its `code` (and `errors[].code`): `EntryProblemCodesTest`,
   `EntryImportProblemCodesTest`, `PageProblemCodesTest`.
@@ -343,8 +343,9 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   `WebloggerException` with a `Reason`), every one of the manager's refusals included (a rule with no
   weblog, a blank path); any other `WebloggerException` from `saveRedirect` is a failure, not a
   refusal, and is the opaque 500 (the final review dropped `redirect.refused`, whose detail could carry
-  the persistence layer's text). `PASSTHROUGH_CODES` is final at three: `image.scanRefused`,
-  `image.importFailed` and `media.importRefused` (an import's own refusal text); it may only shrink.
+  the persistence layer's text). `PASSTHROUGH_CODES` is down to two: `image.importFailed`
+  and `media.importRefused` (an import's own failure text); it may only shrink. 0.16.3 keyed
+  `image.scanRefused` (the sentence is the bundle's, the tag its `{0}`).
   `auth.notAuthenticated` and `auth.unauthorized` mean the same (README says so); both stay published.
 - **Cross-product check** (2026-11-20): `SimpleAgilityDecisionLog` (SA-1 to SA-17) holds no suite-wide
   error-code convention, so the member name `code` and the dotted lowerCamel format are Pressroom's own.

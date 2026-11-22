@@ -71,6 +71,14 @@ class ExternalImagesTest {
         assertEquals(2, scan.refusals().size());
     }
 
+    /** A refusal names the tag; the sentence around it is the API's keyed text (0.16.3), not the business tier's. */
+    @Test
+    void aRefusalIsTheTagItRefuses() {
+        String tag = "<img src=\"https://a.example/x.jpg\" srcset=\"https://a.example/x2.jpg 2x\">";
+
+        assertEquals(java.util.List.of(tag), ExternalImages.scan("Before " + tag + " after", OWN).refusals());
+    }
+
     @Test
     void theRewriteChangesOnlyTheSrcValue() {
         String text = "Before <img class=\"wide\" src=\"https://a.example/x.jpg\" alt=\"X\"> after.";

@@ -53,6 +53,8 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
 - A JSON body that declares no length (chunked) and runs past the 4,048,576-byte
   limit is a 413 `request.tooLarge`, as one that declares a length over it
   always was; it was a 400 `request.malformedBody`. See [Errors](#errors).
+- `image.scanRefused`'s `detail` is the API's own text now, the refused tag
+  quoted in it; the wording, status and code are unchanged.
 
 ## Changes in 0.16.0
 
@@ -463,9 +465,8 @@ stable, case-sensitive string of two dotted lowerCamel segments,
   today, and a client that meets one treats it by its `type` and status.
   `auth.notAuthenticated` means the same as `auth.unauthorized`; treat them alike.
 - **A few `detail`s are not the API's own text** but the message of the step
-  that refused (an image import). Their codes are `image.scanRefused`,
-  `image.importFailed` and `media.importRefused`; such text is English
-  whatever the caller asks for.
+  that refused (an image import). Their codes are `image.importFailed` and
+  `media.importRefused`; such text is English whatever the caller asks for.
 - **`detail` is plain text for a person, and may be localised.** Send
   `Accept-Language` and a problem whose text the server holds in that
   language reads in it; anything else reads in English. No translations
@@ -564,7 +565,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `image.altWithoutUrl` | 400 | `invalid-request` | `featuredImageAlt` was sent without `featuredImageUrl`. |
 | `image.urlAndId` | 400 | `invalid-request` | Both `featuredImageUrl` and `featuredImageId` were sent. |
 | `image.urlAndClear` | 400 | `invalid-request` | `featuredImageUrl` was sent with `clear: [featuredImageId]`. |
-| `image.scanRefused` | 400 | `invalid-request` | The text holds an image the import cannot take (an HTML `srcset`); `detail` says which. Text from the business tier. |
+| `image.scanRefused` | 400 | `invalid-request` | The text holds an image the import cannot take (an HTML `srcset`); `detail` says which, quoting the tag. |
 | `image.tooManyBodyImages` | 400 | `invalid-request` | More external images in the text than one write imports. |
 | `image.directoryPrivate` | 400 | `invalid-request` | An import was asked for while the default media directory is private. |
 | `image.importBudgetExhausted` | 400 | `invalid-request` | The import step ran out of time before this image. |

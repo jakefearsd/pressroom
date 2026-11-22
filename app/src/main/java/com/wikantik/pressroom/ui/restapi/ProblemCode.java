@@ -175,7 +175,7 @@ public enum ProblemCode {
     IMAGE_URL_AND_ID("image.urlAndId", ProblemType.INVALID_REQUEST, 0),
     /** `featuredImageUrl` was sent with `clear: [featuredImageId]`. */
     IMAGE_URL_AND_CLEAR("image.urlAndClear", ProblemType.INVALID_REQUEST, 0),
-    /** The text holds an image the import cannot take (an HTML `srcset`); `detail` says which. Text from the business tier. */
+    /** The text holds an image the import cannot take (an HTML `srcset`); `detail` says which. The argument is the tag. */
     IMAGE_SCAN_REFUSED("image.scanRefused", ProblemType.INVALID_REQUEST, 1),
     /** More external images in the text than one write imports. */
     IMAGE_TOO_MANY("image.tooManyBodyImages", ProblemType.INVALID_REQUEST, 2),
@@ -483,16 +483,18 @@ public enum ProblemCode {
      * English is a business exception's own message, passed through whole
      * because the business tier's messages are not a finite set this API can
      * key. Task 3 fixed its final members (spec 2026-11-20): an image import's
-     * refusal ({@code image.scanRefused}, {@code image.importFailed} and the
-     * media route's {@code media.importRefused}). The final review dropped
+     * failure ({@code image.importFailed} and the media route's
+     * {@code media.importRefused}). The final review dropped
      * {@code redirect.refused}: every redirect refusal has a reason, and any
-     * other save failure is the opaque 500. This set may only shrink: a code leaves it when its source is
+     * other save failure is the opaque 500. 0.16.3 dropped
+     * {@code image.scanRefused}: its sentence is keyed and the tag it names
+     * is the argument. This set may only shrink: a code leaves it when its source is
      * keyed. {@code ProblemCodeCatalogTest} pins it, holds each member's English
      * to ending in its last placeholder, and every code whose English is just
      * {@code {0}} to being a member.
      */
     public static final Set<ProblemCode> PASSTHROUGH_CODES =
-            Set.of(IMAGE_SCAN_REFUSED, IMAGE_IMPORT_FAILED, MEDIA_IMPORT_REFUSED);
+            Set.of(IMAGE_IMPORT_FAILED, MEDIA_IMPORT_REFUSED);
 
     private static final String KEY_PREFIX = "api.problem.";
 

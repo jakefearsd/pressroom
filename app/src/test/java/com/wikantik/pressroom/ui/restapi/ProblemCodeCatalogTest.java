@@ -282,9 +282,9 @@ class ProblemCodeCatalogTest {
     @Test
     void thePassthroughCodesArePinnedAndEndInTheForeignText() throws IOException {
         // Task 3 pinned the final set; it may only shrink from here.
-        // The final-review fix wave dropped redirect.refused (a store failure is the opaque 500).
-        assertEquals(Set.of(ProblemCode.IMAGE_SCAN_REFUSED, ProblemCode.IMAGE_IMPORT_FAILED,
-                        ProblemCode.MEDIA_IMPORT_REFUSED),
+        // The final-review fix wave dropped redirect.refused (a store failure is the opaque 500);
+        // 0.16.3 dropped image.scanRefused (its sentence is keyed, the tag its argument).
+        assertEquals(Set.of(ProblemCode.IMAGE_IMPORT_FAILED, ProblemCode.MEDIA_IMPORT_REFUSED),
                 ProblemCode.PASSTHROUGH_CODES);
         Properties base = load(BASE_BUNDLE);
         Set<ProblemCode> argumentOnly = new java.util.HashSet<>();
