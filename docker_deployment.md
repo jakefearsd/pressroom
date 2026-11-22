@@ -596,6 +596,25 @@ recreates it, starts both afresh. Save what you need first:
 docker compose logs --no-color app > app-$(date +%F-%H%M).log
 ```
 
+Caddy writes an **access log** for the blog sites: one JSON line per request on
+its standard output (its own runtime log stays on standard error), each with
+`"logger":"http.log.access.blog"`. `request.client_ip` is the reader, so behind a
+tunnel it is only right when `TRUSTED_PROXIES` names the tunnel's machine
+(see "Behind a tunnel or a proxy on another host"). A log collector reading
+the container's output, jakemon's agent for example, picks the lines out by that logger:
+
+```bash
+docker compose logs --no-color caddy | grep '"http.log.access.blog"' | tail -5
+```
+
+Secrets are kept out: Caddy redacts `Cookie` and `Authorization` itself, and the
+Caddyfile's `(redacted)` filter replaces the password-reset `token` and the
+sign-in callback's `code` and `state`, in the URL and in the `Referer`. The
+blog's error lines (`http.log.error.blog`, a failed request such as a 502 during
+a restart) pass through the same filter. The Umami dashboard and listmonk
+sites write no access log. A new secret query parameter belongs in that filter
+(`ProductionComposeTest` pins it).
+
 ## The back-office services
 
 Umami (analytics) and listmonk (newsletter) are services Pressroom *uses*,

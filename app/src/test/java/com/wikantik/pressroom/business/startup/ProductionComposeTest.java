@@ -871,6 +871,89 @@ class ProductionComposeTest {
     }
 
     /**
+     * Every blog site block writes one access log, the {@code (access_log)}
+     * snippet, so the origin can tell who reads the blogs: jakemon's agent
+     * ships the container's output to Loki and parses the JSON there. Before
+     * this the Caddyfile had no {@code log} directive and the origin was a
+     * blind spot (only Cloudflare's zone totals existed).
+     *
+     * <p>The log goes to stdout, apart from Caddy's own runtime log on stderr,
+     * and is named {@code blog} (logger {@code http.log.access.blog}), which is
+     * what the dashboards filter on. Caddy already redacts {@code Cookie} and
+     * {@code Authorization}; what it cannot know is which query parameters are
+     * secrets. Three are: the password-reset link's {@code token}
+     * (PasswordLinkMailer) and the sign-in callback's {@code code} and
+     * {@code state} (OAuth2). The reset page's own stylesheet and script
+     * requests carry its full URL as {@code Referer} (no restrictive
+     * Referrer-Policy, by design), so the Referer is redacted too.
+     *
+     * <p>Naming a log also turns on {@code http.log.error.blog}: a line per
+     * failed request (a 502 while the app restarts), carrying the same request
+     * with its URL. Caddy sends that logger to the default log, unfiltered, so
+     * the global block routes it through the same {@code (redacted)} filter
+     * and takes it out of the default log; a reset token once reached stderr
+     * that way in a trial run.
+     */
+    @Test
+    void everyBlogSiteBlockWritesTheRedactedAccessLog() throws IOException {
+        String raw = Files.readString(Paths.get("../deploy/caddy/Caddyfile"), StandardCharsets.UTF_8);
+        Map<String, List<String>> named = new LinkedHashMap<>();
+        List<String> unlogged = new ArrayList<>();
+        int blogBlocks = 0;
+        for (String block : topLevelCaddyBlocks(raw)) {
+            String directives = stripComments(block);
+            String header = firstNonBlankLine(directives);
+            if (header.startsWith("(") || "{".equals(header)) {
+                named.put(header, directiveLines(directives));
+            } else if (directives.contains("reverse_proxy app:8080")) {
+                blogBlocks++;
+                if (!Pattern.compile("(?m)^\\s*import access_log\\s*$").matcher(directives).find()) {
+                    unlogged.add(header);
+                }
+            }
+        }
+        assertEquals(2, blogBlocks, "expected the site and custom-domain blocks");
+        assertTrue(unlogged.isEmpty(), "blog site blocks without `import access_log`: " + unlogged);
+
+        List<String> redacted = named.get("(redacted) {");
+        assertNotNull(redacted, "the Caddyfile must define the (redacted) snippet, before the global block");
+        assertTrue(redacted.contains("request>uri query {"), "the query string must be filtered: " + redacted);
+        for (String secret : List.of("token", "code", "state")) {
+            assertTrue(redacted.contains("replace " + secret + " REDACTED"),
+                    "the " + secret + " query parameter must be redacted: " + redacted);
+        }
+        assertTrue(redacted.contains(
+                        "request>headers>Referer regexp \"([?&](?:token|code|state)=)[^&]*\" \"${1}REDACTED\""),
+                "a Referer carrying the reset link must be redacted too: " + redacted);
+
+        List<String> access = named.get("(access_log) {");
+        assertNotNull(access, "the Caddyfile must define the (access_log) snippet");
+        assertEquals(List.of("(access_log) {", "log blog {", "output stdout", "import redacted", "}", "}"), access,
+                "access lines go to stdout, apart from Caddy's runtime log on stderr, through the filter");
+
+        List<String> global = named.get("{");
+        assertNotNull(global, "the Caddyfile must have a global options block");
+        String globalText = String.join("\n", global);
+        assertTrue(globalText.contains("log default {\nexclude http.log.error.blog\n}"),
+                "the default log must not carry the blog's unfiltered error lines: " + global);
+        assertTrue(globalText.contains("log blog_errors {\ninclude http.log.error.blog\nimport redacted\n}"),
+                "the blog's error lines must pass through the same filter: " + global);
+        assertFalse(caddyDirectives().contains("log_credentials"),
+                "log_credentials would log Cookie and Authorization in the clear");
+    }
+
+    /** A block's non-blank lines, stripped. */
+    private static List<String> directiveLines(String directives) {
+        List<String> lines = new ArrayList<>();
+        for (String line : directives.split("\n")) {
+            if (!line.isBlank()) {
+                lines.add(line.strip());
+            }
+        }
+        return lines;
+    }
+
+    /**
      * Splits a Caddyfile into its top-level {@code { ... }} site blocks by
      * brace depth. Caddy's own {@code {$VAR}} environment-substitution syntax
      * uses braces that are NOT block delimiters (e.g. {@code {$SITE_DOMAIN}},

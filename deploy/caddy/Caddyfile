@@ -15,6 +15,25 @@
 #     hostname is not a certificate-able name, so Caddy's automatic HTTPS
 #     never activates for it -- it just serves plain HTTP on port 80.
 
+# What the blogs' logs must never hold. Caddy redacts Cookie and
+# Authorization itself (never set log_credentials); it cannot know which query
+# parameters are secrets, so the three that are get replaced: the
+# password-reset link's token (PasswordLinkMailer) and the sign-in callback's
+# code and state (OAuth2). The reset page's own stylesheet and script requests
+# send its full URL as Referer (the themes forbid a restrictive
+# Referrer-Policy), so the Referer is redacted the same way. Defined first: a
+# snippet must exist before anything imports it, and the global block does.
+(redacted) {
+	format filter {
+		request>uri query {
+			replace token REDACTED
+			replace code REDACTED
+			replace state REDACTED
+		}
+		request>headers>Referer regexp "([?&](?:token|code|state)=)[^&]*" "${1}REDACTED"
+	}
+}
+
 # Which peers may tell Caddy who the reader is. Caddy replaces an untrusted
 # peer's X-Forwarded-For with the peer's own address and its
 # X-Forwarded-Proto with "http", so behind a proxy on another machine (a
@@ -28,13 +47,41 @@
 # sent, so the leftmost entry is the reader's to write; strict reads right
 # to left, skipping trusted hops. The app's RemoteIpValve reads the same way.
 {
+	# Naming the blog's access log (below) also turns on http.log.error.blog,
+	# a line per failed request (a 502 while the app restarts) that carries
+	# the request and its URL. Caddy writes it to the default log unfiltered,
+	# so it is taken out of there and written through the same filter.
+	log default {
+		exclude http.log.error.blog
+	}
+	log blog_errors {
+		include http.log.error.blog
+		import redacted
+	}
 	servers {
 		trusted_proxies static {$TRUSTED_PROXIES}
 		trusted_proxies_strict
 	}
 }
 
+# The blogs' access log, one JSON line per request on stdout (Caddy's own
+# runtime log stays on stderr), through the (redacted) filter at the top of
+# this file. Named "blog", so its lines carry logger=http.log.access.blog:
+# jakemon's agent ships the container's output to Loki and its dashboards
+# pick these lines out by that logger. request.client_ip is the reader,
+# resolved through TRUSTED_PROXIES above. ProductionComposeTest pins this, and
+# that every blog site block imports it. Only the blog sites log: the Umami
+# dashboard and listmonk are not readers.
+(access_log) {
+	log blog {
+		output stdout
+		import redacted
+	}
+}
+
 {$SITE_DOMAIN} {
+	import access_log
+
 	# Analytics, served from the BLOG's own origin.
 	#
 	# This is not a convenience. Every bundled theme head ships
@@ -126,6 +173,8 @@
 # instrument. Umami keys collection on data-website-id, not on origin, so
 # many hostnames posting to one website id is fine.
 *.{$VHOST_ZONE} {
+	import access_log
+
 	tls {
 		dns cloudflare {$VHOST_DNS_API_TOKEN}
 	}
