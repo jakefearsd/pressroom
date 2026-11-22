@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.business;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
 
@@ -32,14 +34,16 @@ public class RedirectRefusedException extends WebloggerException {
     public RedirectRefusedException(String message, Reason reason, String... args) {
         super(message);
         this.reason = reason;
-        this.args = args.clone();
+        // A null array is no arguments: a refusal must not become an NPE.
+        this.args = args == null ? new String[0] : args.clone();
     }
 
     public Reason reason() {
         return reason;
     }
 
+    /** The arguments, read-only; a null one stays null (List.of would throw). */
     public List<String> args() {
-        return List.of(args);
+        return Collections.unmodifiableList(Arrays.asList(args));
     }
 }
