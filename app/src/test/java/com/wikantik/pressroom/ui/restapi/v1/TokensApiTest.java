@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.testing.AdminLogCapture;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.business.ApiTokenManager;
@@ -13,12 +14,19 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
+import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -70,11 +78,12 @@ class TokensApiTest {
      * Bearer-authenticated one.
      */
     private void authenticateWithBasicAuth() {
+        // Spring Security's User, qualified: the imported User is the pojo.
         var principal = org.springframework.security.core.userdetails.User
                 .withUsername("owner").password("n/a").authorities(List.of()).build();
         var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
-        auth.setDetails(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE
-                .buildDetails(new org.springframework.mock.web.MockHttpServletRequest()));
+        auth.setDetails(PasswordCallerDetails.SOURCE
+                .buildDetails(new MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
@@ -124,7 +133,7 @@ class TokensApiTest {
                     .andExpect(status().isUnauthorized())
                     .andReturn().getResponse().getContentAsString();
             assertEquals("Authentication required.",
-                    new tools.jackson.databind.ObjectMapper().readTree(body).get("detail").asString(), body);
+                    new ObjectMapper().readTree(body).get("detail").asString(), body);
         }
     }
 
@@ -244,7 +253,7 @@ class TokensApiTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        tools.jackson.databind.JsonNode body = new tools.jackson.databind.ObjectMapper().readTree(response);
+        JsonNode body = new ObjectMapper().readTree(response);
         assertEquals(rawToken, body.get("token").asString());
         assertEquals("token-1", body.get("info").get("id").asString());
         assertEquals("seo-agent", body.get("info").get("label").asString());
@@ -466,7 +475,7 @@ class TokensApiTest {
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andReturn().getResponse().getContentAsString();
-        org.junit.jupiter.api.Assertions.assertTrue(body.contains("This account cannot use the API."), body);
+        assertTrue(body.contains("This account cannot use the API."), body);
 
         verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
     }
@@ -491,7 +500,7 @@ class TokensApiTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        tools.jackson.databind.JsonNode body = new tools.jackson.databind.ObjectMapper().readTree(response);
+        JsonNode body = new ObjectMapper().readTree(response);
         assertEquals(1, body.size());
         assertEquals("t-1", body.get(0).get("id").asString());
         assertEquals("ci", body.get(0).get("label").asString());
@@ -518,16 +527,16 @@ class TokensApiTest {
                         .content("{\"label\":\"temp\",\"role\":\"post\",\"expiresAt\":\"2031-01-02T03:04:05Z\"}"))
                 .andExpect(status().isCreated());
 
-        verify(weblogger.getApiTokenManager()).issueToken(any(), org.mockito.ArgumentMatchers.eq("temp"), any(),
-                org.mockito.ArgumentMatchers.eq(ApiToken.Role.POST),
-                org.mockito.ArgumentMatchers.eq(Timestamp.from(java.time.Instant.parse("2031-01-02T03:04:05Z"))));
+        verify(weblogger.getApiTokenManager()).issueToken(any(), eq("temp"), any(),
+                eq(ApiToken.Role.POST),
+                eq(Timestamp.from(Instant.parse("2031-01-02T03:04:05Z"))));
     }
 
     @Test
     void aPlainStringPrincipalIsLookedUpByName() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("owner", null, List.of());
-        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
-                new org.springframework.mock.web.MockHttpServletRequest()));
+        auth.setDetails(new WebAuthenticationDetails(
+                new MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
         Weblogger weblogger = mockedWeblogger();
         User owner = new User();
@@ -547,8 +556,8 @@ class TokensApiTest {
     @Test
     void aSessionCallerMayListTokens() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("owner", null, List.of());
-        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
-                new org.springframework.mock.web.MockHttpServletRequest()));
+        auth.setDetails(new WebAuthenticationDetails(
+                new MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
         Weblogger weblogger = mockedWeblogger();
         User owner = new User();
@@ -566,29 +575,30 @@ class TokensApiTest {
         Weblogger weblogger = mockedWeblogger();
         TokensApi api = new TokensApi(weblogger);
 
-        mockMvc(api).perform(get("/v1/tokens")).andExpect(status().isUnauthorized());
-        mockMvc(api).perform(delete("/v1/tokens/{id}", "x")).andExpect(status().isUnauthorized());
-        mockMvc(api).perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/v1/tokens")
-                .contentType("application/json").content("{\"label\":\"l\",\"role\":\"POST\"}"))
-                .andExpect(status().isUnauthorized());
+        assertRefusedEverywhere(api);
 
         verify(weblogger.getUserManager(), never()).getUserByUserName(anyString());
         verify(weblogger.getApiTokenManager(), never()).getTokens(any());
     }
 
+    /** Each of the token resource's three routes answers 401 to the caller in the security context. */
+    private void assertRefusedEverywhere(TokensApi api) throws Exception {
+        mockMvc(api).perform(get("/v1/tokens")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(delete("/v1/tokens/{id}", "x")).andExpect(status().isUnauthorized());
+        mockMvc(api).perform(post("/v1/tokens")
+                .contentType("application/json").content("{\"label\":\"l\",\"role\":\"POST\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void anAnonymousCallerIsRefusedEverywhere() throws Exception {
         SecurityContextHolder.getContext().setAuthentication(
-                new org.springframework.security.authentication.AnonymousAuthenticationToken(
-                        "k", "anonymousUser", List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+                new AnonymousAuthenticationToken(
+                        "k", "anonymousUser", List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
         Weblogger weblogger = mockedWeblogger();
         TokensApi api = new TokensApi(weblogger);
 
-        mockMvc(api).perform(get("/v1/tokens")).andExpect(status().isUnauthorized());
-        mockMvc(api).perform(delete("/v1/tokens/{id}", "x")).andExpect(status().isUnauthorized());
-        mockMvc(api).perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/v1/tokens")
-                .contentType("application/json").content("{\"label\":\"l\",\"role\":\"POST\"}"))
-                .andExpect(status().isUnauthorized());
+        assertRefusedEverywhere(api);
     }
 
     /**
@@ -600,8 +610,8 @@ class TokensApiTest {
     @Test
     void theAnonymousPrincipalIsNotAUser() throws Exception {
         var auth = new UsernamePasswordAuthenticationToken("anonymousUser", null, List.of());
-        auth.setDetails(com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails.SOURCE
-                .buildDetails(new org.springframework.mock.web.MockHttpServletRequest()));
+        auth.setDetails(PasswordCallerDetails.SOURCE
+                .buildDetails(new MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
         Weblogger weblogger = mockedWeblogger();
 
@@ -617,7 +627,7 @@ class TokensApiTest {
         authenticateWithBasicAuth();
         Weblogger weblogger = mockedWeblogger();
         when(weblogger.getUserManager().getUserByUserName("owner"))
-                .thenThrow(new com.wikantik.pressroom.WebloggerException("db down"));
+                .thenThrow(new WebloggerException("db down"));
 
         mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
                 .andExpect(status().isUnauthorized());
@@ -752,7 +762,7 @@ class TokensApiTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        tools.jackson.databind.JsonNode body = new tools.jackson.databind.ObjectMapper().readTree(response);
+        JsonNode body = new ObjectMapper().readTree(response);
         assertFalse(body.get(0).has("revokedAt"), response);
         assertTrue(body.get(1).has("revokedAt"), response);
     }

@@ -242,11 +242,13 @@ class ApiPasswordScopeTest {
     }
 
     /**
-     * A token still reaches the token resource's handler, which refuses it
-     * itself (403, {@code TokensApiTest}); the chain changes nothing there.
+     * The chain lets a token through to the token resource's handler, as it
+     * did before passwords were confined there. What the handler then answers
+     * (it refuses every token caller, 403) is pinned by {@code TokensApiTest},
+     * not here: this harness stops at the handler.
      */
     @Test
-    void aTokenStillReachesTheTokenResourcesOwnRefusal() throws Exception {
+    void theChainLetsATokenThroughToTheTokenResource() throws Exception {
         assertReached(perform(bearer(get("/api/v1/tokens"))), "TokensApi.list TOKEN");
         assertReached(perform(bearer(post("/api/v1/tokens"))), "TokensApi.issue TOKEN");
     }

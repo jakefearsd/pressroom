@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.wikantik.pressroom.TestUtils;
@@ -33,6 +34,7 @@ import com.wikantik.pressroom.ui.restapi.mcp.ApiReply;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiRoute;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiRouteTable;
 import com.wikantik.pressroom.ui.restapi.mcp.ApiRouteTables;
+import com.wikantik.pressroom.ui.restapi.mcp.McpEndpointServlet;
 import com.wikantik.pressroom.ui.restapi.mcp.McpToolCatalog;
 import com.wikantik.pressroom.ui.restapi.mcp.McpToolExecutor;
 import com.wikantik.pressroom.ui.restapi.mcp.ResolvedAction;
@@ -443,6 +445,28 @@ class ApiAuthorizationMatrixTest {
     /** Routes whose mapping requires a multipart body. */
     private static final Set<String> MULTIPART = Set.of("POST /v1/weblogs/{handle}/media");
 
+    /**
+     * Stands in for the MCP SDK's transport behind the real {@link McpEndpointServlet}: answers
+     * {@value #REACHED} to whatever the servlet lets through.
+     */
+    static final class ReachedTransport extends HttpServlet {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
+            response.setStatus(REACHED);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write(REACHED_BODY);
+        }
+    }
+
+    /**
+     * The MCP endpoint as the container serves it, after the security chain: the real servlet with
+     * its own token-only check, the transport behind it {@link ReachedTransport}.
+     */
+    private static final McpEndpointServlet MCP_ENDPOINT =
+            new McpEndpointServlet(new ReachedTransport(), new ApiProblemWriter(new ObjectMapper()));
+
     /** Answers {@value #REACHED} to whatever gets past the production interceptors. */
     static final class Terminal implements HandlerInterceptor {
         @Override
@@ -513,7 +537,9 @@ class ApiAuthorizationMatrixTest {
         context.addBeanFactoryPostProcessor(factory -> ApiRouteTables.controllers()
                 .forEach(controller -> factory.registerSingleton(controller.getClass().getName(), controller)));
         context.refresh();
-        mockMvc = webAppContextSetup(context).apply(springSecurity()).build();
+        mockMvc = webAppContextSetup(context).apply(springSecurity())
+                .addFilter((request, response, chain) -> MCP_ENDPOINT.service(request, response), "/api/mcp")
+                .build();
     }
 
     @AfterAll
@@ -892,19 +918,24 @@ class ApiAuthorizationMatrixTest {
     /**
      * The endpoint itself admits tokens only: no credential and a password are
      * the chain's 401 (the password one saying where a password is accepted).
-     * A token passes the chain; with no MCP transport in this harness, the
-     * dispatcher then finds no handler (404). {@code McpEndpointServletTest}
-     * pins the servlet's own token-only check behind it.
+     * A token passes the chain and the real {@link McpEndpointServlet}'s own
+     * token-only check behind it, and reaches the transport (a stand-in that
+     * answers {@value #REACHED}), as the container serves the endpoint.
+     * {@code McpEndpointServletTest} pins the servlet's refusal of a non-token
+     * caller, which the chain never lets through.
      */
     @TestFactory
     Stream<DynamicTest> theMcpEndpointAdmitsTokensOnly() {
         return CALLERS.stream().map(who -> {
-            int expected = who.kind() == Kind.TOKEN ? 404 : 401;
-            String cell = "POST /api/mcp | " + who + " | expect " + expected;
+            int expected = who.kind() == Kind.TOKEN ? REACHED : 401;
+            String cell = "POST /api/mcp | " + who + " | expect " + label(expected);
             return DynamicTest.dynamicTest(cell, () -> {
                 MvcResult result = send(who, "POST", "/mcp", "", "{}", MediaType.APPLICATION_JSON_VALUE);
                 String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
-                assertEquals(expected, result.getResponse().getStatus(), cell + ": " + body);
+                assertEquals(label(expected), label(result.getResponse().getStatus()), cell + ": " + body);
+                if (expected == REACHED) {
+                    assertEquals(REACHED_BODY, body, cell);
+                }
                 if (who.kind() == Kind.PASSWORD) {
                     assertEquals(ApiAuthenticationEntryPoint.PASSWORD_REFUSED_DETAIL,
                             JSON.readTree(body).path("detail").asString(), cell);
