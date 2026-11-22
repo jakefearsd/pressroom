@@ -367,6 +367,8 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
 
         assertFalse(errors(model).isEmpty(),
                 "the author must be told the save did not happen, got: " + errors(model));
+        assertEquals(List.of("generic.error.check.logs"), errors(model), "a page-level error to check the logs");
+        assertEquals(List.of(), invalidFields(model), "and no control is marked: the name was not judged");
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
         assertTrue(flashMessages(redirectAttributes).isEmpty(),
                 "and the edit must not report success");

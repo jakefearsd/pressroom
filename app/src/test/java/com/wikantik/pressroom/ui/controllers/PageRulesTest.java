@@ -165,12 +165,11 @@ class PageRulesTest {
         assertNull(PageRules.slugProblem(weblog, "free", null, pages));
     }
 
+    /** No violation stands in for "could not check": the screen refuses the save itself. */
     @Test
-    void theCompositeRefusesWhenTheLookupFails() throws Exception {
+    void theCompositeThrowsWhenTheLookupFails() throws Exception {
         when(pages.getPageBySlug(weblog, "about")).thenThrow(new WebloggerException("down"));
-        RuleViolation refused = PageRules.slugProblem(weblog, "about", null, pages);
-        assertEquals("generic.error.check.logs", refused.messageKey());
-        assertEquals(ProblemCode.SERVER_INTERNAL_ERROR, refused.code());
+        assertThrows(WebloggerException.class, () -> PageRules.slugProblem(weblog, "about", null, pages));
     }
 
     // --- strands ---

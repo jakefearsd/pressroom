@@ -22,8 +22,6 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -41,8 +39,6 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * with a name it has trimmed; the screens pass what was posted.
  */
 public final class CategoryRules {
-
-    private static final Logger log = LoggerFactory.getLogger(CategoryRules.class);
 
     /** The API's name for the name field (the screen's field id is its own). */
     public static final String NAME = "name";
@@ -103,24 +99,16 @@ public final class CategoryRules {
     }
 
     /**
-     * {@link #nameShapeProblem} then {@link #nameTaken}, for a caller with no
-     * way to let a failure through (the screens): a uniqueness check that
-     * could not run refuses, with {@code generic.error.check.logs}, rather
-     * than reading as "free".
+     * {@link #nameShapeProblem} then {@link #nameTaken}, for the screens. Null
+     * when the name is free. A lookup that fails throws, as {@link #nameTaken}
+     * does: no violation stands in for "could not check", so the screen
+     * refuses the save itself ({@code generic.error.check.logs}) rather than
+     * read the failure as "free".
      */
     public static RuleViolation nameProblem(Weblog weblog, String name, String excludingId,
-            WeblogEntryManager entries) {
+            WeblogEntryManager entries) throws WebloggerException {
         RuleViolation shape = nameShapeProblem(name);
-        if (shape != null) {
-            return shape;
-        }
-        try {
-            return nameTaken(weblog, name, excludingId, entries);
-        } catch (WebloggerException e) {
-            log.error("Error checking category name uniqueness for {}", name, e);
-            return RuleViolation.invalid(NAME, "generic.error.check.logs", List.of(),
-                    ProblemCode.SERVER_INTERNAL_ERROR);
-        }
+        return shape != null ? shape : nameTaken(weblog, name, excludingId, entries);
     }
 
     /** The description is at most {@link ColumnWidths#CATEGORY_DESCRIPTION} characters; null when it is (or absent). */

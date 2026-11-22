@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -34,7 +35,6 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.CategoryRules;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -194,15 +194,18 @@ public class CategoryEditController extends BaseController {
      * category's own name is not judged again, as on the API's PATCH.
      */
     private void myValidate(CategoryBean bean, WeblogCategory edited, HttpServletRequest request, Model model) {
-        RuleViolation problem = CategoryRules.keepsItsName(edited, bean.getName()) ? null
-                : CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
-                        edited == null ? null : edited.getId(), weblogger.getWeblogEntryManager());
-        if (problem != null && problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
+        try {
+            RuleViolation problem = CategoryRules.keepsItsName(edited, bean.getName()) ? null
+                    : CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
+                            edited == null ? null : edited.getId(), weblogger.getWeblogEntryManager());
+            if (problem != null) {
+                addFieldError(model, "category_bean_name", problem, request);
+            }
+        } catch (WebloggerException e) {
             // Fail closed. A uniqueness check that could not run is not a check that passed: the
             // caller's hasErrors() gate would otherwise read the empty error list as "this name is free".
-            addError(model, problem, request);
-        } else if (problem != null) {
-            addFieldError(model, "category_bean_name", problem, request);
+            log.error("Error checking category name uniqueness for {}", bean.getName(), e);
+            addError(model, "generic.error.check.logs", request);
         }
         // The API's rule too: an over-long description is the author's to fix, not a column
         // overflow the save reports as "check the logs".

@@ -20,8 +20,6 @@ package com.wikantik.pressroom.ui.controllers;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogPageManager;
@@ -37,11 +35,9 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * Task 4). Each rule returns a {@link RuleViolation}, or null when the value
  * passes, and touches no screen. A lookup that fails throws from the rules
  * that need the store: the API lets that through as its opaque 500, and the
- * screens call {@link #slugProblem}, which turns it into a refusal.
+ * screens catch it (from {@link #slugProblem}) and refuse the save.
  */
 public final class PageRules {
-
-    private static final Logger log = LoggerFactory.getLogger(PageRules.class);
 
     /** The API's name for the slug field (the screen's field id is its own). */
     public static final String SLUG = "slug";
@@ -107,24 +103,16 @@ public final class PageRules {
     }
 
     /**
-     * {@link #slugShapeProblem} then {@link #slugHolderProblem}, for a caller
-     * with no way to let a failure through (the screens): a uniqueness check
-     * that could not run refuses, with {@code generic.error.check.logs},
-     * rather than reading as "free".
+     * {@link #slugShapeProblem} then {@link #slugHolderProblem} on the trimmed
+     * slug, for the screens. Null when the slug is free. A lookup that fails
+     * throws, as {@link #slugHolderProblem} does: no violation stands in for
+     * "could not check", so the screen refuses the save itself
+     * ({@code generic.error.check.logs}) rather than read the failure as "free".
      */
     public static RuleViolation slugProblem(Weblog weblog, String slug, String excludingId,
-            WeblogPageManager pages) {
+            WeblogPageManager pages) throws WebloggerException {
         RuleViolation shape = slugShapeProblem(slug);
-        if (shape != null) {
-            return shape;
-        }
-        try {
-            return slugHolderProblem(weblog, slug.trim(), excludingId, pages);
-        } catch (WebloggerException e) {
-            log.error("Error checking slug {} against the pages of weblog {}", slug, weblog.getHandle(), e);
-            return RuleViolation.invalid(SLUG, "generic.error.check.logs", List.of(),
-                    ProblemCode.SERVER_INTERNAL_ERROR);
-        }
+        return shape != null ? shape : slugHolderProblem(weblog, slug.trim(), excludingId, pages);
     }
 
     /**

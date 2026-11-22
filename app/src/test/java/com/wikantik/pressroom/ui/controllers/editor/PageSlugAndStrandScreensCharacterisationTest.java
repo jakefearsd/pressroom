@@ -249,11 +249,13 @@ class PageSlugAndStrandScreensCharacterisationTest extends EditorControllerTestS
         assertEquals(List.of("seo_canonicalUrl", "page_bean_slug"), invalidFields(model));
     }
 
+    /** The refusal is about the save, not the slug: no control is marked (the page-level error). */
     @Test
     void aSlugLookupThatFailsRefusesTheSave() throws Exception {
         when(pages.getPageBySlug(weblog, "about")).thenThrow(new WebloggerException("database down"));
         save(bean("About", "about"));
         assertEquals(List.of("generic.error.check.logs"), errors(model));
+        assertEquals(List.of(), invalidFields(model));
         verify(pages, never()).savePage(any(), any(), any());
     }
 

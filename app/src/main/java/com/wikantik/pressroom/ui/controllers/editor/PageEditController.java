@@ -58,7 +58,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
-import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
@@ -210,14 +209,17 @@ public class PageEditController extends BaseController {
         if (wanted == null && isNew) {
             wanted = StringUtils.trimToNull(PageRules.defaultSlug(bean.getTitle()));
         }
-        RuleViolation problem = PageRules.slugProblem(page.getWeblog(), wanted == null ? "" : wanted, page.getId(),
-                weblogger.getWeblogPageManager());
-        if (problem == null) {
+        String slug = wanted == null ? "" : wanted;
+        RuleViolation problem;
+        try {
+            problem = PageRules.slugProblem(page.getWeblog(), slug, page.getId(), weblogger.getWeblogPageManager());
+        } catch (WebloggerException e) {
+            // A check that could not run is not a check that passed: the save is refused, no control marked.
+            log.error("Error checking slug {} against the pages of weblog {}", slug, page.getWeblog().getHandle(), e);
+            addError(model, "generic.error.check.logs", request);
             return;
         }
-        if (problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
-            addError(model, problem, request);
-        } else {
+        if (problem != null) {
             addFieldError(model, "page_bean_slug", problem, request);
         }
     }

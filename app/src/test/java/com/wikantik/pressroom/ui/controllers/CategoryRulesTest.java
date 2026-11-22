@@ -133,12 +133,11 @@ class CategoryRulesTest {
         assertThrows(WebloggerException.class, () -> CategoryRules.nameTaken(weblog, "Food", null, entries));
     }
 
+    /** No violation stands in for "could not check": the screen refuses the save itself. */
     @Test
-    void theCompositeRefusesWhenTheLookupCannotRun() throws Exception {
+    void theCompositeThrowsWhenTheLookupCannotRun() throws Exception {
         when(entries.getWeblogCategoryByName(weblog, "Food")).thenThrow(new WebloggerException("down"));
-        RuleViolation v = CategoryRules.nameProblem(weblog, "Food", null, entries);
-        assertEquals("generic.error.check.logs", v.messageKey());
-        assertEquals(ProblemCode.SERVER_INTERNAL_ERROR, v.code());
+        assertThrows(WebloggerException.class, () -> CategoryRules.nameProblem(weblog, "Food", null, entries));
     }
 
     @Test
