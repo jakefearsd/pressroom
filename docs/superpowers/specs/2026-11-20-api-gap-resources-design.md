@@ -407,7 +407,7 @@ Docs only; no route, no code.
 **Acceptance criteria.**
 1. The section "Session-only resources (policy)" below is pasted into the
    Simple Agility decision log (`SimpleAgilityDecisionLog` on Wikantik)
-   under the next free number, and that number replaces "SA-18" in this
+   under the next free number (done: SA-18, 2026-11-21), and that number replaces the placeholder in this
    spec and in `docs/dev/api.md`. If the wiki cannot be written from the
    session, the report says so and the paste is left to the top-level
    session.
