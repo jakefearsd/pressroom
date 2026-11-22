@@ -426,4 +426,25 @@ class BusinessesApiTest {
         assertEquals(store.get(view.get("id").asString()).getCreated().toInstant().toString(),
                 view.get("created").asString());
     }
+
+    /** An empty clear list on create is no clear at all; a null link in sameAs is skipped. */
+    @Test
+    void anEmptyClearOnCreateIsAcceptedAndANullLinkSkipped() throws Exception {
+        MvcResult created = send(post(URL), "{\"name\":\"X\",\"clear\":[],\"sameAs\":[null,\"https://a.example.com\"]}");
+        assertEquals(201, created.getResponse().getStatus(), created.getResponse().getContentAsString());
+        assertEquals(List.of("https://a.example.com"), strings(json(created).get("sameAs")));
+    }
+
+    /** A stored record with no name or type still lists (first) and reads, its type null. */
+    @Test
+    void aRecordWithNoNameOrTypeListsFirstWithANullType() throws Exception {
+        stored("Named");
+        Business bare = stored(null);
+        bare.setBusinessType(null);
+
+        JsonNode first = json(send(get(URL))).get("items").get(0);
+
+        assertEquals(bare.getId(), first.get("id").asString());
+        assertTrue(first.get("businessType").isNull());
+    }
 }

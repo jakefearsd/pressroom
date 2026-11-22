@@ -145,7 +145,7 @@ public class BusinessesController extends BaseController {
 
         BusinessRules.Values values = values(bean);
         for (RuleViolation violation : BusinessRules.problems(values)) {
-            addFieldError(model, "bean_" + violation.field(), violation, request);
+            showViolation(model, violation, request);
         }
         if (hasErrors(model)) {
             return EDIT_VIEW;
@@ -230,6 +230,26 @@ public class BusinessesController extends BaseController {
         }
         model.addAttribute("businesses", businesses);
         model.addAttribute("usage", usage);
+    }
+
+    /**
+     * Shows a rule's violation and marks its control. Each id is written out, not built from the
+     * field name, so JspConsistencyTest checks it against the page; a field the form has no
+     * control for gets the message alone.
+     */
+    private void showViolation(Model model, RuleViolation violation, HttpServletRequest request) {
+        switch (violation.field()) {
+            case "name" -> addFieldError(model, "bean_name", violation, request);
+            case "businessType" -> addFieldError(model, "bean_businessType", violation, request);
+            case "websiteUrl" -> addFieldError(model, "bean_websiteUrl", violation, request);
+            case "bookingUrl" -> addFieldError(model, "bean_bookingUrl", violation, request);
+            case "telephone" -> addFieldError(model, "bean_telephone", violation, request);
+            case "email" -> addFieldError(model, "bean_email", violation, request);
+            case "logoUrl" -> addFieldError(model, "bean_logoUrl", violation, request);
+            case "sameAs" -> addFieldError(model, "bean_sameAs", violation, request);
+            case "areaServed" -> addFieldError(model, "bean_areaServed", violation, request);
+            default -> addError(model, violation, request);
+        }
     }
 
     /** The form's fields as the shared rules take them. */
