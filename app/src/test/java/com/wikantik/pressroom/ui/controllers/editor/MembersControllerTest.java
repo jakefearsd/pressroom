@@ -38,7 +38,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 
 /**
  * Tests for {@link MembersController}, which changes who can do what on a blog.

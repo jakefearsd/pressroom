@@ -12,7 +12,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPermission;
-import com.wikantik.pressroom.ui.controllers.EntryListQuery;
+import com.wikantik.pressroom.ui.view.EntryListQuery;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;

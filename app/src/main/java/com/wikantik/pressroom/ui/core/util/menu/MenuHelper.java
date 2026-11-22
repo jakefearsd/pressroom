@@ -53,6 +53,11 @@ import org.jdom2.input.SAXBuilder;
  */
 public final class MenuHelper {
 
+    /** The weblog-scoped authoring menu's id ({@code editor-menu.xml}). */
+    public static final String EDITOR_MENU = "editor";
+    /** The site administration menu's id ({@code admin-menu.xml}). */
+    public static final String ADMIN_MENU = "admin";
+
     private static final Logger log = LoggerFactory.getLogger(MenuHelper.class);
 
     private static final Map<String, ParsedMenu> menus;
@@ -68,10 +73,10 @@ public final class MenuHelper {
             // Named relative to the root package (WebloggerException's): no class lives in
             // ui.menu, and a name relative to MenuHelper would resolve under ui/core/util/menu
             // and silently return null.
-            parsed.put("editor", unmarshall(
+            parsed.put(EDITOR_MENU, unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/editor-menu.xml")));
 
-            parsed.put("admin", unmarshall(
+            parsed.put(ADMIN_MENU, unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/admin-menu.xml")));
 
         } catch (IOException | JDOMException | RuntimeException ex) {
@@ -220,12 +225,12 @@ public final class MenuHelper {
             Predicate<String> propertyEnabled)
             throws WebloggerException {
 
-        Menu tabMenu = new Menu("admin".equals(menuId) ? Menu.Surface.ADMIN : Menu.Surface.AUTHORING);
+        Menu tabMenu = new Menu(ADMIN_MENU.equals(menuId) ? Menu.Surface.ADMIN : Menu.Surface.AUTHORING);
 
         // Hack - for blogger convenience, the design tab of the edit
         // menu defaults to the templates tab item (instead of theme edit)
         // if the weblog is using a custom theme.
-        boolean customThemeOverride = "editor".equals(menuId)
+        boolean customThemeOverride = EDITOR_MENU.equals(menuId)
                 && WeblogTheme.CUSTOM.equals(weblog.getEditorTheme());
 
         // iterate over tabs from parsed config

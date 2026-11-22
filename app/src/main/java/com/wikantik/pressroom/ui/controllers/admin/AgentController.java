@@ -37,7 +37,7 @@ import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.TokenFormController;
 import com.wikantik.pressroom.ui.controllers.TokenFormValues;
-import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;

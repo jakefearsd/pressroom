@@ -31,6 +31,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView.PostLine;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView.Row;
+import com.wikantik.pressroom.ui.view.Figures;
 
 /**
  * Everything the Global Traffic page shows, worked out from one
@@ -70,11 +71,11 @@ public record SiteTrafficView(String period, List<String> periods, String notice
     private static BlogLine line(BlogRow b, Locale locale) {
         boolean siteSpace = Weblog.SITE_SPACE_HANDLE.equals(b.handle());
         if (b.standing() != BlogRow.Standing.READ) {
-            return new BlogLine(b.handle(), b.name(), siteSpace, TrafficView.DASH, TrafficView.DASH,
-                    TrafficView.DASH, "", "", null, b.standing());
+            return new BlogLine(b.handle(), b.name(), siteSpace, Figures.DASH, Figures.DASH,
+                    Figures.DASH, "", "", null, b.standing());
         }
-        return new BlogLine(b.handle(), b.name(), siteSpace, TrafficView.number(b.visitors(), locale),
-                TrafficView.number(b.views(), locale), TrafficView.number(b.visits(), locale),
+        return new BlogLine(b.handle(), b.name(), siteSpace, Figures.number(b.visitors(), locale),
+                Figures.number(b.views(), locale), Figures.number(b.visits(), locale),
                 TrafficView.changeText(b.change()), TrafficView.changeClass(b.change()), b.topPostTitle(),
                 b.standing());
     }
@@ -95,8 +96,8 @@ public record SiteTrafficView(String period, List<String> periods, String notice
         return new SiteTrafficView(period, TrafficView.PERIODS,
                 TrafficView.noticeKey(state, allZero, "traffic.state.siteZero"), age,
                 asOf == null ? null : DateTimeFormatter.ofPattern("HH:mm").withZone(zone).format(asOf),
-                showBody, TrafficView.number(site.totalViews(), locale),
-                TrafficView.number(site.totalVisits(), locale), blogs,
+                showBody, Figures.number(site.totalViews(), locale),
+                Figures.number(site.totalVisits(), locale), blogs,
                 showBody ? TrafficView.posts(site.topPosts(), "views") : List.of(),
                 showBody ? TrafficView.rows("sources", site.topSources(), locale) : List.of());
     }

@@ -61,7 +61,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 
 /**
  * Tests for {@link UserEditController}, the only screen in Pressroom that can mint

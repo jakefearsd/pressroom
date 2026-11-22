@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.controllers;
 
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

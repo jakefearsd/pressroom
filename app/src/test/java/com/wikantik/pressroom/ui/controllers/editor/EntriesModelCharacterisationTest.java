@@ -28,7 +28,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.ui.controllers.pagers.EntriesPager;
-import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
+import com.wikantik.pressroom.ui.view.KeyValueObject;
 import com.wikantik.pressroom.util.URLUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

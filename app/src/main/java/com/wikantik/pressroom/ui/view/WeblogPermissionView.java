@@ -15,7 +15,7 @@
  * copyright in this work, please see the NOTICE file in the top level
  * directory of this distribution.
  */
-package com.wikantik.pressroom.ui.controllers;
+package com.wikantik.pressroom.ui.view;
 
 import java.util.ArrayList;
 import java.util.List;

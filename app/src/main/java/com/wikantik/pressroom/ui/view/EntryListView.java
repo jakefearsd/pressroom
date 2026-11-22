@@ -31,10 +31,7 @@ import com.wikantik.pressroom.business.analytics.TrafficState;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria.SortBy;
-import com.wikantik.pressroom.ui.controllers.EntryListQuery;
-import com.wikantik.pressroom.ui.controllers.EntryListQuery.EntryListPage;
-import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
-import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
+import com.wikantik.pressroom.ui.view.EntryListQuery.EntryListPage;
 
 /**
  * What the entries list ({@code Entries.jsp}) shows, as plain values: the rows
@@ -142,9 +139,9 @@ public record EntryListView(List<WeblogEntry> entries, List<Row> rows, int pageN
 
     private static String cell(Views views, String id, Locale locale) {
         if (views.views().containsKey(id)) {
-            return TrafficView.number(views.views().get(id), locale);
+            return Figures.number(views.views().get(id), locale);
         }
-        return views.zeroIsKnown() ? "0" : TrafficView.DASH;
+        return views.zeroIsKnown() ? "0" : Figures.DASH;
     }
 
     /** The first entry on the page, or null when it is empty or the lookup failed. */

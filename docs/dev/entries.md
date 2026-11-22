@@ -238,7 +238,7 @@ at runtime while unit tests (which call the method directly) pass;
 ## The entry list
 
 `entries.rol` and `GET /v1/weblogs/{handle}/entries` build the same query
-through `EntryListQuery` (`ui.controllers`): filters in, `WeblogEntrySearchCriteria`
+through `EntryListQuery` (`ui.view`, beside the view model it feeds): filters in, `WeblogEntrySearchCriteria`
 and the trash rule (trash only when `TRASHED` is asked for by name) inside, one
 extra row fetched to answer "more?", an `EntryListPage` out. Each surface keeps
 its own parameter parsing. `EntryListView` (`ui.view`) is what `Entries.jsp`

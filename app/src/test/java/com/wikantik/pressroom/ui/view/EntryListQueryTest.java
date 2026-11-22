@@ -16,7 +16,7 @@
  * directory of this distribution.
  */
 
-package com.wikantik.pressroom.ui.controllers;
+package com.wikantik.pressroom.ui.view;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -29,8 +29,8 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria.SortBy;
-import com.wikantik.pressroom.ui.controllers.EntryListQuery.EntryListPage;
-import com.wikantik.pressroom.ui.controllers.EntryListQuery.Filters;
+import com.wikantik.pressroom.ui.view.EntryListQuery.EntryListPage;
+import com.wikantik.pressroom.ui.view.EntryListQuery.Filters;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

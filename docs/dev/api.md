@@ -526,7 +526,9 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
 - **Rules and view models stay screen-independent** (`ScreenIndependenceTest`): every class in `ui.view`
   and each named rule class imports no `jakarta.servlet`, `org.springframework.ui`/`web`, `ui.restapi`
   (except `ProblemCode`) or `*Bean` under `ui.controllers`; a class added to the list that does not
-  exist fails it. Add a new rule class to the test's list.
+  exist fails it. Add a new rule class to the test's list. A view model also imports nothing from
+  `ui.controllers` (0.16.3): `WeblogPermissionView`, `EntryListQuery` and `KeyValueObject` moved to
+  `ui.view`, and the count format and em dash the traffic screens share are `ui.view.Figures`.
 - **One rule per shared field, one home each**: `SeoFields` (meta title, search description,
   canonical URL, og image id length) serves `EntryDtos` and `PageDtos`;
   `BaseApiController.checkImageId` is the public-image check for both; `SharedThemeRules` is the

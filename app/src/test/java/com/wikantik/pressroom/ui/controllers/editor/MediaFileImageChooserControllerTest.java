@@ -25,7 +25,7 @@ import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
-import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
+import com.wikantik.pressroom.ui.view.KeyValueObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.Model;

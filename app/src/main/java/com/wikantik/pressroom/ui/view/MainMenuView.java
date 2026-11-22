@@ -26,7 +26,6 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

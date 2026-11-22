@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import com.wikantik.pressroom.business.analytics.TrafficState;
+import com.wikantik.pressroom.ui.view.Figures;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,8 +59,8 @@ class TrafficViewHelpersTest {
 
     @Test
     void aChangeThatIsNotANumberShowsADashAndNoTrend() {
-        assertEquals(TrafficView.DASH, TrafficView.changeText(Double.NaN));
-        assertEquals(TrafficView.DASH, TrafficView.changeText(Double.POSITIVE_INFINITY));
+        assertEquals(Figures.DASH, TrafficView.changeText(Double.NaN));
+        assertEquals(Figures.DASH, TrafficView.changeText(Double.POSITIVE_INFINITY));
         assertEquals("", TrafficView.changeClass(Double.NaN));
         assertEquals("", TrafficView.changeClass(Double.NEGATIVE_INFINITY));
         assertEquals("+25%", TrafficView.changeText(0.25));

@@ -34,7 +34,7 @@ import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.MediaFileDirectoryComparator;
 import com.wikantik.pressroom.pojos.MediaFileDirectoryComparator.DirectoryComparatorType;
 import com.wikantik.pressroom.pojos.WeblogPermission;
-import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
+import com.wikantik.pressroom.ui.view.KeyValueObject;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;

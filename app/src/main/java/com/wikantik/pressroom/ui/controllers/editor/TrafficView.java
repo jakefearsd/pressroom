@@ -39,6 +39,7 @@ import com.wikantik.pressroom.business.analytics.AnalyticsReport.Summary;
 import com.wikantik.pressroom.business.analytics.BlogTraffic;
 import com.wikantik.pressroom.business.analytics.BlogTraffic.PostRow;
 import com.wikantik.pressroom.business.analytics.TrafficState;
+import com.wikantik.pressroom.ui.view.Figures;
 
 /**
  * Everything the Traffic page shows, worked out from one {@link BlogTraffic}
@@ -130,9 +131,6 @@ public record TrafficView(String period, List<String> periods, String tab, List<
             "traffic.tab.posts",
             "traffic.tab.sources",
             "traffic.tab.speed");
-
-    /** An em dash: "no figure", never NaN or an infinite change. */
-    public static final String DASH = "—";
 
     private static final int CHART_WIDTH = 600;
     private static final int CHART_HEIGHT = 140;
@@ -240,7 +238,8 @@ public record TrafficView(String period, List<String> periods, String tab, List<
 
     /** A fraction change (0.25 is a quarter more) as "+25%", or an em dash when it is not a number. */
     public static String changeText(double fraction) {
-        return Double.isNaN(fraction) || Double.isInfinite(fraction) ? DASH : signed(Math.round(fraction * 100)) + "%";
+        return Double.isNaN(fraction) || Double.isInfinite(fraction) ? Figures.DASH
+                : signed(Math.round(fraction * 100)) + "%";
     }
 
     /** "up", "dn" or empty for a fraction change; empty when it is not a number. */
@@ -261,23 +260,23 @@ public record TrafficView(String period, List<String> periods, String tab, List<
         boolean bounceChange = bounceKnown && hasBefore && before.visits() > 0;
         double bounce = bounceKnown ? 100.0 * now.bounces() / now.visits() : 0;
         long bounceDelta = bounceChange ? Math.round(bounce - 100.0 * before.bounces() / before.visits()) : 0;
-        tiles.add(new Tile("traffic.tile.bounce", bounceKnown ? Math.round(bounce) + "%" : DASH,
-                bounceChange ? signed(bounceDelta) + " pts" : DASH,
+        tiles.add(new Tile("traffic.tile.bounce", bounceKnown ? Math.round(bounce) + "%" : Figures.DASH,
+                bounceChange ? signed(bounceDelta) + " pts" : Figures.DASH,
                 bounceChange ? trend(-bounceDelta) : ""));
 
         boolean timeKnown = now.visits() > 0;
         boolean timeChange = timeKnown && hasBefore && before.visits() > 0;
         double seconds = timeKnown ? (double) now.totalTimeSeconds() / now.visits() : 0;
         long timeDelta = timeChange ? Math.round(seconds - (double) before.totalTimeSeconds() / before.visits()) : 0;
-        tiles.add(new Tile("traffic.tile.time", timeKnown ? minutes(Math.round(seconds)) : DASH,
-                timeChange ? signed(timeDelta) + "s" : DASH, timeChange ? trend(timeDelta) : ""));
+        tiles.add(new Tile("traffic.tile.time", timeKnown ? minutes(Math.round(seconds)) : Figures.DASH,
+                timeChange ? signed(timeDelta) + "s" : Figures.DASH, timeChange ? trend(timeDelta) : ""));
         return tiles;
     }
 
     private static Tile countTile(String key, long now, long before, boolean hasBefore, Locale locale) {
-        String value = number(now, locale);
+        String value = Figures.number(now, locale);
         if (!hasBefore || before <= 0) {
-            return new Tile(key, value, DASH, "");
+            return new Tile(key, value, Figures.DASH, "");
         }
         long pct = Math.round(100.0 * (now - before) / before);
         return new Tile(key, value, signed(pct) + "%", trend(pct));
@@ -296,11 +295,6 @@ public record TrafficView(String period, List<String> periods, String tab, List<
 
     private static String minutes(long seconds) {
         return (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
-    }
-
-    /** A count in the reader's locale. */
-    public static String number(long value, Locale locale) {
-        return java.text.NumberFormat.getIntegerInstance(locale).format(value);
     }
 
     // ----------------------------------------------------------------- chart
@@ -398,7 +392,8 @@ public record TrafficView(String period, List<String> periods, String tab, List<
                 group = key.substring(0, colon);
                 label = key.substring(colon + 1);
             }
-            rows.add(new Row(group, label, "speed".equals(tab) ? speed(key, kc.value()) : number(kc.value(), locale)));
+            rows.add(new Row(group, label,
+                    "speed".equals(tab) ? speed(key, kc.value()) : Figures.number(kc.value(), locale)));
         }
         if ("devices".equals(tab)) {
             rows.sort(Comparator.comparingInt(r -> DEVICE_ORDER.indexOf(r.group())));

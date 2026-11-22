@@ -74,7 +74,7 @@ public class MenuModel implements Model {
             UserManager userManager = weblogger.getUserManager();
             boolean hasAdmin = userManager.checkPermission(adminPerm, pageRequest.getUser());
             if (pageRequest.isLoggedIn() && hasAdmin) {
-                return MenuHelper.getMenu("admin", "noAction", pageRequest.getUser(),
+                return MenuHelper.getMenu(MenuHelper.ADMIN_MENU, "noAction", pageRequest.getUser(),
                         pageRequest.getWeblog(), userManager);
             }
         } catch (WebloggerException ex) {
@@ -90,7 +90,7 @@ public class MenuModel implements Model {
      */
     public Menu getAuthorMenu() {
         if(pageRequest.isLoggedIn()) {
-            return MenuHelper.getMenu("editor", null, pageRequest.getUser(), pageRequest.getWeblog(),
+            return MenuHelper.getMenu(MenuHelper.EDITOR_MENU, null, pageRequest.getUser(), pageRequest.getWeblog(),
                     weblogger.getUserManager());
         }
         return null;

@@ -27,11 +27,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The one exemption is {@code ui.restapi.ProblemCode}, the code a rule
  * violation carries (the 2026-11-21 amendment); it is an enum with no web type.
- * Importing {@code ui.view} or other {@code ui.controllers} rule classes is
- * allowed: the rule is about web types and screens, not layering inside the UI
- * tier. The scanned set is every class in {@code ui.view} plus an explicit
- * list; a listed class that no longer exists fails, so a rename cannot
- * silently leave the scan.
+ * A rule class may import {@code ui.view} or other {@code ui.controllers} rule
+ * classes. A view model sits below the controllers: nothing in {@code ui.view}
+ * imports a {@code ui.controllers} type (spec 2026-11-21-foundation-cleanup-design,
+ * Task 3, item 7). The scanned set is every class in {@code ui.view} plus an
+ * explicit list; a listed class that no longer exists fails, so a rename
+ * cannot silently leave the scan.
  */
 class ScreenIndependenceTest {
 
@@ -42,8 +43,7 @@ class ScreenIndependenceTest {
             "controllers/SiteSettingsEffects.java", "controllers/AccountRules.java",
             "controllers/Memberships.java", "controllers/CategoryRules.java", "controllers/MediaRules.java",
             "controllers/ColumnWidths.java", "controllers/PageRules.java", "controllers/StrandChoice.java",
-            "controllers/EntryPinRules.java", "controllers/EntryListQuery.java",
-            "controllers/WeblogPermissionView.java", "controllers/editor/TrafficView.java",
+            "controllers/EntryPinRules.java", "controllers/editor/TrafficView.java",
             "controllers/admin/SiteTrafficView.java", "controllers/BusinessRules.java",
             "controllers/CustomDomainRules.java", "controllers/EntryFieldRules.java",
             "controllers/PasswordRules.java", "controllers/SharedThemeRules.java");
@@ -58,11 +58,18 @@ class ScreenIndependenceTest {
                         && !"com.wikantik.pressroom.ui.restapi.ProblemCode".equals(type);
     }
 
+    /** What a view model may not import: anything a rule class may not, and any {@code ui.controllers} type. */
+    static boolean forbiddenInView(String type) {
+        return forbidden(type) || type.startsWith("com.wikantik.pressroom.ui.controllers.");
+    }
+
+    /** The forbidden imports of {@code source}; {@code name} is relative to {@code ui/}, so a view model starts {@code view/}. */
     static List<String> violations(String name, String source) {
         List<String> found = new ArrayList<>();
+        boolean view = name.startsWith("view/");
         Matcher matcher = IMPORT.matcher(source);
         while (matcher.find()) {
-            if (forbidden(matcher.group(1))) {
+            if (view ? forbiddenInView(matcher.group(1)) : forbidden(matcher.group(1))) {
                 found.add(name + " imports " + matcher.group(1));
             }
         }
@@ -122,6 +129,14 @@ class ScreenIndependenceTest {
         assertEquals(List.of("Planted.java imports jakarta.servlet.http.HttpServletRequest"),
                 violations("Planted.java", planted));
         assertFalse(violations("Ok.java", "import java.util.List;").iterator().hasNext());
+    }
+
+    @Test
+    void aViewModelImportingAControllerTypeFails() {
+        String planted = "package x;\nimport com.wikantik.pressroom.ui.controllers.RuleViolation;\nclass Planted { }\n";
+        assertEquals(List.of("view/Planted.java imports com.wikantik.pressroom.ui.controllers.RuleViolation"),
+                violations("view/Planted.java", planted));
+        assertEquals(List.of(), violations("controllers/Planted.java", planted), "a rule class may import another");
     }
 
     @Test

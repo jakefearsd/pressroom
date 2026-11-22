@@ -40,7 +40,7 @@ import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.controllers.pagers.MediaFilePager;
-import com.wikantik.pressroom.ui.controllers.util.KeyValueObject;
+import com.wikantik.pressroom.ui.view.KeyValueObject;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

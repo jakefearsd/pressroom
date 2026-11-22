@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
+import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 
 /**
  * Tests for {@link MainMenuController}, the page a user lands on after signing
