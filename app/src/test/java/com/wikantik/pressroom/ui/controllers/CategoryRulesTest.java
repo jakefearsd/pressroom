@@ -31,8 +31,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -97,6 +99,19 @@ class CategoryRulesTest {
     @Test
     void theLengthIsJudgedBeforeTheEscaping() {
         assertEquals(ProblemCode.FIELD_TOO_LONG, CategoryRules.nameShapeProblem("&".repeat(256)).code());
+    }
+
+    /** An edit sending back the stored name, even one the rule now refuses, is not judged again. */
+    @Test
+    void anEditKeepsItsNameOnlyWhenTheNameIsExactlyTheStoredOne() {
+        WeblogCategory legacy = new WeblogCategory();
+        legacy.setName("Food & Open-Air Markets");
+
+        assertTrue(CategoryRules.keepsItsName(legacy, "Food & Open-Air Markets"));
+        assertFalse(CategoryRules.keepsItsName(legacy, "Food & Drink"));
+        assertFalse(CategoryRules.keepsItsName(legacy, " Food & Open-Air Markets"));
+        assertFalse(CategoryRules.keepsItsName(legacy, null));
+        assertFalse(CategoryRules.keepsItsName(null, "Food & Open-Air Markets"), "an add has no name to keep");
     }
 
     @Test

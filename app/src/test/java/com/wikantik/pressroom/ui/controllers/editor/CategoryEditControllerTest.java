@@ -209,6 +209,58 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogEntryManager()).saveWeblogCategory(existing);
     }
 
+    /**
+     * A name stored before 0.16.0 made names strict (production has 24 with
+     * an {@code &}, "Food & Open-Air Markets") stays editable: the screen
+     * sends it back unchanged with the rest of the form, and an unchanged
+     * name is not judged again, as on the API's PATCH (0.16.3).
+     */
+    @Test
+    void editKeepsALegacyNameTheRuleNowRefusesWhenItIsSentBackUnchanged() throws Exception {
+        WeblogCategory existing = categoryNamed("cat-1", "Food & Open-Air Markets");
+        weblog.getWeblogCategories().add(existing);
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(existing);
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Food & Open-Air Markets"))
+                .thenReturn(existing);
+
+        bean.setId("cat-1");
+        bean.setName("Food & Open-Air Markets");
+        bean.setDescription("Where to eat outdoors");
+
+        controller.categoryEditSave(request, model, bean, redirectAttributes);
+
+        assertTrue(errors(model).isEmpty(), "an unchanged legacy name must save: " + errors(model));
+        assertTrue(flashErrors(redirectAttributes).isEmpty(), "got: " + flashErrors(redirectAttributes));
+        assertEquals("Where to eat outdoors", existing.getDescription());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogCategory(existing);
+    }
+
+    /** Changing a legacy name, or giving any category a new one, is judged by the rule as before. */
+    @Test
+    void editStillRefusesAChangedNameThatBreaksTheRule() throws Exception {
+        WeblogCategory legacy = categoryNamed("cat-1", "Food & Open-Air Markets");
+        WeblogCategory plain = categoryNamed("cat-2", "Travel");
+        weblog.getWeblogCategories().add(legacy);
+        weblog.getWeblogCategories().add(plain);
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(legacy);
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-2")).thenReturn(plain);
+
+        for (String[] edit : new String[][] {{"cat-1", "Food & Drink"}, {"cat-2", "Travel & Food"}}) {
+            Model attempt = newModel();
+            CategoryBean changed = new CategoryBean();
+            changed.setId(edit[0]);
+            changed.setName(edit[1]);
+
+            controller.categoryEditSave(request, attempt, changed, newRedirectAttributes());
+
+            assertTrue(errors(attempt).contains("categoryForm.error.invalidName"),
+                    edit[1] + " must be refused, got: " + errors(attempt));
+        }
+        assertEquals("Food & Open-Air Markets", legacy.getName());
+        assertEquals("Travel", plain.getName());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
+    }
+
     @Test
     void editRejectsRenamingOntoAnotherCategorysName() throws Exception {
         WeblogCategory other = categoryNamed("cat-2", "Food");

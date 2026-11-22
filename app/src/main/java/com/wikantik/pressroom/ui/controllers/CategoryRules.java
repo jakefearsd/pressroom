@@ -76,6 +76,17 @@ public final class CategoryRules {
     }
 
     /**
+     * Whether an edit of {@code category} sends back the name it already has.
+     * Such a name is not judged again on either surface, so a name stored
+     * before a rule tightened (an {@code &}, before 0.16.0) stays editable;
+     * a new or changed name meets every rule. False when there is no
+     * category.
+     */
+    public static boolean keepsItsName(WeblogCategory category, String name) {
+        return category != null && name != null && name.equals(category.getName());
+    }
+
+    /**
      * A conflict when another category of {@code weblog} (not the one with
      * {@code excludingId}, null for none) already has {@code name}, by the
      * manager's by-name lookup. A lookup that fails throws: a caller that

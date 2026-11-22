@@ -95,7 +95,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             if (name.isBlank()) {
                 throw ApiException.problemOnField("name", ProblemCode.FIELD_BLANK, "name");
             }
-            if (!name.equals(category.getName())) {
+            if (!CategoryRules.keepsItsName(category, name)) {
                 refuse(CategoryRules.nameShapeProblem(name));
                 // The entity has no category-by-name lookup of its own (it would need the manager, which
                 // entities do not hold), so the rule goes through this controller's injected manager.

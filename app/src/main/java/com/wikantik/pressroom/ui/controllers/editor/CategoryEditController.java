@@ -71,7 +71,7 @@ public class CategoryEditController extends BaseController {
                                   RedirectAttributes redirectAttributes) {
         populateCommonModel(request, model, new Screen("categoryAdd", getText("categoryForm.add.title", request)));
 
-        myValidate(bean, true, request, model);
+        myValidate(bean, null, request, model);
 
         if (!hasErrors(model)) {
             try {
@@ -122,17 +122,16 @@ public class CategoryEditController extends BaseController {
                                    RedirectAttributes redirectAttributes) {
         populateCommonModel(request, model, new Screen("categoryEdit", getText("categoryForm.edit.title", request)));
 
-        myValidate(bean, false, request, model);
+        // Ownership-checked: bean.id is client input and the permission
+        // interceptor only vouches for the action weblog, so a global
+        // by-id lookup here let an editor rename another weblog's
+        // categories. Looked up before validating, which needs its name.
+        WeblogCategory category = lookupCategory(bean.getId(), request);
+        myValidate(bean, category, request, model);
 
         if (!hasErrors(model)) {
             try {
                 WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
-
-                // Ownership-checked: bean.id is client input and the permission
-                // interceptor only vouches for the action weblog, so a global
-                // by-id lookup here let an editor rename another weblog's
-                // categories.
-                WeblogCategory category = lookupCategory(bean.getId(), request);
                 if (category == null) {
                     addFlashError(redirectAttributes, "categoryForm.error.notFound", request);
                     return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
@@ -189,9 +188,15 @@ public class CategoryEditController extends BaseController {
         }
     }
 
-    private void myValidate(CategoryBean bean, boolean isAdd, HttpServletRequest request, Model model) {
-        RuleViolation problem = CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
-                isAdd ? null : bean.getId(), weblogger.getWeblogEntryManager());
+    /**
+     * {@code edited} is the category being edited, null on an add (or when
+     * the id names none of this weblog's). An edit that sends back the
+     * category's own name is not judged again, as on the API's PATCH.
+     */
+    private void myValidate(CategoryBean bean, WeblogCategory edited, HttpServletRequest request, Model model) {
+        RuleViolation problem = CategoryRules.keepsItsName(edited, bean.getName()) ? null
+                : CategoryRules.nameProblem(getActionWeblog(request), bean.getName(),
+                        edited == null ? null : edited.getId(), weblogger.getWeblogEntryManager());
         if (problem != null && problem.code() == ProblemCode.SERVER_INTERNAL_ERROR) {
             // Fail closed. A uniqueness check that could not run is not a check that passed: the
             // caller's hasErrors() gate would otherwise read the empty error list as "this name is free".
