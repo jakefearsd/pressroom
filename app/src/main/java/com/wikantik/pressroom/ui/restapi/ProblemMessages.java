@@ -3,6 +3,7 @@ package com.wikantik.pressroom.ui.restapi;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,9 +44,21 @@ public final class ProblemMessages {
      * own {@code messageSource} bean is: what a writer built without one
      * (a unit test, a static writer) renders from, so it localises as
      * production does.
+     *
+     * <p>The bundle loads through this class's own loader, the one that
+     * loaded the application and its {@code ApplicationResources}. Left to
+     * its default, a {@code ResourceBundleMessageSource} keeps the context
+     * class loader of the thread that built it, and a writer built once and
+     * kept (as {@code ApiScopeInterceptor}'s static one is) then depends on
+     * whichever thread first touched it: an embedded Tomcat's web-app loader,
+     * once that Tomcat stopped, turned every later refusal into a {@code
+     * MissingResourceException} (the 0.16.0 CI failure, {@code
+     * ApiProblemWriterTest}).
      */
+    @SuppressWarnings("PMD.UseProperClassLoader") // the context loader is the defect here: see above
     public static MessageSource applicationResources() {
         ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBundleClassLoader(ProblemMessages.class.getClassLoader());
         source.setBasename("ApplicationResources");
         source.setDefaultEncoding("UTF-8");
         return source;
@@ -89,12 +102,19 @@ public final class ProblemMessages {
      * which the source answers with {@code IllegalArgumentException}: an
      * error path never throws, or the advice's handler fails into a
      * non-problem 500 and a security writer's 401 becomes a container 500.
+     * A bundle the source cannot load at all ({@code MissingResourceException},
+     * which Spring lets through for a locale outside the JVM's own list, ROOT
+     * among them) renders the English for the same reason.
      */
     static Renderer renderer(MessageSource messages, Locale locale) {
         return (code, args) -> {
             try {
                 return messages.getMessage(code.key(), formats(code, args) ? args.toArray() : null, locale);
             } catch (NoSuchMessageException e) {
+                return english(code, args);
+            } catch (MissingResourceException unloadable) {
+                log.warn("The {} bundle for problem code {} will not load; rendering the English", locale,
+                        code.code(), unloadable);
                 return english(code, args);
             } catch (IllegalArgumentException malformed) {
                 log.warn("The {} text for problem code {} will not format; rendering the English", locale,

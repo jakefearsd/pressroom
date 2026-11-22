@@ -307,7 +307,12 @@ field error carries `code`, the last JSON member (so earlier members serialise a
   (`auth.unauthorized`, `auth.passwordNotAcceptedHere`, `auth.passwordRejected`), the access-denied
   handler (`auth.forbidden`), the throttle (`request.throttled`), the body limit (`request.tooLarge`)
   and `ApiScopeInterceptor`'s direct write use it (`SecurityChainProblemCodesTest`, French from the test
-  bundle). English only: `toProblem(instance)` for MCP, its tool errors and the endpoint's own 401
+  bundle). `applicationResources()` pins its bundle loader to `ProblemMessages`' own class loader:
+  Spring's default keeps the building thread's context loader, so `ApiScopeInterceptor`'s static
+  writer, first initialised on an embedded Tomcat thread by `ContextRefreshDoesNotBootstrapTest`, held
+  that Tomcat's web-app loader after it stopped and turned later 404s into 500s (0.16.0 CI, test-order
+  dependent). A bundle that will not load (`MissingResourceException`) also renders the English
+  (`ApiProblemWriterTest`). English only: `toProblem(instance)` for MCP, its tool errors and the endpoint's own 401
   (`mcp.tokenRequired`, decision 8). MCP is always English: `DispatchedRequest` exposes no
   `Accept-Language` (`DispatchedRequestTest` pins it).
 - **`ApiException.authenticationRequired()`** is the keyed 401 `Authentication required.`
