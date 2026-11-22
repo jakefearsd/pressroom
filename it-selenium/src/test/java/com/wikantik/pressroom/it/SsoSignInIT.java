@@ -23,17 +23,16 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.KeycloakLoginPage;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -519,21 +518,13 @@ class SsoSignInIT extends PressroomIT {
      * then repeats a row across a page boundary.
      */
     private List<JsonNode> accountsWithEmail(String email) throws Exception {
-        HttpResponse<String> minted = http.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/tokens"))
-                .timeout(Duration.ofSeconds(20))
-                .header("Authorization", adminBasicAuth())
-                .header("Content-Type", "application/json")
-                .POST(BodyPublishers.ofString("{\"label\":\"SsoSignInIT\",\"role\":\"ADMIN\"}"))
-                .build(), HttpResponse.BodyHandlers.ofString());
-        assertEquals(201, minted.statusCode(), minted.body());
-        JsonNode token = JSON.readTree(minted.body());
-        try {
+        try (AdminToken token = AdminToken.mint("SsoSignInIT", "ADMIN")) {
             Map<String, JsonNode> byName = new LinkedHashMap<>();
             for (int offset = 0; ; offset += PAGE_SIZE) {
                 HttpResponse<String> page = http.send(HttpRequest.newBuilder(URI.create(baseUrl()
                                 + "/api/v1/admin/users?limit=" + PAGE_SIZE + "&offset=" + offset))
                         .timeout(Duration.ofSeconds(20))
-                        .header("Authorization", "Bearer " + token.get("token").asString())
+                        .header("Authorization", token.bearer())
                         .GET().build(), HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, page.statusCode(), page.body());
                 JsonNode users = JSON.readTree(page.body());
@@ -546,12 +537,6 @@ class SsoSignInIT extends PressroomIT {
                     return new ArrayList<>(byName.values());
                 }
             }
-        } finally {
-            http.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/tokens/"
-                            + token.get("info").get("id").asString()))
-                    .timeout(Duration.ofSeconds(20))
-                    .header("Authorization", adminBasicAuth())
-                    .DELETE().build(), HttpResponse.BodyHandlers.discarding());
         }
     }
 
@@ -559,10 +544,6 @@ class SsoSignInIT extends PressroomIT {
         List<String> roles = new ArrayList<>();
         account.get("globalRoles").forEach(role -> roles.add(role.asString()));
         return roles;
-    }
-
-    private static String adminBasicAuth() {
-        return "Basic " + Base64.getEncoder().encodeToString((ADMIN_USERNAME + ":" + ADMIN_PASSWORD).getBytes(UTF_8));
     }
 
     // ---------------------------------------------------------- user admin

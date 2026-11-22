@@ -8,13 +8,13 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.wikantik.pressroom.it.support.AdminToken;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -51,7 +51,7 @@ class McpIT extends PressroomIT {
 
     @Test
     void initializeAnswersAsPressroomWithNoSession() throws Exception {
-        Token token = mint("McpIT initialize", "ADMIN", null);
+        AdminToken token = AdminToken.mint("McpIT initialize", "ADMIN", null);
         try {
             HttpResponse<String> response = post(token.raw(), rpcBody("initialize", Map.of(
                     "protocolVersion", "2025-06-18",
@@ -62,13 +62,13 @@ class McpIT extends PressroomIT {
             assertEquals("pressroom", result.get("serverInfo").get("name").asString(), response.body());
             assertTrue(response.headers().firstValue("Mcp-Session-Id").isEmpty(), "stateless: no session id");
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void anEntryRoundTripThroughMcpAloneMatchesRest() throws Exception {
-        Token token = mint("McpIT round trip", "ADMIN", null);
+        AdminToken token = AdminToken.mint("McpIT round trip", "ADMIN", null);
         String id = null;
         try {
             JsonNode created = callTool(token.raw(), "entries", Map.of("action", "create",
@@ -98,15 +98,15 @@ class McpIT extends PressroomIT {
                 restSend(token.raw(), "POST",
                         "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
             }
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void errorsThroughMcpCarryTheApisOwnStatusAndDetail() throws Exception {
-        Token read = mint("McpIT read", "READ", null);
-        Token pinned = mint("McpIT pinned", "POST", WEBLOG_HANDLE);
-        Token unpinned = mint("McpIT unpinned", "POST", null);
+        AdminToken read = AdminToken.mint("McpIT read", "READ", null);
+        AdminToken pinned = AdminToken.mint("McpIT pinned", "POST", WEBLOG_HANDLE);
+        AdminToken unpinned = AdminToken.mint("McpIT unpinned", "POST", null);
         try {
             JsonNode readWrite = callTool(read.raw(), "entries", Map.of("action", "create",
                     "weblog", WEBLOG_HANDLE, "title", "t", "text", "x"));
@@ -126,9 +126,9 @@ class McpIT extends PressroomIT {
             assertTrue(isError(adminOnly));
             assertEquals(403, JSON.readTree(text(adminOnly)).get("status").asInt());
         } finally {
-            revoke(read.id());
-            revoke(pinned.id());
-            revoke(unpinned.id());
+            AdminToken.revoke(read.id());
+            AdminToken.revoke(pinned.id());
+            AdminToken.revoke(unpinned.id());
         }
     }
 
@@ -155,7 +155,7 @@ class McpIT extends PressroomIT {
     void basicCredentialsAreRefused() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
                 .timeout(Duration.ofSeconds(20))
-                .header("Authorization", basicAuth())
+                .header("Authorization", AdminToken.adminBasic())
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json, text/event-stream")
                 .POST(BodyPublishers.ofString(rpcBody("tools/list", Map.of())))
@@ -168,7 +168,7 @@ class McpIT extends PressroomIT {
 
     @Test
     void aForeignOriginIsRefusedAndAnOversizedBodyIsRefused() throws Exception {
-        Token token = mint("McpIT origin", "READ", null);
+        AdminToken token = AdminToken.mint("McpIT origin", "READ", null);
         try {
             HttpResponse<String> foreign = post(token.raw(), rpcBody("tools/list", Map.of()),
                     Map.of("Origin", "https://evil.example"));
@@ -178,22 +178,20 @@ class McpIT extends PressroomIT {
             // up to the cap, refuses with 413, and the few KiB left unread are swallowed by Tomcat,
             // so the 413 always arrives. (A known oversize Content-Length is refused unread, and
             // Tomcat closes the connection over more than its 2 MiB maxSwallowSize: a client may see
-            // a reset.) The cap is McpServerConfig.MAX_REQUEST_BYTES, which is
-            // ApiBodyLimitFilter.MAX_BODY_BYTES (3 * ColumnLimits.ENTRY_TEXT + 1 MiB); this module
-            // cannot import the app's classes, so the value is repeated here: move it with them.
-            int mcpCapBytes = 3 * 1_000_000 + 1024 * 1024;
+            // a reset.) The cap is what the app itself reports in GET /api/v1/meta.
+            int mcpCapBytes = limit(token, "maxBodyBytes");
             byte[] huge = rpcBody("tools/call", Map.of("name", "whoami",
                     "arguments", Map.of("pad", "x".repeat(mcpCapBytes + 1024)))).getBytes(UTF_8);
             assertEquals(413, post(token.raw(),
                     BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(huge)), Map.of()).statusCode());
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void getAndDeleteAreNotAllowed() throws Exception {
-        Token token = mint("McpIT methods", "READ", null);
+        AdminToken token = AdminToken.mint("McpIT methods", "READ", null);
         try {
             for (String method : new String[] {"GET", "DELETE"}) {
                 HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
@@ -203,14 +201,14 @@ class McpIT extends PressroomIT {
                 assertEquals(405, response.statusCode(), method);
             }
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void aToolCallCostsOneThrottleUnitNotTwo() throws Exception {
         // 120 per 60 s per token. Counted twice, call 61 would be throttled.
-        Token token = mint("McpIT throttle", "READ", null);
+        AdminToken token = AdminToken.mint("McpIT throttle", "READ", null);
         try {
             for (int i = 0; i < 70; i++) {
                 HttpResponse<String> response = post(token.raw(),
@@ -218,13 +216,13 @@ class McpIT extends PressroomIT {
                 assertEquals(200, response.statusCode(), "call " + (i + 1) + ": " + response.body());
             }
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void toolsListHasTheFifteenToolsAndTheInstructionsArrive() throws Exception {
-        Token token = mint("McpIT list", "READ", null);
+        AdminToken token = AdminToken.mint("McpIT list", "READ", null);
         try {
             HttpResponse<String> listed = post(token.raw(), rpcBody("tools/list", Map.of()), Map.of());
             JsonNode tools = JSON.readTree(listed.body()).get("result").get("tools");
@@ -235,13 +233,13 @@ class McpIT extends PressroomIT {
             assertTrue(JSON.readTree(init.body()).get("result").get("instructions").asString()
                     .contains("admin UI"), init.body());
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void theEntriesPubTimeDescriptionIsTheOpenApiDocumentsText() throws Exception {
-        Token token = mint("McpIT openapi", "READ", null);
+        AdminToken token = AdminToken.mint("McpIT openapi", "READ", null);
         try {
             JsonNode openapi = JSON.readTree(restGet(token.raw(), "/api/v1/openapi.json").body());
             String apiText = openapi.at("/components/schemas/EntryWrite/properties/pubTime/description").asString();
@@ -258,13 +256,13 @@ class McpIT extends PressroomIT {
             assertNotNull(entries, "tools/list names the entries tool");
             assertEquals(apiText, entries.at("/inputSchema/properties/pubTime/description").asString());
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void aPathValueThatWouldLeaveItsSegmentIsRefusedAndNothingChanges() throws Exception {
-        Token token = mint("McpIT segment", "ADMIN", null);
+        AdminToken token = AdminToken.mint("McpIT segment", "ADMIN", null);
         try {
             String before = restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE).body();
 
@@ -276,13 +274,13 @@ class McpIT extends PressroomIT {
             assertEquals(JSON.readTree(before),
                     JSON.readTree(restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE).body()));
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     void adminAccountsCannotBeChangedThroughMcpOrRest() throws Exception {
-        Token token = mint("McpIT admin rule", "ADMIN", null);
+        AdminToken token = AdminToken.mint("McpIT admin rule", "ADMIN", null);
         try {
             JsonNode viaMcp = callTool(token.raw(), "users",
                     Map.of("action", "update", "userName", ADMIN_USERNAME, "enabled", false));
@@ -298,7 +296,7 @@ class McpIT extends PressroomIT {
             JsonNode who = callTool(token.raw(), "whoami", Map.of());
             assertFalse(isError(who), "the admin account is still enabled: " + who);
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
@@ -307,7 +305,7 @@ class McpIT extends PressroomIT {
     @Test
     @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
     void aNewWeblogIsCreatedConfiguredAndPublishedThroughMcpAlone() throws Exception {
-        Token token = mint("McpIT new weblog", "ADMIN", null);
+        AdminToken token = AdminToken.mint("McpIT new weblog", "ADMIN", null);
         String handle = "mcpit" + (System.nanoTime() % 1_000_000_000L);
         try {
             JsonNode created = callTool(token.raw(), "weblogs", Map.of("action", "create", "handle", handle,
@@ -352,7 +350,7 @@ class McpIT extends PressroomIT {
             assertTrue(listed, me.toString());
         } finally {
             removeWeblog(handle);
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
@@ -363,7 +361,7 @@ class McpIT extends PressroomIT {
     @Test
     @ResourceLock(PressroomIT.GLOBAL_CONFIG)
     void importingFromAnInternalAddressIsRefused() throws Exception {
-        Token token = mint("McpIT import refusals", "POST", WEBLOG_HANDLE);
+        AdminToken token = AdminToken.mint("McpIT import refusals", "POST", WEBLOG_HANDLE);
         loginAsAdmin();
         boolean uploadsWere = false;
         try {
@@ -379,16 +377,16 @@ class McpIT extends PressroomIT {
         } finally {
             setGlobalFlag("uploads.enabled", uploadsWere);
             logout();
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
     @Test
     @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
     void creatingAWeblogWithAPinnedOrReadTokenIsRefusedAndCreatesNothing() throws Exception {
-        Token pinned = mint("McpIT create pinned", "POST", WEBLOG_HANDLE);
-        Token read = mint("McpIT create read", "READ", null);
-        Token admin = mint("McpIT create check", "ADMIN", null);
+        AdminToken pinned = AdminToken.mint("McpIT create pinned", "POST", WEBLOG_HANDLE);
+        AdminToken read = AdminToken.mint("McpIT create read", "READ", null);
+        AdminToken admin = AdminToken.mint("McpIT create check", "ADMIN", null);
         String handle = "mcpit" + (System.nanoTime() % 1_000_000_000L);
         try {
             Map<String, Object> args = Map.of("action", "create", "handle", handle,
@@ -407,9 +405,9 @@ class McpIT extends PressroomIT {
             assertEquals(404, restGet(admin.raw(), "/api/v1/weblogs/" + handle).statusCode(),
                     "neither refused call created the weblog");
         } finally {
-            revoke(pinned.id());
-            revoke(read.id());
-            revoke(admin.id());
+            AdminToken.revoke(pinned.id());
+            AdminToken.revoke(read.id());
+            AdminToken.revoke(admin.id());
         }
     }
 
@@ -430,7 +428,7 @@ class McpIT extends PressroomIT {
     /** Criterion 21: field errors arrive through MCP unchanged, at whichever context path the suite runs. */
     @Test
     void aRefusedWriteThroughMcpListsEveryBadField() throws Exception {
-        Token token = mint("McpIT field errors", "POST", null);
+        AdminToken token = AdminToken.mint("McpIT field errors", "POST", null);
         try {
             JsonNode refused = callTool(token.raw(), "entries", Map.of("action", "create",
                     "weblog", WEBLOG_HANDLE, "title", "t", "text", "x",
@@ -445,14 +443,52 @@ class McpIT extends PressroomIT {
             assertEquals(Set.of("category", "geoLatitude"), Set.copyOf(fields));
             assertTrue(problem.get("detail").asString().contains("it is one of:"));
         } finally {
-            revoke(token.id());
+            AdminToken.revoke(token.id());
+        }
+    }
+
+    /**
+     * An entry of exactly the maximum text length is stored and read back intact through MCP;
+     * one character more is refused as field.tooLong (400) on the text field, and creates nothing.
+     */
+    @Test
+    void anEntryAtTheMaximumLengthRoundTripsAndOneMoreIsRefused() throws Exception {
+        AdminToken token = AdminToken.mint("McpIT max length", "POST", null);
+        String id = null;
+        try {
+            int max = limit(token, "entryTextMaxChars");
+            String text = "a".repeat(max);
+            JsonNode created = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "McpIT max length " + System.nanoTime(), "text", text));
+            assertFalse(isError(created), created.toString().substring(0, Math.min(400, created.toString().length())));
+            id = JSON.readTree(text(created)).get("id").asString();
+
+            JsonNode got = callTool(token.raw(), "entries",
+                    Map.of("action", "get", "weblog", WEBLOG_HANDLE, "id", id));
+            assertFalse(isError(got));
+            assertEquals(text, JSON.readTree(text(got)).get("text").asString(), "the stored text is intact");
+
+            JsonNode over = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "McpIT over length", "text", text + "a"));
+            assertTrue(isError(over));
+            JsonNode problem = JSON.readTree(text(over));
+            assertEquals(400, problem.get("status").asInt());
+            assertEquals("field.tooLong", problem.get("code").asString());
+            assertEquals("text", problem.get("errors").get(0).get("field").asString());
+        } finally {
+            if (id != null) {
+                restSend(token.raw(), "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id, null);
+                restSend(token.raw(), "POST",
+                        "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
+            }
+            AdminToken.revoke(token.id());
         }
     }
 
     /** Criterion 21: a chosen anchor is the permalink's last segment, and a second claim is a 409. */
     @Test
     void anAnchorChosenThroughMcpIsThePermalinkAndCannotBeClaimedTwice() throws Exception {
-        Token token = mint("McpIT anchor", "POST", null);
+        AdminToken token = AdminToken.mint("McpIT anchor", "POST", null);
         String anchor = "mcpit-anchor-" + System.nanoTime();
         String id = null;
         try {
@@ -475,39 +511,16 @@ class McpIT extends PressroomIT {
                 restSend(token.raw(), "POST",
                         "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
             }
-            revoke(token.id());
+            AdminToken.revoke(token.id());
         }
     }
 
 
-    record Token(String id, String raw) { }
-
-    Token mint(String label, String role, String weblog) throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("label", label);
-        body.put("role", role);
-        if (weblog != null) {
-            body.put("weblog", weblog);
-        }
-        HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/tokens"))
-                .timeout(Duration.ofSeconds(20))
-                .header("Authorization", basicAuth())
-                .header("Content-Type", "application/json")
-                .POST(BodyPublishers.ofString(JSON.writeValueAsString(body)))
-                .build(), HttpResponse.BodyHandlers.ofString());
-        assertEquals(201, response.statusCode(), response.body());
-        JsonNode json = JSON.readTree(response.body());
-        return new Token(json.get("info").get("id").asString(), json.get("token").asString());
-    }
-
-    void revoke(String id) throws Exception {
-        client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/tokens/" + id))
-                .timeout(Duration.ofSeconds(20)).header("Authorization", basicAuth()).DELETE().build(),
-                HttpResponse.BodyHandlers.discarding());
-    }
-
-    static String basicAuth() {
-        return "Basic " + Base64.getEncoder().encodeToString((ADMIN_USERNAME + ":" + ADMIN_PASSWORD).getBytes());
+    /** One of the API's size limits, as the running app reports it in {@code GET /api/v1/meta}: the app is the one source. */
+    int limit(AdminToken token, String name) throws Exception {
+        HttpResponse<String> meta = restGet(token.raw(), "/api/v1/meta");
+        assertEquals(200, meta.statusCode(), meta.body());
+        return JSON.readTree(meta.body()).get("limits").get(name).asInt();
     }
 
     static String rpcBody(String method, Object params) throws Exception {

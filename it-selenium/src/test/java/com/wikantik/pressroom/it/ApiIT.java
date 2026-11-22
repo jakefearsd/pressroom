@@ -290,7 +290,7 @@ class ApiIT extends PressroomIT {
     void pathTricksDoNotWidenBasicOnTheRealContainer() throws Exception {
         for (String path : new String[] {"/api/v1/tokens/../me", "/api/v1/tokens/%2E%2E/me",
                 "/api/v1/%74okens", "/api/v1/tokens;x=1", "/api/v1/tokens;x=1/../me", "/api/v1/tokensX",
-                "/api/v1/tokens/abc%2Fdef", "/api/v1/tokens/abc%2F..%2F..%2Fme", "/api/v1/tokens/"}) {
+                "/api/v1/tokens//../me", "/api/v1/tokens/abc%2Fdef", "/api/v1/tokens/abc%2F..%2F..%2Fme", "/api/v1/tokens/"}) {
             HttpResponse<String> response = getWithAuthorization(path, basicAuthHeader());
             int status = response.statusCode();
             String body = response.body();
