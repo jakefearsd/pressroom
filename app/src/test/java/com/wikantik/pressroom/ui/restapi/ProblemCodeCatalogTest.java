@@ -170,6 +170,7 @@ class ProblemCodeCatalogTest {
                         "user.nameHasDisallowedCharacters",
                         "user.emailRequired",
                         "user.emailInvalid",
+                        "user.emailUiOnly",
                         "user.mailNotConfigured",
                         "user.passwordLinkNotSent",
                         "config.propertiesRequired",

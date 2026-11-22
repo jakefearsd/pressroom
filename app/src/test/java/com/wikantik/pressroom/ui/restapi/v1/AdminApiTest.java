@@ -22,6 +22,10 @@ import com.wikantik.pressroom.testing.AdminLogCapture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.mockito.MockedStatic;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -87,6 +91,19 @@ class AdminApiTest {
     // transport), which need the real bootstrapped Weblogger to control
     // deterministically and are isolated below.
     // -----------------------------------------------------------------
+
+    /** The admin UI's own login: the one caller kind that may change another user's email address. */
+    private static void asSession() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("boss", "x",
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN"));
+        auth.setDetails(new WebAuthenticationDetails("127.0.0.1", null));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     private MockMvc mockMvc(AdminApi controller) {
         return MockMvcBuilders.standaloneSetup(controller)
@@ -246,6 +263,7 @@ class AdminApiTest {
 
     @Test
     void patchWithSeveralBadFieldsNamesEveryOneAndSavesNothing() throws Exception {
+        asSession();
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
@@ -545,6 +563,7 @@ class AdminApiTest {
 
     @Test
     void patchUpdatesEnabledScreenNameAndEmail() throws Exception {
+        asSession();
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
@@ -569,6 +588,7 @@ class AdminApiTest {
 
     @Test
     void patchRejectsAMalformedEmailAddress() throws Exception {
+        asSession();
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
@@ -602,6 +622,7 @@ class AdminApiTest {
 
     @Test
     void patchRejectsAnEmailAddressLongerThanTheColumn() throws Exception {
+        asSession();
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");
         when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);

@@ -47,6 +47,38 @@ class AdminAccountGuardTest {
         assertEquals("Admin accounts are managed in the admin UI.", AdminAccountGuard.DETAIL);
     }
 
+    @ParameterizedTest
+    @EnumSource(value = Kind.class, names = "SESSION", mode = EnumSource.Mode.EXCLUDE)
+    void anotherUsersEmailChangeIsRefusedWith403ForEveryCallerButASession(Kind kind) {
+        User user = new User();
+        user.setEmailAddress("bob@example.com");
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> AdminAccountGuard.requireEmailChangeAllowed(caller(kind), user, "new@example.com"));
+
+        assertEquals(403, ex.getStatus());
+        assertEquals("Email addresses are changed in the admin UI.", ex.getMessage());
+    }
+
+    @ParameterizedTest
+    @EnumSource(Kind.class)
+    void anAbsentOrUnchangedEmailPassesForEveryCaller(Kind kind) {
+        User user = new User();
+        user.setEmailAddress("bob@example.com");
+
+        assertDoesNotThrow(() -> AdminAccountGuard.requireEmailChangeAllowed(caller(kind), user, null));
+        assertDoesNotThrow(() -> AdminAccountGuard.requireEmailChangeAllowed(caller(kind), user, " bob@example.com "));
+    }
+
+    @Test
+    void aSessionMayChangeAnotherUsersEmail() {
+        User user = new User();
+        user.setEmailAddress("bob@example.com");
+
+        assertDoesNotThrow(() -> AdminAccountGuard.requireEmailChangeAllowed(
+                caller(Kind.SESSION), user, "new@example.com"));
+    }
+
     @Test
     void aSessionMayChangeAnAdminAccount() throws Exception {
         assertDoesNotThrow(() -> AdminAccountGuard.requireNotAdmin(

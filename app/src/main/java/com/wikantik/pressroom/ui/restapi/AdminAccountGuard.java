@@ -63,6 +63,26 @@ public final class AdminAccountGuard {
     }
 
     /**
+     * Another user's email address is the recovery channel for their account,
+     * so changing it is the admin UI's alone (owner decision 2026-11-21): a
+     * site-admin token that could re-address an ordinary account could
+     * take it over with a password reset. Refuses, before anything is
+     * applied, a non-session caller whose request carries an
+     * {@code emailAddress} that differs from the stored one; resending the
+     * stored address unchanged, or sending none, passes.
+     *
+     * @param requested the request's {@code emailAddress}, or null when absent
+     */
+    public static void requireEmailChangeAllowed(Caller caller, User user, String requested) {
+        if (isSession(caller) || requested == null) {
+            return;
+        }
+        if (!requested.trim().equals(user.getEmailAddress())) {
+            throw ApiException.problem(ProblemCode.USER_EMAIL_UI_ONLY);
+        }
+    }
+
+    /**
      * Runtime settings the API reads but never writes. site.absoluteurl is
      * the base of every password-reset and set-password link the mailer
      * builds: a stolen or prompt-injected admin token that could point it at

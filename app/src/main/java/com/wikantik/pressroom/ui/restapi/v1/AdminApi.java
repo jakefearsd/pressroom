@@ -213,6 +213,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         Caller caller = Caller.current();
         AdminAccountGuard.requireNotAgent(caller, user);
         AdminAccountGuard.requireNotAdmin(caller, mgr, user);
+        AdminAccountGuard.requireEmailChangeAllowed(caller, user, body.emailAddress());
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
 
         // Each value is set only when it passes: the user is a managed entity.

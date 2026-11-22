@@ -160,7 +160,7 @@ public final class McpToolCatalog {
                     action("list", "List users and their roles.", "GET /v1/admin/users"),
                     action("create", "Create an account; it is emailed a link to set its password.",
                             "POST /v1/admin/users"),
-                    action("update", "Change a non-admin account's email, screen name or enabled flag.",
+                    action("update", "Change a non-admin account's screen name or enabled flag; its email is changed in the admin UI.",
                             "PATCH /v1/admin/users/{userName}")),
             tool("businesses", "Site-wide business profiles that blogs show as schema.org data. Needs a site "
                     + "admin and an ADMIN token.", false,

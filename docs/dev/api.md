@@ -739,7 +739,8 @@ writable):
 - agent accounts (create, change, site-admin switch, their tokens);
 - admin accounts and the admin role (any change);
 - weblog membership writes (grant, change level, remove);
-- profile writes (email, password, names, locale);
+- profile writes (email, password, names, locale), and another user's email address on
+  `PATCH /v1/admin/users/{userName}` (a rule, not a missing route: see below);
 - the site-wide token list (every user's tokens, revoke any);
 - weblog deletion;
 - custom templates and stylesheets;
@@ -752,8 +753,13 @@ authorization-matrix row shows 403 for every token caller. **Session writes on `
 protection first**: the API chains are CSRF-free today because they are stateless and bearer-only.
 Moving a resource on or off this list is a new decision naming its threat.
 
-Not on the list, accepted for now: a site-admin token may still create ordinary accounts, enable or
-disable them and edit their email address and screen name via `/v1/admin/users` (`AdminApi`); the account
-guard keeps admin and agent accounts out and creation sends a set-password link. **Open question for the
-owner: should another user's email change be session-only?** (The profile row's takeover reasoning covers
-the caller's own profile only.)
+Not on the list: a site-admin token may still create ordinary accounts and enable or disable them, and edit
+their screen name, via `/v1/admin/users` (`AdminApi`); the account guard keeps admin and agent accounts out
+and creation sends a set-password link.
+
+**Decided (owner, 2026-11-21): another user's email change is session-only.** The address is where reset
+links go, so re-addressing an ordinary account is a takeover. `AdminAccountGuard.requireEmailChangeAllowed`
+refuses any non-`SESSION` caller (fail closed) whose `PATCH /v1/admin/users/{userName}` body carries an
+`emailAddress` that differs from the stored one, 403 `user.emailUiOnly`, before anything is applied (no
+partial update; the same body's `screenName` is not saved either). Resending the stored address unchanged
+passes. MCP delegates to the route, so it answers the same.

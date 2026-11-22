@@ -10,6 +10,11 @@ import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,6 +48,19 @@ class AdminApiBranchesTest {
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
         return MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
+    }
+
+    /** The admin UI's own login: the one caller kind that may change another user's email address. */
+    private static void asSession() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("boss", "x",
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN"));
+        auth.setDetails(new WebAuthenticationDetails("127.0.0.1", null));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private static Weblogger weblogger() {
@@ -323,6 +341,7 @@ class AdminApiBranchesTest {
 
     @Test
     void aPatchWithAMalformedEmailAddressNamesTheEmailAddressField() throws Exception {
+        asSession();
         assertEquals("emailAddress", firstErrorField(patchUserRefused("{\"emailAddress\":\"not-an-address\"}")));
     }
 

@@ -14,6 +14,11 @@ import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import jakarta.mail.MessagingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.mockito.MockedStatic;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -30,6 +35,9 @@ import static com.wikantik.pressroom.ui.restapi.v1.ProblemAsserts.problem;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -59,6 +67,19 @@ class AdminProblemCodesTest {
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
+    }
+
+    /** The admin UI's own login: the one caller kind that may change another user's email address. */
+    private static void asSession() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("boss", "x",
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN"));
+        auth.setDetails(new WebAuthenticationDetails("127.0.0.1", null));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private JsonNode answer(ResultMatcher status, MockHttpServletRequestBuilder request) throws Exception {
@@ -126,6 +147,7 @@ class AdminProblemCodesTest {
 
     @Test
     void theUserPatchRefusalsHaveTheirCodes() throws Exception {
+        asSession();
         problem(answer(status().isNotFound(), patch("/v1/admin/users/nobody").content("{}")),
                 "user.notFound", "No such user.");
         user("bob");
@@ -133,6 +155,48 @@ class AdminProblemCodesTest {
                 "emailAddress", "user.emailInvalid", "emailAddress is not a valid address.");
         oneField(answer(status().isBadRequest(), patch("/v1/admin/users/bob").content("{\"screenName\":\" \"}")),
                 "screenName", "field.blank", "screenName cannot be blank.");
+    }
+
+    @Test
+    void aNonSessionCallerChangingAnotherUsersEmailIsRefusedAndNothingIsSaved() throws Exception {
+        User bob = user("bob");
+        bob.setEmailAddress("bob@example.com");
+        bob.setScreenName("Bob");
+
+        problem(answer(status().isForbidden(), patch("/v1/admin/users/bob")
+                        .content("{\"emailAddress\":\"new@example.com\"}")),
+                "user.emailUiOnly", "Email addresses are changed in the admin UI.");
+        problem(answer(status().isForbidden(), patch("/v1/admin/users/bob")
+                        .content("{\"emailAddress\":\"new@example.com\",\"screenName\":\"Robert\"}")),
+                "user.emailUiOnly", "Email addresses are changed in the admin UI.");
+
+        assertEquals("bob@example.com", bob.getEmailAddress());
+        assertEquals("Bob", bob.getScreenName());
+        verify(users, never()).saveUser(any());
+    }
+
+    @Test
+    void aNonSessionCallerMayResendTheStoredEmailAndChangeTheScreenName() throws Exception {
+        User bob = user("bob");
+        bob.setEmailAddress("bob@example.com");
+
+        answer(status().isOk(), patch("/v1/admin/users/bob")
+                .content("{\"emailAddress\":\"bob@example.com\",\"screenName\":\"Robert\"}"));
+
+        assertEquals("Robert", bob.getScreenName());
+        verify(users).saveUser(bob);
+    }
+
+    @Test
+    void aSessionMayChangeAnotherUsersEmail() throws Exception {
+        asSession();
+        User bob = user("bob");
+        bob.setEmailAddress("bob@example.com");
+
+        answer(status().isOk(), patch("/v1/admin/users/bob").content("{\"emailAddress\":\"new@example.com\"}"));
+
+        assertEquals("new@example.com", bob.getEmailAddress());
+        verify(users).saveUser(bob);
     }
 
     @Test

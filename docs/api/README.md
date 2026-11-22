@@ -92,6 +92,8 @@ Additive or narrower changes:
   two files of one name in a directory. See [Media](#media).
 - New: `POST /api/v1/weblogs/{handle}/media/{id}/crop` and the MCP `media`
   `crop` action. It cannot be undone. See [Cropping an image](#cropping-an-image).
+- A token can no longer change another user's email address: `PATCH /api/v1/admin/users/{userName}`
+  answers 403 `user.emailUiOnly` for a changed `emailAddress`. See [Site administration](#site-administration).
 - `emailAddress` on the admin user routes is judged as the admin UI judges
   it, and `PATCH /api/v1/admin/config` applies the Global Config screen's
   rules. See [Site administration](#site-administration).
@@ -602,6 +604,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `user.nameHasDisallowedCharacters` | 400 | `invalid-request` | `userName` holds a character the site does not allow in user names. |
 | `user.emailRequired` | 400 | `invalid-request` | A user create has no `emailAddress`, or one that is not an address. |
 | `user.emailInvalid` | 400 | `invalid-request` | A user update's `emailAddress` is not an address. |
+| `user.emailUiOnly` | 403 | `forbidden` | A user update changes `emailAddress`; another user's email address is changed in the admin UI only. |
 | `user.mailNotConfigured` | 400 | `invalid-request` | A user create on a site with no mail set up: the set-password link could not be sent. |
 | `user.passwordLinkNotSent` | 502 | `upstream-failure` | The account was created, disabled, but its set-password mail failed. |
 | `config.propertiesRequired` | 400 | `invalid-request` | A settings PATCH named no setting. |
@@ -2085,6 +2088,12 @@ than creating an account with no way to ever reach a usable password.
 > `emailAddress`. An address on a top-level domain newer than the server's
 > validator is refused until Pressroom is upgraded.
 
+> **Changed in 0.16.0: another user's email address is session-only.** A token cannot change it:
+> `PATCH /api/v1/admin/users/{userName}` with an `emailAddress` that differs from the stored one answers 403
+> `user.emailUiOnly`, before anything is applied (a `screenName` or `enabled` sent alongside is not saved
+> either). Resending the stored address unchanged is accepted. `screenName`, `enabled` and account creation
+> are unchanged. The MCP `users` `update` action answers the same.
+
 The user view (`UserView`) carries these fields:
 
 | Field | Meaning |
@@ -2339,7 +2348,7 @@ through MCP: minting, listing or revoking tokens, uploading media from local fil
 
 A person does these in the admin UI; no token can, and the API has no route for them (weblog memberships
 can be read with a token, not changed): agent accounts, changes to admin accounts or the admin role, weblog
-membership changes, profile changes (email, password, names, locale), the site-wide token list,
+membership changes, profile changes (email, password, names, locale), another user's email address, the site-wide token list,
 deleting a weblog, custom templates and stylesheets, and the contact-form inbox. They are reserved for
 an interactive signed-in session by design; a future session-based admin client will cover them.
 

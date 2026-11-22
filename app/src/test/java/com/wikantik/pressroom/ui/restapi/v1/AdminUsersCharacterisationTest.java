@@ -9,6 +9,10 @@ import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.mockito.MockedStatic;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -74,6 +78,7 @@ class AdminUsersCharacterisationTest {
 
     @AfterEach
     void tearDown() {
+        SecurityContextHolder.clearContext();
         mailer.close();
     }
 
@@ -313,6 +318,11 @@ class AdminUsersCharacterisationTest {
     }
 
     private String patched(String json, int status) throws Exception {
+        // The admin UI's own login: only a session may change another user's email address.
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("boss", "x",
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN"));
+        auth.setDetails(new WebAuthenticationDetails("127.0.0.1", null));
+        SecurityContextHolder.getContext().setAuthentication(auth);
         return mvc.perform(patch("/v1/admin/users/alice").contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(r -> assertEquals(status, r.getResponse().getStatus(), r.getResponse().getContentAsString()))
                 .andReturn().getResponse().getContentAsString();

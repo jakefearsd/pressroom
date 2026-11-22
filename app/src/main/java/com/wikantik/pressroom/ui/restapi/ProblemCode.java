@@ -269,6 +269,8 @@ public enum ProblemCode {
     USER_EMAIL_REQUIRED("user.emailRequired", ProblemType.INVALID_REQUEST, 0),
     /** A user update's {@code emailAddress} is not an address. */
     USER_EMAIL_INVALID("user.emailInvalid", ProblemType.INVALID_REQUEST, 0),
+    /** Another user's email address is changed in the admin UI only (owner decision 2026-11-21). */
+    USER_EMAIL_UI_ONLY("user.emailUiOnly", ProblemType.FORBIDDEN, 0),
     /** A user create on a site with no mail set up: the set-password link could not be sent. */
     USER_MAIL_NOT_CONFIGURED("user.mailNotConfigured", ProblemType.INVALID_REQUEST, 0),
     /** The account was created, disabled, but its set-password mail failed. */

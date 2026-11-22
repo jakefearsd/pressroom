@@ -31,12 +31,16 @@ have no API route.
 | Custom templates and stylesheets | Template output is not sanitized: it bypasses `HTMLSanitizer`, the one content boundary, so a template write is script on every page of the blog. |
 | The contact-form inbox (read or delete) | Readers' personal details and messages: third-party personal data, and text written by strangers handed to agents. |
 
-**Not covered by this list (accepted for now).** A site-admin token can still create ordinary accounts
-and enable or disable them, and edit another ordinary user's email address and screen name, through
-`POST`/`PATCH /v1/admin/users`. This is accepted because the account guard keeps admin and agent
-accounts out of those routes and creation sends a set-password link rather than choosing a password. The
-"account takeover" reasoning in the profile row applies to the caller's own profile only.
-**Open question for the owner: should another user's email change be session-only?**
+**Not on this list.** A site-admin token can still create ordinary accounts, enable or disable them and
+edit another ordinary user's screen name through `POST`/`PATCH /v1/admin/users`: the account guard keeps
+admin and agent accounts out of those routes and creation sends a set-password link rather than choosing a
+password.
+
+**Decided (owner, 2026-11-21): another user's email change is session-only.** The address is where
+password-reset links go, so changing it is an account takeover, the same reasoning as the profile row. The
+route stays, but `AdminAccountGuard` refuses any non-session caller whose `PATCH` carries an `emailAddress`
+differing from the stored one (403 `user.emailUiOnly`, before anything is applied); resending the stored
+address passes.
 
 Also unchanged and token-refused: minting, listing and revoking tokens with
 a token, and writing `site.absoluteurl`.
