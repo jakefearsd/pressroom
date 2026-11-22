@@ -751,3 +751,9 @@ see the weblog still gets 404); the route is an MCP `Exclusion` with the reason 
 authorization-matrix row shows 403 for every token caller. **Session writes on `/api` need CSRF
 protection first**: the API chains are CSRF-free today because they are stateless and bearer-only.
 Moving a resource on or off this list is a new decision naming its threat.
+
+Not on the list, accepted for now: a site-admin token may still create ordinary accounts, enable or
+disable them and edit their email address and screen name via `/v1/admin/users` (`AdminApi`); the account
+guard keeps admin and agent accounts out and creation sends a set-password link. **Open question for the
+owner: should another user's email change be session-only?** (The profile row's takeover reasoning covers
+the caller's own profile only.)

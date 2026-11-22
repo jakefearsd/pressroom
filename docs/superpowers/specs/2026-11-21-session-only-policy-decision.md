@@ -31,6 +31,13 @@ have no API route.
 | Custom templates and stylesheets | Template output is not sanitized: it bypasses `HTMLSanitizer`, the one content boundary, so a template write is script on every page of the blog. |
 | The contact-form inbox (read or delete) | Readers' personal details and messages: third-party personal data, and text written by strangers handed to agents. |
 
+**Not covered by this list (accepted for now).** A site-admin token can still create ordinary accounts
+and enable or disable them, and edit another ordinary user's email address and screen name, through
+`POST`/`PATCH /v1/admin/users`. This is accepted because the account guard keeps admin and agent
+accounts out of those routes and creation sends a set-password link rather than choosing a password. The
+"account takeover" reasoning in the profile row applies to the caller's own profile only.
+**Open question for the owner: should another user's email change be session-only?**
+
 Also unchanged and token-refused: minting, listing and revoking tokens with
 a token, and writing `site.absoluteurl`.
 

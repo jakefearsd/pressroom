@@ -2336,7 +2336,7 @@ through MCP: minting, listing or revoking tokens, uploading media from local fil
 ## Not available through the API
 
 A person does these in the admin UI; no token can, and the API has no route for them (weblog memberships
-can be read with a token, not changed): agent accounts, admin accounts and the admin role, weblog
+can be read with a token, not changed): agent accounts, changes to admin accounts or the admin role, weblog
 membership changes, profile changes (email, password, names, locale), the site-wide token list,
 deleting a weblog, custom templates and stylesheets, and the contact-form inbox. They are reserved for
 an interactive signed-in session by design; a future session-based admin client will cover them.
