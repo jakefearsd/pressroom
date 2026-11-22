@@ -135,7 +135,7 @@ class AccountScreensCharacterisationTest {
     void aTakenCheckThatCannotRunRefusesTheNewPerson() throws Exception {
         when(weblogger.userManager().getUserByUserName("jake", null)).thenThrow(new WebloggerException("down"));
 
-        assertNewPersonRefused(person("jake"), List.of("generic.error.check.logs"), List.of("bean_userName"));
+        assertNewPersonRefused(person("jake"), List.of("generic.error.check.logs"), List.of());
     }
 
     @Test
@@ -360,7 +360,7 @@ class AccountScreensCharacterisationTest {
     void aTakenCheckThatCannotRunRefusesTheNewAgent() throws Exception {
         when(weblogger.userManager().getUserByUserName("bot1", null)).thenThrow(new WebloggerException("down"));
 
-        assertNewAgentRefused(agent("bot1"), List.of("generic.error.check.logs"), List.of("bean_userName"));
+        assertNewAgentRefused(agent("bot1"), List.of("generic.error.check.logs"), List.of());
     }
 
     @Test

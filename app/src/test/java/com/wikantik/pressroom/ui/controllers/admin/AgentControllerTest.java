@@ -222,6 +222,18 @@ class AgentControllerTest {
         verify(weblogger.userManager(), never()).addAgent(any(), eq(false));
     }
 
+    /** A taken-check that cannot run refuses the create, at page level, and creates nothing. */
+    @Test
+    void aUserNameLookupThatFailsRefusesTheCreate() throws Exception {
+        when(weblogger.userManager().getUserByUserName("bot9", null)).thenThrow(new WebloggerException("down"));
+
+        controller.create(asAdmin(), model, redirect, newAgent("bot9", "Publisher"));
+
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+        assertEquals(List.of(), ControllerTestFixture.invalidFields(model), "no control is marked");
+        verify(weblogger.userManager(), never()).addAgent(any(), eq(false));
+    }
+
     @Test
     void aNameIsRequiredAndAGivenEmailMustBeValid() throws Exception {
         AgentBean bean = newAgent("bot2", "  ");

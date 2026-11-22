@@ -434,9 +434,15 @@ public class UserEditController extends BaseController {
     }
 
     private void validateNew(CreateUserBean bean, Model model, HttpServletRequest request) {
-        RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
-        if (userName != null) {
-            addFieldError(model, "bean_userName", userName, request);
+        try {
+            RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
+            if (userName != null) {
+                addFieldError(model, "bean_userName", userName, request);
+            }
+        } catch (WebloggerException e) {
+            // A taken-check that cannot run refuses the create: it did not pass.
+            log.error("Could not check whether the username {} is taken", bean.getUserName(), e);
+            addError(model, "generic.error.check.logs", request);
         }
         // Spec 2026-10-13, section 4: required on the server too, not
         // only by the page's script.

@@ -245,7 +245,8 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(legacy);
         when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-2")).thenReturn(plain);
 
-        for (String[] edit : new String[][] {{"cat-1", "Food & Drink"}, {"cat-2", "Travel & Food"}}) {
+        for (String[] edit : new String[][] {{"cat-1", "Food & Drink"}, {"cat-2", "Travel & Food"},
+                {"cat-1", "food & open-air markets"}}) {
             Model attempt = newModel();
             CategoryBean changed = new CategoryBean();
             changed.setId(edit[0]);
@@ -261,6 +262,25 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
     }
 
+    /** An unknown id is not-found even when the name sent is one this weblog already uses. */
+    @Test
+    void editOfAnUnknownIdIsNotFoundEvenWhenTheNameIsTaken() throws Exception {
+        WeblogCategory other = categoryNamed("cat-2", "Food");
+        weblog.getWeblogCategories().add(other);
+        when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Food")).thenReturn(other);
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("gone")).thenReturn(null);
+        bean.setId("gone");
+        bean.setName("Food");
+
+        String view = controller.categoryEditSave(request, model, bean, redirectAttributes);
+
+        assertEquals(LIST_REDIRECT, view);
+        assertTrue(flashErrors(redirectAttributes).contains("categoryForm.error.notFound"),
+                "got flash errors: " + flashErrors(redirectAttributes));
+        assertTrue(errors(model).isEmpty(), "no field is judged: " + errors(model));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
+    }
+
     @Test
     void editRejectsRenamingOntoAnotherCategorysName() throws Exception {
         WeblogCategory other = categoryNamed("cat-2", "Food");
@@ -268,6 +288,7 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Food"))
                 .thenReturn(other);
 
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(categoryNamed("cat-1", "Travel"));
         bean.setId("cat-1");
         bean.setName("Food");
 
@@ -470,6 +491,7 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, "Food"))
                 .thenReturn(other);
 
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(categoryNamed("cat-1", "Travel"));
         bean.setId("cat-1");
         bean.setName("Food");
 
@@ -499,6 +521,7 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(List.of("category_bean_description"), flashInvalidFields(redirectAttributes));
 
         RedirectAttributes editRedirect = newRedirectAttributes();
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(categoryNamed("cat-1", "Travel"));
         bean.setId("cat-1");
         controller.categoryEditSave(request, newModel(), bean, editRedirect);
 

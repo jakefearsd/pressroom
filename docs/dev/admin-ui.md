@@ -349,8 +349,9 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   groupBloggingDisabled` vs `userWeblogs.groupBloggingOff`); no problem codes until Tier 4 gives
   members an API. Neither controller counts admins itself.
 - **The account rules live in `AccountRules`** (same task; `admin.UserNames` is gone): username
-  (present, 255, `username.allowedChars`, taken in any case; `newUserNameProblem` refuses with
-  `generic.error.check.logs` when the taken-check throws), email (`EmailValidator`, trimmed, 255;
+  (present, 255, `username.allowedChars`, taken in any case; `newUserNameProblem` throws when the
+  taken-check cannot run; both create screens log it and refuse with a page-level
+  `generic.error.check.logs`, no field marked), email (`EmailValidator`, trimmed, 255;
   `EmailUse` REQUIRED / REPLACEMENT / OPTIONAL), screen name (not blank, 255) and the password key
   (`PasswordRules`). The screens show a violation with `BaseController.addFieldError(model, id,
   violation, request)` (arguments escaped; these carry none). The full-name requirement and the
@@ -380,6 +381,10 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   The category screens also refuse a description over 255 characters on `category_bean_description`
   (`categoryForm.error.descriptionTooLong`, `CategoryRules.descriptionProblem`, as the API does; final
   review M4); it used to overflow the column and answer "check the logs".
+  A category edit that sends back the category's stored name is not judged again
+  (`CategoryRules.keepsItsName`, the same predicate as the API's PATCH), so a pre-0.16.0 name holding `&`
+  stays editable; a changed name, a case-only change included, meets every rule. An edit of an id this
+  weblog does not own answers `categoryForm.error.notFound` before the name is judged.
 - **A category name in a flash is escaped** (final review, 0.16.0): the created, saved and removed
   messages and the duplicate-name error pass the name through `escapeHtml4`, because
   `tiles/messages.jsp` renders messages bare and the API accepted any name before 0.16.0.

@@ -905,7 +905,7 @@ class UserEditControllerTest {
         controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("newbie", "long-enough"));
 
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
-        assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
+        assertEquals(List.of(), ControllerTestFixture.invalidFields(model), "page level: no control is marked");
         verify(weblogger.userManager(), never()).addUser(any());
     }
 

@@ -67,7 +67,29 @@ class BusinessTierImportsTest {
     }
 
     private static final Path POJOS = Path.of("src/main/java/com/wikantik/pressroom/pojos");
-    private static final Pattern SWAGGER_IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?(io\\.swagger\\.[\\w.]+);");
+    /** Any mention of the library in code: an import (plain, static, wildcard) or an inline qualified name. */
+    private static final Pattern SWAGGER_REFERENCE = Pattern.compile("(?m)^.*\\bio\\.swagger\\..*$");
+
+    /** The lines of {@code source} that name io.swagger, comments excluded (they may name it in prose). */
+    static java.util.List<String> swaggerReferences(String source) {
+        String code = source.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+        Matcher m = SWAGGER_REFERENCE.matcher(code);
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        while (m.find()) {
+            lines.add(m.group().strip());
+        }
+        return lines;
+    }
+
+    /** Planted offenders: each spelling is found once, prose in a comment never. */
+    @Test
+    void theSwaggerScanSeesEverySpellingAndIgnoresComments() {
+        assertEquals(1, swaggerReferences("import io.swagger.v3.oas.annotations.media.Schema;\nclass A {}").size());
+        assertEquals(1, swaggerReferences("import static io.swagger.v3.Foo.bar;\nclass A {}").size());
+        assertEquals(1, swaggerReferences("import io.swagger.v3.oas.annotations.media.*;\nclass A {}").size());
+        assertEquals(1, swaggerReferences("class A { @io.swagger.v3.oas.annotations.media.Schema(name = \"x\") int f; }").size());
+        assertEquals(0, swaggerReferences("/* see io.swagger.v3.Foo */\n// io.swagger.v3.Bar\nclass A {}").size());
+    }
 
     /**
      * The business tier and the entities describe no API: a swagger annotation
@@ -82,9 +104,8 @@ class BusinessTierImportsTest {
             try (Stream<Path> files = Files.walk(root)) {
                 for (Path file : files.filter(f -> f.toString().endsWith(".java")).sorted().toList()) {
                     scanned++;
-                    Matcher imported = SWAGGER_IMPORT.matcher(Files.readString(file, StandardCharsets.UTF_8));
-                    while (imported.find()) {
-                        found.add(file + " imports " + imported.group(1));
+                    for (String line : swaggerReferences(Files.readString(file, StandardCharsets.UTF_8))) {
+                        found.add(file + " references io.swagger: " + line);
                     }
                 }
             }

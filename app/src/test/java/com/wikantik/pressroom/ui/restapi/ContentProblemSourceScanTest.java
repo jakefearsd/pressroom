@@ -35,10 +35,13 @@ class ContentProblemSourceScanTest {
             "v1/PageContent.java", "v1/BaseApiController.java", "ColumnLimits.java", "dto/EntryDtos.java",
             "dto/PageDtos.java", "dto/SeoFields.java", "dto/ClearFields.java");
 
+    /** The factory names that take a literal detail: the one list both patterns below are built from. */
+    private static final String FREE_TEXT_FACTORIES = "badRequest|notFound|conflict|conflictOnField|invalidField"
+            + "|unauthorized|forbidden|validation|tooLarge|throttled|badGateway|busy";
+
     /** The factories that take a literal detail, whatever the argument. */
     private static final Pattern UNKEYED_FACTORY = Pattern.compile(
-            "ApiException\\s*\\.\\s*(badRequest|notFound|conflict|conflictOnField|invalidField|unauthorized"
-                    + "|forbidden|validation|tooLarge|throttled|badGateway|busy)\\s*\\(");
+            "ApiException\\s*\\.\\s*(" + FREE_TEXT_FACTORIES + ")\\s*\\(");
 
     private static final Pattern FIELD_ERRORS_DECLARATION = Pattern.compile("FieldErrors\\s+(\\w+)");
 
@@ -54,11 +57,11 @@ class ContentProblemSourceScanTest {
      * allows carry no {@code ApiException.}, so {@link #UNKEYED_FACTORY} would not see them.
      */
     private static final Pattern STATIC_FACTORY_IMPORT = Pattern.compile(
-            "import\\s+static\\s+[\\w.]*ApiException\\s*\\.\\s*(badRequest|notFound|conflict|conflictOnField"
-                    + "|invalidField|unauthorized|forbidden|validation|tooLarge|throttled|badGateway|busy|\\*)\\s*;");
+            "import\\s+static\\s+[\\w.]*ApiException\\s*\\.\\s*(" + FREE_TEXT_FACTORIES + "|\\*)\\s*;");
 
     /** An expression ending in a call whose name ends in {@code code} or {@code Code}. */
-    private static final Pattern CODE_CALL = Pattern.compile("(?s)[\\w.]*[cC]ode\\s*\\(.*\\)");
+    private static final Pattern CODE_CALL = Pattern.compile(
+            "(?s)(?:(?:[\\w.]*\\.)?code|[\\w.]*[a-z]Code)\\s*\\(.*\\)");
 
     private static Path path(String file) {
         Path path = Path.of(ROOT + file);
@@ -214,6 +217,8 @@ class ContentProblemSourceScanTest {
         assertEquals(1, violations("FieldErrors errors;\nerrors.addIfAbsent(\"f\", detail, x, y);").size());
         assertEquals(0, violations("FieldErrors errors;\nerrors.add(f, shape.code(), args);"
                 + "\nerrors.add(\"entries\", refusalCode(reason), id);").size(), "a call answering a code is keyed");
+        assertEquals(1, violations("FieldErrors errors;\nerrors.add(\"f\", URLEncoder.encode(m), x);").size(),
+                "encode( ends in code( but answers no code");
 
         assertEquals(1, violations("import static x.ApiException.badRequest;\nclass A { }").size());
         assertEquals(1, violations("import static x.y.ApiException . *;\nclass A { }").size());

@@ -112,9 +112,15 @@ public class AgentController extends TokenFormController {
         populateCommonModel(request, model);
         model.addAttribute("pageTitle", "agent.create.title");
         model.addAttribute("bean", bean);
-        RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
-        if (userName != null) {
-            addFieldError(model, "bean_userName", userName, request);
+        try {
+            RuleViolation userName = AccountRules.newUserNameProblem(bean.getUserName(), weblogger.getUserManager());
+            if (userName != null) {
+                addFieldError(model, "bean_userName", userName, request);
+            }
+        } catch (WebloggerException e) {
+            // A taken-check that cannot run refuses the create: it did not pass.
+            log.error("Could not check whether the username {} is taken", bean.getUserName(), e);
+            addError(model, "generic.error.check.logs", request);
         }
         String name = checkedName(bean, model, request);
         RuleViolation emailProblem = AccountRules.emailProblem(bean.getEmailAddress(), AccountRules.EmailUse.OPTIONAL);

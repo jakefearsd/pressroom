@@ -19,6 +19,8 @@ package com.wikantik.pressroom.ui.restapi;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
+import java.io.Writer;
 
 import java.util.Map;
 
@@ -135,6 +137,19 @@ class ApiBodyLimitFilterTest {
                 // drain
             }
         });
+    }
+
+    /** A body taken through getReader() is held to the cap too, not left to the container's buffer. */
+    @Test
+    void aReaderIsHeldToTheCapAsWell() throws Exception {
+        filter.doFilter(undeclared(MAX + 1), response, chain);
+        Reader over = ((HttpServletRequest) chain.getRequest()).getReader();
+        assertThrows(ApiBodyLimitFilter.BodyTooLargeException.class, () -> over.transferTo(Writer.nullWriter()));
+
+        MockFilterChain atCap = new MockFilterChain();
+        filter.doFilter(undeclared(MAX), response, atCap);
+        Reader whole = ((HttpServletRequest) atCap.getRequest()).getReader();
+        assertEquals(MAX, whole.transferTo(Writer.nullWriter()));
     }
 
     @Test

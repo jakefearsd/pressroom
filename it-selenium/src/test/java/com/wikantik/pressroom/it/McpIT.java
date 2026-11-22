@@ -178,7 +178,9 @@ class McpIT extends PressroomIT {
             // up to the cap, refuses with 413, and the few KiB left unread are swallowed by Tomcat,
             // so the 413 always arrives. (A known oversize Content-Length is refused unread, and
             // Tomcat closes the connection over more than its 2 MiB maxSwallowSize: a client may see
-            // a reset.) The cap is what the app itself reports in GET /api/v1/meta.
+            // a reset.) The cap is what the app itself reports in GET /api/v1/meta, which is /api/v1's;
+            // it is MCP's only because McpServerConfig.MAX_REQUEST_BYTES = ApiBodyLimitFilter.MAX_BODY_BYTES,
+            // so a future split of the two caps must be caught here, not masked by the + 1024 pad.
             int mcpCapBytes = limit(token, "maxBodyBytes");
             byte[] huge = rpcBody("tools/call", Map.of("name", "whoami",
                     "arguments", Map.of("pad", "x".repeat(mcpCapBytes + 1024)))).getBytes(UTF_8);
@@ -450,14 +452,17 @@ class McpIT extends PressroomIT {
     /**
      * An entry of exactly the maximum text length is stored and read back intact through MCP;
      * one character more is refused as field.tooLong (400) on the text field, and creates nothing.
+     * The text is in 3-byte characters (the euro sign: one Java char, 3 bytes in UTF-8), so the
+     * body is ~3 MB and the container's body cap, derived for exactly this case, is exercised.
      */
     @Test
     void anEntryAtTheMaximumLengthRoundTripsAndOneMoreIsRefused() throws Exception {
         AdminToken token = AdminToken.mint("McpIT max length", "POST", null);
         String id = null;
+        String overId = null;
         try {
             int max = limit(token, "entryTextMaxChars");
-            String text = "a".repeat(max);
+            String text = "\u20ac".repeat(max);
             JsonNode created = callTool(token.raw(), "entries", Map.of("action", "create",
                     "weblog", WEBLOG_HANDLE, "title", "McpIT max length " + System.nanoTime(), "text", text));
             assertFalse(isError(created), created.toString().substring(0, Math.min(400, created.toString().length())));
@@ -469,17 +474,23 @@ class McpIT extends PressroomIT {
             assertEquals(text, JSON.readTree(text(got)).get("text").asString(), "the stored text is intact");
 
             JsonNode over = callTool(token.raw(), "entries", Map.of("action", "create",
-                    "weblog", WEBLOG_HANDLE, "title", "McpIT over length", "text", text + "a"));
+                    "weblog", WEBLOG_HANDLE, "title", "McpIT over length", "text", text + "\u20ac"));
+            if (!isError(over)) {
+                // wrongly accepted: remember it so the finally block does not leave it on the shared weblog
+                overId = JSON.readTree(text(over)).get("id").asString();
+            }
             assertTrue(isError(over));
             JsonNode problem = JSON.readTree(text(over));
             assertEquals(400, problem.get("status").asInt());
             assertEquals("field.tooLong", problem.get("code").asString());
             assertEquals("text", problem.get("errors").get(0).get("field").asString());
         } finally {
-            if (id != null) {
-                restSend(token.raw(), "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id, null);
-                restSend(token.raw(), "POST",
-                        "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
+            for (String stray : new String[] {id, overId}) {
+                if (stray != null) {
+                    restSend(token.raw(), "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + stray, null);
+                    restSend(token.raw(), "POST",
+                            "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + stray + "/delete-forever", null);
+                }
             }
             AdminToken.revoke(token.id());
         }

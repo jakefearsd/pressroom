@@ -17,7 +17,11 @@
  */
 package com.wikantik.pressroom.ui.restapi;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -99,6 +103,7 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
         }
         chain.doFilter(new HttpServletRequestWrapper(request) {
             private ServletInputStream capped;
+            private BufferedReader reader;
 
             @Override
             public ServletInputStream getInputStream() throws IOException {
@@ -106,6 +111,18 @@ public class ApiBodyLimitFilter extends OncePerRequestFilter {
                     capped = new CappedInputStream(super.getInputStream());
                 }
                 return capped;
+            }
+
+            /** The same capped stream decoded, so a reader cannot bypass the cap. */
+            @Override
+            public BufferedReader getReader() throws IOException {
+                if (reader == null) {
+                    String name = getCharacterEncoding();
+                    // an unknown charset name fails closed (unchecked), as no reader is better than an uncapped one
+                    Charset charset = name == null ? StandardCharsets.UTF_8 : Charset.forName(name);
+                    reader = new BufferedReader(new InputStreamReader(getInputStream(), charset));
+                }
+                return reader;
             }
         }, response);
     }

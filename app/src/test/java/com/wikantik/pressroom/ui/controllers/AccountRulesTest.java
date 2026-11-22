@@ -139,11 +139,10 @@ class AccountRulesTest {
     }
 
     @Test
-    void aNewUserNameWhoseTakenCheckCannotRunIsRefused() throws Exception {
+    void aNewUserNameWhoseTakenCheckCannotRunThrows() throws Exception {
         when(users.getUserByUserName("jake", null)).thenThrow(new WebloggerException("down"));
 
-        assertEquals(RuleViolation.invalid("userName", "generic.error.check.logs", List.of(),
-                ProblemCode.SERVER_INTERNAL_ERROR), AccountRules.newUserNameProblem("jake", users));
+        assertThrows(WebloggerException.class, () -> AccountRules.newUserNameProblem("jake", users));
     }
 
     // --- email ---

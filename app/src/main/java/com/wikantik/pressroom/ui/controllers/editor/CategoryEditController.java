@@ -127,16 +127,16 @@ public class CategoryEditController extends BaseController {
         // by-id lookup here let an editor rename another weblog's
         // categories. Looked up before validating, which needs its name.
         WeblogCategory category = lookupCategory(bean.getId(), request);
+        if (category == null) {
+            addFlashError(redirectAttributes, "categoryForm.error.notFound", request);
+            return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
+                    + getActionWeblog(request).getHandle();
+        }
         myValidate(bean, category, request, model);
 
         if (!hasErrors(model)) {
             try {
                 WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
-                if (category == null) {
-                    addFlashError(redirectAttributes, "categoryForm.error.notFound", request);
-                    return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
-                            + getActionWeblog(request).getHandle();
-                }
                 bean.copyTo(category);
 
                 wmgr.saveWeblogCategory(category);

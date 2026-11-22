@@ -1,6 +1,8 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
 import org.junit.jupiter.api.AfterAll;
@@ -13,6 +15,8 @@ import org.springframework.boot.webmvc.autoconfigure.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.support.PropertiesLoaderUtils;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springdoc.core.configuration.SpringDocConfiguration;
@@ -77,11 +81,14 @@ class EntriesOpenApiTest {
     static void generate() throws Exception {
         context = new AnnotationConfigWebApplicationContext();
         context.setServletContext(new MockServletContext());
-        // as application.properties serves it: path relative to the stripped /api prefix,
-        // and the real response media type
-        context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test",
-                Map.of("springdoc.api-docs.path", "/v1/openapi.json",
-                        "springdoc.default-produces-media-type", "application/json")));
+        // the springdoc.* lines of application.properties, as the application reads them:
+        // path relative to the stripped /api prefix, and the real response media type
+        Properties all = PropertiesLoaderUtils.loadProperties(new ClassPathResource("application.properties"));
+        Map<String, Object> springdoc = new HashMap<>();
+        all.stringPropertyNames().stream().filter(name -> name.startsWith("springdoc."))
+                .forEach(name -> springdoc.put(name, all.getProperty(name)));
+        assertEquals("/v1/openapi.json", springdoc.get("springdoc.api-docs.path"));
+        context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("application", springdoc));
         context.register(Config.class);
         context.refresh();
         String document = webAppContextSetup(context).build().perform(get("/v1/openapi.json"))

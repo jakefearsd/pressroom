@@ -24,8 +24,6 @@ import java.util.Locale;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -44,8 +42,6 @@ import com.wikantik.pressroom.ui.restapi.ProblemCode;
  * it ({@link #USER_NAME}, {@link #EMAIL}, {@link #SCREEN_NAME}).
  */
 public final class AccountRules {
-
-    private static final Logger log = LoggerFactory.getLogger(AccountRules.class);
 
     public static final String USER_NAME = "userName";
     public static final String EMAIL = "emailAddress";
@@ -107,23 +103,14 @@ public final class AccountRules {
 
     /**
      * A new account's username, as the create screens judge it: its shape,
-     * then whether it is taken. Screens only; the API uses {@link #userNameTaken}
-     * (whose failed lookup is its opaque 500). A taken-check that cannot run refuses it
-     * ({@code generic.error.check.logs}): a check that could not run is not a
-     * check that passed.
+     * then whether it is taken. Screens only; the API uses {@link #userNameTaken}.
+     * A taken-check that cannot run throws, so the screen refuses the create
+     * ({@code generic.error.check.logs}, page level): a check that could not
+     * run is not a check that passed.
      */
-    public static RuleViolation newUserNameProblem(String userName, UserManager users) {
+    public static RuleViolation newUserNameProblem(String userName, UserManager users) throws WebloggerException {
         RuleViolation shape = userNameProblem(userName);
-        if (shape != null) {
-            return shape;
-        }
-        try {
-            return userNameTaken(userName, users);
-        } catch (WebloggerException e) {
-            log.error("Could not check whether the username {} is taken", userName, e);
-            return RuleViolation.invalid(USER_NAME, "generic.error.check.logs", List.of(),
-                    ProblemCode.SERVER_INTERNAL_ERROR);
-        }
+        return shape != null ? shape : userNameTaken(userName, users);
     }
 
     /**
