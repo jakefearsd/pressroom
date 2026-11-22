@@ -469,7 +469,7 @@ a token, and writing `site.absoluteurl`.
 
 **Consequences.** Agents cannot manage people, access or templates; their
 person does it in the admin UI (the MCP instructions already say so for
-accounts, memberships and tokens). The React admin needs session login on
+accounts, roles and tokens). The React admin needs session login on
 `/api` before it can replace these screens; every other screen it can build
 on token-safe routes.
 
@@ -549,4 +549,4 @@ Ruled without the owner; each with the cost if wrong.
   responses): Tier 5.
 - Moving JSP controller logic other than the business form's (Tier 3), and
   re-anchoring `FormBodyParityTest` (Tier 3/6).
-- The crop's rendered-page cache expiry on either surface (Decision 13).
+- (The crop's rendered-page cache expiry was out of scope under Decision 13; the owner overruled it, see Owner confirmations, and it is built.)

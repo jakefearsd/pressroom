@@ -63,7 +63,7 @@ public class MembersApi extends BaseApiController implements UISecurityEnforced 
         for (WeblogPermission permission : users.getWeblogPermissions(weblog)) {
             User account = users.getUserByUserName(permission.getUserName());
             if (account == null) {
-                log.warn("Leaving out the membership of {} on weblog {}: the account does not resolve",
+                log.debug("Leaving out the membership of {} on weblog {}: the account does not resolve",
                         permission.getUserName(), weblog.getHandle());
                 continue;
             }

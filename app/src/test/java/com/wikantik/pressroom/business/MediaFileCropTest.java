@@ -377,13 +377,73 @@ public class MediaFileCropTest {
         BufferedImage img = new BufferedImage(300, 200, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "gif", baos);
-        MediaFile gif = upload("crop-reason.gif", "image/gif", new ByteArrayInputStream(baos.toByteArray()));
+        byte[] gifBytes = baos.toByteArray();
+        MediaFile gif = upload("crop-reason.gif", "image/gif", new ByteArrayInputStream(gifBytes));
 
         weblog = TestUtils.getManagedWebsite(weblog);
         MediaFile managed = mfMgr.getMediaFile(gif.getId());
         CropRefusedException refused = assertThrows(CropRefusedException.class,
                 () -> mfMgr.cropMediaFile(weblog, managed, 0, 0, 100, 100));
         assertEquals(CropRefusedException.Reason.NOT_CROPPABLE, refused.reason());
+    }
+
+    /**
+     * Characterisation of existing behaviour (written after the code): a PNG
+     * crops like a JPEG -- the original is re-encoded as a PNG of the cropped
+     * raster, the dimensions are re-derived and the ladder is regenerated or
+     * trimmed.
+     */
+    @Test
+    public void aPngIsCroppedAndItsRenditionsRegenerate() throws Exception {
+        BufferedImage img = new BufferedImage(3000, 2000, BufferedImage.TYPE_INT_RGB);
+        for (int x = 0; x < 3000; x += 7) {
+            img.setRGB(x, x % 2000, 0xFF0000 + x);
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", baos);
+        MediaFile png = upload("crop-me.png", "image/png", new ByteArrayInputStream(baos.toByteArray()));
+        String id = png.getId();
+        byte[] originalBefore = fileBytes(id);
+        byte[] renditionBefore = fileBytes(id + "_480");
+
+        weblog = TestUtils.getManagedWebsite(weblog);
+        mfMgr.cropMediaFile(weblog, mfMgr.getMediaFile(id), 0, 0, 800, 600);
+        TestUtils.endSession(true);
+
+        MediaFile cropped = mfMgr.getMediaFile(id);
+        assertEquals(800, cropped.getWidth());
+        assertEquals(600, cropped.getHeight());
+        byte[] originalAfter = fileBytes(id);
+        assertFalse(java.util.Arrays.equals(originalBefore, originalAfter));
+        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(originalAfter));
+        assertEquals(800, decoded.getWidth());
+        assertEquals(600, decoded.getHeight());
+        assertFalse(java.util.Arrays.equals(renditionBefore, fileBytes(id + "_480")),
+                "the 480w rendition must be regenerated from the cropped pixels");
+        assertThrows(FileNotFoundException.class, () -> fcMgr.getFileContent(weblog, id + "_960"),
+                "a rung the cropped image no longer clears must be deleted");
+    }
+
+    /**
+     * Characterisation of existing behaviour: WebP and a non-image content
+     * type are refused as NOT_CROPPABLE, and the stored bytes are left exactly as they were.
+     */
+    @Test
+    public void webpAndNonImagesAreRefusedAndTheirBytesAreUntouched() throws Exception {
+        // The upload path would not store these types, so a stored JPEG is
+        // presented under each content type (in memory only): the refusal
+        // keys on the content type.
+        MediaFile file = uploadResource("crop-type.jpg", "/hawk-exif.jpg");
+        byte[] before = fileBytes(file.getId());
+        for (String type : new String[] {"image/webp", "text/plain"}) {
+            weblog = TestUtils.getManagedWebsite(weblog);
+            MediaFile managed = mfMgr.getMediaFile(file.getId());
+            managed.setContentType(type);
+            CropRefusedException refused = assertThrows(CropRefusedException.class,
+                    () -> mfMgr.cropMediaFile(weblog, managed, 0, 0, 100, 100), type);
+            assertEquals(CropRefusedException.Reason.NOT_CROPPABLE, refused.reason(), type);
+            assertArrayEquals(before, fileBytes(file.getId()), type + ": bytes must be unchanged");
+        }
     }
 
     /** A rectangle off the image is OUTSIDE_IMAGE and carries the displayed size. */

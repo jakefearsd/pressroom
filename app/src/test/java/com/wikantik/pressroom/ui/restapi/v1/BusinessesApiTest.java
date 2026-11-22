@@ -336,7 +336,7 @@ class BusinessesApiTest {
 
     @Test
     void eachUrlThatIsNotAPublicHttpUrlIsRefused() throws Exception {
-        assertEquals(List.of("websiteUrl field.notPublicUrl", "bookingUrl field.notPublicUrl",
+        assertEquals(List.of("websiteUrl field.notPublicUrl", "bookingUrl bookingUrl.invalid",
                         "logoUrl field.notPublicUrl"),
                 errors(send(post(URL), "{\"name\":\"X\",\"websiteUrl\":\"javascript:alert(1)\","
                         + "\"bookingUrl\":\"http://localhost/book\",\"logoUrl\":\"logo.png\"}")));

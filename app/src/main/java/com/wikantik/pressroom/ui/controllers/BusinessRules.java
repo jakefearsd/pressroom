@@ -192,8 +192,14 @@ public final class BusinessRules {
         if (isHttpUrl(value)) {
             tooLong(field, labelKey, value, found);
         } else {
-            found.add(RuleViolation.invalid(field, "businesses.error.urlInvalid",
-                    List.of(new RuleViolation.Label(labelKey)), ProblemCode.FIELD_NOT_PUBLIC_URL, field));
+            // The booking link is one rule with the weblog's: the same code on either route.
+            if ("bookingUrl".equals(field)) {
+                found.add(RuleViolation.invalid(field, "businesses.error.urlInvalid",
+                        List.of(new RuleViolation.Label(labelKey)), ProblemCode.BOOKING_URL_INVALID));
+            } else {
+                found.add(RuleViolation.invalid(field, "businesses.error.urlInvalid",
+                        List.of(new RuleViolation.Label(labelKey)), ProblemCode.FIELD_NOT_PUBLIC_URL, field));
+            }
         }
     }
 

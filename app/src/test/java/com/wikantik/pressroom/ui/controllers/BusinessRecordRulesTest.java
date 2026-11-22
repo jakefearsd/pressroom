@@ -102,8 +102,14 @@ class BusinessRecordRulesTest {
             assertEquals(field[0], bad.field());
             assertEquals("businesses.error.urlInvalid", bad.messageKey());
             assertEquals(List.of(new RuleViolation.Label(field[1])), bad.args());
-            assertEquals(ProblemCode.FIELD_NOT_PUBLIC_URL, bad.code());
-            assertEquals(List.of(field[0]), bad.codeArgs());
+            if ("bookingUrl".equals(field[0])) {
+                // One rule, one code: the weblog's booking link answers bookingUrl.invalid too.
+                assertEquals(ProblemCode.BOOKING_URL_INVALID, bad.code());
+                assertEquals(List.of(), bad.codeArgs());
+            } else {
+                assertEquals(ProblemCode.FIELD_NOT_PUBLIC_URL, bad.code());
+                assertEquals(List.of(field[0]), bad.codeArgs());
+            }
 
             RuleViolation tooLong = only(with(field[0], "https://example.com/" + "p".repeat(240)));
             assertEquals(ProblemCode.FIELD_TOO_LONG, tooLong.code());

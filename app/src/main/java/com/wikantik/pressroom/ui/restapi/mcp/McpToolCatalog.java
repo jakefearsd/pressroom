@@ -29,7 +29,7 @@ public final class McpToolCatalog {
                     + "size limits.", true,
                     action("", "Describe the site.", "GET /v1/meta")),
             tool("weblogs", "Weblogs: create one (any writing token not limited to a weblog); read and change a "
-                    + "weblog's settings and theme as its owner (ADMIN tokens); list every weblog (site admins).",
+                    + "weblog's settings and theme as its owner (ADMIN tokens); list its members (a weblog admin, any token); list every weblog (site admins).",
                     false,
                     action("list", "List every weblog on the site (site admins).", "GET /v1/weblogs"),
                     action("get", "One weblog's settings.", "GET " + W),

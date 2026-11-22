@@ -33,11 +33,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 /**
- * Liveness for the API surface. Mapped at {@code /v1} because the container
+ * Liveness, site facts and the caller's identity and profile. Mapped at {@code /v1} because the container
  * strips the {@code /api} prefix -- see ServletRegistrationConfig's
  * API_URL_PATTERNS.
  */
-@Tag(name = "Meta", description = "Liveness, and who the caller is.")
+@Tag(name = "Meta", description = "Liveness, site facts, and who the caller is.")
 @RestController
 @RequestMapping("/v1")
 public class MetaApi {
@@ -45,7 +45,8 @@ public class MetaApi {
     /**
      * {@code @Lazy} is load-bearing, as on {@code BaseApiController}: this
      * controller is constructed at context refresh, before the business tier
-     * has been bootstrapped; only {@link #me} ever touches it.
+     * has been bootstrapped; only the routes that read site or account data ({@code me}, {@code meta},
+     * {@code me/profile}) touch it.
      */
     @Autowired
     @Lazy

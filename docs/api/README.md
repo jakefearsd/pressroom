@@ -75,7 +75,7 @@ Additive or narrower changes:
 - New: `GET /api/v1/weblogs/{handle}/members`, read only, and the MCP `weblogs`
   `list_members` action. See [Members](#members).
 - New: `GET /api/v1/admin/traffic` (every blog's traffic, site admins) and the
-  MCP `traffic` `site` action. See [Traffic](#traffic).
+  MCP `traffic` `site` action. See [Site traffic](#site-traffic).
 - New: business profiles. Site admins create, read, change and delete them at
   `/api/v1/admin/businesses` (the MCP `businesses` tool), and a weblog's owner
   lists the ones a weblog may point at with `GET
@@ -92,7 +92,6 @@ Additive or narrower changes:
   two files of one name in a directory. See [Media](#media).
 - New: `POST /api/v1/weblogs/{handle}/media/{id}/crop` and the MCP `media`
   `crop` action. It cannot be undone. See [Cropping an image](#cropping-an-image).
-- The media editor's crop now expires the weblog's rendered pages, as the API's does.
 - `emailAddress` on the admin user routes is judged as the admin UI judges
   it, and `PATCH /api/v1/admin/config` applies the Global Config screen's
   rules. See [Site administration](#site-administration).
@@ -270,7 +269,7 @@ pin may act on every weblog its owning user can reach, subject to that
 user's own `WeblogPermission` on each one.
 
 A handful of routes name no weblog at all (`GET /api/v1/ping`,
-`GET /api/v1/me`) and are exempt from the weblog-pin check by design — a
+`GET /api/v1/me`, `GET /api/v1/meta`, `GET /api/v1/me/profile`) and are exempt from the weblog-pin check by design — a
 weblog-scoped token must still be able to ask who it is. The two are not
 otherwise equivalent: `GET /api/v1/ping` is the one route in the whole API
 that needs **no credential at all** (`permitAll` in `SecurityConfig`, a bare
@@ -292,7 +291,7 @@ held by a user the Create Weblog page lets create one, and the whole
 caller outright regardless of role — see [With the API](#with-the-api). A weblog-pinned
 token, even an `ADMIN` one held by a site administrator, is therefore refused
 on the routes that name no weblog — `/api/v1/admin/users`, `/admin/config`,
-`/admin/revisions` and `/api/v1/weblogs` (list and create) — with a 404 whose
+`/admin/revisions`, `/admin/traffic`, `/admin/businesses` and `/api/v1/weblogs` (list and create) — with a 404 whose
 detail says so (`This token is limited to the weblog '<handle>', and this
 route is not part of one weblog.`). The account's own permission is checked
 first, so on the site-admin-only ones a pinned token whose owner is not a
@@ -340,6 +339,7 @@ The clearable fields, per resource:
   `bookingUrl`. `placeLat` and `placeLng` clear together.
 - **Page:** `metaTitle`, `searchDescription`, `canonicalUrl` and `ogImageId`.
 - **Media:** `altText`, `focalX` and `focalY`. `focalX` and `focalY` clear together.
+- **Business profile:** `websiteUrl`, `bookingUrl`, `telephone`, `email`, `logoUrl`, `sameAs`, `areaServed` and `description`; not `name` or `businessType`.
 
 An empty `clear` changes nothing, and a repeated name or one with surrounding
 spaces is tolerated. Naming a field both with a value and in `clear` is a 400,
@@ -684,7 +684,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `business.notFound` | 404 | `not-found` | No business profile has this id. |
 | `business.inUse` | 409 | `conflict` | A business profile some weblogs use cannot be deleted; `detail` says how many. |
 | `businessType.unknown` | 400 | `invalid-request` | `businessType` is not `Organization`, `LocalBusiness` or `ProfessionalService`. |
-| `field.notPublicUrl` | 400 | `invalid-request` | A business link (`websiteUrl`, `bookingUrl`, `logoUrl`) is not a public, absolute http(s) URL. |
+| `field.notPublicUrl` | 400 | `invalid-request` | A business link (`websiteUrl`, `logoUrl`) is not a public, absolute http(s) URL. |
 | `telephone.invalid` | 400 | `invalid-request` | A business's `telephone` is off the telephone pattern. |
 | `email.invalid` | 400 | `invalid-request` | A business's `email` is not a valid address. |
 | `sameAs.tooMany` | 400 | `invalid-request` | A business has more than 10 `sameAs` links. |
@@ -695,7 +695,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `placeCountry.invalid` | 400 | `invalid-request` | `placeCountry` is not a two-letter country code. |
 | `placeLat.invalid` | 400 | `invalid-request` | `placeLat` is off the globe, or was given without `placeLng`. |
 | `placeLng.invalid` | 400 | `invalid-request` | `placeLng` is off the globe, or was given without `placeLat`. |
-| `bookingUrl.invalid` | 400 | `invalid-request` | `bookingUrl` is not an http(s) URL. |
+| `bookingUrl.invalid` | 400 | `invalid-request` | `bookingUrl` is not a public http(s) URL, on a weblog or a business. |
 | `customDomain.malformed` | 400 | `invalid-request` | `customDomain` is not a hostname. |
 | `customDomain.siteHost` | 400 | `invalid-request` | `customDomain` is the site's own host. |
 | `customDomain.inUse` | 409 | `conflict` | Another weblog has this `customDomain`. |
@@ -1946,6 +1946,8 @@ the analytics service.
 - `posts` rows are the per-blog route's; `sources` rows show, for a source
   several blogs share, the largest single blog's visitors, so a value is a
   lower bound.
+- `totalViews` and `totalVisits` mean something only when `state` is `OK` or
+  `STALE`; with `NOT_CONFIGURED` they are 0, not "no traffic".
 - With no analytics service (`NOT_CONFIGURED`) the answer is 200 with empty
   lists and no `asOf`.
 
@@ -2225,9 +2227,9 @@ store a value exactly as the screen does: both call the same rules.
 - The rules (each refusal names its field in `errors`, all of them in one
   400): `name` required (`field.required`; blank, `field.blank`) and at most
   255 characters; `businessType` one of `Organization`, `LocalBusiness`,
-  `ProfessionalService` (`businessType.unknown`); `websiteUrl`, `bookingUrl`
-  and `logoUrl` public, absolute `http`/`https` URLs (`field.notPublicUrl`;
-  localhost and intranet hosts are refused) of at most 255 characters;
+  `ProfessionalService` (`businessType.unknown`); `websiteUrl` and `logoUrl` public, absolute `http`/`https` URLs
+  (`field.notPublicUrl`; localhost and intranet hosts are refused), and
+  `bookingUrl` the same (`bookingUrl.invalid`, as on a weblog) of at most 255 characters;
   `telephone` digits, plus, parentheses, hyphen, dot and space with an
   optional extension, 3 to 32 characters (`telephone.invalid`); `email` a
   valid address (`email.invalid`) of at most 255; `areaServed` at most 255;
@@ -2318,7 +2320,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
 
-A tool takes `action` (except `whoami`) and that action's arguments, named as in this document:
+A tool takes `action` (except `whoami` and `site_info`) and that action's arguments, named as in this document:
 `weblog` is a handle, and body fields keep their names. An argument the action does not take is
 refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `revisionId`, `userName`)
 must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
