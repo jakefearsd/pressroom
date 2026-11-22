@@ -276,6 +276,30 @@ class AuditApiTest {
      */
     @Test
     void seoAuditReportsOffsetLimitAndHasMoreAtEachPage() throws Exception {
+        Weblogger weblogger = withFiveGappyEntries();
+
+        assertPage(weblogger, "0", "2", 2, 0, 2, true);
+        assertPage(weblogger, "2", "2", 5, 2, 2, true);
+        assertPage(weblogger, "4", "2", 5, 4, 1, false);
+        assertPage(weblogger, "0", "500", 5, 0, 5, false);
+    }
+
+    /**
+     * An offset beyond the last gap is an empty page, not an error: offset as
+     * asked, no entries, hasMore false, and the total and counts of the whole
+     * report. Characterisation test: written after the paging shipped and
+     * passing at once.
+     */
+    @Test
+    void seoAuditPastTheLastEntryIsAnEmptyLastPage() throws Exception {
+        Weblogger weblogger = withFiveGappyEntries();
+
+        assertPage(weblogger, "5", "2", 5, 5, 0, false);
+        assertPage(weblogger, "50", "2", 5, 50, 0, false);
+    }
+
+    /** A weblogger whose weblog has five published entries, each with every gap. */
+    private Weblogger withFiveGappyEntries() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         List<WeblogEntry> gappy = new java.util.ArrayList<>();
         for (int i = 0; i < 5; i++) {
@@ -286,11 +310,7 @@ class AuditApiTest {
             gappy.add(entry);
         }
         when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(gappy);
-
-        assertPage(weblogger, "0", "2", 2, 0, 2, true);
-        assertPage(weblogger, "2", "2", 5, 2, 2, true);
-        assertPage(weblogger, "4", "2", 5, 4, 1, false);
-        assertPage(weblogger, "0", "500", 5, 0, 5, false);
+        return weblogger;
     }
 
     private void assertPage(Weblogger weblogger, String offset, String limit, int total, int expectedOffset,

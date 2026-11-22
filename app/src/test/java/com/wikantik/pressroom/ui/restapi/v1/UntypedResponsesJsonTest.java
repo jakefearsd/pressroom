@@ -182,6 +182,23 @@ class UntypedResponsesJsonTest {
                 body(get("/v1/me").requestAttr("authenticatedUser", user), 200));
     }
 
+    /**
+     * An account with no display name: {@code screenName} is present and null,
+     * never dropped and never an empty string (the member is optional in the
+     * document, so a client reads null as "none"). Characterisation test:
+     * written after the swap to records and passing at once.
+     */
+    @Test
+    void meForAnAccountWithNoScreenName() throws Exception {
+        authenticateWithToken(new ApiPrincipal("alice", "travels", ApiToken.Role.ADMIN, "token-1"));
+        user.setScreenName(null);
+
+        assertSameJson("{\"userName\":\"alice\",\"screenName\":null,\"kind\":\"PERSON\",\"globalAdmin\":true,"
+                + "\"tokenScope\":{\"weblog\":\"travels\",\"role\":\"ADMIN\"},"
+                + "\"weblogs\":[{\"handle\":\"travels\",\"name\":\"Travels\",\"permission\":\"ADMIN\"}]}",
+                body(get("/v1/me").requestAttr("authenticatedUser", user), 200));
+    }
+
     @Test
     void theMaintenanceActions() throws Exception {
         Weblog weblog = weblog("myblog", "My blog");

@@ -51,6 +51,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -539,25 +540,58 @@ class OpenApiContractTest {
                 return;
             }
             seen.add(name);
-            JsonNode schema = resolve(operation.get("responses").get("200").path("content")
-                    .path("application/json").path("schema"));
-            assertFalse("array".equals(schema.path("type").asString()), name + " answers a bare array: " + schema);
-            JsonNode properties = schema.path("properties");
-            String list = properties.has("items") ? "items" : "entries";
-            Set<String> required = strings(schema.path("required"));
-            Set<String> wanted = new HashSet<>(PAGING);
-            wanted.add(list);
-            for (String member : wanted) {
-                assertTrue(properties.has(member), name + " answers " + member + ": " + schema);
-                assertTrue(required.contains(member), name + " marks " + member + " required: " + schema);
-            }
-            if (name.endsWith("/audit/seo")) {
-                assertTrue(properties.has("entries"), name + " keeps entries, a report not a list");
-            }
+            assertPagedShape(name, operation);
         });
         assertTrue(seen.containsAll(Set.of("GET /v1/weblogs/{handle}/entries", "GET /v1/weblogs/{handle}/comments",
                 "GET /v1/weblogs/{handle}/audit/seo", "GET /v1/weblogs", "GET /v1/admin/users",
                 "GET /v1/weblogs/{handle}/media")), "the paged operations were found: " + seen);
+    }
+
+    /** One list operation against the paging shape; a failure names the operation and the shape it found. */
+    private static void assertPagedShape(String name, JsonNode operation) {
+        JsonNode responses = operation.path("responses");
+        assertTrue(responses.has("200"), name + " has no 200 response, only " + responses.propertyNames()
+                + ": " + responses);
+        JsonNode declared = responses.get("200").path("content").path("application/json").path("schema");
+        assertFalse(declared.isMissingNode(), name + "'s 200 declares no application/json schema: "
+                + responses.get("200"));
+        JsonNode schema = resolve(declared);
+        assertTrue(schema != null, name + "'s 200 names a schema the document does not hold: " + declared);
+        assertFalse("array".equals(schema.path("type").asString()), name + " answers a bare array: " + schema);
+        JsonNode properties = schema.path("properties");
+        assertTrue(properties.has("items") || properties.has("entries"),
+                name + " answers neither items nor entries: " + schema);
+        String list = properties.has("items") ? "items" : "entries";
+        Set<String> required = strings(schema.path("required"));
+        Set<String> wanted = new HashSet<>(PAGING);
+        wanted.add(list);
+        for (String member : wanted) {
+            assertTrue(properties.has(member), name + " answers " + member + ": " + schema);
+            assertTrue(required.contains(member), name + " marks " + member + " required: " + schema);
+        }
+        if (name.endsWith("/audit/seo")) {
+            assertTrue(properties.has("entries"), name + " keeps entries, a report not a list");
+        }
+    }
+
+    /**
+     * An operation whose 200 is not the shape the check expects (none at all,
+     * or a list under another name) fails naming the operation and what it
+     * found, not with a null pointer or a member it never looked for.
+     */
+    @Test
+    void anUnexpectedResponseShapeFailsNamingTheOperationAndTheShape() {
+        ObjectMapper json = new ObjectMapper();
+        JsonNode created = json.readTree("{\"responses\":{\"201\":{\"description\":\"made\"}}}");
+        AssertionError noOk = assertThrows(AssertionError.class, () -> assertPagedShape("GET /v1/planted", created));
+        assertTrue(noOk.getMessage().contains("GET /v1/planted") && noOk.getMessage().contains("201"),
+                noOk.getMessage());
+
+        JsonNode data = json.readTree("{\"responses\":{\"200\":{\"content\":{\"application/json\":{\"schema\":"
+                + "{\"type\":\"object\",\"properties\":{\"data\":{\"type\":\"array\"}}}}}}}}");
+        AssertionError noList = assertThrows(AssertionError.class, () -> assertPagedShape("GET /v1/planted", data));
+        assertTrue(noList.getMessage().contains("GET /v1/planted") && noList.getMessage().contains("\"data\"")
+                && noList.getMessage().contains("neither items nor entries"), noList.getMessage());
     }
 
     private static boolean takesLimit(JsonNode operation) {
