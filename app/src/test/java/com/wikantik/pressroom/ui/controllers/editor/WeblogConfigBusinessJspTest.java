@@ -116,6 +116,17 @@ class WeblogConfigBusinessJspTest {
         }
     }
 
+    @Test
+    void pageWidthSelectOffersStandardAndWide() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("<select") && jsp.contains("name=\"bean.pageWidth\""), "pageWidth select");
+        assertTrue(jsp.contains("value=\"STANDARD\"") && jsp.contains("value=\"WIDE\""), "both options");
+        for (String key : new String[] {"weblogSettings.pageWidth", "weblogSettings.pageWidth.standard",
+                "weblogSettings.pageWidth.wide", "weblogSettings.pageWidth.help"}) {
+            assertTrue(jsp.contains("code=\"" + key + "\""), key);
+        }
+    }
+
     /** 0.9.1 criterion 20. The name never says "share link": that term is the tokened URLs V020 removed. */
     @Test
     void shareRowCheckboxNamedAndLabelled() throws IOException {

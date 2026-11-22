@@ -32,6 +32,7 @@ import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.EntryOrder;
+import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -91,7 +92,7 @@ public final class WeblogSettingsRules {
 
     /** What a {@link Violation} means, for the API's problem code. */
     public enum Reason {
-        ENTRY_DISPLAY_COUNT, LOCALE_INVALID, TIME_ZONE_INVALID, ENTRY_ORDER, TOO_LONG, NOT_UUID,
+        ENTRY_DISPLAY_COUNT, LOCALE_INVALID, TIME_ZONE_INVALID, ENTRY_ORDER, PAGE_WIDTH, TOO_LONG, NOT_UUID,
         BUSINESS_UNKNOWN, FRONT_PAGE, PLACE_TYPE, PLACE_LOCALITY_REQUIRED, PLACE_COUNTRY, PLACE_LAT,
         PLACE_LNG, BOOKING_URL, CUSTOM_DOMAIN_MALFORMED, CUSTOM_DOMAIN_SITE_HOST, CUSTOM_DOMAIN_TAKEN,
         CUSTOM_DOMAIN_UNCHECKABLE
@@ -137,6 +138,10 @@ public final class WeblogSettingsRules {
         if (EntryOrder.parse(bean.getEntryOrder()).isEmpty()) {
             found.add(simple("entryOrder", "weblogSettings.error.entryOrder",
                     "entryOrder must be NEWEST or OLDEST.", Reason.ENTRY_ORDER));
+        }
+        if (PageWidth.parse(bean.getPageWidth()).isEmpty()) {
+            found.add(simple("pageWidth", "weblogSettings.error.pageWidth",
+                    "pageWidth must be STANDARD or WIDE.", Reason.PAGE_WIDTH));
         }
         tooLong("copyright", "websiteSettings.copyright", bean.getCopyright(), MAX_TEXT, found);
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);

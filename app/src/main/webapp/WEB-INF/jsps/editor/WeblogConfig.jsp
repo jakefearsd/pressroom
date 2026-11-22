@@ -167,6 +167,17 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="weblog_bean_pageWidth"><spring:message code="weblogSettings.pageWidth"/></label>
+        <div class="col-sm-9">
+            <select class="form-select" id="weblog_bean_pageWidth" name="bean.pageWidth">
+                <option value="STANDARD" ${bean.pageWidth != 'WIDE' ? 'selected' : ''}><spring:message code="weblogSettings.pageWidth.standard"/></option>
+                <option value="WIDE" ${bean.pageWidth == 'WIDE' ? 'selected' : ''}><spring:message code="weblogSettings.pageWidth.wide"/></option>
+            </select>
+            <div class="form-text"><spring:message code="weblogSettings.pageWidth.help"/></div>
+        </div>
+    </div>
+
     <c:if test="${not actionWeblog.siteSpace}">
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_frontPageId"><spring:message code="weblogSettings.frontDoor"/></label>

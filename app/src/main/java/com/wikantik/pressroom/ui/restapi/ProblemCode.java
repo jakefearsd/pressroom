@@ -430,6 +430,8 @@ public enum ProblemCode {
     ENTRY_DISPLAY_COUNT_OUT_OF_RANGE("entryDisplayCount.outOfRange", ProblemType.INVALID_REQUEST, 1),
     /** {@code entryOrder} is not NEWEST or OLDEST. */
     ENTRY_ORDER_INVALID("entryOrder.invalid", ProblemType.INVALID_REQUEST, 0),
+    /** {@code pageWidth} is not STANDARD or WIDE. */
+    PAGE_WIDTH_INVALID("pageWidth.invalid", ProblemType.INVALID_REQUEST, 0),
     /** {@code businessId} names no business profile. */
     BUSINESS_UNKNOWN("business.unknown", ProblemType.INVALID_REQUEST, 0),
     /** No business profile has this id. */

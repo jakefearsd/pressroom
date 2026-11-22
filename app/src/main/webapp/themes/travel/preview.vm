@@ -37,7 +37,7 @@ only ever one entry here.
     #showPreviewShellScript()
 </head>
 <!-- preview shell -->
-<body class="tg">
+<body class="tg#if($model.weblog.wideLayout) tg-wide#end">
 <main class="tg-main tg-main-entry">
     <article id="previewArticle" class="tg-entry-content"></article>
 </main>

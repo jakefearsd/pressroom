@@ -34,7 +34,7 @@ the prose class itself, since there is only ever one entry here.
     #showPreviewShellScript()
 </head>
 <!-- preview shell -->
-<body class="qj">
+<body class="qj#if($model.weblog.wideLayout) qj-wide#end">
 <main class="qj-main qj-main-entry">
     <div class="qj-reading">
         <article id="previewArticle" class="qj-prose"></article>

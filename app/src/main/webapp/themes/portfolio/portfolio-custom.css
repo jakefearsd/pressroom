@@ -25,6 +25,10 @@ headings/labels), never an off-scale size.
     --pf-bad: #D0705F;
     --pf-gap: 4px;
     --pf-row-h: 320px;
+    /* The reading measure: lists, a post's text, steps, comments, search.
+       The picture grid runs full width either way. Widened by the wide
+       layout (body.pf.pf-wide, below). */
+    --pf-measure: 46rem;
     --pf-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         "Helvetica Neue", Arial, sans-serif;
 }
@@ -68,6 +72,14 @@ body.pf {
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+}
+
+/* Page width = Wide, the blog setting (the body carries the wide class):
+ * the same columns, wider, and a longer line. Every width above reads these
+ * tokens, so this one rule is the whole of the wide layout. Below the wide
+ * widths nothing changes, so phones and small windows look the same. */
+body.pf.pf-wide {
+    --pf-measure: 62rem;
 }
 
 body.pf a {
@@ -226,7 +238,7 @@ body.pf a:hover {
 .pf-grid:has(> .pf-card:only-child) {
     display: block;
     width: 100%;
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 0 1.25rem;
 }
@@ -273,7 +285,7 @@ body.pf a:hover {
 
 .pf-list {
     width: 100%;
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 0 1.25rem;
 }
@@ -348,7 +360,7 @@ body.pf a:hover {
 }
 
 .pf-entry-body {
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 2.5rem 1.25rem 1rem;
 }
@@ -471,7 +483,7 @@ body.pf .pf-entry-content blockquote {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 2rem 1.25rem;
     text-align: left;
@@ -554,7 +566,7 @@ body.pf .pf-entry-content blockquote {
    section is a sibling of the entry, not inside .pf-entry-body. Same measure
    and gutter as the reading column above it. */
 body.pf .comments {
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 3rem auto 0;
     padding: 0 1.25rem;
 }
@@ -597,7 +609,7 @@ body.pf .comments {
 }
 
 .pf-search-head {
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 0 1.25rem 2rem;
     color: var(--pf-muted);
@@ -606,7 +618,7 @@ body.pf .comments {
 
 .pf-search-empty,
 .pf-search-error {
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 0 auto;
     padding: 0 1.25rem 2rem;
     color: var(--pf-muted);
@@ -632,7 +644,7 @@ body.pf .comments {
 
 body.pf .contact-form,
 body.pf .newsletter-subscribe {
-    max-width: 46rem;
+    max-width: var(--pf-measure);
     margin: 1.5rem auto 0;
     padding: 1.375rem;
     background: var(--pf-surface);

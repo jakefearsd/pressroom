@@ -26,6 +26,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.pojos.Business;
 import com.wikantik.pressroom.pojos.EntryOrder;
+import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.Weblog;
 
 
@@ -48,6 +49,7 @@ public class WeblogConfigBean {
     private boolean showMoreFromSite;
     private boolean shareRowEnabled;
     private String entryOrder = EntryOrder.NEWEST.name();
+    private String pageWidth = PageWidth.STANDARD.name();
     private String icon;
     private String about;
 
@@ -181,6 +183,15 @@ public class WeblogConfigBean {
         this.entryOrder = entryOrder;
     }
 
+    /** STANDARD or WIDE; a value no rule has judged yet when it comes from a request. */
+    public String getPageWidth() {
+        return pageWidth;
+    }
+
+    public void setPageWidth(String pageWidth) {
+        this.pageWidth = pageWidth;
+    }
+
     public boolean getShareRowEnabled() {
         return shareRowEnabled;
     }
@@ -301,6 +312,7 @@ public class WeblogConfigBean {
         setShowMoreFromSite(!Boolean.FALSE.equals(dataHolder.getShowMoreFromSite()));
         setShareRowEnabled(!Boolean.FALSE.equals(dataHolder.getShareRowEnabled()));
         setEntryOrder(dataHolder.entryOrder().name());
+        setPageWidth(dataHolder.pageWidth().name());
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
         this.customDomain = dataHolder.getCustomDomain();
         setIcon(dataHolder.getIconPath());
@@ -331,6 +343,7 @@ public class WeblogConfigBean {
         dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
         dataHolder.setShareRowEnabled(this.getShareRowEnabled());
         dataHolder.setEntryOrder(EntryOrder.parse(this.entryOrder).orElse(EntryOrder.NEWEST).name());
+        dataHolder.setPageWidth(PageWidth.of(this.pageWidth).name());
         dataHolder.setFrontPageId(StringUtils.trimToNull(this.frontPageId));
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());

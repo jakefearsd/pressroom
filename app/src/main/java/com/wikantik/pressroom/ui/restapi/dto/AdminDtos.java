@@ -6,11 +6,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.EntryOrder;
+import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -122,6 +125,9 @@ public final class AdminDtos {
                               @Schema(description = "NEWEST (the default) or OLDEST: the order of this blog's "
                                       + "listings. Feeds stay newest first.")
                               String entryOrder,
+                              @Schema(description = "STANDARD (the default) or WIDE: WIDE widens the theme's "
+                                      + "page and line length on large screens.")
+                              String pageWidth,
                               @Schema(description = "Id of the published page shown at the blog's root; absent "
                                       + "when the root lists posts (they then live at /posts).")
                               String frontPage,
@@ -224,6 +230,9 @@ public final class AdminDtos {
                                @Schema(description = "NEWEST or OLDEST (any case): the order of this blog's listings. "
                                        + "Feeds stay newest first. Not clearable.")
                                String entryOrder,
+                               @Schema(description = "STANDARD or WIDE (any case): WIDE widens the theme's page "
+                                       + "and line length on large screens. Not clearable.")
+                               String pageWidth,
                                @Schema(description = "Id of a published page of this blog to show at its root; the "
                                        + "post list then moves to /posts. Remove with clear.")
                                String frontPage,
@@ -274,7 +283,7 @@ public final class AdminDtos {
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
                 !Boolean.FALSE.equals(weblog.getShowMoreFromSite()),
                 !Boolean.FALSE.equals(weblog.getShareRowEnabled()), weblog.entryOrder().name(),
-                weblog.getFrontPageId(), weblog.getEditorTheme(),
+                weblog.pageWidth().name(), weblog.getFrontPageId(), weblog.getEditorTheme(),
                 weblog.getEditorTheme(), weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
@@ -349,11 +358,8 @@ public final class AdminDtos {
         if (patch.shareRowEnabled() != null) {
             bean.setShareRowEnabled(patch.shareRowEnabled());
         }
-        if (patch.entryOrder() != null) {
-            // Normalised when it parses; kept as given when it does not, so the settings rules refuse it.
-            bean.setEntryOrder(EntryOrder.parse(patch.entryOrder()).map(EntryOrder::name)
-                    .orElse(patch.entryOrder()));
-        }
+        setIfPresent(enumName(patch.entryOrder(), EntryOrder::parse), bean::setEntryOrder);
+        setIfPresent(enumName(patch.pageWidth(), PageWidth::parse), bean::setPageWidth);
         setIfPresent(patch.frontPage(), bean::setFrontPageId);
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);
@@ -388,6 +394,16 @@ public final class AdminDtos {
         if (value != null) {
             setter.accept(value);
         }
+    }
+
+    /**
+     * A stored-enum field as the bean takes it: the enum name when it parses,
+     * the value as given when it does not (so the settings rules refuse it),
+     * null when the patch omits it.
+     */
+    private static String enumName(String given,
+            Function<String, Optional<? extends Enum<?>>> parse) {
+        return given == null ? null : parse.apply(given).<String>map(Enum::name).orElse(given);
     }
 
     /** The column is numeric(5,2)/(6,2): store what the database would keep, as the form's value would be. */

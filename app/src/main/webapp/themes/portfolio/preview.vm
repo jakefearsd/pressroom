@@ -38,7 +38,7 @@ uses.
     #showPreviewShellScript()
 </head>
 <!-- preview shell -->
-<body class="pf">
+<body class="pf#if($model.weblog.wideLayout) pf-wide#end">
 <main class="pf-main pf-main-entry">
     <div class="pf-entry-body">
         <article id="previewArticle" class="pf-entry-content"></article>

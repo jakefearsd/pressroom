@@ -40,7 +40,7 @@
     #showContentAssets()
     #showAudienceAssets()
 </head>
-<body class="fd">
+<body class="fd#if($model.weblog.wideLayout) fd-wide#end">
 <a class="fd-skip" href="#main">Skip to content</a>
 
 <header class="fd-topbar">

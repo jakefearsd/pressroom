@@ -658,7 +658,7 @@ class PortfolioThemeRenderingTest {
         assertTrue(rule(body, ".pf-card-meta,\n.pf-card-sum {").contains("display: none;"),
                 "in a run of pictures a card shows only its picture and title:\n" + body);
         String lone = ".pf-grid:has(> .pf-card:only-child)";
-        assertTrue(rule(body, lone + " {").contains("max-width: 46rem;"),
+        assertTrue(rule(body, lone + " {").contains("max-width: var(--pf-measure);"),
                 "a lone card takes the reading measure:\n" + body);
         String title = rule(body, lone + " .pf-card-title {");
         assertTrue(title.contains("position: static;") && title.contains("opacity: 1;"),

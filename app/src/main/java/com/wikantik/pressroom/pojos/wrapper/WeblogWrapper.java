@@ -31,6 +31,7 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.EntryOrder;
+import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -274,6 +275,11 @@ public final class WeblogWrapper {
     /** Whether the blog lists oldest first; themes label their page links from this, never the raw string. */
     public boolean isOldestFirst() {
         return this.pojo.entryOrder() == EntryOrder.OLDEST;
+    }
+
+    /** Whether the blog's pages use the wide layout; each theme's body tag adds its wide class from this. */
+    public boolean isWideLayout() {
+        return this.pojo.pageWidth() == PageWidth.WIDE;
     }
 
     /** Whether this blog's pages carry the subscribe form. Read by the showSubscribeForm macro. */

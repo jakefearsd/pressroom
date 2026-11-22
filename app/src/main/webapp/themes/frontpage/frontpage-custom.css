@@ -72,6 +72,11 @@
     --fd-good: #2F7D4F;
     --fd-focus: #2AA198;
     --fd-radius: 6px;
+
+    /* Widths: the page column and a line of prose; widened by the wide
+       layout (body.fd.fd-wide, below). */
+    --fd-page: 46rem;
+    --fd-measure: 58ch;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -98,6 +103,15 @@ body.fd {
     font-family: "IBM Plex Sans", system-ui, sans-serif;
     font-size: 1rem;
     line-height: 1.55;
+}
+
+/* Page width = Wide, the blog setting (the body carries the wide class):
+ * the same columns, wider, and a longer line. Every width above reads these
+ * tokens, so this one rule is the whole of the wide layout. Below the wide
+ * widths nothing changes, so phones and small windows look the same. */
+body.fd.fd-wide {
+    --fd-page: 64rem;
+    --fd-measure: 76ch;
 }
 
 body.fd a { color: inherit; }
@@ -128,7 +142,7 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
     align-items: center;
     justify-content: space-between;
     gap: .5rem 1rem;
-    max-width: 46rem;
+    max-width: var(--fd-page);
     margin: 0 auto;
     padding: 1rem 1.25rem 0;
     font-size: .75rem;
@@ -145,7 +159,7 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
 
 /* ---- main panel ---- */
 
-.fd-main { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 3rem; }
+.fd-main { max-width: var(--fd-page); margin: 0 auto; padding: 0 1.25rem 3rem; }
 
 .fd-hero {
     padding: 1.5rem 0 1.25rem;
@@ -314,7 +328,7 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
 /* ---- footer ---- */
 
 .fd-footer {
-    max-width: 46rem;
+    max-width: var(--fd-page);
     margin: 0 auto;
     padding: 1.5rem 1.25rem 2.5rem;
     font-size: .75rem;
@@ -376,7 +390,7 @@ p.fd-site { margin: 0; }
     line-height: 1.25;
     text-wrap: balance;
 }
-.fd-prose { max-width: 58ch; line-height: 1.65; overflow-wrap: anywhere; }
+.fd-prose { max-width: var(--fd-measure); line-height: 1.65; overflow-wrap: anywhere; }
 .fd-prose p { margin: 0 0 .875rem; }
 .fd-prose h2, .fd-prose h3 { margin: 1.75rem 0 .5rem; font-size: 1rem; font-weight: 600; }
 body.fd .fd-prose a:where(:not(.cta-card)) {

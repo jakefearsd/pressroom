@@ -108,6 +108,8 @@ class WeblogSettingsProblemCodesTest {
                 "entryDisplayCount must be between 1 and 30.");
         oneField(refused("{\"entryOrder\":\"SIDEWAYS\"}"), "entryOrder", "entryOrder.invalid",
                 "entryOrder must be NEWEST or OLDEST.");
+        oneField(refused("{\"pageWidth\":\"HUGE\"}"), "pageWidth", "pageWidth.invalid",
+                "pageWidth must be STANDARD or WIDE.");
         oneField(refused("{\"copyright\":\"" + "c".repeat(256) + "\"}"), "copyright", "field.tooLong",
                 "'copyright' must be 255 characters or fewer.");
         oneField(refused("{\"locale\":\"xx_YY\"}"), "locale", "locale.invalid",
@@ -169,7 +171,7 @@ class WeblogSettingsProblemCodesTest {
     void aNonFiniteCoordinateIsFieldNotFinite() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));

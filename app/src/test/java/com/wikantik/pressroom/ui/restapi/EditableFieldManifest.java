@@ -66,7 +66,7 @@ final class EditableFieldManifest {
                 "name", "tagline", "copyright", "emailAddress", "locale", "timeZone", "entryDisplayCount", "active",
                 "customDomain", "icon", "about", "newsletterListUuid", "businessId", "placeType", "placeLocality",
                 "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl", "commentsEnabled",
-                "commentNotify", "showMoreFromSite", "shareRowEnabled", "entryOrder", "frontPage"),
+                "commentNotify", "showMoreFromSite", "shareRowEnabled", "entryOrder", "pageWidth", "frontPage"),
                 new TreeMap<>(Map.of(
                         "theme", "The Theme page is its own screen; the settings form does not carry it.",
                         "clear", CLEAR)));

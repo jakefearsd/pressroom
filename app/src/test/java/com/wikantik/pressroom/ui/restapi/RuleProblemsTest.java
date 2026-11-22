@@ -127,6 +127,7 @@ class RuleProblemsTest {
         everythingWrong.setLocale("xx_YY");
         everythingWrong.setTimeZone("Mars/Olympus_Mons");
         everythingWrong.setEntryOrder("SIDEWAYS");
+        everythingWrong.setPageWidth("HUGE");
         everythingWrong.setCopyright("c".repeat(WeblogSettingsRules.MAX_TEXT + 1));
         everythingWrong.setNewsletterListUuid("not-a-uuid");
         everythingWrong.setBusinessId("no-such-business");

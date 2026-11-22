@@ -707,6 +707,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `handle.heldBySitePage` | 409 | `conflict` | A site page (live or in the trash) is served at this `handle`. |
 | `entryDisplayCount.outOfRange` | 400 | `invalid-request` | `entryDisplayCount` is below 1 or above the site's limit. |
 | `entryOrder.invalid` | 400 | `invalid-request` | `entryOrder` is not NEWEST or OLDEST. |
+| `pageWidth.invalid` | 400 | `invalid-request` | `pageWidth` is not STANDARD or WIDE. |
 | `business.unknown` | 400 | `invalid-request` | `businessId` names no business profile. |
 | `business.notFound` | 404 | `not-found` | No business profile has this id. |
 | `business.inUse` | 409 | `conflict` | A business profile some weblogs use cannot be deleted; `detail` says how many. |
@@ -1776,6 +1777,14 @@ the view always answers in upper case. Any other value is a 400 with an
 `errors` entry on `entryOrder`, and nothing is stored. Feeds, the site front
 page, site-wide lists and search stay newest first. It cannot be cleared. The
 MCP `weblogs` tool's `update` action carries it like any other field.
+
+A weblog's `pageWidth` (`STANDARD`, the default, or `WIDE`) is how much of a
+large screen the blog's theme uses: `WIDE` widens the page column, a post's
+column and the line of text; phones look the same either way. Send it in
+either case; the view always answers in upper case. Any other value is a 400
+with an `errors` entry on `pageWidth`, and nothing is stored. It cannot be
+cleared. A blog whose stylesheet was customised keeps that stylesheet's
+widths.
 
 A weblog's `frontPage` is the id of one of its published pages. While set, the
 blog's root shows that page and the post list moves to `/<handle>/posts`

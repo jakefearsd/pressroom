@@ -215,6 +215,28 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void savingWideStoresIt() throws Exception {
+        bean.setPageWidth("WIDE");
+
+        controller.save(request, model, bean);
+
+        assertEquals("WIDE", weblog.getPageWidth());
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
+    @Test
+    void anUnknownPageWidthIsRefused() throws Exception {
+        weblog.setPageWidth("STANDARD");
+        bean.setPageWidth("HUGE");
+
+        controller.save(request, model, bean);
+
+        assertTrue(invalidFields(model).contains("weblog_bean_pageWidth"), invalidFields(model).toString());
+        assertEquals("STANDARD", weblog.getPageWidth());
+        verify(weblogger.getWeblogManager(), org.mockito.Mockito.never()).saveWeblog(weblog);
+    }
+
+    @Test
     void savingStoresTheCommentSettings() throws Exception {
         bean.setCommentsEnabled(true);
         bean.setCommentNotify(false);

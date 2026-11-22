@@ -34,7 +34,11 @@
     --tg-accent: #0F6E68;
     --tg-accent-dark: #0a544a;
     --tg-radius: 10px;     /* deliberate: guide-card radius, not the spec 6px */
-    --tg-measure: 44rem;
+    --tg-measure: 44rem;   /* a line of a guide's text */
+    /* The chrome and list column, and a single guide's column. With
+       --tg-measure, every column width; widened by body.tg.tg-wide, below. */
+    --tg-page: 68rem;
+    --tg-entry: 58rem;
 }
 
 body.tg {
@@ -44,6 +48,16 @@ body.tg {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 1rem;
     line-height: 1.65;
+}
+
+/* Page width = Wide, the blog setting (the body carries the wide class):
+ * the same columns, wider, and a longer line. Every width above reads these
+ * tokens, so this one rule is the whole of the wide layout. Below the wide
+ * widths nothing changes, so phones and small windows look the same. */
+body.tg.tg-wide {
+    --tg-page: 84rem;
+    --tg-entry: 72rem;
+    --tg-measure: 56rem;
 }
 
 body.tg a { color: var(--tg-accent); }
@@ -73,7 +87,7 @@ body.tg :focus-visible { outline: 2px solid var(--tg-accent); outline-offset: 2p
 /* ---- chrome ---- */
 
 .tg-header {
-    max-width: 68rem;
+    max-width: var(--tg-page);
     margin: 0 auto;
     padding: 2rem 1.25rem 1rem;
     border-bottom: 1px solid var(--tg-line);
@@ -112,11 +126,11 @@ body.tg :focus-visible { outline: 2px solid var(--tg-accent); outline-offset: 2p
 .tg-nav li.selected a,
 .tg-nav a[aria-current="page"] { color: var(--tg-ink); box-shadow: inset 0 -2px var(--tg-accent); }
 
-.tg-main { max-width: 68rem; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
-.tg-main-entry { max-width: 58rem; }
+.tg-main { max-width: var(--tg-page); margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
+.tg-main-entry { max-width: var(--tg-entry); }
 
 .tg-footer {
-    max-width: 68rem;
+    max-width: var(--tg-page);
     margin: 0 auto;
     padding: 1.5rem 1.25rem 3rem;
     border-top: 1px solid var(--tg-line);

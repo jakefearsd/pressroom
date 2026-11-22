@@ -85,6 +85,13 @@
     --qj-bad: #A33B2E;
     --qj-focus: #2AA198;
     --qj-radius: 6px;
+
+    /* Widths: the chrome, list and pager column; a single post's column; a
+       line of prose. Every max-width of a column reads one of these, so the
+       wide layout (body.qj.qj-wide, below) is one rule. */
+    --qj-page: 46rem;
+    --qj-entry: 40rem;
+    --qj-measure: 58ch;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -111,6 +118,16 @@ body.qj {
     font-family: "IBM Plex Sans", system-ui, sans-serif;
     font-size: 1rem;
     line-height: 1.55;
+}
+
+/* Page width = Wide, the blog setting (the body carries the wide class):
+ * the same columns, wider, and a longer line. Every width above reads these
+ * tokens, so this one rule is the whole of the wide layout. Below the wide
+ * widths nothing changes, so phones and small windows look the same. */
+body.qj.qj-wide {
+    --qj-page: 64rem;
+    --qj-entry: 52rem;
+    --qj-measure: 76ch;
 }
 
 body.qj a { color: inherit; }
@@ -140,7 +157,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
 /* ---- chrome ---- */
 
 .qj-head {
-    max-width: 46rem;
+    max-width: var(--qj-page);
     margin: 0 auto;
     padding: 2.5rem 1.25rem 1.5rem;
 }
@@ -181,7 +198,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
 
 /* ---- entry list: date marginalia ---- */
 
-.qj-main { max-width: 46rem; margin: 0 auto; padding: .5rem 1.25rem 3rem; }
+.qj-main { max-width: var(--qj-page); margin: 0 auto; padding: .5rem 1.25rem 3rem; }
 
 .qj-entries { display: block; }
 
@@ -231,7 +248,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     line-height: 1.6;
     color: var(--qj-ink-soft);
     margin: .4rem 0 0;
-    max-width: 58ch;
+    max-width: var(--qj-measure);
     overflow-wrap: anywhere;
 }
 
@@ -280,7 +297,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
  * real title. This replaces the showNextPrevEntriesControl macro's "&laquo; a | Main |
  * b &raquo;" strip -- see permalink.vm for why the theme renders its own. */
 .qj-pager {
-    max-width: 46rem;
+    max-width: var(--qj-page);
     margin: 2.5rem auto 0;
     padding: 1.25rem 1.25rem 0;
     border-top: 1px solid var(--qj-line);
@@ -323,7 +340,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
 }
 
 .qj-footer {
-    max-width: 46rem;
+    max-width: var(--qj-page);
     margin: 3rem auto 0;
     padding: 1.5rem 1.25rem 4rem;
     border-top: 1px solid var(--qj-line);
@@ -370,7 +387,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
  * treatment directly, since markdown output has no class to hang a qp-pull
  * equivalent on). */
 
-.qj-main-entry { max-width: 40rem; }
+.qj-main-entry { max-width: var(--qj-entry); }
 
 .qj-reading { padding: .5rem 0 1rem; }
 
@@ -391,9 +408,10 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     /* The prose's own measure, so the title block is as wide as the column it
      * heads: 30ch of this 26px face was about 400px over a 560px body, and a
      * long title wrapped to three lines beside empty space. ch scales with
-     * font-size and both are Plex Serif, so 58ch / 1.625 here is exactly
-     * .qj-prose's 58ch at 1rem. */
-    max-width: calc(58ch / 1.625);
+     * font-size and both are Plex Serif, so the measure / 1.625 here is
+     * exactly .qj-prose's measure at 1rem (a ch inside the token resolves
+     * against this element's font, where it is used). */
+    max-width: calc(var(--qj-measure) / 1.625);
 }
 
 .qj-byline {
@@ -418,7 +436,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     font-family: "IBM Plex Serif", Georgia, serif;
     font-size: 1rem;
     line-height: 1.68;
-    max-width: 58ch;
+    max-width: var(--qj-measure);
     /* A long bare URL is one unbreakable word: without this the page scrolled
      * sideways at phone width. "anywhere" also lowers the min-content width,
      * which is what lets the .qj-sum grid cell shrink instead of overflowing. */
@@ -445,12 +463,12 @@ body.qj .qj-prose a:where(:not(.cta-card)) { color: var(--qj-accent); }
 /* ---- entry tags (reading view) ----
    Quiet pills rather than the accent-coloured inline links .qj-prose a uses:
    the tag row sits directly under the prose and would otherwise read as a
-   continuation of the writing. Same 58ch measure so it lines up with it. */
+   continuation of the writing. Same measure so it lines up with it. */
 .qj-tags {
     display: flex;
     flex-wrap: wrap;
     gap: .375rem;
-    max-width: 58ch;
+    max-width: var(--qj-measure);
     margin: 1.75rem 0 0;
 }
 .qj-tags a {
@@ -604,7 +622,7 @@ body.qj .audience-message { margin-top: .75rem; font-size: .90625rem; color: var
 
 /* ---- empty entry list ---- */
 .qj-list-empty {
-    max-width: 46rem;
+    max-width: var(--qj-page);
     margin: 1.5rem 0 0;
     font-family: "IBM Plex Serif", Georgia, serif;
     font-size: .90625rem;

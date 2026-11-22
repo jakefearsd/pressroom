@@ -38,7 +38,7 @@
     #showContentAssets()
 </head>
 <!-- weblog -->
-<body class="tg">
+<body class="tg#if($model.weblog.wideLayout) tg-wide#end">
 <a class="tg-skip" href="#main">Skip to content</a>
 ## The site's name, the way to its front page and its other blogs (weblog.vm).
 #showSiteBar($model.weblog)

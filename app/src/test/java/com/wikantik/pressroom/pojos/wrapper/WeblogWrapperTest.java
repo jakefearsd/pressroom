@@ -261,6 +261,15 @@ class WeblogWrapperTest {
     }
 
     @Test
+    void theWideLayoutFollowsThePageWidth() {
+        assertFalse(wrapper.isWideLayout());
+        weblog.setPageWidth("WIDE");
+        assertTrue(wrapper.isWideLayout());
+        weblog.setPageWidth("wide-ish");
+        assertFalse(wrapper.isWideLayout(), "a hand-edited value reads as standard");
+    }
+
+    @Test
     void theListingOrderReadsNormalisedAndOldestFirstFollowsIt() {
         assertEquals("NEWEST", wrapper.getEntryOrder());
         assertFalse(wrapper.isOldestFirst());

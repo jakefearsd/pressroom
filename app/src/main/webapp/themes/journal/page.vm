@@ -31,7 +31,7 @@
     #showContentAssets()
 </head>
 <!-- page -->
-<body class="qj">
+<body class="qj#if($model.weblog.wideLayout) qj-wide#end">
 <a class="qj-skip" href="#main">Skip to content</a>
 ## The site's name, the way to its front page and its other blogs (weblog.vm).
 #showSiteBar($model.weblog)

@@ -31,7 +31,7 @@
     #showContentAssets()
 </head>
 <!-- page -->
-<body class="pf">
+<body class="pf#if($model.weblog.wideLayout) pf-wide#end">
 <a class="pf-skip" href="#main">Skip to content</a>
 ## The site's name, the way to its front page and its other blogs (weblog.vm).
 #showSiteBar($model.weblog)

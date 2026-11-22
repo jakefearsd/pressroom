@@ -249,6 +249,7 @@ class ProblemCodeCatalogTest {
                         "handle.heldBySitePage",
                         "entryDisplayCount.outOfRange",
                         "entryOrder.invalid",
+                        "pageWidth.invalid",
                         "business.unknown",
                         "business.notFound",
                         "business.inUse",

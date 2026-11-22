@@ -388,6 +388,18 @@ resolves through the index at the end of `CLAUDE.md`.
   the page links from `$model.weblog.oldestFirst` (never the raw
   `entryOrder` string), as the three article themes do; newest-first output
   is unchanged.
+- **Page width (the blog setting, `weblog.page_width`, V053).** STANDARD or
+  WIDE; the wrapper answers `$model.weblog.wideLayout`. Every theme template
+  opens its body as `<body class="qj#if($model.weblog.wideLayout) qj-wide#end">`
+  (pf/tg/fd likewise; `PageWidthRenderingTest` scans every `.vm` for it, so a
+  new page template must copy it). Each stylesheet keeps its column widths as
+  tokens on `:root` (`--qj-page`/`--qj-entry`/`--qj-measure`, `--pf-measure`,
+  `--tg-page`/`--tg-entry`/`--tg-measure`, `--fd-page`/`--fd-measure`) and
+  one `body.<p>.<p>-wide` rule widens them. **A column width is always a
+  token**, never a literal, or the wide layout skips it. A blog with a
+  customised stylesheet (Stylesheet editor) keeps its copy's literal widths, so
+  WIDE does nothing there until the copy gains the tokens; the setting's help
+  text says so. Images are unaffected: `[image]` already asks for `100vw`.
 
 ## The colophon (footer)
 

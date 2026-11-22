@@ -46,6 +46,7 @@ public final class RuleProblems {
             case LOCALE_INVALID -> ProblemCode.LOCALE_INVALID;
             case TIME_ZONE_INVALID -> ProblemCode.TIME_ZONE_INVALID;
             case ENTRY_ORDER -> ProblemCode.ENTRY_ORDER_INVALID;
+            case PAGE_WIDTH -> ProblemCode.PAGE_WIDTH_INVALID;
             case TOO_LONG -> ProblemCode.FIELD_TOO_LONG;
             case NOT_UUID -> ProblemCode.FIELD_NOT_UUID;
             case BUSINESS_UNKNOWN -> ProblemCode.BUSINESS_UNKNOWN;

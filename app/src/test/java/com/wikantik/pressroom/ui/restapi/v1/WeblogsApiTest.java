@@ -345,6 +345,25 @@ class WeblogsApiTest {
     }
 
     @Test
+    void pageWidthRoundTrips() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        assertEquals("STANDARD", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).pageWidth());
+
+        var result = doPatch(weblogger, weblog, "{\"pageWidth\":\"wide\"}").andExpect(status().isOk());
+        assertEquals("WIDE", weblog.getPageWidth());
+        assertEquals("WIDE", json(result).get("pageWidth").asString());
+
+        doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
+        assertEquals("WIDE", weblog.getPageWidth(), "a patch that omits it leaves it alone");
+
+        doPatch(weblogger, weblog, "{\"pageWidth\":\"HUGE\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("pageWidth"));
+        assertEquals("WIDE", weblog.getPageWidth(), "a refused value changes nothing");
+    }
+
+    @Test
     void viewIncludesShowMoreFromSite() throws Exception {
         Weblog weblog = aWeblog("myblog");
         assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
@@ -399,7 +418,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -411,7 +430,7 @@ class WeblogsApiTest {
     @Test
     void aPatchWithSeveralBadFieldsNamesEveryOne() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(" ", "t".repeat(2000), null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -893,7 +912,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
