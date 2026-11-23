@@ -25,14 +25,14 @@ import java.util.Optional;
  * {@code WeblogWrapper.isWideLayout} and widen their columns under a body class.
  */
 public enum PageWidth {
-    /** The themes' reading widths: how every blog looked before the setting existed. */
+    /** The themes' narrower reading widths: how every blog looked before 0.16.5. */
     STANDARD,
-    /** A wider page and a longer line on large screens; phones are unchanged. */
+    /** A wider page and a longer line on large screens; phones are unchanged. The default since 0.16.5 (V054). */
     WIDE;
 
-    /** Reads a stored value leniently: null, blank or unknown never fails a render, and reads as STANDARD. */
+    /** Reads a stored value leniently: null, blank or unknown never fails a render, and reads as WIDE. */
     public static PageWidth of(String stored) {
-        return parse(stored).orElse(STANDARD);
+        return parse(stored).orElse(WIDE);
     }
 
     /** Reads submitted input strictly: case-insensitive STANDARD or WIDE, empty for anything else. */

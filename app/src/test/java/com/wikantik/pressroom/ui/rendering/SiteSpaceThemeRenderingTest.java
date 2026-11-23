@@ -69,8 +69,8 @@ class SiteSpaceThemeRenderingTest {
 
     private static final List<String> THEMES = List.of("journal", "portfolio", "travel", "frontpage");
     private static final Map<String, String> BODY_CLASS = Map.of(
-            "journal", "<body class=\"qj\">", "portfolio", "<body class=\"pf\">",
-            "travel", "<body class=\"tg\">", "frontpage", "<body class=\"fd\">");
+            "journal", "<body class=\"qj qj-wide\">", "portfolio", "<body class=\"pf pf-wide\">",
+            "travel", "<body class=\"tg tg-wide\">", "frontpage", "<body class=\"fd fd-wide\">");
     private static final String SITE_NAME = "Sitetheme Harbour";
     private static final String BLOG = "sitethemeblog";
 

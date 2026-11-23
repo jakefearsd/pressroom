@@ -125,8 +125,8 @@ public final class AdminDtos {
                               @Schema(description = "NEWEST (the default) or OLDEST: the order of this blog's "
                                       + "listings. Feeds stay newest first.")
                               String entryOrder,
-                              @Schema(description = "STANDARD (the default) or WIDE: WIDE widens the theme's "
-                                      + "page and line length on large screens.")
+                              @Schema(description = "WIDE (the default) or STANDARD: STANDARD keeps the theme's "
+                                      + "narrower page and line length on large screens.")
                               String pageWidth,
                               @Schema(description = "Id of the published page shown at the blog's root; absent "
                                       + "when the root lists posts (they then live at /posts).")
@@ -230,8 +230,8 @@ public final class AdminDtos {
                                @Schema(description = "NEWEST or OLDEST (any case): the order of this blog's listings. "
                                        + "Feeds stay newest first. Not clearable.")
                                String entryOrder,
-                               @Schema(description = "STANDARD or WIDE (any case): WIDE widens the theme's page "
-                                       + "and line length on large screens. Not clearable.")
+                               @Schema(description = "WIDE or STANDARD (any case): STANDARD keeps the theme's narrower "
+                                       + "page and line length on large screens. Not clearable.")
                                String pageWidth,
                                @Schema(description = "Id of a published page of this blog to show at its root; the "
                                        + "post list then moves to /posts. Remove with clear.")

@@ -191,19 +191,19 @@ class WeblogConfigBeanTest {
     @Test
     void pageWidthCopiesBothWays() {
         Weblog w = weblog();
-        w.setPageWidth("WIDE");
+        w.setPageWidth("STANDARD");
         WeblogConfigBean b = new WeblogConfigBean();
         b.copyFrom(w);
-        assertEquals("WIDE", b.getPageWidth());
+        assertEquals("STANDARD", b.getPageWidth());
 
-        b.setPageWidth("standard");
+        b.setPageWidth("wide");
         b.copyTo(w);
-        assertEquals("STANDARD", w.getPageWidth(), "stored as the enum name");
+        assertEquals("WIDE", w.getPageWidth(), "stored as the enum name");
 
         w.setPageWidth("garbage");
         b.copyFrom(w);
-        assertEquals("STANDARD", b.getPageWidth(), "a stored unknown value reads as standard");
-        assertEquals("STANDARD", new WeblogConfigBean().getPageWidth(), "a form that omits it keeps the default");
+        assertEquals("WIDE", b.getPageWidth(), "a stored unknown value reads as wide");
+        assertEquals("WIDE", new WeblogConfigBean().getPageWidth(), "a form that omits it keeps the default");
     }
 
     /** 0.9.1 criteria 19 and 20: null reads as on; an unticked box (nothing posted) saves off. */

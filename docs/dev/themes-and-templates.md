@@ -389,7 +389,9 @@ resolves through the index at the end of `CLAUDE.md`.
   `entryOrder` string), as the three article themes do; newest-first output
   is unchanged.
 - **Page width (the blog setting, `weblog.page_width`, V053).** STANDARD or
-  WIDE; the wrapper answers `$model.weblog.wideLayout`. Every theme template
+  WIDE; WIDE is the default since V054 (0.16.5), which also moved every
+  existing blog to it, and an unknown stored value reads as WIDE. The wrapper
+  answers `$model.weblog.wideLayout`. Every theme template
   opens its body as `<body class="qj#if($model.weblog.wideLayout) qj-wide#end">`
   (pf/tg/fd likewise; `PageWidthRenderingTest` scans every `.vm` for it, so a
   new page template must copy it). Each stylesheet keeps its column widths as

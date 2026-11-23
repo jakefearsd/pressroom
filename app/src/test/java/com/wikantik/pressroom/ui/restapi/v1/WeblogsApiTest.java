@@ -348,12 +348,13 @@ class WeblogsApiTest {
     void pageWidthRoundTrips() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        assertEquals("STANDARD", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).pageWidth());
+        assertEquals("WIDE", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).pageWidth());
 
-        var result = doPatch(weblogger, weblog, "{\"pageWidth\":\"wide\"}").andExpect(status().isOk());
-        assertEquals("WIDE", weblog.getPageWidth());
-        assertEquals("WIDE", json(result).get("pageWidth").asString());
+        var result = doPatch(weblogger, weblog, "{\"pageWidth\":\"standard\"}").andExpect(status().isOk());
+        assertEquals("STANDARD", weblog.getPageWidth());
+        assertEquals("STANDARD", json(result).get("pageWidth").asString());
 
+        doPatch(weblogger, weblog, "{\"pageWidth\":\"wide\"}").andExpect(status().isOk());
         doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
         assertEquals("WIDE", weblog.getPageWidth(), "a patch that omits it leaves it alone");
 

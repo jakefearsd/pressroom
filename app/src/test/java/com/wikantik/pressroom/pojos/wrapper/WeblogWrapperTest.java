@@ -262,11 +262,11 @@ class WeblogWrapperTest {
 
     @Test
     void theWideLayoutFollowsThePageWidth() {
+        assertTrue(wrapper.isWideLayout(), "wide is the default");
+        weblog.setPageWidth("STANDARD");
         assertFalse(wrapper.isWideLayout());
-        weblog.setPageWidth("WIDE");
-        assertTrue(wrapper.isWideLayout());
         weblog.setPageWidth("wide-ish");
-        assertFalse(wrapper.isWideLayout(), "a hand-edited value reads as standard");
+        assertTrue(wrapper.isWideLayout(), "a hand-edited value reads as wide");
     }
 
     @Test

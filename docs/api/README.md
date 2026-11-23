@@ -1778,9 +1778,10 @@ the view always answers in upper case. Any other value is a 400 with an
 page, site-wide lists and search stay newest first. It cannot be cleared. The
 MCP `weblogs` tool's `update` action carries it like any other field.
 
-A weblog's `pageWidth` (`STANDARD`, the default, or `WIDE`) is how much of a
-large screen the blog's theme uses: `WIDE` widens the page column, a post's
-column and the line of text; phones look the same either way. Send it in
+A weblog's `pageWidth` (`WIDE`, the default since 0.16.5, or `STANDARD`) is how
+much of a large screen the blog's theme uses: `STANDARD` keeps the theme's
+narrower page column, post column and line of text; phones look the same
+either way. Send it in
 either case; the view always answers in upper case. Any other value is a 400
 with an `errors` entry on `pageWidth`, and nothing is stored. It cannot be
 cleared. A blog whose stylesheet was customised keeps that stylesheet's

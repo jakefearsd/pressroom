@@ -67,7 +67,7 @@ public class Weblog implements Serializable {
     private Boolean showMoreFromSite = Boolean.TRUE;
     private Boolean shareRowEnabled  = Boolean.TRUE;
     private String  entryOrder       = EntryOrder.NEWEST.name();
-    private String  pageWidth        = PageWidth.STANDARD.name();
+    private String  pageWidth        = PageWidth.WIDE.name();
     private String  frontPageId;
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
@@ -466,7 +466,7 @@ public class Weblog implements Serializable {
         return EntryOrder.of(entryOrder);
     }
 
-    /** The stored page width, STANDARD or WIDE (a hand-edited value reads as STANDARD via {@link #pageWidth()}). */
+    /** The stored page width, STANDARD or WIDE (a hand-edited value reads as WIDE via {@link #pageWidth()}). */
     public String getPageWidth() {
         return pageWidth;
     }
@@ -475,7 +475,7 @@ public class Weblog implements Serializable {
         this.pageWidth = pageWidth;
     }
 
-    /** The page width to render: the stored value, STANDARD when null, blank or unknown. */
+    /** The page width to render: the stored value, WIDE when null, blank or unknown. */
     public PageWidth pageWidth() {
         return PageWidth.of(pageWidth);
     }

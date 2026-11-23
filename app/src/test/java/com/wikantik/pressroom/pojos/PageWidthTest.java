@@ -26,10 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class PageWidthTest {
 
     @Test
-    void storedValueFallsBackToStandard() {
-        assertEquals(PageWidth.STANDARD, PageWidth.of(null));
-        assertEquals(PageWidth.STANDARD, PageWidth.of(""));
-        assertEquals(PageWidth.STANDARD, PageWidth.of("HUGE"));
+    void storedValueFallsBackToWide() {
+        assertEquals(PageWidth.WIDE, PageWidth.of(null));
+        assertEquals(PageWidth.WIDE, PageWidth.of(""));
+        assertEquals(PageWidth.WIDE, PageWidth.of("HUGE"));
+        assertEquals(PageWidth.STANDARD, PageWidth.of("standard"));
         assertEquals(PageWidth.STANDARD, PageWidth.of("STANDARD"));
         assertEquals(PageWidth.WIDE, PageWidth.of("wide"));
         assertEquals(PageWidth.WIDE, PageWidth.of("WIDE"));
@@ -45,17 +46,17 @@ class PageWidthTest {
     }
 
     @Test
-    void aWeblogIsStandardUntilToldOtherwise() {
+    void aWeblogIsWideUntilToldOtherwise() {
         Weblog weblog = new Weblog();
-        assertEquals("STANDARD", weblog.getPageWidth());
-        assertEquals(PageWidth.STANDARD, weblog.pageWidth());
-        weblog.setPageWidth("garbage");
-        assertEquals(PageWidth.STANDARD, weblog.pageWidth(), "a hand-edited value reads as standard");
-        weblog.setPageWidth("WIDE");
+        assertEquals("WIDE", weblog.getPageWidth());
         assertEquals(PageWidth.WIDE, weblog.pageWidth());
+        weblog.setPageWidth("garbage");
+        assertEquals(PageWidth.WIDE, weblog.pageWidth(), "a hand-edited value reads as wide");
+        weblog.setPageWidth("STANDARD");
+        assertEquals(PageWidth.STANDARD, weblog.pageWidth());
 
         Weblog copy = new Weblog();
         copy.setData(weblog);
-        assertEquals("WIDE", copy.getPageWidth(), "setData copies it");
+        assertEquals("STANDARD", copy.getPageWidth(), "setData copies it");
     }
 }

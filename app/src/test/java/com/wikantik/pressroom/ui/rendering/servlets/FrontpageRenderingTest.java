@@ -629,7 +629,7 @@ class FrontpageRenderingTest {
         String body = render("/" + SITE_HANDLE + "/about");
 
         assertFrontpageHead(body);
-        assertTrue(body.contains("<body class=\"fd\">"), "the page must wear the fd chrome:\n" + body);
+        assertTrue(body.contains("<body class=\"fd fd-wide\">"), "the page must wear the fd chrome:\n" + body);
         assertTrue(body.contains("class=\"fd-topbar\""), body);
         assertTrue(body.contains("<h1 class=\"fd-page-title\">About &lt;this&gt; site</h1>"),
                 "the raw page title must be escaped once, as the page's h1:\n" + body);

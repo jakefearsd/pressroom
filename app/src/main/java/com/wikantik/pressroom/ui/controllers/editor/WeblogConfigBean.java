@@ -49,7 +49,7 @@ public class WeblogConfigBean {
     private boolean showMoreFromSite;
     private boolean shareRowEnabled;
     private String entryOrder = EntryOrder.NEWEST.name();
-    private String pageWidth = PageWidth.STANDARD.name();
+    private String pageWidth = PageWidth.WIDE.name();
     private String icon;
     private String about;
 
