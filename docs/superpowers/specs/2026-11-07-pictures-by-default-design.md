@@ -37,7 +37,7 @@ is text only: no picture, no reading time, nothing the front page offers.
    private default media directory. A default must never make a write fail
    that would have saved without it: the publishing agent's posts embed
    Google static maps and badges whose hosts may refuse
-   (`PressroomFrictionPoints.md`, section 5). Asked for with `true`, it stays
+   (`docs/superpowers/reports/2026-10-31-pressroom-friction-points.md`, section 5). Asked for with `true`, it stays
    all or nothing, 400s included.
 3. **A hero never repeats the body.** Travel and portfolio print the featured
    image above the post only when the text does not already show it (by the

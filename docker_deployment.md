@@ -293,7 +293,7 @@ so neither starts until provisioning has exited successfully. Umami has a
 PostgreSQL server of its own, `umami-db` (since 0.7.2), whose image creates
 its database; `umami` waits for it and for the one-shot `umami-move`, which on
 an older host copies Umami's data over from Pressroom's server once (see
-[Upgrading to 0.7.2](#upgrading-to-072-umami-gets-its-own-database-server)) and
+[The moved Umami and listmonk databases](#the-moved-umami-and-listmonk-databases)) and
 on a fresh one finds nothing to move. `deploy.sh`
 (see [Upgrades](#upgrades)) wraps this same `up -d` with a health-check wait
 and is safe to use for first run too, but the plain compose command above is
@@ -1340,17 +1340,6 @@ chmod +x deploy.sh
 `.env` is worth doing on any release whose notes mention new `.env` keys, but
 never overwrite `.env` itself; it holds your secrets.
 
-**`umami` has been pinned to a digest since 0.1.0.** Before that it used
-the floating `postgresql-latest` tag, which — unlike every other image in
-this stack — was not digest-pinned, so a host that had recently pulled
-`latest` could already be running a newer Umami than the pinned digest, and
-upgrading such a host to 0.1.0 or later would *downgrade* it. Umami's own schema
-migrations are forward-only (they do not support a downgrade), so the
-symptom of that is a container that refuses to start — check `docker compose
-logs umami` — never silent data loss; if you hit it, stay on the newer image
-or restore Umami's database from a backup taken before the downgrade rather
-than trying to force the older image to run against the newer schema.
-
 Once the two files are in place:
 
 ```bash
@@ -1373,93 +1362,31 @@ rather than leaving the stack in a half-upgraded state without telling you.
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
 
-### Upgrading to 0.8.5: the back-office overlay, and listmonk's own server
+### The moved Umami and listmonk databases
 
-0.8.5 separates the back-office services from Pressroom (see [The back-office
-services](#the-back-office-services)): Umami and listmonk move into
-`docker-compose.backoffice.yml`, and listmonk moves off Pressroom's
-PostgreSQL onto a server of its own, `listmonk-db`, exactly as Umami did in
-0.7.2.
+Umami (since 0.7.2) and listmonk (since 0.8.5) each have a PostgreSQL server
+of their own, `umami-db` and `listmonk-db`. On a host older than that, the
+one-shot `umami-move` and `listmonk-move` services copied each database off
+Pressroom's `postgres` once, on the first deploy, and printed the row counts
+(`docker compose logs umami-move`). On a fresh host they find nothing to move.
 
-1. **Deploy with `bin/deploy-host.sh` or `./upgrade.sh`.** `upgrade.sh`
-   downloads both compose files; `deploy.sh` adds `COMPOSE_FILE` to `.env`
-   and generates `LISTMONK_DB_PASSWORD`.
-2. **listmonk's data moves by itself.** The one-shot `listmonk-move` copies
-   the `listmonk` database from `postgres` to the empty `listmonk-db` and
-   prints the `subscribers`, `lists` and `campaigns` counts (`docker compose
-   logs listmonk-move`). Only then does listmonk start. A host whose listmonk
-   never ran has nothing to move.
-3. **Backups are two services now.** `backup` writes Pressroom's database and
-   media to `pressroom-backups`; `backoffice-backup` writes the `umami` and
-   `listmonk` dumps to `pressroom-backoffice-backups`. Copy both volumes off
-   the host.
-4. **The old listmonk copy stays as it was** on `postgres`: the rollback
-   point. To roll back, restore the `.bak-<timestamp>` files `upgrade.sh`
-   kept and run `./deploy.sh`; 0.8.x's compose file points listmonk back at
-   it. Keep the `LISTMONK_DB_PASSWORD` line when you restore an old `.env`,
-   as for `UMAMI_DB_PASSWORD` below. Once satisfied, drop it:
+The copies they left on `postgres` were the rollback point, and nothing reads
+them now. Once the moved data has been in use for a while, drop them:
 
-   ```bash
-   docker compose exec postgres \
-       psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
-       -c 'DROP DATABASE listmonk;'
-   ```
-
-### Upgrading to 0.7.2: Umami gets its own database server
-
-0.7.2 moves Umami's data off Pressroom's PostgreSQL onto a server of its own,
-`umami-db`, with its own volume (`pressroom-umami-pgdata`) and login
-(`UMAMI_DB_USER`, default `umami`; `UMAMI_DB_PASSWORD`). It is the first step
-of moving Umami out of this stack. Pressroom itself is unchanged: it talks to
-Umami through its API, and is not even on `umami-db`'s network.
-
-1. **Deploy with `./deploy.sh`** (or `bin/deploy-host.sh`, which runs it). It
-   generates `UMAMI_DB_PASSWORD` into `.env`; compose refuses to start
-   without one, so a bare `docker compose up -d` stops with that message.
-2. **The data moves by itself.** The one-shot `umami-move` copies the `umami`
-   database from `postgres` to the empty `umami-db` in one transaction and
-   prints the `website`, `session` and `website_event` counts (`docker compose
-   logs umami-move`). Only then does the new `umami`
-   container start. The old container keeps recording until it is replaced,
-   so visits in those seconds stay in the old copy: expect to lose up to a
-   minute of visits (the rehearsal lost about 25 seconds, the usual restart
-   window of a deploy). If the move fails, `deploy.sh` fails and Umami stays
-   stopped (no visits are recorded) while the blogs keep serving; fix the
-   cause it names and run `./deploy.sh` again. The old database is untouched
-   either way.
-3. **Check it.** Maintenance › Analytics should still read n of n blogs
-   registered, and the next sync should report no error; the Umami dashboard
-   shows the same websites.
-4. **The old copy stays as it was** on `postgres`, untouched: it is the
-   rollback point. To roll back, restore the `.bak-<timestamp>` files
-   `upgrade.sh` kept and run `./deploy.sh`; 0.7.1's compose file points Umami
-   straight back at the old copy (visits recorded on `umami-db` meanwhile
-   stay there, and visits recorded during the rollback stay in the old copy).
-   **Keep the `UMAMI_DB_PASSWORD` line** when you restore the old `.env`
-   (copy it from the current `.env` first; no `.env.bak-*` holds it, since
-   the line is generated after the upgrade's backup): `umami-db` keeps the
-   password it was first started with. Without it the next deploy stops and
-   says so (see [If a service database's password is
-   lost](#if-a-service-databases-password-is-lost)). Once you are satisfied, drop the old copy (two weeks is plenty):
-
-   ```bash
-   docker compose exec postgres \
-       psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
-       -c 'DROP DATABASE umami;'
-   ```
-
-   Nothing in 0.7.2 reads it, and `provision` no longer names it, so dropping
-   it breaks nothing. Until then it still holds analytics data, so do drop it.
-5. **Grafana:** if you enabled `grafana_ro`, set its password on `umami-db`
-   too (see [The Grafana contract](#the-grafana-contract)) and point
-   the Umami datasource there.
+```bash
+for db in umami listmonk; do
+    docker compose exec postgres \
+        psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
+        -c "DROP DATABASE IF EXISTS $db;"
+done
+```
 
 ### If a service database's password is lost
 
 `umami-db` keeps the `UMAMI_DB_PASSWORD` it was first started with, and
 `listmonk-db` the `LISTMONK_DB_PASSWORD`; changing the line in `.env` later
 changes nothing on the server. If `.env` has lost the
-line (an older `.env` restored on a rollback), `deploy.sh` stops and says so
+line (an older `.env` restored on a rollback, say), `deploy.sh` stops and says so
 rather than generating a new one. Put the original line back if you have it.
 If not, give the server a new password from inside its container, where it
 trusts local connections, so the old one is not needed:
@@ -1479,59 +1406,9 @@ printf "ALTER ROLE \"%s\" PASSWORD '%s';\n" \
 on no command line.) For `listmonk-db`, the same with `LISTMONK_DB_PASSWORD`,
 `LISTMONK_DB_USER` (default `listmonk`) and `listmonk-db`.
 
-### Upgrading to 0.7.0: analytics without admin steps
-
-0.7.0 changes the schema (V043 adds the analytics cache tables, V044 drops the
-per-blog `analyticsSiteId` and `analyticsShareUrl` fields) and removes
-settings, so read this before you deploy:
-
-1. **Remove `PRESSROOM_ANALYTICS_JDBC_CONNECTIONURL`, `_USERNAME` and
-   `_PASSWORD` from `.env`.** Nothing reads them any more; front page
-   popularity now comes from the local analytics copy. (Leaving them does no
-   harm, but they hold a database credential for nothing.)
-2. **`UMAMI_DOMAIN` is gone and inert.** Caddy no longer serves the dashboard
-   under a domain or obtains a certificate for it. Delete the line, and the
-   DNS name you gave it (or repoint that name at the `:8081` port, see
-   [Reaching the dashboard](#reaching-the-dashboard)).
-3. **The Umami password is generated on the first deploy.** Re-download
-   `deploy.sh` and the compose file, then run `./deploy.sh`: it appends
-   `UMAMI_PRESSROOM_PASSWORD` to `.env` and the `analytics-views` step creates
-   the `pressroom` account. Do not use a bare `docker compose up -d` for this
-   first deploy.
-4. **Blogs already in Umami.** Each blog's website ID in Umami is now its
-   weblog ID, so Pressroom registers every blog under a new website at
-   startup. Websites you created by hand stay in Umami's database with their
-   history, but Pressroom no longer reads them, so the Traffic pages count
-   from registration onward.
-5. **When you are ready for the dashboard**, change Umami's default `admin` /
-   `umami` login, set `UMAMI_CONSOLE_BIND` to the host's LAN address, give the
-   dashboard a hostname of its own, and set
-   `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` (see [Reaching the
-   dashboard](#reaching-the-dashboard); zero-trust in front is optional).
-   Until then the dashboard is on `localhost:8081` only.
-6. **A blank `PRESSROOM_ANALYTICS_UMAMI_APIURL` is the off switch.** Unset
-   means on.
-7. **Check Maintenance, then Analytics**, after the deploy: it should read n of
-   n blogs registered, where n is one more than the number of blogs because the
-   site pages count as one (a host with six blogs shows 7 of 7). Press **Sync now**
-   if it does not, and read the app log for the reason.
-8. **Analytics retention starts.** From 0.7.0 the backup service deletes Umami
-   analytics data older than `UMAMI_RETENTION_DAYS` (default 730, two years)
-   every night, after the backup. Set `UMAMI_RETENTION_DAYS=0` in `.env`
-   before deploying if you want to keep everything. It works in committed
-   batches and reports how many rows it removed from each table. The whole
-   run is capped at 15 minutes: on a host with years of history the first run
-   may log a timeout failure ("Umami retention failed"), keep what it deleted,
-   and finish over the following nights.
-9. **The privacy page.** Analytics is now on for every blog, so the published
-   privacy policy's analytics paragraph needs the new wording. The approved
-   text is in `docs/legal/blog-privacy-policy.md` (the Analytics paragraph and
-   the third bullet of "The short version"); copy it into the page that
-   `site.privacy.page` names.
-
 ### In one command
 
-`deploy/upgrade.sh` does every step above, in an order that changes nothing until it can
+`deploy/upgrade.sh` does every step of an upgrade, in an order that changes nothing until it can
 finish. From a checkout, `bin/deploy-host.sh HOST VERSION` copies it to the host and runs
 it there. It is a release asset from 0.5.0 on; on a host with no checkout, download it
 beside the others and run it from the deploy directory:
@@ -1585,69 +1462,6 @@ which is the safe outcome rather than a silent re-initialisation. Pick one:
 
 Rehearse either against a scratch copy of the stack first, and keep the old
 volume until the new cluster has served real traffic.
-
-### Upgrading a deployment made before the image-only layout
-
-If this host has been running Pressroom since before the `provision.sh`/
-`analytics-views.sh`/image-only rework (i.e. it still has a
-`deploy/config/roller-production.properties` bind-mounted in, or a <!-- rebrand:keep -->
-`ROLLER_DOMAIN`/`ROLLER_IMAGE` pair in `.env`), moving it onto a current <!-- rebrand:keep -->
-release needs three changes, not just a version bump:
-
-1. **Replace `docker-compose.prod.yml`** with the current release's copy —
-   the old file bind-mounts a properties file and a Caddyfile that no longer
-   exist as separate artifacts; both are baked into the images now (see
-   "Development vs Production" in `docs/dev/configuration.md` and the top of this document).
-2. **Rename two `.env` keys**: `ROLLER_DOMAIN` becomes `SITE_DOMAIN`, and <!-- rebrand:keep -->
-   `ROLLER_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare <!-- rebrand:keep -->
-   version tag** (e.g. `0.1.0`), not a full image reference the way
-   `ROLLER_IMAGE` used to be. Both were deliberately renamed off the <!-- rebrand:keep -->
-   `PRESSROOM_` prefix: that prefix is now reserved for the app's own
-   configuration, and a stray `PRESSROOM_DOMAIN` would be overlaid onto the
-   app's properties as a junk key named `domain`.
-3. **Transcribe every setting from the old
-   `deploy/config/roller-production.properties`** into the `PRESSROOM_*` block <!-- rebrand:keep -->
-   in `.env` — there is no properties file in the new image, so anything
-   that file used to set has to become a `PRESSROOM_*` environment variable or
-   it silently reverts to the app's built-in default. The mapping (old
-   property → new variable) is:
-
-   | Property | Environment variable |
-   |---|---|
-   | `database.jdbc.connectionURL` | `PRESSROOM_DATABASE_JDBC_CONNECTIONURL` |
-   | `database.jdbc.username` | `PRESSROOM_DATABASE_JDBC_USERNAME` |
-   | `database.jdbc.password` | `PRESSROOM_DATABASE_JDBC_PASSWORD` |
-   | `database.jdbc.driverClass` | `PRESSROOM_DATABASE_JDBC_DRIVERCLASS` |
-   | `database.configurationType` | `PRESSROOM_DATABASE_CONFIGURATIONTYPE` |
-   | `installation.type` | `PRESSROOM_INSTALLATION_TYPE` |
-   | `themes.dir` | `PRESSROOM_THEMES_DIR` |
-   | `mediafiles.storage.dir` | `PRESSROOM_MEDIAFILES_STORAGE_DIR` |
-   | `search.index.dir` | `PRESSROOM_SEARCH_INDEX_DIR` |
-   | `uploads.dir` | `PRESSROOM_UPLOADS_DIR` |
-   | `mail.configurationType` | `PRESSROOM_MAIL_CONFIGURATIONTYPE` |
-   | `mail.hostname` | `PRESSROOM_MAIL_HOSTNAME` |
-   | `mail.port` | `PRESSROOM_MAIL_PORT` |
-   | `mail.username` | `PRESSROOM_MAIL_USERNAME` |
-   | `mail.password` | `PRESSROOM_MAIL_PASSWORD` |
-   | `newsletter.listmonk.baseurl` | `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` |
-
-   (Same table as `docs/superpowers/specs/2026-08-14-container-push-deployment-design.md`
-   — reuse it rather than re-deriving it; it is the single source of truth
-   for this mapping.) The values fixed by the image's own layout
-   (`PRESSROOM_THEMES_DIR=/app/themes`, the three `/data/*` directories,
-   `PRESSROOM_INSTALLATION_TYPE=auto`, `PRESSROOM_DATABASE_CONFIGURATIONTYPE=jdbc`,
-   `PRESSROOM_DATABASE_JDBC_DRIVERCLASS`) already ship as defaults in
-   `env.example`, so you only need to add the ones that carry a real,
-   host-specific value.
-
-Every failure mode here is loud, not silent: compose refuses to start at all
-if `SITE_DOMAIN` or `IMAGE_VERSION` is unset (`${SITE_DOMAIN:?...}` /
-`${IMAGE_VERSION:?...}` in `docker-compose.prod.yml`), and a missing or wrong
-`PRESSROOM_DATABASE_*` block leaves the app unable to bootstrap — its health
-check never turns green and `deploy.sh` exits non-zero rather than reporting
-success. A mistake in this migration will not corrupt data; it will stop the
-stack from coming up, which is the failure mode you want while getting it
-right.
 
 ## Firewall
 
