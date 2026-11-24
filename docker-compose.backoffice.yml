@@ -24,9 +24,9 @@
 # PRESSROOM_ANALYTICS_UMAMI_APIURL and PRESSROOM_NEWSLETTER_LISTMONK_BASEURL in
 # .env at the suite's LAN addresses, and drop this file from COMPOSE_FILE.
 #
-# The one-shots and backoffice-backup still run from Pressroom's image, which
-# bakes their scripts (deploy/db-move.sh, deploy/analytics-views.sh,
-# deploy/backup/); the suite rebuilds them on images of its own.
+# analytics-views and backoffice-backup still run from Pressroom's image,
+# which bakes their scripts (deploy/analytics-views.sh, deploy/backup/); the
+# suite rebuilds them on images of its own.
 
 # Container-log rotation, shared by every service (anchors do not cross
 # files, so this repeats docker-compose.prod.yml's). Docker's default json-file
@@ -61,15 +61,10 @@ services:
     # a floating tag and this stack's other third-party images are all pinned.
     image: docker.umami.is/umami-software/umami@sha256:87312d334d009ee67ee0d2fba8fed01435547cc468e452243aef5133a9984d48
     logging: *logging
-    # Its database is on umami-db (0.7.2+), not Pressroom's server. It waits
-    # for umami-move: an Umami started on an empty umami-db would migrate it,
-    # and the move -- which copies only into an empty one -- would then never
-    # bring the old data across.
+    # Its database is on umami-db (0.7.2+), not Pressroom's server.
     depends_on:
       umami-db:
         condition: service_healthy
-      umami-move:
-        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}@umami-db:5432/${UMAMI_DB:-umami}
       DATABASE_TYPE: postgresql
@@ -103,44 +98,13 @@ services:
       - pressroom-umami-pgdata:/var/lib/postgresql
     healthcheck:
       # Over TCP: on a first start the image's init server listens on the
-      # socket only, and umami-move connects over the network.
+      # socket only, and its clients connect over the network.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${UMAMI_DB_USER:-umami} -d ${UMAMI_DB:-umami}"]
       interval: 5s
       timeout: 5s
       retries: 20
     restart: unless-stopped
     networks:
-      - analytics
-
-  # One-shot: copies an existing host's Umami data from Pressroom's server to
-  # umami-db, once (deploy/db-move.sh says how it decides). umami waits for
-  # it to exit 0. A failure leaves umami-db as it was and Umami stopped (the
-  # blog stays up: caddy does not wait for umami), deploy.sh fails, and the
-  # next deploy tries again. The old database is never changed (the rollback
-  # point; dropped by hand later).
-  umami-move:
-    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
-    logging: *logging
-    entrypoint: ["/app/db-move.sh"]
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      umami-db:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      MOVE_NAME: umami-move
-      MOVE_DB: ${UMAMI_DB:-umami}
-      MOVE_MARKER_TABLE: website_event
-      MOVE_COUNT_TABLES: website session website_event
-      MOVE_PGHOST: umami-db
-      MOVE_DB_USER: ${UMAMI_DB_USER:-umami}
-      MOVE_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-      MOVE_PASSWORD_SETTING: UMAMI_DB_PASSWORD
-    networks:
-      - internal
       - analytics
 
   # Installs the Grafana analytics contract's traffic view, then Pressroom's
@@ -183,14 +147,10 @@ services:
     image: listmonk/listmonk@sha256:f535d59e14991337a9f2d570273685378ae86b0d7698c3e00da444e3bc205286
     logging: *logging
     # Its database is on listmonk-db (0.8.5), not Pressroom's server, with a
-    # login of its own. It waits for listmonk-move: a listmonk started on an
-    # empty listmonk-db would install into it, and the move -- which copies
-    # only into an empty one -- would then never bring the old data across.
+    # login of its own.
     depends_on:
       listmonk-db:
         condition: service_healthy
-      listmonk-move:
-        condition: service_completed_successfully
     command: >
       sh -c "./listmonk --install --idempotent --yes --config ''
       && ./listmonk --upgrade --yes --config ''
@@ -228,42 +188,13 @@ services:
       # Mounted where 18 keeps its versioned data directories; see postgres.
       - pressroom-listmonk-pgdata:/var/lib/postgresql
     healthcheck:
-      # Over TCP, as umami-db's: listmonk-move connects over the network.
+      # Over TCP, as umami-db's: its clients connect over the network.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${LISTMONK_DB_USER:-listmonk} -d ${LISTMONK_DB:-listmonk}"]
       interval: 5s
       timeout: 5s
       retries: 20
     restart: unless-stopped
     networks:
-      - newsletter
-
-  # One-shot: copies an existing host's listmonk data from Pressroom's server
-  # to listmonk-db, once, exactly as umami-move does for Umami. The old
-  # database on postgres is never changed (the rollback point; dropped by
-  # hand later).
-  listmonk-move:
-    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
-    logging: *logging
-    entrypoint: ["/app/db-move.sh"]
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      listmonk-db:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      MOVE_NAME: listmonk-move
-      MOVE_DB: ${LISTMONK_DB:-listmonk}
-      MOVE_MARKER_TABLE: subscribers
-      MOVE_COUNT_TABLES: subscribers lists campaigns
-      MOVE_PGHOST: listmonk-db
-      MOVE_DB_USER: ${LISTMONK_DB_USER:-listmonk}
-      MOVE_DB_PASSWORD: ${LISTMONK_DB_PASSWORD:?LISTMONK_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-      MOVE_PASSWORD_SETTING: LISTMONK_DB_PASSWORD
-    networks:
-      - internal
       - newsletter
 
   # The back-office databases, nightly, each from its own server with its own
@@ -307,9 +238,9 @@ services:
 
 # `internal` is docker-compose.prod.yml's, shared by the merged project.
 networks:
-  # umami-db's network: umami, umami-move, analytics-views and backoffice-backup.
+  # umami-db's network: umami, analytics-views and backoffice-backup.
   analytics:
-  # listmonk-db's network: listmonk, listmonk-move and backoffice-backup.
+  # listmonk-db's network: listmonk and backoffice-backup.
   newsletter:
 
 volumes:

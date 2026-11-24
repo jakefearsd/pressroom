@@ -685,7 +685,7 @@ class ProductionComposeTest {
                 assertTrue(image.startsWith(expected + "${IMAGE_VERSION"), name + ": " + image);
             }
         });
-        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "umami-move", "listmonk-move",
+        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views",
                         "backup", "backoffice-backup"),
                 Set.copyOf(ours));
     }
@@ -1045,7 +1045,7 @@ class ProductionComposeTest {
         assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"),
                 "its own password, required: " + env.get("POSTGRES_PASSWORD"));
         // Over TCP, not the socket: on a first start the image's init server
-        // listens on the socket only, and umami-move connects over TCP.
+        // listens on the socket only, and its clients connect over TCP.
         String health = String.valueOf(((Map<String, Object>) db.get("healthcheck")).get("test"));
         assertTrue(health.contains("pg_isready -h 127.0.0.1 "), health);
         assertNull(db.get("ports"), "umami-db publishes nothing");
@@ -1056,17 +1056,15 @@ class ProductionComposeTest {
     /** AC 2: never Pressroom's server or its password. */
     @Test
     @SuppressWarnings("unchecked")
-    void umamiConnectsToItsOwnServerAfterTheMove() {
+    void umamiConnectsToItsOwnServer() {
         Map<String, Object> umami = service("umami");
         String url = String.valueOf(((Map<String, Object>) umami.get("environment")).get("DATABASE_URL"));
         assertTrue(url.startsWith("postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?"), url);
         assertTrue(url.endsWith("@umami-db:5432/${UMAMI_DB:-umami}"), url);
         assertFalse(url.contains("POSTGRES_"), url);
         Map<String, Object> deps = (Map<String, Object>) umami.get("depends_on");
-        assertEquals(Map.of("condition", "service_healthy"), deps.get("umami-db"));
-        assertEquals(Map.of("condition", "service_completed_successfully"), deps.get("umami-move"),
-                "an Umami started on an empty umami-db would migrate it, and the move would then never run");
-        assertNull(deps.get("provision"), "provision no longer touches Umami's database");
+        assertEquals(Map.of("umami-db", Map.of("condition", "service_healthy")), deps,
+                "Umami waits for its own server and nothing else");
     }
 
     /**
@@ -1126,20 +1124,8 @@ class ProductionComposeTest {
                 onAnalytics.add(name);
             }
         });
-        assertEquals(new TreeSet<>(Set.of("umami-db", "umami", "umami-move", "analytics-views",
+        assertEquals(new TreeSet<>(Set.of("umami-db", "umami", "analytics-views",
                 "backoffice-backup")), onAnalytics);
-    }
-
-    /** AC 5-7: a one-shot from the app image, between both servers, before umami. */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theMoveIsAOneShotBetweenTheTwoServers() {
-        Map<String, Object> env = assertMoveOneShot("umami-move", "umami-db", "analytics");
-        assertEquals("${UMAMI_DB:-umami}", env.get("MOVE_DB"));
-        assertEquals("website_event", env.get("MOVE_MARKER_TABLE"));
-        assertEquals("${UMAMI_DB_USER:-umami}", env.get("MOVE_DB_USER"));
-        assertTrue(String.valueOf(env.get("MOVE_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"));
-        assertEquals("UMAMI_DB_PASSWORD", env.get("MOVE_PASSWORD_SETTING"));
     }
 
     /**
@@ -1170,10 +1156,8 @@ class ProductionComposeTest {
         env.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
                 "listmonk never uses Pressroom's server login: " + v));
         Map<String, Object> deps = (Map<String, Object>) listmonk.get("depends_on");
-        assertEquals(Map.of("condition", "service_healthy"), deps.get("listmonk-db"));
-        assertEquals(Map.of("condition", "service_completed_successfully"), deps.get("listmonk-move"),
-                "a listmonk started on an empty listmonk-db would install into it, and the move would never run");
-        assertNull(deps.get("provision"), "provision no longer creates listmonk's database");
+        assertEquals(Map.of("listmonk-db", Map.of("condition", "service_healthy")), deps,
+                "listmonk waits for its own server and nothing else");
         assertEquals(List.of("internal", "newsletter"), listmonk.get("networks"));
 
         Set<String> onNewsletter = new TreeSet<>();
@@ -1183,39 +1167,35 @@ class ProductionComposeTest {
                 onNewsletter.add(name);
             }
         });
-        assertEquals(new TreeSet<>(Set.of("listmonk-db", "listmonk", "listmonk-move", "backoffice-backup")),
-                onNewsletter, "only listmonk, its one-shot and the back-office backup reach listmonk-db");
+        assertEquals(new TreeSet<>(Set.of("listmonk-db", "listmonk", "backoffice-backup")),
+                onNewsletter, "only listmonk and the back-office backup reach listmonk-db");
     }
 
-    /** The same move script as Umami's, told listmonk's database, server and marker table. */
+    /**
+     * The umami-move and listmonk-move one-shots copied each database off
+     * Pressroom's server once, on the upgrade to 0.7.2 / 0.8.5. Every host has
+     * moved and the old copies are dropped (docker1, 2026-11-24), so they are
+     * gone: no service runs the move script, the image does not bake it, and
+     * no back-office service logs in to, or waits for, Pressroom's server.
+     */
     @Test
     @SuppressWarnings("unchecked")
-    void listmonksMoveIsAOneShotBetweenTheTwoServers() {
-        Map<String, Object> env = assertMoveOneShot("listmonk-move", "listmonk-db", "newsletter");
-        assertEquals("${LISTMONK_DB:-listmonk}", env.get("MOVE_DB"));
-        assertEquals("subscribers", env.get("MOVE_MARKER_TABLE"));
-        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("MOVE_DB_USER"));
-        assertTrue(String.valueOf(env.get("MOVE_DB_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
-        assertEquals("LISTMONK_DB_PASSWORD", env.get("MOVE_PASSWORD_SETTING"));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> assertMoveOneShot(String name, String server, String network) {
-        Map<String, Object> move = service(name);
-        assertEquals(service("app").get("image"), move.get("image"));
-        assertEquals(List.of("/app/db-move.sh"), move.get("entrypoint"));
-        assertEquals("no", String.valueOf(move.get("restart")));
-        assertNull(move.get("env_file"), "it needs two servers' logins, not every secret in .env");
-        assertNull(move.get("ports"));
-        assertEquals(List.of("internal", network), move.get("networks"));
-        Map<String, Object> deps = (Map<String, Object>) move.get("depends_on");
-        assertEquals(Map.of("condition", "service_healthy"), deps.get("postgres"));
-        assertEquals(Map.of("condition", "service_healthy"), deps.get(server));
-        Map<String, Object> env = (Map<String, Object>) move.get("environment");
-        assertEquals(name, env.get("MOVE_NAME"));
-        assertEquals(server, env.get("MOVE_PGHOST"));
-        assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${POSTGRES_PASSWORD:?"));
-        return env;
+    void theBackOfficeNeverReachesPressroomsServer() throws IOException {
+        assertFalse(Files.exists(Paths.get("../deploy/db-move.sh")), "deploy/db-move.sh is retired");
+        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
+        assertFalse(dockerfile.contains("db-move"), "the image no longer bakes the move script");
+        for (String name : BACK_OFFICE_SERVICES) {
+            Map<String, Object> svc = service(name);
+            Object deps = svc.get("depends_on");
+            Collection<?> waitsFor = deps instanceof Map<?, ?> map ? map.keySet()
+                    : deps instanceof Collection<?> list ? list : List.of();
+            assertFalse(waitsFor.contains("postgres"), name + " waits for Pressroom's server");
+            Object env = svc.get("environment");
+            if (env instanceof Map<?, ?> map) {
+                map.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
+                        name + " holds Pressroom's server login: " + v));
+            }
+        }
     }
 
     /** AC 9-11: the one-shot and the backup reach Umami on umami-db with its own login. */
@@ -1266,8 +1246,8 @@ class ProductionComposeTest {
 
     private static final Set<String> CORE_SERVICES = Set.of("postgres", "provision", "admin", "app", "caddy", "backup");
 
-    private static final Set<String> BACK_OFFICE_SERVICES = Set.of("umami", "umami-db", "umami-move",
-            "analytics-views", "listmonk", "listmonk-db", "listmonk-move", "backoffice-backup");
+    private static final Set<String> BACK_OFFICE_SERVICES = Set.of("umami", "umami-db",
+            "analytics-views", "listmonk", "listmonk-db", "backoffice-backup");
 
     /**
      * The core runs alone once the services leave: nothing in it waits for,

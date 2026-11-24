@@ -175,9 +175,9 @@ services:
     image: ghcr.io/jakefearsd/pressroom-caddy:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     # The app only, never a back-office service (SA-15): the blog must never
-    # wait for analytics or the newsletter. An Umami that cannot start (a
-    # failed umami-move) would otherwise leave caddy -- the blog's only way
-    # in -- created but never started. Caddy dials ANALYTICS_UPSTREAM and
+    # wait for analytics or the newsletter. An Umami that cannot start would
+    # otherwise leave caddy -- the blog's only way in -- created but never
+    # started. Caddy dials ANALYTICS_UPSTREAM and
     # NEWSLETTER_UPSTREAM per request, so until they are up only their own
     # paths answer 502. ProductionComposeTest pins this.
     depends_on:

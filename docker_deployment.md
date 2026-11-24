@@ -187,7 +187,7 @@ environment-variable-configured container.
     [Newsletter](#newsletter).
 - **Postgres credentials, backup schedule, Analytics and Newsletter
   settings** — `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (shared by
-  `postgres`, `provision`, `admin`, `umami-move` and `backup` — generate a real
+  `postgres`, `provision`, `admin` and `backup` — generate a real
   password with `openssl rand -base64 33 | tr '+/' '-_'`: 44 characters, no
   padding, only URL-safe ones), `UMAMI_DB_PASSWORD` (Umami's own database
   server, `umami-db`; `deploy.sh` generates it, hex, so it is safe inside
@@ -285,16 +285,13 @@ own Umami account, the first time it finds none in `.env`. A bare
 Umami account until the next `./deploy.sh`.)
 
 There is no separate migration step and no ordering to get right: compose
-runs the one-shot `provision` service first (creates the `listmonk`
-database, applies the migration chain via `migrate.sh`, grants
-`grafana_ro` — see `deploy/provision.sh`), and `app` and `listmonk`
-declare `depends_on: { provision: { condition: service_completed_successfully } }`,
-so neither starts until provisioning has exited successfully. Umami has a
-PostgreSQL server of its own, `umami-db` (since 0.7.2), whose image creates
-its database; `umami` waits for it and for the one-shot `umami-move`, which on
-an older host copies Umami's data over from Pressroom's server once (see
-[The moved Umami and listmonk databases](#the-moved-umami-and-listmonk-databases)) and
-on a fresh one finds nothing to move. `deploy.sh`
+runs the one-shot `provision` service first (applies the migration chain
+via `migrate.sh`, grants `grafana_ro` — see `deploy/provision.sh`), and
+`app` declares `depends_on: { provision: { condition: service_completed_successfully } }`,
+so it does not start until provisioning has exited successfully. Umami and
+listmonk each have a PostgreSQL server of their own, `umami-db` (since
+0.7.2) and `listmonk-db` (since 0.8.5), whose images create their
+databases; each service waits for its own server only. `deploy.sh`
 (see [Upgrades](#upgrades)) wraps this same `up -d` with a health-check wait
 and is safe to use for first run too, but the plain compose command above is
 equally correct.
@@ -916,8 +913,8 @@ what keeps consent and retention obligations out of the blog software.
    `LISTMONK_ROOT_URL`, and those links are the only way a subscriber can
    confirm or leave.
 2. Run `./deploy.sh` (or `docker compose up -d`).
-   The `provision` service creates the `listmonk` database, and listmonk
-   creates its own schema on first start.
+   `listmonk-db` creates the `listmonk` database, and listmonk creates its
+   own schema on first start.
 3. Sign in at `https://<LISTMONK_DOMAIN>/admin` with `admin` and the password
    you set.
 4. **Set up SMTP** under *Settings → SMTP*. Nothing sends until you do; those
@@ -1361,25 +1358,6 @@ rather than leaving the stack in a half-upgraded state without telling you.
 
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
-
-### The moved Umami and listmonk databases
-
-Umami (since 0.7.2) and listmonk (since 0.8.5) each have a PostgreSQL server
-of their own, `umami-db` and `listmonk-db`. On a host older than that, the
-one-shot `umami-move` and `listmonk-move` services copied each database off
-Pressroom's `postgres` once, on the first deploy, and printed the row counts
-(`docker compose logs umami-move`). On a fresh host they find nothing to move.
-
-The copies they left on `postgres` were the rollback point, and nothing reads
-them now. Once the moved data has been in use for a while, drop them:
-
-```bash
-for db in umami listmonk; do
-    docker compose exec postgres \
-        psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
-        -c "DROP DATABASE IF EXISTS $db;"
-done
-```
 
 ### If a service database's password is lost
 

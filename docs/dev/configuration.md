@@ -43,7 +43,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `.env`, nothing else; `.env`'s `COMPOSE_FILE` selects both compose files,
   so plain `docker compose` sees them (no `-f` anywhere). Two images
   per release tag: `ghcr.io/jakefearsd/pressroom` (WAR, themes, migrations,
-  `provision.sh`, `analytics-views.sh`, `db-move.sh`, `umami-views.sql`,
+  `provision.sh`, `analytics-views.sh`, `umami-views.sql`,
   `migrate.sh`, backup scripts, a PostgreSQL client) and
   `ghcr.io/jakefearsd/pressroom-caddy` (Caddy, Caddyfile baked in). The
   core file is Pressroom: `postgres`, a one-shot `provision` (migration chain,
@@ -55,9 +55,9 @@ resolves through the index at the end of `CLAUDE.md`.
   The **back-office overlay** (wiki SA-15; spec
   `2026-11-06-back-office-decoupling-design.md`) holds the services Pressroom
   uses: Umami on `umami-db` (`analytics` network) and listmonk on
-  `listmonk-db` (`newsletter` network), neither network the app's; one-shots
-  `umami-move`/`listmonk-move` (`db-move.sh`) copy an older host's data off
-  Pressroom's server once; `analytics-views` (`analytics-views.sh`) installs
+  `listmonk-db` (`newsletter` network), neither network the app's, and none
+  of them reaches Pressroom's server (the one-time `umami-move`/`listmonk-move`
+  copies off it were retired in 2026-11); `analytics-views` (`analytics-views.sh`) installs
   `analytics_traffic` after `umami` starts — see Analytics for why it cannot
   live in `provision`; `backoffice-backup` dumps both databases. The app and
   Caddy reach the services only through settings (`PRESSROOM_ANALYTICS_UMAMI_APIURL`,

@@ -29,12 +29,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
@@ -48,26 +46,23 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The back-office services' own database servers (spec
- * 2026-11-03-umami-database-server-design, and step 2 of
- * 2026-11-06-back-office-decoupling-design): the {@code umami-move} and
- * {@code listmonk-move} one-shots ({@code deploy/db-move.sh}) that copy an
- * existing host's database from Pressroom's server to the service's own,
- * and the nightly {@code deploy/backup/backup.sh}, which
- * dumps {@code umami} from {@code umami-db} and everything else from
- * {@code postgres}.
+ * The back-office databases' backups (spec
+ * 2026-11-03-umami-database-server-design, and step 4 of
+ * 2026-11-06-back-office-decoupling-design): {@code deploy/backup/backoffice-backup.sh}
+ * dumps {@code umami} from {@code umami-db} and {@code listmonk} from
+ * {@code listmonk-db}, and the core {@code deploy/backup/backup.sh} dumps
+ * Pressroom's server alone. The one-shots that once moved those databases
+ * off Pressroom's server are retired.
  *
  * <p>Two real PostgreSQL servers on one network, under the compose file's
  * service names as aliases, each with its own credentials. The scripts run
  * inside {@code umami-db}'s container, which has the same client tools
  * ({@code psql}, {@code pg_dump}, {@code pg_restore}) as the app image the
- * one-shots run from. The Umami schema here is a small stand-in: the move is
- * a whole-database copy and does not read Umami's tables beyond
- * {@code website_event}'s presence and the counts it reports.
+ * backups run from. The Umami schema here is a small stand-in, seeded on
+ * Pressroom's server as an old copy the backups must leave alone.
  */
 class UmamiDatabaseServerTest {
 
-    private static final Path MOVE = Paths.get("../deploy/db-move.sh");
     private static final Path BACKUP = Paths.get("../deploy/backup/backup.sh");
     private static final Path BACKOFFICE = Paths.get("../deploy/backup/backoffice-backup.sh");
 
@@ -111,175 +106,6 @@ class UmamiDatabaseServerTest {
             st.execute("DROP DATABASE IF EXISTS listmonk WITH (FORCE)");
             st.execute("CREATE DATABASE listmonk");
         }
-    }
-
-    // ---------------------------------------------------------------------
-    // The move
-    // ---------------------------------------------------------------------
-
-    /** AC 5: copies every row once, owned by umami-db's user, leaves the source alone; a re-run is a no-op. */
-    @Test
-    void anExistingUmamiIsCopiedOnceAndTheSourceIsLeftAsItWas() throws Exception {
-        seedOldUmami();
-
-        Container.ExecResult first = move(Map.of());
-
-        assertEquals(0, first.getExitCode(), output(first));
-        assertTrue(first.getStdout().contains("umami-move: website: 2 row(s)"), output(first));
-        assertTrue(first.getStdout().contains("umami-move: session: 3 row(s)"), output(first));
-        assertTrue(first.getStdout().contains("umami-move: website_event: 5 row(s)"), output(first));
-        assertEquals(Map.of("website", 2L, "\"user\"", 1L, "session", 3L, "website_event", 5L), counts(target));
-        assertEquals(Map.of("website", 2L, "\"user\"", 1L, "session", 3L, "website_event", 5L), counts(source),
-                "the old copy is a rollback point: nothing in it changes");
-        try (Connection con = connect(target, "umami"); Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT DISTINCT tableowner FROM pg_tables WHERE schemaname = 'public'")) {
-            assertTrue(rs.next());
-            assertEquals("umami", rs.getString(1), "objects belong to umami-db's own user");
-            assertFalse(rs.next(), "and to no one else");
-        }
-        try (Connection con = connect(target, "umami"); Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT count(*) FROM analytics_traffic")) {
-            assertTrue(rs.next() && rs.getLong(1) == 2, "views come across too");
-        }
-
-        try (Connection con = connect(source, "umami"); Statement st = con.createStatement()) {
-            st.execute("INSERT INTO website_event (website_id, session_id) SELECT website_id, session_id"
-                    + " FROM session LIMIT 1");
-        }
-        Container.ExecResult again = move(Map.of());
-
-        assertEquals(0, again.getExitCode(), output(again));
-        assertTrue(again.getStdout().contains("umami-db already holds umami; nothing to move"), output(again));
-        assertEquals(5L, counts(target).get("website_event"), "a re-run never copies again");
-        assertNoPassword(first, again);
-    }
-
-    /** AC 6: a fresh install has no Umami database on Pressroom's server. */
-    @Test
-    void aFreshInstallHasNothingToMove() throws Exception {
-        Container.ExecResult result = move(Map.of());
-
-        assertEquals(0, result.getExitCode(), output(result));
-        assertTrue(result.getStdout().contains("nothing to move"), output(result));
-        assertEquals(0, tableCount(target), "umami-db stays empty for Umami's own first boot");
-        assertNoPassword(result);
-    }
-
-    /** AC 6: the old provision created the database, but Umami never booted on it. */
-    @Test
-    void anOldDatabaseWithoutUmamisTablesHasNothingToMove() throws Exception {
-        try (Connection con = connect(source, "pressroom"); Statement st = con.createStatement()) {
-            st.execute("CREATE DATABASE umami");
-        }
-
-        Container.ExecResult result = move(Map.of());
-
-        assertEquals(0, result.getExitCode(), output(result));
-        assertTrue(result.getStdout().contains("nothing to move"), output(result));
-        assertEquals(0, tableCount(target));
-    }
-
-    /** AC 7: a source that cannot be asked is not a source with nothing in it. */
-    @Test
-    void anUnreachableSourceFailsAndCopiesNothing() throws Exception {
-        seedOldUmami();
-
-        Container.ExecResult result = move(Map.of("POSTGRES_PASSWORD", "wrong-" + UUID.randomUUID()));
-
-        assertNotEquals(0, result.getExitCode(), output(result));
-        assertTrue(result.getStderr().contains("cannot reach"), output(result));
-        assertEquals(0, tableCount(target));
-    }
-
-    /** AC 7: likewise umami-db; and a wrong target never falls back to anything. */
-    @Test
-    void anUnreachableTargetFailsAndCopiesNothing() throws Exception {
-        seedOldUmami();
-
-        Container.ExecResult result = move(Map.of("MOVE_DB_PASSWORD", "wrong-" + UUID.randomUUID()));
-
-        assertNotEquals(0, result.getExitCode(), output(result));
-        assertTrue(result.getStderr().contains("cannot reach"), output(result));
-        // The likely cause after a rollback that restored an older .env: the
-        // server keeps the password it was first started with.
-        assertTrue(result.getStderr().contains("UMAMI_DB_PASSWORD"), output(result));
-        assertEquals(0, tableCount(target));
-    }
-
-    /**
-     * AC 7: a restore that fails part-way leaves umami-db as it was, so the
-     * next deploy tries again rather than finding a half-copy it would
-     * mistake for a finished one. A type named like one of the tables makes
-     * {@code CREATE TABLE website} fail after other objects were created.
-     */
-    @Test
-    void aFailedRestoreLeavesUmamiDbEmpty() throws Exception {
-        seedOldUmami();
-        try (Connection con = connect(target, "umami"); Statement st = con.createStatement()) {
-            st.execute("CREATE TYPE website AS (x integer)");
-        }
-
-        Container.ExecResult result = move(Map.of());
-
-        assertNotEquals(0, result.getExitCode(), output(result));
-        assertEquals(0, tableCount(target), "single transaction: all or nothing: " + output(result));
-        assertNoPassword(result);
-    }
-
-    /**
-     * The same script moves listmonk's database to listmonk-db (0.8.5), told
-     * by compose which database, which server and which table marks a
-     * listmonk that ran.
-     */
-    @Test
-    void anExistingListmonkIsCopiedOnceToItsOwnServer() throws Exception {
-        try (Connection con = connect(source, "pressroom"); Statement st = con.createStatement()) {
-            st.execute("CREATE DATABASE listmonk");
-        }
-        try (Connection con = connect(source, "listmonk"); Statement st = con.createStatement()) {
-            st.execute("CREATE TABLE subscribers (id serial PRIMARY KEY, email text)");
-            st.execute("CREATE TABLE lists (id serial PRIMARY KEY, name text)");
-            st.execute("CREATE TABLE campaigns (id serial PRIMARY KEY, name text)");
-            st.execute("INSERT INTO subscribers (email) VALUES ('a@example.com'), ('b@example.com')");
-            st.execute("INSERT INTO lists (name) VALUES ('weekly')");
-        }
-
-        Container.ExecResult first = run(MOVE, listmonkMoveEnv());
-        Container.ExecResult again = run(MOVE, listmonkMoveEnv());
-
-        assertEquals(0, first.getExitCode(), output(first));
-        assertTrue(first.getStdout().contains("listmonk-move: subscribers: 2 row(s)"), output(first));
-        assertTrue(first.getStdout().contains("listmonk-move: lists: 1 row(s)"), output(first));
-        assertTrue(first.getStdout().contains("listmonk-move: campaigns: 0 row(s)"), output(first));
-        try (Connection con = connect(target, "listmonk"); Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT count(*) FROM subscribers")) {
-            assertTrue(rs.next() && rs.getLong(1) == 2, "subscribers come across");
-        }
-        assertEquals(0, again.getExitCode(), output(again));
-        assertTrue(again.getStdout().contains("listmonk-db already holds listmonk; nothing to move"), output(again));
-        assertNoPassword(first, again);
-    }
-
-    /** A host whose listmonk never ran (no subscribers table) has nothing to move. */
-    @Test
-    void aListmonkDatabaseWithoutItsTablesHasNothingToMove() throws Exception {
-        try (Connection con = connect(source, "pressroom"); Statement st = con.createStatement()) {
-            st.execute("CREATE DATABASE listmonk");
-        }
-
-        Container.ExecResult result = run(MOVE, listmonkMoveEnv());
-
-        assertEquals(0, result.getExitCode(), output(result));
-        assertTrue(result.getStdout().contains("nothing to move"), output(result));
-    }
-
-    /** AC 8: nothing that could put a password on a command line, or echo every command. */
-    @Test
-    void theMoveScriptKeepsPasswordsOffCommandLines() throws IOException {
-        String script = Files.readString(MOVE);
-        assertFalse(script.contains("postgresql://"), "a connection URI carries the password on the command line");
-        assertFalse(script.matches("(?s).*\\bset\\s+-[a-z]*x.*"), "set -x would echo every expanded command");
-        assertFalse(script.matches("(?s).*--password[= ].*"), "no password flags");
     }
 
     // ---------------------------------------------------------------------
@@ -377,32 +203,6 @@ class UmamiDatabaseServerTest {
     // Helpers
     // ---------------------------------------------------------------------
 
-    /** What compose hands umami-move (docker-compose.backoffice.yml). */
-    private static Map<String, String> umamiMoveEnv() {
-        Map<String, String> env = new HashMap<>(Map.of("PGHOST", "postgres", "POSTGRES_USER", "pressroom",
-                "POSTGRES_PASSWORD", SOURCE_PASSWORD, "PGCONNECT_TIMEOUT", "10"));
-        env.putAll(Map.of("MOVE_NAME", "umami-move", "MOVE_DB", "umami", "MOVE_MARKER_TABLE", "website_event",
-                "MOVE_COUNT_TABLES", "website session website_event", "MOVE_PGHOST", "umami-db",
-                "MOVE_DB_USER", "umami", "MOVE_DB_PASSWORD", TARGET_PASSWORD,
-                "MOVE_PASSWORD_SETTING", "UMAMI_DB_PASSWORD"));
-        return env;
-    }
-
-    /** What compose hands listmonk-move. listmonk-db is the same test server, under a second alias. */
-    private static Map<String, String> listmonkMoveEnv() {
-        Map<String, String> env = umamiMoveEnv();
-        env.putAll(Map.of("MOVE_NAME", "listmonk-move", "MOVE_DB", "listmonk", "MOVE_MARKER_TABLE", "subscribers",
-                "MOVE_COUNT_TABLES", "subscribers lists campaigns", "MOVE_PGHOST", "listmonk-db",
-                "MOVE_DB_USER", "umami", "MOVE_PASSWORD_SETTING", "LISTMONK_DB_PASSWORD"));
-        return env;
-    }
-
-    private static Container.ExecResult move(Map<String, String> overrides) throws IOException, InterruptedException {
-        Map<String, String> env = umamiMoveEnv();
-        env.putAll(overrides);
-        return run(MOVE, env);
-    }
-
     private static Container.ExecResult run(Path script, Map<String, String> env)
             throws IOException, InterruptedException {
         String dir = "/tmp/script-" + UUID.randomUUID();
@@ -447,27 +247,6 @@ class UmamiDatabaseServerTest {
                     + " SELECT website_id, session_id FROM session");
             st.execute("INSERT INTO website_event (website_id, session_id)"
                     + " SELECT website_id, session_id FROM session LIMIT 2");
-        }
-    }
-
-    private static Map<String, Long> counts(PostgreSQLContainer server) throws SQLException {
-        Map<String, Long> counts = new HashMap<>();
-        try (Connection con = connect(server, "umami"); Statement st = con.createStatement()) {
-            for (String table : List.of("website", "\"user\"", "session", "website_event")) {
-                try (ResultSet rs = st.executeQuery("SELECT count(*) FROM " + table)) {
-                    rs.next();
-                    counts.put(table, rs.getLong(1));
-                }
-            }
-        }
-        return counts;
-    }
-
-    private static int tableCount(PostgreSQLContainer server) throws SQLException {
-        try (Connection con = connect(server, "umami"); Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")) {
-            rs.next();
-            return rs.getInt(1);
         }
     }
 
