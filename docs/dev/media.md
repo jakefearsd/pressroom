@@ -42,11 +42,9 @@ resolves through the index at the end of `CLAUDE.md`.
     back from its new bytes. The focal point is author-set and kept. The
     edit form's content type falls back to the file name's for a missing or
     `octet-stream` type, as uploads do (`MediaUploads.effectiveContentType`).
-    **No screen offers it today:** `MediaFileEditController.save` accepts an
-    optional `uploadedFile` part and the form is multipart, but
-    `MediaFileEdit.jsp` has no file input (none since the Struts-era
-    rework), and the API has no replace operation. To change a file's bytes,
-    upload a new file or crop the image.
+    The edit form's **Replace file** input (`uploadedFile`, restored after
+    the Struts-era rework dropped it; `MediaJspStructureTest` pins it) is
+    the only way in: the API has no replace operation.
   - Deriving (`updateThumbnail`): an image that cannot be read or decoded
     gets a WARN naming the file and no derived data; a store or commit
     failure propagates to the caller rather than passing as a thumbnail

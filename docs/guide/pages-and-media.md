@@ -116,6 +116,9 @@ Click a file to open **Edit media file**:
 - **Alt text**: the description read aloud by screen readers and shown when
   an image cannot load. Fill it in for every image.
 - **Tags**, **Copyright statement**, **Folder**.
+- **Replace file**: choose a new file and save. It keeps the same name, URL
+  and shortcode, so every post that shows it updates, and an image's smaller
+  versions are rebuilt from the new one. The old content is not kept.
 - **Focal point**: click the part of the image that matters most. Themes keep
   it in view when they crop the image to fit. From the keyboard, focus the
   image and use the arrow keys. **Clear focal point** removes it.

@@ -198,6 +198,31 @@ class MediaJspStructureTest {
                 "the thumbnail link must have an accessible name");
     }
 
+    // ----------------------------------------------------------------- replace
+
+    /**
+     * {@code MediaFileEditController.save} takes an optional
+     * {@code uploadedFile} part, and the manager rebuilds every rendition
+     * from the new bytes, but the Struts-era rework dropped the input, so no
+     * screen could replace a file's content. The input belongs inside the
+     * multipart save form, labelled, and is offered for every file type.
+     */
+    @Test
+    void theEditFormOffersALabelledReplaceFileInput() throws IOException {
+        String edit = jsp("MediaFileEdit.jsp");
+        int form = edit.indexOf("<form id=\"entry\"");
+        int formEnd = edit.indexOf("</form>", form);
+        int input = edit.indexOf("<input type=\"file\" name=\"uploadedFile\" id=\"mfedit_uploadedFile\"");
+
+        assertTrue(input > form && input < formEnd, "the replace input sits inside the save form");
+        assertTrue(edit.substring(form, input).contains("enctype=\"multipart/form-data\""),
+                "the save form is multipart");
+        assertTrue(edit.contains("<label class=\"col-sm-3 col-form-label\" for=\"mfedit_uploadedFile\">"
+                + "<spring:message code=\"mediaFileEdit.replaceFile\"/></label>"), "the input has a label");
+        assertEquals(List.of(), enclosingTests(edit, "id=\"mfedit_uploadedFile\""),
+                "replacing is offered for every file, not only images");
+    }
+
     /** The {@code test} of every {@code c:if} open at the first occurrence of {@code marker}. */
     private static List<String> enclosingTests(String source, String marker) {
         int at = source.indexOf(marker);

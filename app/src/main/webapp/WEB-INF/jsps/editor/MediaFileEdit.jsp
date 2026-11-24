@@ -97,6 +97,18 @@
         </div>
     </div>
 
+    <%-- Replacing keeps the file's id, name and URL, so every entry that
+         shows it picks up the new content; the manager rebuilds the
+         thumbnail, renditions and dimensions from the new bytes. --%>
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="mfedit_uploadedFile"><spring:message code="mediaFileEdit.replaceFile"/></label>
+        <div class="col-sm-9">
+            <input type="file" name="uploadedFile" id="mfedit_uploadedFile" class="form-control"
+                   aria-describedby="mfedit_uploadedFile_tip"/>
+            <div id="mfedit_uploadedFile_tip" class="form-text"><spring:message code="mediaFileEdit.replaceFile.tip"/></div>
+        </div>
+    </div>
+
     <div class="row mb-3">
         <label class="col-form-label col-sm-3" for="clip_text"><spring:message code="mediaFileEdit.url"/></label>
 
