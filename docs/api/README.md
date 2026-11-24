@@ -9,8 +9,8 @@ users — everything the JSP admin UI can do, callable without a browser.
 > Pressroom version if you automate against this; do not assume forward
 > compatibility.
 
-Mint a token in the admin UI: **Profile → API tokens** for yourself, or an
-agent's page (**Admin → Users →** the agent) for an agent account. The secret
+Mint a token in the admin UI: **Your profile → Your API tokens** for yourself, or an
+agent's page (**Server admin → Users →** the agent) for an agent account. The secret
 is shown once. A script can mint one with the CLI instead:
 
 ```
@@ -147,9 +147,9 @@ Additive or narrower changes:
 
 ### In the admin UI
 
-**Profile → API tokens** mints, lists and revokes your own tokens. A site
+**Your profile → Your API tokens** mints, lists and revokes your own tokens. A site
 admin does the same for an agent on the agent's page, and sees every token on
-the site under **Admin → API tokens** (owner, kind and issuer; a toggle adds
+the site under **Server admin → API tokens** (owner, kind and issuer; a toggle adds
 revoked and expired ones). The form takes a label, a role (Read, Write or
 Admin: `READ`, `POST`, `ADMIN`), a weblog (all of the account's weblogs, or
 one it is a member of; a site admin may pick any) and an expiry (30, 90 or
@@ -161,7 +161,7 @@ the token was already shown.
 
 An agent is an account for software. It never signs in -- no password, no
 password reset, no single sign-on -- and works only through the tokens a site
-admin mints for it. A site admin creates it under **Admin → Users → New
+admin mints for it. A site admin creates it under **Server admin → Users → New
 agent**, adds it to weblogs on its page, and may switch on **Site
 administrator**, which lets an `ADMIN` token from it use the site-wide admin
 API. Disabling an account, agent or person, stops every token it holds on the

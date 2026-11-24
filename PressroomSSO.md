@@ -5,7 +5,7 @@ in to the wiki at wiki.wikantik.com. Their first sign-in creates a **reader**
 account. A reader cannot use the admin or authoring UI, the API, MCP or
 private media. They can comment on entries, and manage their account page.
 
-**Current state:** Pressroom 0.1.16 and later contain the feature. Sign-in is
+**Current state:** the feature has shipped (since 0.1.16). Sign-in is
 **off** until both Google credentials are in `.env`; until then nothing
 changes for anyone.
 
@@ -37,7 +37,7 @@ per public app.
    trailing slash and no query string. Any difference makes Google show
    `redirect_uri_mismatch`. **Authorized JavaScript origins** stays empty.
 5. Create the client and copy its **Client ID** and **Client secret**. The
-   secret goes only into `.env` on docker2 (step 4). Never put it in Global
+   secret goes only into `.env` on docker1 (step 4). Never put it in Global
    Config, a commit, a chat or a ticket.
 
 ### 2. Check the consent screen
@@ -58,16 +58,16 @@ project shares it. Readers see its app name and links.
 
 ### 3. Set the site's Absolute URL
 
-In Pressroom, go to **Admin → Global Config** and set **Absolute URL** to
+In Pressroom, go to **Server admin → Configuration** and set **Absolute URL** to
 `https://blog.wikantik.com`. Alternatively, set `PRESSROOM_SITE_ABSOLUTEURL` in
-`.env`. When both are set, Global Config wins.
+`.env`. When both are set, the Configuration screen wins.
 
 The sign-in callback is built from this address, never from the visitor's
 host. If it is not set, sign-in answers "unavailable".
 
 ### 4. Add the credentials and deploy
 
-On docker2:
+On docker1:
 
 ```bash
 cd ~/pressroom
@@ -115,7 +115,7 @@ app. Two settings are optional and rarely needed:
    Google".
 4. **A real sign-in works.** Use a Google account that is not one of the
    admins, starting from the public URL. A sign-in started on
-   `http://docker2.lan:8080` is sent to the public host first, because Google
+   `http://docker1.lan:8084` is sent to the public host first, because Google
    always returns the browser there. You should land back where you started,
    signed in. In User Admin the new account appears as `reader-…`, marked
    "Signs in with Google".

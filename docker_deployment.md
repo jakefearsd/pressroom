@@ -19,6 +19,8 @@ public IP.
    - [Behind a tunnel or a proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)
 5. [First run](#first-run)
    - [Mail and account recovery](#mail-and-account-recovery)
+   - [The context path](#the-context-path)
+   - [Custom domains (virtual hosting)](#custom-domains-virtual-hosting)
 6. [TLS](#tls)
 7. [Health monitoring](#health-monitoring)
 8. [The back-office services](#the-back-office-services)
