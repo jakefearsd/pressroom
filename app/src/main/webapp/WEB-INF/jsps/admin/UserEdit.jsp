@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>
 
 
 <%-- Titling, processing actions different between add and edit --%>
@@ -134,8 +135,10 @@
         <div class="row mb-3">
             <label class="col-sm-3 col-form-label" for="bean_password"><spring:message code="userSettings.password"/></label>
             <div class="col-sm-9">
-                <input type="password" id="bean_password" name="bean.password" size="30"
-                       autocomplete="new-password" class="form-control"/>
+                <div class="input-group">
+                    <input type="password" id="bean_password" name="bean.password" size="30"
+                           autocomplete="new-password" class="form-control" data-reveal/>
+                </div>
                 <c:choose>
                     <c:when test="${actionName == 'createUser'}">
                         <div class="form-text"><spring:message code="personForm.password.tip"/></div>

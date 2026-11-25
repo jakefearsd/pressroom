@@ -23,6 +23,7 @@
      the generic "invalid" message so a probed token cannot be distinguished
      from a used or expired one. --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>
 
 <c:choose>
     <c:when test="${resetTokenValid}">
@@ -33,14 +34,18 @@
 
             <div class="mb-3">
                 <label for="passwordText" class="form-label"><spring:message code="resetPassword.newPassword"/></label>
-                <input type="password" class="form-control" name="passwordText" id="passwordText"
-                       autocomplete="new-password" autofocus/>
+                <div class="input-group">
+                    <input type="password" class="form-control" name="passwordText" id="passwordText"
+                           autocomplete="new-password" autofocus data-reveal/>
+                </div>
             </div>
 
             <div class="mb-3">
                 <label for="passwordConfirm" class="form-label"><spring:message code="resetPassword.confirmPassword"/></label>
-                <input type="password" class="form-control" name="passwordConfirm" id="passwordConfirm"
-                       autocomplete="new-password"/>
+                <div class="input-group">
+                    <input type="password" class="form-control" name="passwordConfirm" id="passwordConfirm"
+                           autocomplete="new-password" data-reveal data-match="passwordText"/>
+                </div>
             </div>
 
             <sec:csrfInput/>

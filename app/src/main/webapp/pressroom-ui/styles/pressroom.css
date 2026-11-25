@@ -1773,10 +1773,27 @@ a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
 .form-signin .form-control:focus {
     z-index: 2;
 }
-.form-signin input[type="password"] {
+/* The space under a password field belongs to its .input-group (the field
+   plus its show/hide button). On the input itself, keyed on
+   type="password", it stretched the button 10px below the field and
+   vanished whenever the field was revealed as type="text". */
+.form-signin .input-group {
     margin-bottom: 10px;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+}
+
+/* Show/hide button beside a password field (theme/scripts/pressroom-password.js).
+   Wide enough for either label, so the field does not resize on a toggle. */
+.password-reveal {
+    min-width: 11em;
+}
+
+/* The live line under a confirm field: the two states look different, not
+   only read differently. */
+.password-match.is-match {
+    color: var(--good);
+}
+.password-match.is-mismatch {
+    color: var(--bad);
 }
 
 /* Replaces inline style="..." attributes that had accumulated on four

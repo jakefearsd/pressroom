@@ -26,11 +26,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -818,5 +823,112 @@ class AdminJspHygieneTest {
             }
         }
         assertTrue(bad.isEmpty(), "data-confirm message values: " + String.join("; ", bad));
+    }
+
+    // ------------------------------------------------- Password fields 2026-11-25
+
+    private static final String PASSWORD_FRAGMENT = "<jsp:include page=\"/WEB-INF/jsps/tiles/passwordFields.jsp\"/>";
+
+    /** Where a password field starts, however its type attribute is quoted. */
+    private static final Pattern PASSWORD_MARKER = Pattern.compile(
+            "\\btype\\s*=\\s*[\"']?password\\b|<form:password\\b", Pattern.CASE_INSENSITIVE);
+
+    /** A field spelled type='password' or type=password must not slip past the scan. */
+    @Test
+    void thePasswordScanRecognisesEverySpelling() {
+        List<String> missed = new ArrayList<>();
+        for (String spelling : List.of("<input type=\"password\" id=\"a\"/>", "<input type='password' id=\"a\"/>",
+                "<input type=password id=\"a\"/>", "<input TYPE = \"Password\" id=\"a\"/>",
+                "<form:password path=\"a\"/>")) {
+            if (!PASSWORD_MARKER.matcher(spelling).find()) {
+                missed.add(spelling);
+            }
+        }
+        assertEquals(List.of(), missed, "spellings the password-field scan does not see");
+        assertTrue(!PASSWORD_MARKER.matcher("<input type=\"passwordish\"/>").find(), "a near-miss type matched");
+    }
+
+    /** Every password field in the JSP tree, as "relative/path.jsp#id" -> its element. */
+    private static Map<String, String> passwordFields() throws IOException {
+        Map<String, String> fields = new TreeMap<>();
+        Pattern marker = PASSWORD_MARKER;
+        Pattern id = Pattern.compile("\\bid=\"([^\"]+)\"");
+        try (Stream<Path> files = Files.walk(JSPS)) {
+            for (Path p : files.filter(f -> f.toString().endsWith(".jsp")).toList()) {
+                String src = withoutJspComments(read(p));
+                Matcher m = marker.matcher(src);
+                while (m.find()) {
+                    String element = elementAround(src, m.start() + 1);
+                    Matcher named = id.matcher(element);
+                    String name = JSPS.relativize(p) + "#" + (named.find() ? named.group(1) : "?");
+                    fields.put(name, element);
+                }
+            }
+        }
+        return fields;
+    }
+
+    /**
+     * A password field without {@code data-reveal} silently lacks the show
+     * button that lets someone see what a password manager filled in. The
+     * scan covers the whole tree, so a field added later is caught too.
+     */
+    @Test
+    void everyPasswordInputOptsIntoReveal() throws IOException {
+        Map<String, String> fields = passwordFields();
+        assertTrue(fields.size() >= 7, "the scan found only " + fields.keySet());
+        Set<String> offenders = new TreeSet<>();
+        fields.forEach((name, element) -> {
+            // Spring's form tags drop an EMPTY dynamic attribute, so
+            // data-reveal="" on <form:password> never reaches the page.
+            boolean droppedBySpring = element.startsWith("<form:") && element.contains("data-reveal=\"\"");
+            if (!element.contains("data-reveal") || droppedBySpring || name.endsWith("#?")) {
+                offenders.add(name);
+            }
+        });
+        assertEquals(Set.of(), offenders, "password fields without data-reveal (or without an id)");
+    }
+
+    /** data-reveal does nothing unless the page loads the script, through the one fragment. */
+    @Test
+    void everyPageWithAPasswordFieldLoadsTheScript() throws IOException {
+        Set<String> offenders = new TreeSet<>();
+        for (String name : passwordFields().keySet()) {
+            String page = name.substring(0, name.indexOf('#'));
+            if (!withoutJspComments(jsp(page)).contains(PASSWORD_FRAGMENT)) {
+                offenders.add(page);
+            }
+        }
+        assertEquals(Set.of(), offenders, "pages with a password field that do not include " + PASSWORD_FRAGMENT);
+    }
+
+    /** The fragment is the only place the script tag and its four labels are written. */
+    @Test
+    void theFragmentCarriesAllFourLabelsEscaped() {
+        String src = withoutJspComments(jsp("tiles/passwordFields.jsp"));
+        List<String> missing = new ArrayList<>();
+        if (!src.contains("/theme/scripts/pressroom-password.js")) {
+            missing.add("the script");
+        }
+        for (String attribute : List.of("data-show-label", "data-hide-label",
+                "data-match-label", "data-mismatch-label")) {
+            if (!Pattern.compile(attribute + "=\"\\$\\{fn:escapeXml\\(").matcher(src).find()) {
+                missing.add(attribute);
+            }
+        }
+        assertEquals(List.of(), missing, "tiles/passwordFields.jsp is missing");
+    }
+
+    /** The confirm field names the field it must equal; without it no match line appears. */
+    @Test
+    void confirmFieldsPointAtTheirPassword() {
+        Set<String> offenders = new TreeSet<>();
+        for (String page : List.of("core/ResetPassword.jsp", "core/Profile.jsp")) {
+            String confirm = elementCarrying(withoutJspComments(jsp(page)), "passwordConfirm");
+            if (!confirm.contains("data-match=\"passwordText\"")) {
+                offenders.add(page);
+            }
+        }
+        assertEquals(Set.of(), offenders, "#passwordConfirm without data-match=\"passwordText\"");
     }
 }

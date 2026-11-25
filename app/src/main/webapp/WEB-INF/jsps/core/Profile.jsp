@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>
 
 <p class="subtitle"><spring:message code="yourProfile.subtitle"/></p>
 
@@ -66,8 +67,11 @@
             <spring:message code="yourProfile.currentPassword" var="currentPasswordLabel"/>
             <label class="col-sm-3 col-form-label" for="currentPassword">${currentPasswordLabel}</label>
             <div class="col-sm-9">
-                <form:password path="currentPassword" id="currentPassword" autocomplete="current-password"
-                               cssClass="form-control" size="20" aria-describedby="currentPasswordTip"/>
+                <div class="input-group">
+                    <form:password path="currentPassword" id="currentPassword" autocomplete="current-password"
+                                   cssClass="form-control" size="20" aria-describedby="currentPasswordTip"
+                                   data-reveal="true"/>
+                </div>
                 <div class="form-text" id="currentPasswordTip"><spring:message code="yourProfile.currentPassword.tip"/></div>
             </div>
         </div>
@@ -76,9 +80,11 @@
             <spring:message code="userSettings.password" var="passwordLabel"/>
             <label class="col-sm-3 col-form-label" for="passwordText">${passwordLabel}</label>
             <div class="col-sm-9">
-                <form:password path="passwordText" id="passwordText" autocomplete="new-password"
-                               cssClass="form-control" size="20"
-                               onchange="formChanged()" onkeyup="formChanged()"/>
+                <div class="input-group">
+                    <form:password path="passwordText" id="passwordText" autocomplete="new-password"
+                                   cssClass="form-control" size="20" data-reveal="true"
+                                   onchange="formChanged()" onkeyup="formChanged()"/>
+                </div>
             </div>
         </div>
 
@@ -86,9 +92,11 @@
             <spring:message code="userSettings.passwordConfirm" var="passwordConfirmLabel"/>
             <label class="col-sm-3 col-form-label" for="passwordConfirm">${passwordConfirmLabel}</label>
             <div class="col-sm-9">
-                <form:password path="passwordConfirm" id="passwordConfirm" autocomplete="new-password"
-                               cssClass="form-control" size="20"
-                               onchange="formChanged()" onkeyup="formChanged()"/>
+                <div class="input-group">
+                    <form:password path="passwordConfirm" id="passwordConfirm" autocomplete="new-password"
+                                   cssClass="form-control" size="20" data-reveal="true" data-match="passwordText"
+                                   onchange="formChanged()" onkeyup="formChanged()"/>
+                </div>
             </div>
         </div>
         </c:if>

@@ -293,6 +293,30 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the footer falls back to "(c) year blog name"); the bean trims it, `WeblogSettingsRules` bounds it, `/api/v1` mirrors `tagline`.
 - **Footer (colophon)**: `tiles/footer.jsp` renders one `Colophon.of(weblogger, null, clock)` record (holder = `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link, `Pressroom 0.4.0 (abc1234)`, `released yyyy-MM-dd`, each a span, dots from CSS, each omitted when null). Keys are `footer.copyright.default|privacy|version|version.revision|released`; the Velocity footer reuses them and the three class names. The Velocity footer alone also carries `span.colophon-account`, the way into the admin screens from any blog (a blog on `/` replaces the site directory, which had the only such link): Sign in for a visitor, Main menu and Sign out for an author, Sign out for a reader, the frontpage top bar's keys and rules. It is safe in cached pages because page-cache keys carry `/user=<name>` (`ThemeColophonRenderingTest`). Colophon strings are raw: the JSP `fn:escapeXml`s each, and passes message arguments as nested `<spring:argument>` tags, because a string `arguments=` attribute is split on commas and a holder can contain one (the year goes through `escapeXml` too, so MessageFormat prints `2026`, not `2,026`). Every full-page layout includes the footer tile; `tiles-popuppage` (modal/iframe) and `tiles-barepage` (transient script iframe) deliberately do not, and the install/bootstrap pages carry it too: before bootstrap the JSP's Weblogger lookup is caught and `Colophon.of(null, ...)` reads version, revision and build time from the packaged `/pressroom-version.properties` (no copyright line, no privacy link) (`AdminChromeJspTest`, `PressroomViewResolverTest`).
 
+## Password fields
+
+Every admin password field has a show/hide button, and a confirm field shows a
+live "Passwords match / don't match" line (2026-11-25), so a person can see what
+a password manager filled in and whether a new password was typed the same twice.
+
+- **Opt in by markup**: `data-reveal` on the input (it needs an `id`), and on a
+  confirm field `data-match="<id of the new-password field>"`. The page includes
+  `<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>`, the one place the
+  script (`theme/scripts/pressroom-password.js`) and its four `passwordField.*`
+  labels are written.
+- **On `<form:password>` write `data-reveal="true"`**: Spring's form tags drop an
+  empty dynamic attribute, so `data-reveal=""` never reaches the page.
+- **Wrap the input in `<div class="input-group">` in the JSP; the script never
+  moves it.** Moving it drops focus (the sign-in page's scripted focus, the reset
+  page's `autofocus`).
+- A revealed field goes back to `type="password"` on submit. It is a convenience:
+  the server's checks are unchanged.
+- Tests: `AdminJspHygieneTest` (every password field in the tree opts in; the
+  fragment; `data-match`), `app/frontend/test/password-fields.test.mjs`
+  (`passwordMatchState`), `PasswordFieldsIT`. The reset page cannot be reached with
+  a valid token from the browser suite, so its behaviour rests on the same script
+  proven on the profile page.
+
 ## Categories
 - **Ownership-check every id.** `BaseController.lookupEntry`/
   `lookupTemplate`/`lookupCategory`/`lookupPage` are the by-id ownership

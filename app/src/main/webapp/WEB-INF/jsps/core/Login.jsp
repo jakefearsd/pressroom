@@ -18,6 +18,7 @@
 
 <%-- Body of the login page, invoked from login.jsp --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>
 
 
 
@@ -43,8 +44,10 @@
 
             <div class="mb-3">
                 <label for="j_password" class="form-label"> <spring:message code="loginPage.password"/> </label>
-                <input type="password" class="form-control" name="j_password" id="j_password"
-                       autocomplete="current-password"/>
+                <div class="input-group">
+                    <input type="password" class="form-control" name="j_password" id="j_password"
+                           autocomplete="current-password" data-reveal/>
+                </div>
             </div>
 
             <c:if test="${rememberMeEnabled}">
