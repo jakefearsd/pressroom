@@ -9,12 +9,6 @@
 # convenience wrapper: pull, up, and wait for health with a real timeout,
 # then check for an admin account and say how to create one if none exists.
 #
-# The old version also had a genuine bug this shape cannot have: it expanded
-# ${UMAMI_DB:-umami} in the host shell, which never sourced .env, so renaming a
-# service database in .env made it provision the default names while the
-# containers used the renamed ones. Those names are now read inside the
-# provision container, which compose populates from .env correctly.
-#
 # Usage:
 #   ./deploy.sh [--prune] [--no-pull]
 #
@@ -24,22 +18,19 @@
 #
 # Run from the directory holding the compose files and .env.
 #
-# The one thing it writes: generated secrets. When .env has no (or an empty)
-# UMAMI_PRESSROOM_PASSWORD -- Pressroom's Umami account, which analytics-views
-# creates and the app signs in as -- or UMAMI_DB_PASSWORD / LISTMONK_DB_PASSWORD
-# -- the logins of Umami's and listmonk's own database servers, umami-db
-# (0.7.2+) and listmonk-db (0.8.5+) -- it appends a generated
-# one before starting the stack. Never printed; .env keeps its mode and its
-# other lines.
+# The one thing it may write: a COMPOSE_FILE line, when .env has none.
+# Umami and listmonk are not deployed here: they run in the back-office
+# suite (wiki SimpleAgilityBackOfficeSuite), which Pressroom reaches through
+# the ANALYTICS_UPSTREAM and PRESSROOM_ANALYTICS_*/PRESSROOM_NEWSLETTER_*
+# settings in .env, and which keeps their secrets.
 set -euo pipefail
 
 # No -f: the compose files are COMPOSE_FILE in .env (below), which plain
 # `docker compose` reads by itself, so this script and the operator's own
 # commands always see the same files.
 COMPOSE=(docker compose)
-# What a .env without the line gets: the core file and the back-office
-# overlay, the shape of every release since 0.8.5.
-DEFAULT_COMPOSE_FILES="docker-compose.prod.yml:docker-compose.backoffice.yml"
+# What a .env without the line gets.
+DEFAULT_COMPOSE_FILES="docker-compose.prod.yml"
 
 PRUNE=0
 PULL=1
@@ -79,65 +70,22 @@ refuse_placeholder_secrets() {
 }
 refuse_placeholder_secrets .env
 
-# Appends NAME=<openssl rand -hex 24> to the env file ($3, default .env)
-# unless it already holds a non-empty NAME ($1); $2 says what it is for. Appending keeps
-# the file's mode and owner as the operator set them, and an interrupted
-# write cannot lose the rest of the file. Only an empty assignment
-# (env.example's shape, uncommented) makes it rewrite the file in place
-# (`>`, same inode, same mode), so compose never sees two. printf is a
-# builtin: the value goes from openssl into the file and is on no command
-# line and in no output.
-ensure_generated_secret() {
-    local name="$1" what="$2" env_file="${3:-.env}" kept password
-    if grep -Eq "^${name}=.+" "${env_file}"; then
-        return 0
-    fi
-    password=$(openssl rand -hex 24)
-    if grep -q "^${name}=" "${env_file}"; then
-        kept=$(grep -v "^${name}=" "${env_file}" || true)
-        printf '%s\n' "${kept}" > "${env_file}"
-    elif [[ -s "${env_file}" && -n "$(tail -c 1 "${env_file}")" ]]; then
-        printf '\n' >> "${env_file}"
-    fi
-    printf '%s=%s\n' "${name}" "${password}" >> "${env_file}"
-    echo "==> Generated ${name} in ${env_file} (${what}; not shown)."
-}
-# A service database server (umami-db, listmonk-db) keeps the password it
-# was FIRST started with; POSTGRES_PASSWORD is read only when its volume is
-# empty. So a missing password line next to an existing volume (an older
-# .env restored on a rollback) must not be "fixed" by generating a new one:
-# the move and the service would be locked out of their own server. Stop
-# before anything starts, and say how to recover. The volume is found by
-# compose's labels, for this project.
-# $1: the .env key, $2: the volume as compose declares it, $3: the server.
-refuse_new_password_for_existing_volume() {
-    local key="$1" declared="$2" server="$3" project volume
-    if grep -Eq "^${key}=.+" .env; then
-        return 0
-    fi
-    project="${COMPOSE_PROJECT_NAME:-$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env | tail -n 1)}"
-    if [[ -z "${project}" ]]; then
-        project="$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')"
-    fi
-    volume="$(docker volume ls -q \
-        --filter "label=com.docker.compose.project=${project}" \
-        --filter "label=com.docker.compose.volume=${declared}" 2>/dev/null || true)"
-    if [[ -n "${volume}" ]]; then
-        echo "${server}'s volume ${volume} already exists, but .env has no ${key}." >&2
-        echo "That server keeps the password it was first started with, so a new one would" \
-             "lock its service out of its data. Put the original line back, or reset the" \
-             "server's password: docker_deployment.md, \"If a service database's password is lost\"." \
-             "Nothing has changed." >&2
-        exit 1
-    fi
-}
-refuse_new_password_for_existing_volume UMAMI_DB_PASSWORD pressroom-umami-pgdata umami-db
-refuse_new_password_for_existing_volume LISTMONK_DB_PASSWORD pressroom-listmonk-pgdata listmonk-db
+# 0.8.5 to 0.16.6 ran Umami and listmonk from docker-compose.backoffice.yml.
+# They live in the back-office suite now, and the image no longer carries the
+# add-on's one-shots and backup scripts, so a host whose .env still selects
+# it must cut over first. Stop before anything is pulled, started or written.
+if grep -Eq '^COMPOSE_FILE=.*docker-compose\.backoffice\.yml' .env; then
+    echo "Refusing to deploy: COMPOSE_FILE in .env still names docker-compose.backoffice.yml," >&2
+    echo "the Umami and listmonk add-on this release no longer supports. Cut over to the" >&2
+    echo "back-office suite first (wiki page SimpleAgilityBackOfficeSuite, \"Cutover\"), then" >&2
+    echo "set COMPOSE_FILE=docker-compose.prod.yml. Nothing has changed." >&2
+    exit 1
+fi
 
 # A .env from before 0.8.5 names no compose files; add the line, once, so
 # that every `docker compose` on this host, ours and the operator's, sees the
-# core file and the back-office overlay. .env decides, not a COMPOSE_FILE
-# exported by the calling shell: that is exported here from .env's line.
+# same files. .env decides, not a COMPOSE_FILE exported by the calling shell:
+# that is exported here from .env's line.
 if ! grep -q '^COMPOSE_FILE=' .env; then
     if [[ -s .env && -n "$(tail -c 1 .env)" ]]; then
         printf '\n' >> .env
@@ -155,10 +103,6 @@ for required in "${compose_files[@]}"; do
         exit 1
     fi
 done
-
-ensure_generated_secret UMAMI_PRESSROOM_PASSWORD "Pressroom's Umami account" .env
-ensure_generated_secret UMAMI_DB_PASSWORD "Umami's database server" .env
-ensure_generated_secret LISTMONK_DB_PASSWORD "listmonk's database server" .env
 
 if [[ "${PULL}" -eq 1 ]]; then
     echo "==> Pulling images..."

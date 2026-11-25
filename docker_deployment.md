@@ -23,7 +23,7 @@ public IP.
    - [Custom domains (virtual hosting)](#custom-domains-virtual-hosting)
 6. [TLS](#tls)
 7. [Health monitoring](#health-monitoring)
-8. [The back-office services](#the-back-office-services)
+8. [The back-office suite](#the-back-office-suite)
 9. [Analytics](#analytics)
 10. [Newsletter](#newsletter)
 11. [Reader sign-in (Google)](#reader-sign-in-google)
@@ -68,10 +68,8 @@ public IP.
 There is no git checkout on the deploy host at all. Everything the stack
 needs lives in two published images (`ghcr.io/jakefearsd/pressroom` and
 `ghcr.io/jakefearsd/pressroom-caddy`) — nothing is bind-mounted from a working
-tree. The host needs exactly four files, all attached to the GitHub Release
-for the version you're deploying: `docker-compose.prod.yml` (Pressroom),
-`docker-compose.backoffice.yml` (the back-office services it uses; see [The
-back-office services](#the-back-office-services)), `env.example` and
+tree. The host needs exactly three files, all attached to the GitHub Release
+for the version you're deploying: `docker-compose.prod.yml`, `env.example` and
 `deploy.sh`. Download them into one directory, e.g. `/opt/pressroom`. The
 `latest` links below name the newest release; for a particular one, use
 `releases/download/v<version>/` instead, as [Upgrades](#upgrades) does:
@@ -79,7 +77,6 @@ back-office services](#the-back-office-services)), `env.example` and
 ```bash
 mkdir -p /opt/pressroom && cd /opt/pressroom
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/docker-compose.prod.yml
-curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/docker-compose.backoffice.yml
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/env.example
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/deploy.sh
 chmod +x deploy.sh
@@ -105,8 +102,8 @@ setting still holds one, and names each.
 
 The `app` service loads `.env` wholesale via `env_file: .env`, not just the
 `PRESSROOM_*` keys `WebloggerConfig` actually reads — every variable in the
-file, including `POSTGRES_PASSWORD`, `UMAMI_APP_SECRET` and
-`LISTMONK_ADMIN_PASSWORD`, ends up in the `app` container's environment and
+file, including `POSTGRES_PASSWORD` and `PRESSROOM_ANALYTICS_UMAMI_PASSWORD`,
+ends up in the `app` container's environment and
 is visible to anything that can read it: `docker inspect`, `/proc/1/environ`
 inside the container, `docker compose config`. This is a deliberate
 tradeoff (one file, one place to look, matching what a bare-metal deploy
@@ -182,21 +179,21 @@ environment-variable-configured container.
     `starttls` (required, not just offered, once username/password are set),
     use `ssl` for a port-465 relay or `none` only for a local relay with no
     TLS.
-  - `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` — where `/newsletter/subscribe`
-    forwards to. Blank makes that endpoint return 503; see
-    [Newsletter](#newsletter).
-- **Postgres credentials, backup schedule, Analytics and Newsletter
-  settings** — `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (shared by
+  - `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` and the
+    `PRESSROOM_ANALYTICS_UMAMI_*` settings — where the app reaches listmonk
+    and Umami, which run in the back-office suite. A blank listmonk URL makes
+    `/newsletter/subscribe` return 503; a blank Umami API URL turns analytics
+    off. See [The back-office suite](#the-back-office-suite).
+- **Postgres credentials, backup schedule and analytics settings** —
+  `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (shared by
   `postgres`, `provision`, `admin` and `backup` — generate a real
   password with `openssl rand -base64 33 | tr '+/' '-_'`: 44 characters, no
-  padding, only URL-safe ones), `UMAMI_DB_PASSWORD` (Umami's own database
-  server, `umami-db`; `deploy.sh` generates it, hex, so it is safe inside
-  Umami's `DATABASE_URL`),
+  padding, only URL-safe ones),
   `BACKUP_HOUR`/`BACKUP_RETENTION_DAYS`
   (defaults `3`, `14` are reasonable starting points), `JAVA_OPTS` (optional
-  extra JVM flags, e.g. `-Xmx1g`), and the `UMAMI_*`/`LISTMONK_*` variables
-  covered in their own sections below ([Analytics](#analytics),
-  [Newsletter](#newsletter)).
+  extra JVM flags, e.g. `-Xmx1g`), and `ANALYTICS_UPSTREAM` /
+  `UMAMI_SCRIPT_NAME`, which Caddy uses for the tracker (see
+  [Analytics](#analytics)).
 
 ## DNS
 
@@ -207,12 +204,10 @@ reachable from the public internet to complete the ACME HTTP-01 challenge;
 if DNS isn't live yet, certificate issuance fails and Caddy retries with
 backoff until it is.
 
-If you want the newsletter (see [Newsletter](#newsletter)), point a second
-name, `newsletter.example.com` say, at the same IP and set `LISTMONK_DOMAIN`
-to it. Caddy obtains a certificate for it the same way. Leave it unset and
-the newsletter admin is simply unreachable. The analytics dashboard is never
-served under the blog's name; give it a name of its own only if you want it
-(see [Reaching the dashboard](#reaching-the-dashboard)).
+Umami and listmonk are not served by this stack, so they need no names here.
+The owner reaches them at the suite's own hostnames (`umami.wikantik.com`,
+`listmonk.wikantik.com`), routed by the Cloudflare tunnel straight to the
+suite's host (see [The back-office suite](#the-back-office-suite)).
 
 If you don't have a domain (LAN deployment, quick local test of the
 production stack), set `SITE_DOMAIN=:80` in `.env` instead — Caddy then
@@ -268,8 +263,9 @@ range: where Docker's userland proxy carries a connection, an internet client
 arrives from a private address and could then write its own
 `X-Forwarded-For`. A malformed value stops Caddy, and the site with it.
 The setting needs the caddy image from 0.1.12 on;
-older images ignore it. Umami is unaffected either way behind `cloudflared`:
-it reads `CF-Connecting-IP` first, which Caddy passes through.
+older images ignore it. Umami on the back-office suite reads `X-Forwarded-For`
+(its `CLIENT_IP_HEADER`), so the same setting decides whether it records the
+reader or the connector.
 
 ## First run
 
@@ -279,36 +275,15 @@ With `.env` filled in, deploy with the script, not a bare `up -d`:
 ./deploy.sh
 ```
 
-(`deploy.sh` generates `UMAMI_PRESSROOM_PASSWORD`, the password of Pressroom's
-own Umami account, the first time it finds none in `.env`. A bare
-`docker compose up -d` skips that, and Pressroom then has no password for its
-Umami account until the next `./deploy.sh`.)
-
 There is no separate migration step and no ordering to get right: compose
 runs the one-shot `provision` service first (applies the migration chain
 via `migrate.sh`, grants `grafana_ro` — see `deploy/provision.sh`), and
 `app` declares `depends_on: { provision: { condition: service_completed_successfully } }`,
-so it does not start until provisioning has exited successfully. Umami and
-listmonk each have a PostgreSQL server of their own, `umami-db` (since
-0.7.2) and `listmonk-db` (since 0.8.5), whose images create their
-databases; each service waits for its own server only. `deploy.sh`
+so it does not start until provisioning has exited successfully. `deploy.sh`
 (see [Upgrades](#upgrades)) wraps this same `up -d` with a health-check wait
 and is safe to use for first run too, but the plain compose command above is
-equally correct.
-
-A second one-shot, `analytics-views`, installs the Grafana analytics
-contract's traffic view (`deploy/analytics-views.sh`) — but it runs *after*
-`umami` has started rather than as part of `provision`, and it gates nothing.
-The view it installs, `analytics_traffic`, is defined over `website_event`, a
-table Umami creates on its own first boot; applying it from `provision`
-(which runs entirely before `umami` is allowed to start) deadlocked every
-fresh install, since neither service could go first. `analytics-views` waits
-for `website_event` to appear, applies the view, and exits — if it fails or
-times out, the blog, Umami and Listmonk are all still up and serving; only
-the Grafana traffic view is missing, which is an operator dashboard concern,
-not an outage. Check `docker compose logs
-analytics-views` if the Grafana dashboard's traffic panel comes up empty; the
-same `up -d analytics-views` re-run mentioned in its own log output is safe.
+equally correct. Umami and listmonk are not part of this stack; see [The
+back-office suite](#the-back-office-suite).
 
 When it finishes, browse to `https://<your-domain>/` (or `http://<host>/` in
 `:80` mode). A fresh install has no accounts and no registration page, so
@@ -487,9 +462,7 @@ Five steps, in order:
 block still parses and Caddy still starts — `SITE_DOMAIN` and everything else
 keep working exactly as before. Only `SITE_DOMAIN`'s own certificate is real
 in that configuration; the placeholder wildcard simply fails to obtain a
-certificate in the background, forever, the same harmless way `LISTMONK_DOMAIN`
-already does when left at their own defaults (see
-[DNS](#dns)).
+certificate in the background, forever, which is harmless.
 
 **Not verified by this repo's automated tests**: actually obtaining a
 certificate needs a real DNS zone and real provider credentials, neither of
@@ -610,79 +583,74 @@ Secrets are kept out: Caddy redacts `Cookie` and `Authorization` itself, and the
 Caddyfile's `(redacted)` filter replaces the password-reset `token` and the
 sign-in callback's `code` and `state`, in the URL and in the `Referer`. The
 blog's error lines (`http.log.error.blog`, a failed request such as a 502 during
-a restart) pass through the same filter. The Umami dashboard and listmonk
-sites write no access log. A new secret query parameter belongs in that filter
+a restart) pass through the same filter. A new secret query parameter belongs in that filter
 (`ProductionComposeTest` pins it).
 
-## The back-office services
+## The back-office suite
 
-Umami (analytics) and listmonk (newsletter) are services Pressroom *uses*,
-not parts of Pressroom (wiki SA-15). They run in their own compose file,
-`docker-compose.backoffice.yml`, beside `docker-compose.prod.yml`, each on a
-database server of its own (`umami-db`, `listmonk-db`) with its own login,
-backed up by its own `backoffice-backup` service. `.env` selects both files:
+Umami (analytics) and listmonk (newsletter) are not part of Pressroom's
+stack. Since 2026-11-24 they run in the back-office suite (repo
+`jakefearsd/backoffice`, wiki page `SimpleAgilityBackOfficeSuite`, decision
+SA-15), on host docker2 (192.168.5.52): Umami on port 8085 and listmonk on
+8086, each with its own database, with the suite's own nightly backup and Umami
+retention, and with its own provisioning of Pressroom's Umami account and the
+Grafana read-only role and views. Pressroom is only a client of their APIs.
+The owner reaches the dashboards at `umami.wikantik.com` and
+`listmonk.wikantik.com`, routed by the Cloudflare tunnel straight to the suite
+host, not through Pressroom.
 
-```
-COMPOSE_FILE=docker-compose.prod.yml:docker-compose.backoffice.yml
-```
+`COMPOSE_FILE` in `.env` is unset, or just `docker-compose.prod.yml`. Every
+command in this runbook is a plain `docker compose ...`, with no `-f`.
 
-Compose reads that line by itself, so every command in this runbook is a
-plain `docker compose ...`, with no `-f`. (`docker compose -f
-docker-compose.prod.yml ...` sees the core file alone, and no back-office
-service.) `deploy.sh` adds the line to a `.env` that lacks it.
+Pressroom reaches the suite only through addresses in `.env`, all on the
+suite's **LAN** address (use the IP, not a `.lan` name, and not the public
+hostname: through the edge, Umami records the edge's address for every
+reader):
 
-Pressroom reaches the services only through addresses in `.env`:
-
-| Setting | Unset, while the overlay runs them here | Used by |
+| Setting | Example | Used by |
 |---|---|---|
-| `PRESSROOM_ANALYTICS_UMAMI_APIURL` | `http://umami:3000` | the app, for Umami's API |
-| `PRESSROOM_ANALYTICS_UMAMI_PASSWORD` | `UMAMI_PRESSROOM_PASSWORD`, handed over by the overlay | the app's Umami account |
-| `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` | `http://listmonk:9000` | the app, for subscribe and send |
-| `ANALYTICS_UPSTREAM` | `umami:3000` | Caddy: the tracker paths and the dashboard port |
-| `NEWSLETTER_UPSTREAM` | `listmonk:9000` | Caddy: `LISTMONK_DOMAIN`'s site |
+| `PRESSROOM_ANALYTICS_UMAMI_APIURL` | `http://192.168.5.52:8085` | the app, for Umami's API. Blank turns analytics off |
+| `PRESSROOM_ANALYTICS_UMAMI_USERNAME` | `pressroom` (the default) | the app's Umami account |
+| `PRESSROOM_ANALYTICS_UMAMI_PASSWORD` | the suite's password for that account, from `secrets/umami-accounts` on the suite host | the app's Umami account |
+| `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` | `https://umami.wikantik.com` | the "Open in Umami" link; Pressroom never calls it |
+| `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` | `http://192.168.5.52:8086` | the app, for subscribe and send |
+| `ANALYTICS_UPSTREAM` | `192.168.5.52:8085` (host:port) | Caddy: the tracker paths |
+| `UMAMI_SCRIPT_NAME` | must match the suite's tracker name | Caddy, and the app's tag |
 
 Nothing in `docker-compose.prod.yml` waits for, networks with, or holds the
-credentials of a back-office service, so Pressroom starts and serves whether
-or not they are up.
+credentials of a suite service, so Pressroom starts and serves whether or not
+the suite is up. Backups, Umami's retention and restores of the suite's
+databases are the suite's business; see its README.
 
-**When the services move to the back-office suite:** deploy them there,
-restore the latest `umami-*` and `listmonk-*` dumps from the
-`pressroom-backoffice-backups` volume into their new servers (the restore is
-in `/app/backup/backoffice-backup.sh`'s header), set the five settings above
-to the suite's **LAN** addresses (`http://192.168.x.y:3000`; not its public
-hostname: through the edge, Umami records the edge's address for every
-reader), set `PRESSROOM_ANALYTICS_UMAMI_PASSWORD` to the account's password,
-drop the overlay from `COMPOSE_FILE`, and run `./deploy.sh`. The old
-back-office containers are then orphans of this project; `docker compose up
--d --remove-orphans` removes them (their volumes stay until you remove them).
+**A host that still ran the old `docker-compose.backoffice.yml` add-on** (0.16.6
+or earlier) cuts over to a suite before it upgrades: see the note at the top
+of [Upgrades](#upgrades).
 
 ## Analytics
 
-The stack ships [Umami](https://umami.is): self-hosted page analytics that
-sets no cookie and writes nothing to the reader's device. Analytics is
-automatic. There is nothing to switch on per blog and no website to create in
-Umami: Pressroom registers every blog itself, in the background.
+[Umami](https://umami.is) is self-hosted page analytics that sets no cookie
+and writes nothing to the reader's device. Analytics is automatic. There is
+nothing to switch on per blog and no website to create in Umami: Pressroom
+registers every blog itself, in the background, through Umami's API.
 
-What an operator does: deploy with `./deploy.sh` (it generates the one
-password this needs), and, when you want to look at Umami's own dashboard,
-give it a hostname (see [Reaching the dashboard](#reaching-the-dashboard)). Pressroom's own
-Traffic pages need neither.
+What an operator does: set the Umami keys and `ANALYTICS_UPSTREAM` in `.env`
+(see [The back-office suite](#the-back-office-suite)) and deploy. Umami's own
+dashboard is the suite's, at its own hostname; Pressroom's Traffic pages need
+nothing more.
 
 ### How it works
 
 - **Registration.** Every weblog, inactive ones and the site space included,
   is registered with Umami through its HTTP API, as a dedicated non-admin
-  account named `pressroom`. The blog's website ID in Umami is its weblog ID.
-  The password is `UMAMI_PRESSROOM_PASSWORD` in `.env`: `deploy.sh` generates
-  it the first time it finds none, and the `analytics-views` one-shot creates
-  the account. Startup registers every blog; afterwards a blog save syncs
-  only when the blog is unregistered or its name or domain changed. Deleting
-  a blog never touches Umami. Each change of registration state advances the
-  blog's last-modified time, so cached pages re-render with the tracker tag.
-  Do not move a Pressroom-registered website to another user or a team in
-  Umami's dashboard: Pressroom's reads of it then answer 401, so it treats
-  the website as missing and cannot re-create it, and the blog loses its
-  tracker until the website is handed back to the `pressroom` account.
+  account named `pressroom`, which the suite provisions. The blog's website ID
+  in Umami is its weblog ID. Startup registers every blog; afterwards a blog
+  save syncs only when the blog is unregistered or its name or domain changed.
+  Deleting a blog never touches Umami. Each change of registration state
+  advances the blog's last-modified time, so cached pages re-render with the
+  tracker tag. Do not move a Pressroom-registered website to another user or a
+  team in Umami's dashboard: Pressroom's reads of it then answer 401, so it
+  treats the website as missing and cannot re-create it, and the blog loses
+  its tracker until the website is handed back to the `pressroom` account.
 - **Reading traffic.** Every 15 minutes (`tasks.AnalyticsSyncTask.interval`)
   Pressroom batch-reads Umami into its own tables, for 24 hours, 7, 30 and 90
   days and the front-page discovery window. Day boundaries follow the site
@@ -696,10 +664,7 @@ Traffic pages need neither.
   popularity](#front-page-popularity)).
 - **The tracker.** Registered blogs carry the tag automatically, served from
   the blog's own origin (next section).
-- **Retention.** Analytics data older than `UMAMI_RETENTION_DAYS` (default
-  730 days, two years, as the privacy policy promises) is deleted nightly,
-  straight after the backup (see [Backup and restore](#backup-and-restore)).
-  `UMAMI_RETENTION_DAYS=0` keeps everything.
+- **Retention** of Umami's data is the suite's setting, not Pressroom's.
 
 ### Why the tracker is served from your blog's own domain
 
@@ -708,74 +673,42 @@ with `script-src 'self'` and `connect-src 'self'`. A tracker loaded from
 another hostname is therefore blocked by the reader's browser, and its beacon
 never sends: you would see an empty dashboard and no error anywhere.
 
-So Caddy serves the two pieces the policy governs from the blog's own origin,
-and nothing else:
+So Caddy serves the two pieces the policy governs from the origin of every
+blog site and custom-domain site, and nothing else:
 
 | URL | What it is |
 | --- | --- |
-| `https://<your blog>/analytics/script.js` | the tracker |
+| `https://<your blog>/analytics/<UMAMI_SCRIPT_NAME>` (`script.js` by default) | the tracker |
 | `POST https://<your blog>/analytics/api/send` | where it reports |
 
+Caddy proxies both to `ANALYTICS_UPSTREAM`, stripping the `/analytics`
+prefix, and forwards `X-Forwarded-For` with the reader first, which Umami on
+the suite reads (its `CLIENT_IP_HEADER`). Behind a tunnel that is the reader
+only when `TRUSTED_PROXIES` names the connector (see [Behind a tunnel or a
+proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)).
+`ANALYTICS_UPSTREAM` is the suite's LAN address, `192.168.5.52:8085` for
+example. Unset, it defaults to an unresolvable placeholder: Caddy still
+starts and only the tracker fails (502).
+
 Every other path under `/analytics/` answers 404 from Caddy, so Umami's login
-page and API are not public. The tag Pressroom emits is
+page and API are not public here. The tag Pressroom emits is
 `<script defer src="/analytics/script.js" data-website-id="…" data-host-url="…"
 data-domains="<the blog's real hostname>" data-performance="true">`; it is
 built from the registered ID and two startup properties
 (`analytics.umami.basePath`, default `/analytics`, and
 `analytics.umami.scriptName`, default `script.js`), never from anything an
-author types. If you set `UMAMI_SCRIPT_NAME` to something other than
-`script.js` (the cheapest defence against content blockers that match the
-default path), also set `PRESSROOM_ANALYTICS_UMAMI_SCRIPTNAME` to the same
-value in `.env`, or the tag points at a script Caddy never serves. Session
-replay and heatmaps are off; the Caddyfile has commented-out lines for them.
-
-### Reaching the dashboard
-
-Umami's own dashboard (the same data, sliced Umami's way) is not served under
-the blog's name. Caddy serves it on a fixed `:8081` site, which the stack
-publishes on `${UMAMI_CONSOLE_BIND:-127.0.0.1}`: loopback by default, so on
-the host itself it is at `http://localhost:8081`. Pressroom never goes through
-it (it calls Umami over the compose network), so the Traffic pages work
-whatever you choose here. To reach the dashboard from elsewhere:
-
-1. Umami's first login is `admin` / `umami`. **Change that password first**,
-   on `http://localhost:8081` (an SSH tunnel to the host will do).
-2. Set `UMAMI_CONSOLE_BIND` in `.env` to the host's LAN address, so a tunnel
-   connector or reverse proxy on another machine can reach it. Never
-   `0.0.0.0` on a host with a public interface: the `:8081` site is plain
-   HTTP, so that would put Umami's login on the internet unencrypted.
-3. Give it a hostname of its own, `umami.example.com` say, whose tunnel route
-   or proxy points at `http://<LAN address>:8081` and terminates TLS. Its own
-   name, not a path under the blog: Umami's UI assumes a domain root.
-4. Set `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` to that `https://` URL, so the
-   Traffic pages show an "Open in Umami" link, and run `docker compose up -d
-   app`. Pressroom never calls it.
-
-Umami is built to face the internet: it has its own login, only an admin can
-create accounts, and there is no sign-up page. A public hostname behind
-Umami's login is therefore a reasonable setup, provided you keep the
-passwords strong and the Umami image current. Two optional layers:
-
-- **A login rate limit.** Umami does not lock an account after failed
-  logins. A Cloudflare rate-limiting rule (or your proxy's equivalent) on
-  `POST /api/auth/login` for the dashboard's hostname, a handful of requests
-  per minute per IP, takes password guessing off the table.
-- **Zero-trust in front.** A Cloudflare Access application (or equivalent)
-  on the hostname, allowing only your own account, means nothing on the
-  internet reaches Umami until you have signed in, which also shields it
-  from a vulnerability in Umami that a release has not fixed yet. It costs
-  one extra sign-in.
-
-Move the host port with `UMAMI_CONSOLE_PORT` if something already uses 8081.
+author types. `UMAMI_SCRIPT_NAME` must match the suite's tracker name. If the
+suite uses something other than `script.js` (the cheapest defence against
+content blockers that match the default path), also set
+`PRESSROOM_ANALYTICS_UMAMI_SCRIPTNAME` to the same value in `.env`, or the tag
+points at a script Caddy never serves. Session replay and heatmaps are off;
+the Caddyfile has commented-out lines for them.
 
 ### Switching analytics off
 
-Set `PRESSROOM_ANALYTICS_UMAMI_APIURL` to a **blank** value in `.env`. The
-compose file reads it as `${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}`,
-so unset means "the bundled Umami" and blank means "off": no tracker on any
-blog, no calls to Umami, and the Traffic pages say analytics is not
-configured. (Blanking `UMAMI_PRESSROOM_PASSWORD` is not the switch:
-`deploy.sh` fills in a blank one.)
+Set `PRESSROOM_ANALYTICS_UMAMI_APIURL` to a **blank** value in `.env`: no
+tracker on any blog, no calls to Umami, and the Traffic pages say analytics
+is not configured.
 
 ### Checking that it works
 
@@ -806,14 +739,13 @@ have.
 This assumes Pressroom's own Umami account survived. If Umami's database was
 replaced wholesale, that account is gone too, and every read fails with
 "Umami login failed" instead (no blog is cleared, since that is not a missing
-website): run `./deploy.sh`, whose `analytics-views` step creates the account
-again, and the next sync then re-registers each blog as above.
+website): run the suite's provisioning, which creates the account again, and
+the next sync then re-registers each blog as above.
 
 Configuration keys, for reference: `analytics.umami.apiUrl`, `.username`,
 `.password` and `.dashboardUrl`, each overridable as
-`PRESSROOM_ANALYTICS_UMAMI_<KEY>` in the environment. The compose file wires
-the first two and the password for you; the developer notes are in
-`docs/dev/audience-and-analytics.md` and `docs/dev/umami-api.md`.
+`PRESSROOM_ANALYTICS_UMAMI_<KEY>` in the environment; the developer notes are
+in `docs/dev/audience-and-analytics.md` and `docs/dev/umami-api.md`.
 
 ### Front page popularity
 
@@ -837,16 +769,15 @@ Pressroom and Umami both expose their data to Grafana as small, versioned SQL
 `SELECT` on those views.
 
 **Two databases, two view halves, and why.** `pressroom` lives on
-Pressroom's server (`postgres`) and Umami's database (`${UMAMI_DB:-umami}`) on
-Umami's own (`umami-db`, since 0.7.2); no query spans two databases, let alone
-two servers, so the contract is split down that seam — each half lives with
-the data it reads:
+Pressroom's server (`postgres`) and Umami's database on the suite's own
+server; no query spans two databases, let alone two servers, so the contract
+is split down that seam — each half lives with the data it reads:
 
 | View | Lives in | Ships via | What it holds |
 | --- | --- | --- | --- |
 | `analytics_events` | `pressroom` | `bin/db/migrations/V017__analytics_contract.sql` (the migration chain) | First-party outcomes from `pressroom_event` — form submissions, newsletter subscriptions, entry publishes — grouped by weblog handle, event type, day |
 | `analytics_weblog_sites` | `pressroom` | same migration | The join key: which Umami website UUID belongs to which weblog handle |
-| `analytics_traffic` | `${UMAMI_DB:-umami}` | `deploy/analytics/umami-views.sql` (baked into the app image as `/app/umami-views.sql`), applied by the separate `analytics-views` one-shot (`deploy/analytics-views.sh`), not `provision` and not the migration chain (it can only reach `pressroom`) — see [First run](#first-run) for why it runs after `umami` starts rather than before | Umami's raw `website_event` rolled up to sessions/views by website, path and day |
+| `analytics_traffic` | Umami's database, on the suite | the suite's provisioning (its `sql/` directory) | Umami's raw `website_event` rolled up to sessions/views by website, path and day |
 
 Grafana joins the two halves itself: two PostgreSQL datasources (one per
 database, both authenticating as `grafana_ro`), with `analytics_traffic.website_id`
@@ -868,25 +799,14 @@ docker compose exec postgres \
     -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
 ```
 
-That is Pressroom's server. `umami-db` is a separate server with roles of
-its own: `analytics-views` creates `grafana_ro` there, `NOLOGIN`, and grants
-it `CONNECT` on `${UMAMI_DB:-umami}` and `SELECT` on `analytics_traffic`. To
-enable it, set its password on that server too (the same one or another):
-
-```bash
-docker compose exec umami-db \
-    psql -U "${UMAMI_DB_USER:-umami}" -d "${UMAMI_DB:-umami}" \
-    -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
-```
-
-Then point one Grafana datasource at `pressroom` on `postgres` and the other
-at `${UMAMI_DB:-umami}` on `umami-db`.
+That is Pressroom's server. The suite provisions the Umami side's
+`grafana_ro` itself; see its README.
 
 **Access is tunnel-only.** Postgres never gets a published host port in this
 stack (see [Firewall](#firewall) — port 5432 is reachable only on the
-stack's Docker networks). Point Grafana's datasources at an SSH tunnel or a
+stack's Docker networks). Point Grafana's datasource at an SSH tunnel or a
 bastion into the host, never at a directly exposed port; do not add a host
-port mapping for `postgres` or `umami-db` to make this easier.
+port mapping for `postgres` to make this easier.
 
 **Two labels on `analytics_events` are untrusted display text, not
 metadata.** `page_slug` and `entry_anchor` on `FORM_SUBMITTED` rows are
@@ -900,35 +820,28 @@ republished entries.
 
 ## Newsletter
 
-The stack ships [listmonk](https://listmonk.app): a self-hosted mailing list
-manager. It owns the subscriber list, the double opt-in flow, the sending and
-the unsubscribe links. **Pressroom stores no subscriber data at all**, which is
-what keeps consent and retention obligations out of the blog software.
+[listmonk](https://listmonk.app) is a self-hosted mailing list manager. It
+owns the subscriber list, the double opt-in flow, the sending and the
+unsubscribe links, and it runs in the back-office suite, not in this stack.
+**Pressroom stores no subscriber data at all**, which is what keeps consent
+and retention obligations out of the blog software. Pressroom is a client of
+listmonk's API.
 
 ### Turning it on
 
-1. Set `LISTMONK_ADMIN_PASSWORD`, and — if you want subscribers to be able to
-   confirm — `LISTMONK_DOMAIN` and `LISTMONK_ROOT_URL` in `.env`. The two must
-   agree: listmonk builds its confirmation and unsubscribe links from
-   `LISTMONK_ROOT_URL`, and those links are the only way a subscriber can
-   confirm or leave.
+1. Set `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` in `.env` to the suite's LAN
+   address, for example `http://192.168.5.52:8086`. Not its public hostname:
+   that is for a browser, not for Pressroom reaching the API. Blank (the
+   `pressroom.properties` built-in default) is what makes
+   `/newsletter/subscribe` return 503: the intended fallback where no listmonk
+   exists, not a bug.
 2. Run `./deploy.sh` (or `docker compose up -d`).
-   `listmonk-db` creates the `listmonk` database, and listmonk creates its
-   own schema on first start.
-3. Sign in at `https://<LISTMONK_DOMAIN>/admin` with `admin` and the password
-   you set.
-4. **Set up SMTP** under *Settings → SMTP*. Nothing sends until you do; those
-   credentials live in listmonk's own database, not in `.env`.
+3. Sign in to listmonk's admin on the suite (`https://listmonk.wikantik.com/admin`
+   for this install). Subscribers confirm and unsubscribe through links
+   listmonk builds from its own root URL, which is the suite's setting.
+4. **Set up SMTP** under *Settings -> SMTP*. Nothing sends until you do; those
+   credentials live in listmonk's own database, not in Pressroom's `.env`.
 5. Create a list, set it to **double opt-in**, and copy its UUID.
-
-`.env.example` already sets `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL=http://listmonk:9000`
-— that's the compose **service name**, reached over the internal Docker
-network, not `LISTMONK_DOMAIN` (which is for a browser reaching the
-opt-in/unsubscribe pages, not for Pressroom reaching the API). You normally
-don't need to touch it; blank (the `pressroom.properties` built-in default,
-what you'd have if the variable were unset entirely) is what makes
-`/newsletter/subscribe` return 503 in local dev, where no listmonk service
-exists — that's the intended fallback, not a bug.
 
 ### Putting a subscribe form on a blog
 
@@ -950,19 +863,19 @@ list UUID) and the same client-side injection
 
 The form posts to `/newsletter/subscribe` **on the blog's own domain**, which
 is required, not decorative: every bundled theme sends `connect-src 'self'`,
-so a form posting to `newsletter.example.com` would be blocked by the
+so a form posting to listmonk's hostname would be blocked by the
 reader's browser and nothing would happen. **Pressroom itself serves that
 endpoint** — `NewsletterController` throttles it, checks the honeypot,
 refuses to forward a list uuid this install never configured, records a
 first-party `NEWSLETTER_SUBSCRIBED` event on success, and only then forwards
-to listmonk over the Docker network using `newsletter.listmonk.baseurl` from
+to listmonk over the LAN using `newsletter.listmonk.baseurl` from
 above. This used to be a Caddy `rewrite` straight to listmonk's public API;
 it is not anymore — `deploy/caddy/Caddyfile` now carries only a comment where
 that rewrite used to be (`/newsletter/subscribe is served by the app itself
 (throttle + events); do not re-add a rewrite here.`), because a path-specific
 proxy rule in front of the app would silently skip both the throttle and the
 event write with no error anywhere. The opt-in and unsubscribe pages still
-stay on `LISTMONK_DOMAIN` — those are followed from an email client, where no
+stay on listmonk's own host on the suite — those are followed from an email client, where no
 theme CSP applies, so routing them through the app buys nothing.
 
 > **Deployments running an older Caddyfile:** the Caddyfile is baked into the
@@ -1117,27 +1030,14 @@ orphaned `.tmp` file instead, which rotation also cleans up once it ages
 past the retention window. Backups land in the `pressroom-backups` named
 volume.
 
-The back-office databases have a backup service of their own,
-`backoffice-backup` (in `docker-compose.backoffice.yml`): the same loop runs
-`/app/backup/backoffice-backup.sh`, which dumps `umami` from `umami-db` and
-`listmonk` from `listmonk-db`, each with its own login, into the
-`pressroom-backoffice-backups` volume, read back and rotated the same way. A
-fault on one server costs that dump only, and fails the run. Its header
-holds the restore commands.
-
-After a back-office cycle that succeeded, the loop runs `/app/backup/umami-retention.sh`
-(`deploy/backup/umami-retention.sh`, applying the baked-in
-`deploy/analytics/umami-retention.sql`): it deletes Umami analytics data older
-than `UMAMI_RETENTION_DAYS` (default 730, two years) from Umami's database, so
-the dump taken minutes earlier still holds every row it removes. It deletes in
-committed batches, logs one row count per table and never a row, and
-`UMAMI_RETENTION_DAYS=0` switches it off. A failed run is logged
-("umami-retention.sh failed") and the loop carries on; the next night's run deletes what
-it missed. A failed backup skips it for that day. Run one pass by hand:
-
-```bash
-docker compose exec backoffice-backup /app/backup/umami-retention.sh
-```
+Umami's and listmonk's databases are not backed up here: they live in the
+back-office suite, which has its own nightly backup, Umami retention and
+restore procedure (see the suite's README and the header of its `backup.sh`).
+The `backup` service covers Pressroom's own database and volumes only.
+A successful cycle logs `[<timestamp>] Backup complete.` from
+`pressroom-backup-1`; jakemon's `PressroomBackupStale` alert watches that
+container only. The suite has its own `BackofficeBackupStale` and
+`BackofficeServiceDown` alerts.
 
 These dumps contain the full database, including user password hashes —
 treat them as sensitive. **The `pressroom-backups` volume is on the same
@@ -1147,7 +1047,7 @@ host's crontab:
 
 ```bash
 # 04:30 UTC, an hour after the default BACKUP_HOUR=3
-30 4 * * * cd /opt/pressroom && docker compose cp backup:/backups/. /srv/pressroom-backups/ && docker compose cp backoffice-backup:/backups/. /srv/pressroom-backups/backoffice/ && rclone sync /srv/pressroom-backups remote:pressroom-backups
+30 4 * * * cd /opt/pressroom && docker compose cp backup:/backups/. /srv/pressroom-backups/ && rclone sync /srv/pressroom-backups remote:pressroom-backups
 ```
 
 (any `rsync`/`rclone` target will do), and restrict filesystem access to
@@ -1159,7 +1059,6 @@ Run a backup by hand at any time:
 ```bash
 docker compose exec backup /app/backup/backup.sh
 docker compose exec backup ls -la /backups
-docker compose exec backoffice-backup /app/backup/backoffice-backup.sh
 ```
 
 ### Restore
@@ -1195,27 +1094,6 @@ docker compose start app
 (Get the dump onto the host first with
 `docker compose cp backup:/backups/pressroom-<timestamp>.dump .`
 if restoring from a different machine than the one that made it.)
-
-**Umami's database** is backed up from its own server, `umami-db` (since
-0.7.2), as `umami-<timestamp>.dump`, and restores there the same way, with
-Umami stopped. `--no-owner --no-acl` because the dump may come from before
-0.7.2, when Pressroom's server held it under Pressroom's role; re-running
-`analytics-views` puts `grafana_ro`'s grants back:
-
-```bash
-docker compose stop umami
-
-docker compose exec -T umami-db bash -c '
-    set -euo pipefail
-    export PGHOST=localhost
-    export PGUSER="${POSTGRES_USER}"
-    export PGPASSWORD="${POSTGRES_PASSWORD}"
-    pg_restore -d "${POSTGRES_DB}" --clean --if-exists --no-owner --no-acl
-' < /path/on/host/to/umami-<timestamp>.dump
-
-docker compose start umami
-docker compose up -d analytics-views
-```
 
 **The client that restores must be at least as new as the client that
 dumped.** `pg_restore` refuses an archive written by a newer `pg_dump`, with
@@ -1286,11 +1164,10 @@ override to that one command, so `up -d` would fall back to whatever
 `IMAGE_VERSION` is already in `.env`, silently defeating the point of this
 snippet.)
 
-with a local `.env` carrying `SITE_DOMAIN=:80`,
-`LISTMONK_DOMAIN=:8082`, `LISTMONK_ROOT_URL=http://localhost:8082` and
-throwaway secrets. The blog is at `http://localhost/`, the Umami
-dashboard at `http://localhost:8081`, the newsletter admin at
-`http://localhost:8082`.
+with a local `.env` carrying `SITE_DOMAIN=:80` and throwaway secrets. The
+blog is at `http://localhost/`. Analytics and the newsletter need the
+back-office suite; without it the blog still runs, with no tracker and
+`/newsletter/subscribe` answering 503.
 
 This pulls the exact images the server will pull, so it is the only form of
 local testing that is byte-identical to production. Building locally
@@ -1318,8 +1195,18 @@ that cost on every local `mvn` run.)
 > which copies the old stack into a new `pressroom` project and leaves the old
 > one untouched for a rollback. The checklist, the rollback and the cleanup
 > are in [docs/dev/pressroom-cutover.md](docs/dev/pressroom-cutover.md).
+>
+> **A host that still runs Umami and listmonk from `docker-compose.backoffice.yml`
+> (0.16.6 or earlier) must cut over to the back-office suite before upgrading.**
+> This release no longer ships that file. Move the data into the suite, point
+> the `.env` keys in [The back-office suite](#the-back-office-suite) at it,
+> take the overlay out of `COMPOSE_FILE`, run `docker compose up -d
+> --remove-orphans`, and remove the old volumes (`pressroom-umami-pgdata`,
+> `pressroom-listmonk-pgdata`, `pressroom-backoffice-backups`) once the suite
+> has served real traffic. The procedure is on the wiki page
+> `SimpleAgilityBackOfficeSuite`.
 
-Re-download both compose files and `deploy.sh` from the new release
+Re-download the compose file and `deploy.sh` from the new release
 alongside bumping `IMAGE_VERSION` in `.env`. The compose file and the script
 are **not** guaranteed to be unchanged between releases, so always re-download
 both rather than bumping `IMAGE_VERSION` alone. Keeping an older `backup`
@@ -1328,7 +1215,6 @@ entrypoint at a path the new image does not carry:
 
 ```bash
 curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/docker-compose.prod.yml
-curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/docker-compose.backoffice.yml
 curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/deploy.sh
 chmod +x deploy.sh
 ```
@@ -1359,31 +1245,6 @@ rather than leaving the stack in a half-upgraded state without telling you.
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
 
-### If a service database's password is lost
-
-`umami-db` keeps the `UMAMI_DB_PASSWORD` it was first started with, and
-`listmonk-db` the `LISTMONK_DB_PASSWORD`; changing the line in `.env` later
-changes nothing on the server. If `.env` has lost the
-line (an older `.env` restored on a rollback, say), `deploy.sh` stops and says so
-rather than generating a new one. Put the original line back if you have it.
-If not, give the server a new password from inside its container, where it
-trusts local connections, so the old one is not needed:
-
-```bash
-printf 'UMAMI_DB_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> .env
-docker compose up -d umami-db
-printf "ALTER ROLE \"%s\" PASSWORD '%s';\n" \
-    "$(sed -n 's/^UMAMI_DB_USER=//p' .env | tail -n 1 | grep . || echo umami)" \
-    "$(sed -n 's/^UMAMI_DB_PASSWORD=//p' .env | tail -n 1)" |
-    docker compose exec -T umami-db \
-        sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q'
-./deploy.sh
-```
-
-(`printf` is a shell builtin, so the password travels through the pipe and is
-on no command line.) For `listmonk-db`, the same with `LISTMONK_DB_PASSWORD`,
-`LISTMONK_DB_USER` (default `listmonk`) and `listmonk-db`.
-
 ### In one command
 
 `deploy/upgrade.sh` does every step of an upgrade, in an order that changes nothing until it can
@@ -1397,7 +1258,7 @@ beside the others and run it from the deploy directory:
 
 The steps, in order:
 
-1. Downloads the release's three files. If one is missing, it stops.
+1. Downloads the release's files. If one is missing, it stops.
 2. Takes a backup through the `backup` service. If the backup fails, it stops.
 3. Shows how each downloaded file differs from the one in place.
 4. Keeps `.env` and the replaced files as `<name>.bak-<UTC stamp>`, then moves the new
@@ -1431,7 +1292,7 @@ which is the safe outcome rather than a silent re-initialisation. Pick one:
   a fresh backup, plus a `pg_dumpall --globals-only` for the roles, which the
   nightly backup does not cover. Stop everything but postgres, restore into a
   new empty volume under the new image, then bring the stack up. Re-run the
-  `grafana_ro` password step from the Grafana section afterwards if the roles
+  `grafana_ro` password step from [The Grafana contract](#the-grafana-contract) afterwards if the roles
   were not restored.
 - **`pg_upgrade --link`**, fast on a large database. It needs both majors'
   binaries, so it runs from a purpose-built image rather than this stack, but
@@ -1448,20 +1309,12 @@ Only 80 and 443 need to be open to the internet, or the ports
 (see [Behind a tunnel or a proxy on another
 host](#behind-a-tunnel-or-a-proxy-on-another-host)) nothing needs to be open
 to the internet; only the connector's host needs to reach `SITE_HTTP_PORT`.
-Caddy also publishes
-`${UMAMI_CONSOLE_BIND:-127.0.0.1}:8081` and `127.0.0.1:8082` (the Umami
-dashboard, loopback unless you set `UMAMI_CONSOLE_BIND` for a tunnel
-connector or proxy on another machine, and the local-testing path to the listmonk console — see [Test a release locally before deploying
-it](#test-a-release-locally-before-deploying-it)), but those are
-loopback-bound by default, unreachable from outside the host by construction,
-and need no firewall rule either way. If you set `UMAMI_CONSOLE_BIND` to a LAN
-address, keep the firewall closed to that port from outside the LAN. Their host side moves with `UMAMI_CONSOLE_PORT` /
-`LISTMONK_CONSOLE_PORT` in `.env` when a host already uses either port (see
-[Troubleshooting](#troubleshooting)). Nothing else in `docker-compose.prod.yml`
-publishes a host port by default (`postgres` and the app's `8080`/`8090` are
-reachable only on the internal Docker network), so there's nothing else to
-explicitly block on a default-deny host firewall, but locking it down
-explicitly is still good practice:
+Nothing else in `docker-compose.prod.yml` publishes a host port by default
+(`postgres` and the app's `8080`/`8090` are reachable only on the internal
+Docker network), so there's nothing else to explicitly block on a default-deny
+host firewall, but locking it down explicitly is still good practice. Umami
+and listmonk are not on this host; the suite's host publishes their ports
+(see [The back-office suite](#the-back-office-suite)):
 
 ```bash
 ufw default deny incoming
@@ -1505,24 +1358,14 @@ docker compose logs postgres
 
 **Caddy won't start: `bind: address already in use`**
 
-Something else on the host already listens on 80, 443, 8081 or 8082. The
-last two are only the loopback console ports, but a listener on *any*
-address (`0.0.0.0:8082`, say) blocks the `127.0.0.1:8082` bind just the same,
-and caddy is the stack's only ingress, so the blog goes dark with it. Find
-the owner with `ss -ltn` / `docker ps`, then move the console port in `.env`
-rather than editing the compose file (a re-download on the next upgrade would
-silently put the edit back):
-
-```bash
-LISTMONK_CONSOLE_PORT=18082   # and/or UMAMI_CONSOLE_PORT=18081
-```
-
-In the local `:8081`/`:8082` mode the console is then at
-`http://localhost:18082`, and `LISTMONK_ROOT_URL` moves with it. 80 and 443
-move the same way, with `SITE_HTTP_PORT` and `SITE_HTTPS_PORT`. Do that only
-when a connector on another host forwards to them (see [Behind a tunnel or a
-proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)): a host
-serving its own domain needs 80 and 443 reachable from the internet.
+Something else on the host already listens on 80 or 443. Caddy is the stack's
+only ingress, so the blog goes dark with it. Find the owner with `ss -ltn` /
+`docker ps`, then move the published ports in `.env` rather than editing the
+compose file (a re-download on the next upgrade would silently put the edit
+back): `SITE_HTTP_PORT` and `SITE_HTTPS_PORT`. Do that only when a connector
+on another host forwards to them (see [Behind a tunnel or a proxy on another
+host](#behind-a-tunnel-or-a-proxy-on-another-host)): a host serving its own
+domain needs 80 and 443 reachable from the internet.
 
 **App container is up but the blog isn't reachable through Caddy**
 
@@ -1533,17 +1376,13 @@ pointed at the host yet, or port 80 isn't reachable from the internet):
 docker compose logs caddy
 ```
 
-**Caddy's logs are full of certificate errors for `newsletter.invalid`**
+**Blog pages carry the tracker tag but the tracker answers 502**
 
-Harmless if you never set `LISTMONK_DOMAIN` — that is the
-`.invalid` default (deliberately unresolvable, so the consoles are
-unreachable rather than accidentally published on your blog's domain; see
-[Newsletter](#newsletter)), and Caddy still attempts
-and fails ACME issuance for that site block on every retry interval, forever,
-which fills the log with certificate errors that read like a
-misconfiguration. It is not one — set `LISTMONK_DOMAIN`
-(and point DNS at it) if you actually want that console reachable, or ignore
-the log noise if you don't.
+Caddy cannot reach Umami. `ANALYTICS_UPSTREAM` in `.env` is unset (it then
+defaults to an unresolvable placeholder, so Caddy still starts and only the
+tracker fails) or points at the wrong address. Set it to the suite's LAN
+address, `192.168.5.52:8085` for example (host and port; an IP, not a `.lan`
+name), and run `docker compose up -d caddy`. See [Analytics](#analytics).
 
 **App health check never turns green**
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Nightly backup loop for the `backup` service in docker-compose.prod.yml and
-# the `backoffice-backup` service in docker-compose.backoffice.yml.
+# Nightly backup loop for the `backup` service in docker-compose.prod.yml.
 # No cron daemon in the app image this service now runs (it used to be the
 # postgres:16 base image, back when the scripts were bind-mounted in), so
 # this is the whole scheduler: wake up once an hour, and if it's BACKUP_HOUR
 # (UTC) and the backup hasn't already run today, run it, and after it
 # succeeds, the step that must follow a fresh backup, if any.
 #
-#   BACKUP_SCRIPT  the backup, beside this script (default backup.sh, the
-#                  core's; backoffice-backup.sh for the back-office's)
-#   AFTER_BACKUP   run after a backup that succeeded (default none;
-#                  umami-retention.sh for the back-office's, so the dump just
-#                  taken still holds every row retention deletes)
+#   BACKUP_SCRIPT  the backup, beside this script (default backup.sh)
+#   AFTER_BACKUP   run after a backup that succeeded (default none), e.g. a
+#                  retention step, so the dump just taken still holds every
+#                  row it deletes. No Pressroom service sets either today; the
+#                  0.16.6 back-office backup did (Umami's dump, then retention),
+#                  before Umami and listmonk moved to the back-office suite.
 # Equivalent to a `0 <BACKUP_HOUR> * * *` crontab entry, without needing cron
 # installed.
 set -euo pipefail

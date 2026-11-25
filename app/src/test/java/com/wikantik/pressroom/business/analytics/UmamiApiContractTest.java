@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Pins what the digest-pinned Umami 3.3.0 image actually does, before any
  * Pressroom code is built against it: the dedicated account made by
- * {@code deploy/analytics/umami-pressroom-account.sql}, website registration
+ * the back-office suite's account SQL (a copy in test resources), website registration
  * (including whether a supplied ID is honoured), what the account may and may
  * not do, and the read endpoints and response shapes the Traffic tabs need.
  *
@@ -69,7 +69,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class UmamiApiContractTest {
 
-    private static final Path ACCOUNT_SQL = Paths.get("../deploy/analytics/umami-pressroom-account.sql");
+    private static final Path ACCOUNT_SQL = Paths.get("src/test/resources/umami/umami-account.sql");
     private static final String USERNAME = "pressroom";
     /** Generated per run and never printed. */
     private static final String PASSWORD = "contract-" + UUID.randomUUID();

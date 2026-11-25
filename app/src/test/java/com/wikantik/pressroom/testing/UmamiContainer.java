@@ -18,15 +18,12 @@
 package com.wikantik.pressroom.testing;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -45,15 +42,14 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-import org.yaml.snakeyaml.Yaml;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The real Umami, for contract tests: the <em>same digest-pinned image</em>
- * {@code docker-compose.backoffice.yml} runs (read from that file, so the two cannot
- * drift), against its own scratch PostgreSQL on a private Docker network.
+ * the back-office suite runs ({@link #IMAGE}), against its own scratch
+ * PostgreSQL on a private Docker network.
  *
  * <p>One instance per JVM, started on first use and never stopped by a test
  * (a shutdown hook and Testcontainers' Ryuk clean up), like
@@ -69,9 +65,6 @@ import tools.jackson.databind.json.JsonMapper;
  * ({@link PressroomPostgresContainer#IMAGE}).
  */
 public final class UmamiContainer {
-
-    /** Relative to the app module, which is the working directory for tests. */
-    static final Path BACKOFFICE_COMPOSE = Paths.get("../docker-compose.backoffice.yml");
 
     private static final String DB_ALIAS = "umami-db";
     private static final String DB_NAME = "umami";
@@ -114,7 +107,7 @@ public final class UmamiContainer {
                 .withPassword(DB_PASSWORD);
         database.start();
 
-        GenericContainer<?> umami = new GenericContainer<>(DockerImageName.parse(imageFromCompose()));
+        GenericContainer<?> umami = new GenericContainer<>(DockerImageName.parse(IMAGE));
         umami.withNetwork(network)
                 .withExposedPorts(PORT)
                 // The production service's environment, minus secrets: the
@@ -146,22 +139,14 @@ public final class UmamiContainer {
         }
     }
 
-    /** The {@code umami} service's image reference in {@code docker-compose.backoffice.yml}, digest included. */
-    @SuppressWarnings("unchecked")
-    public static String imageFromCompose() {
-        Map<String, Object> parsed;
-        try (InputStream in = Files.newInputStream(BACKOFFICE_COMPOSE)) {
-            parsed = (Map<String, Object>) new Yaml().load(in);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot read " + BACKOFFICE_COMPOSE.toAbsolutePath(), e);
-        }
-        Map<String, Object> services = (Map<String, Object>) parsed.get("services");
-        Map<String, Object> service = (Map<String, Object>) services.get("umami");
-        if (service == null || !(service.get("image") instanceof String image) || !image.contains("@sha256:")) {
-            throw new IllegalStateException(BACKOFFICE_COMPOSE + " has no digest-pinned umami image");
-        }
-        return image;
-    }
+    /**
+     * The Umami image the back-office suite runs (repo jakefearsd/backoffice,
+     * docker-compose.yml), digest included. Pressroom no longer runs Umami, so
+     * the pin lives there; bump this with it, after the contract tests pass
+     * against the new image.
+     */
+    public static final String IMAGE =
+            "docker.umami.is/umami-software/umami@sha256:87312d334d009ee67ee0d2fba8fed01435547cc468e452243aef5133a9984d48";
 
     /** Umami's root URL as seen from the test JVM, with no trailing slash. */
     public String baseUrl() {

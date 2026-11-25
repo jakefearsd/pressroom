@@ -34,9 +34,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,27 +52,21 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>Reintroducing a bind mount is the single change that would silently undo
  * that -- the stack would keep working on a developer's machine, which has the
- * checkout, and fail only on a host that does not. Same reasoning as
- * {@link UmamiViewScriptTest} policing deploy/analytics from a unit test.
+ * checkout, and fail only on a host that does not.
  */
 class ProductionComposeTest {
 
     private static final Path COMPOSE = Paths.get("../docker-compose.prod.yml");
 
-    /** The back-office services (wiki SA-15), merged over the core file by COMPOSE_FILE in .env. */
-    private static final Path OVERLAY = Paths.get("../docker-compose.backoffice.yml");
-
-    /** The two files the host deploys, as Compose merges them. */
+    /** The one file the host deploys. */
     private static Map<String, Object> compose;
 
     private static Map<String, Object> core;
-    private static Map<String, Object> overlay;
 
     @BeforeAll
     static void load() throws IOException {
         core = yaml(COMPOSE);
-        overlay = yaml(OVERLAY);
-        compose = merge(core, overlay);
+        compose = core;
     }
 
     @SuppressWarnings("unchecked")
@@ -83,42 +75,6 @@ class ProductionComposeTest {
         try (InputStream in = Files.newInputStream(file)) {
             return (Map<String, Object>) new Yaml().load(in);
         }
-    }
-
-    /**
-     * Compose's merge, as far as these two files use it: services, networks
-     * and volumes are unions, and a service in both files (only {@code app},
-     * which the overlay gives its back-office addresses) has its environment
-     * maps merged and every other key from the core.
-     */
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> merge(Map<String, Object> base, Map<String, Object> over) {
-        Map<String, Object> merged = new LinkedHashMap<>(base);
-        for (String section : List.of("services", "networks", "volumes")) {
-            Map<String, Object> union = new LinkedHashMap<>();
-            Map<String, Object> a = (Map<String, Object>) base.get(section);
-            Map<String, Object> b = (Map<String, Object>) over.get(section);
-            if (a != null) {
-                union.putAll(a);
-            }
-            if (b != null) {
-                b.forEach((name, value) -> union.merge(name, value == null ? new LinkedHashMap<>() : value,
-                        (x, y) -> "services".equals(section) ? mergeService((Map<String, Object>) x,
-                                (Map<String, Object>) y) : x));
-            }
-            merged.put(section, union);
-        }
-        return merged;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> mergeService(Map<String, Object> a, Map<String, Object> b) {
-        Map<String, Object> svc = new LinkedHashMap<>(a);
-        Map<String, Object> env = new LinkedHashMap<>();
-        Optional.ofNullable((Map<String, Object>) a.get("environment")).ifPresent(env::putAll);
-        Optional.ofNullable((Map<String, Object>) b.get("environment")).ifPresent(env::putAll);
-        svc.put("environment", env);
-        return svc;
     }
 
     @SuppressWarnings("unchecked")
@@ -366,66 +322,12 @@ class ProductionComposeTest {
     }
 
     /**
-     * The loopback console ports exist only for a local run, yet caddy cannot
-     * start if a host already has either one bound -- on any address, since a
-     * wildcard listener blocks a loopback bind of the same port -- and caddy is
-     * the only ingress, so a hard-coded console port takes the blog down with
-     * it. Each one's host side must therefore be movable from .env, and named
-     * there, or the override exists but nobody can find it.
-     */
-    @Test
-    void everyLoopbackHostPortIsOverridableFromEnv() throws IOException {
-        Pattern overridable = Pattern.compile(
-                "(?:127\\.0\\.0\\.1|\\$\\{[A-Z][A-Z0-9_]*:-127\\.0\\.0\\.1}):"
-                        + "\\$\\{([A-Z][A-Z0-9_]*):-\\d+}:\\d+");
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
-                StandardCharsets.UTF_8);
-        List<String> loopback = new ArrayList<>();
-        for (Object port : (List<?>) service("caddy").get("ports")) {
-            String spec = String.valueOf(port);
-            if (!loopbackByDefault(spec)) {
-                continue;
-            }
-            loopback.add(spec);
-            var m = overridable.matcher(spec);
-            assertTrue(m.matches(), spec + " hard-codes its host port; write it as "
-                    + "127.0.0.1:${SOME_PORT:-<default>}:<container port> so a host that "
-                    + "already uses <default> can move it");
-            assertTrue(Pattern.compile("(?m)^#?" + m.group(1) + "=").matcher(envExample).find(),
-                    m.group(1) + " moves " + spec + " but deploy/.env.example never names it");
-        }
-        assertFalse(loopback.isEmpty(), "expected caddy's loopback console ports; did they move?");
-    }
-
-    /**
      * A port whose host address is loopback, written either literally or as a
      * {@code ${VAR:-127.0.0.1}} that .env may point at a LAN address.
      */
     private static boolean loopbackByDefault(String spec) {
         return spec.startsWith("127.0.0.1:")
                 || Pattern.compile("^\\$\\{[A-Z][A-Z0-9_]*:-127\\.0\\.0\\.1}:").matcher(spec).find();
-    }
-
-    /**
-     * The Umami dashboard and its API are internal (spec AC 19). cloudflared
-     * runs on another machine and cannot reach docker1's loopback, so the
-     * owner publishes the console on the LAN address for the tunnel route
-     * to reach; the file's own default stays loopback, so a host that
-     * never sets UMAMI_CONSOLE_BIND exposes nothing.
-     */
-    @Test
-    void dashboardBindDefaultsToLoopback() throws IOException {
-        assertTrue(((List<?>) service("caddy").get("ports"))
-                        .contains("${UMAMI_CONSOLE_BIND:-127.0.0.1}:${UMAMI_CONSOLE_PORT:-8081}:8081"),
-                "the dashboard port must be bindable to the LAN from .env and default to loopback: "
-                        + service("caddy").get("ports"));
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
-                StandardCharsets.UTF_8);
-        assertTrue(Pattern.compile("(?m)^#?UMAMI_CONSOLE_BIND=").matcher(envExample).find(),
-                "deploy/.env.example must name UMAMI_CONSOLE_BIND, or nobody finds the LAN bind");
-        assertTrue(Pattern.compile("(?ms)^:8081 \\{\\s*reverse_proxy \\{\\$ANALYTICS_UPSTREAM}\\s*}")
-                        .matcher(caddyDirectives()).find(),
-                "the dashboard is a fixed :8081 site in the Caddyfile, not a hostname");
     }
 
     /**
@@ -445,102 +347,6 @@ class ProductionComposeTest {
             }
         }
         assertEquals(List.of(), offenders, "UMAMI_DOMAIN is removed; these still name it");
-    }
-
-    /**
-     * Pressroom registers its blogs through Umami's API over the compose
-     * network, as its own non-admin account. The password is generated into
-     * .env by deploy.sh; analytics-views creates the account with it and the
-     * app signs in with it. The removed JDBC route to Umami's tables is gone.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theAppReachesUmamiThroughItsApiAsThePressroomAccount() throws IOException {
-        Map<String, Object> app = (Map<String, Object>) service("app").get("environment");
-        assertEquals("${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}",
-                app.get("PRESSROOM_ANALYTICS_UMAMI_APIURL"));
-        assertEquals("${UMAMI_PRESSROOM_PASSWORD:-}", app.get("PRESSROOM_ANALYTICS_UMAMI_PASSWORD"));
-        Map<String, Object> views = (Map<String, Object>) service("analytics-views").get("environment");
-        assertEquals("${UMAMI_PRESSROOM_PASSWORD:-}", views.get("UMAMI_PRESSROOM_PASSWORD"),
-                "analytics-views creates the account the app signs in as");
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
-                StandardCharsets.UTF_8);
-        for (String key : List.of("UMAMI_PRESSROOM_PASSWORD", "PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL")) {
-            assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
-                    "deploy/.env.example must document " + key);
-        }
-        for (Path file : List.of(COMPOSE, OVERLAY, Paths.get("../deploy/.env.example"))) {
-            assertFalse(Files.readString(file, StandardCharsets.UTF_8).contains("PRESSROOM_ANALYTICS_JDBC"),
-                    file + " still names the removed PRESSROOM_ANALYTICS_JDBC_* settings");
-        }
-    }
-
-    /**
-     * A blank {@code analytics.umami.apiUrl} means analytics is off (spec), so
-     * production must be able to reach a blank value. Compose's {@code :-}
-     * substitutes the default for an empty variable as well as an unset one,
-     * which would make {@code PRESSROOM_ANALYTICS_UMAMI_APIURL=} in .env turn
-     * analytics straight back on; a bare {@code -} substitutes only when it is
-     * unset. .env.example must name that blank line as the off switch.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void aBlankApiUrlInEnvSwitchesAnalyticsOff() throws IOException {
-        String apiUrl = String.valueOf(((Map<String, Object>) service("app").get("environment"))
-                .get("PRESSROOM_ANALYTICS_UMAMI_APIURL"));
-        Matcher m = Pattern.compile("^\\$\\{PRESSROOM_ANALYTICS_UMAMI_APIURL(:?)-([^}]*)}$").matcher(apiUrl);
-        assertTrue(m.matches(), "the API URL must come from .env with a default: " + apiUrl);
-        assertEquals("", m.group(1),
-                "${VAR:-default} turns a blank .env value back into the default; use ${VAR-default}");
-        assertEquals("http://umami:3000", m.group(2), "unset, the app reaches Umami over the compose network");
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        assertTrue(Pattern.compile("(?m)^#\\s*PRESSROOM_ANALYTICS_UMAMI_APIURL=$").matcher(envExample).find(),
-                "deploy/.env.example must show the blank PRESSROOM_ANALYTICS_UMAMI_APIURL= off switch");
-    }
-
-    /**
-     * The nightly Umami retention job ships the way the analytics SQL does:
-     * baked into the image (nothing is bind-mounted), the SQL beside the
-     * other analytics files at /app, where umami-retention.sh looks for it,
-     * and the script beside loop.sh, which calls it after the backup
-     * ({@link BackupLoopTest} runs that order). The window comes from .env
-     * with no default in the compose file, so the SQL's 730 is the one
-     * default.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theUmamiRetentionJobIsBakedAndConfigured() throws IOException {
-        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
-        assertTrue(dockerfile.contains("COPY deploy/analytics/umami-retention.sql /app/umami-retention.sql"),
-                "the root Dockerfile must bake the retention SQL at /app/umami-retention.sql");
-        assertTrue(dockerfile.contains("COPY deploy/backup/umami-retention.sh /app/backup/umami-retention.sh"),
-                "the root Dockerfile must bake the retention script beside loop.sh");
-        assertTrue(Pattern.compile("chmod 755[^\\n]*/app/backup/umami-retention\\.sh").matcher(dockerfile).find(),
-                "the retention script must be executable");
-        String script = Files.readString(Paths.get("../deploy/backup/umami-retention.sh"), StandardCharsets.UTF_8);
-        assertTrue(script.contains("umami-retention.sql"), "umami-retention.sh must apply the retention SQL");
-        String loop = Files.readString(Paths.get("../deploy/backup/loop.sh"), StandardCharsets.UTF_8);
-        assertTrue(loop.contains("\"$(dirname \"$0\")/${AFTER_BACKUP}\""),
-                "loop.sh must call the after-backup step relative to itself, as it does the backup");
-
-        Map<String, Object> backup = (Map<String, Object>) service("backoffice-backup").get("environment");
-        assertEquals("umami-retention.sh", backup.get("AFTER_BACKUP"), "retention follows the back-office backup");
-        assertEquals("${UMAMI_RETENTION_DAYS:-}", backup.get("UMAMI_RETENTION_DAYS"));
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        assertTrue(Pattern.compile("(?m)^#?UMAMI_RETENTION_DAYS=730$").matcher(envExample).find(),
-                "deploy/.env.example must document UMAMI_RETENTION_DAYS and its default");
-    }
-
-    /** The account step's SQL must be in the image, where analytics-views.sh looks for it. */
-    @Test
-    void theAccountSqlIsBakedBesideTheViews() throws IOException {
-        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
-        assertTrue(dockerfile.contains(
-                        "COPY deploy/analytics/umami-pressroom-account.sql /app/umami-pressroom-account.sql"),
-                "the root Dockerfile must bake the account SQL at /app/umami-pressroom-account.sql");
-        String script = Files.readString(Paths.get("../deploy/analytics-views.sh"), StandardCharsets.UTF_8);
-        assertTrue(script.contains("umami-pressroom-account.sql"),
-                "analytics-views.sh must apply the account SQL");
     }
 
     /**
@@ -685,16 +491,13 @@ class ProductionComposeTest {
                 assertTrue(image.startsWith(expected + "${IMAGE_VERSION"), name + ": " + image);
             }
         });
-        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views",
-                        "backup", "backoffice-backup"),
-                Set.copyOf(ours));
+        assertEquals(Set.of("provision", "admin", "app", "caddy", "backup"), Set.copyOf(ours));
     }
 
     /** The volume names the cutover copies into; caddy's keep their names, under the new project. */
     @Test
     void theVolumesArePressroomVolumes() {
-        assertEquals(Set.of("pressroom-pgdata", "pressroom-umami-pgdata", "pressroom-listmonk-pgdata",
-                        "pressroom-backoffice-backups", "pressroom-mediafiles",
+        assertEquals(Set.of("pressroom-pgdata", "pressroom-mediafiles",
                         "pressroom-search-index", "pressroom-uploads", "pressroom-backups", "caddy-data",
                         "caddy-config"),
                 ((Map<?, ?>) compose.get("volumes")).keySet());
@@ -707,7 +510,7 @@ class ProductionComposeTest {
     /** Machine names only: the prose word is Phase 3. */
     @Test
     void theFileNamesNoOldMachineName() throws IOException {
-        String text = Files.readString(COMPOSE, StandardCharsets.UTF_8) + Files.readString(OVERLAY, StandardCharsets.UTF_8);
+        String text = Files.readString(COMPOSE, StandardCharsets.UTF_8);
         Matcher m = Pattern.compile("(?<![A-Za-z])roller|ROLLER").matcher(text); // rebrand:keep
         List<String> found = new ArrayList<>();
         while (m.find()) {
@@ -722,19 +525,6 @@ class ProductionComposeTest {
     void theAppTakesItsConfigurationFromEnvFile() {
         assertEquals(".env", String.valueOf(service("app").get("env_file")),
                 "the app's whole configuration arrives as PRESSROOM_* variables from .env");
-    }
-
-    @Test
-    void analyticsViewsNeverRestarts() {
-        // A restarting one-shot that waits up to ANALYTICS_VIEWS_WAIT_SECONDS
-        // (default 180s) for website_event to appear would hammer the
-        // database indefinitely if that table is never going to show up
-        // (Umami misconfigured, or simply not deployed on this stack) --
-        // restart: "no" is what makes a timeout here a one-time, logged
-        // no-op instead of a permanent background retry storm.
-        assertEquals("no", String.valueOf(service("analytics-views").get("restart")),
-                "analytics-views must not restart -- see the comment above for why a "
-                        + "restarting one-shot here is actively harmful, not just wasteful");
     }
 
     @Test
@@ -780,25 +570,6 @@ class ProductionComposeTest {
         assertTrue(offenders.isEmpty(),
                 "these services declare an /app/* entrypoint the Dockerfile never creates "
                         + "(no matching COPY destination or chmod target): " + offenders);
-    }
-
-    @Test
-    void analyticsViewsGateNothing() {
-        assertNotNull(services().get("analytics-views"),
-                "the analytics views one-shot must exist");
-
-        for (Map.Entry<String, Object> entry : services().entrySet()) {
-            @SuppressWarnings("unchecked")
-            Object dependsOn = ((Map<String, Object>) entry.getValue()).get("depends_on");
-            if (dependsOn instanceof Map<?, ?> conditions) {
-                assertFalse(conditions.containsKey("analytics-views"),
-                        entry.getKey() + " must not wait on analytics-views: it installs a Grafana "
-                                + "dashboard view, and a failure there must never keep the blog down");
-            } else if (dependsOn instanceof List<?> list) {
-                assertFalse(list.contains("analytics-views"),
-                        entry.getKey() + " must not wait on analytics-views");
-            }
-        }
     }
 
     @Test
@@ -1031,42 +802,6 @@ class ProductionComposeTest {
     // ------------------------------------------------ Umami's own database server
     // Spec docs/superpowers/specs/2026-11-03-umami-database-server-design.md.
 
-    /** AC 1. */
-    @Test
-    @SuppressWarnings("unchecked")
-    void umamiHasADatabaseServerOfItsOwn() {
-        Map<String, Object> db = service("umami-db");
-        assertEquals(service("postgres").get("image"), db.get("image"),
-                "the same digest-pinned engine as Pressroom's server (PostgresMajorPinTest pins that one)");
-        assertEquals(List.of("pressroom-umami-pgdata:/var/lib/postgresql"), db.get("volumes"));
-        Map<String, Object> env = (Map<String, Object>) db.get("environment");
-        assertEquals("${UMAMI_DB:-umami}", env.get("POSTGRES_DB"));
-        assertEquals("${UMAMI_DB_USER:-umami}", env.get("POSTGRES_USER"));
-        assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"),
-                "its own password, required: " + env.get("POSTGRES_PASSWORD"));
-        // Over TCP, not the socket: on a first start the image's init server
-        // listens on the socket only, and its clients connect over TCP.
-        String health = String.valueOf(((Map<String, Object>) db.get("healthcheck")).get("test"));
-        assertTrue(health.contains("pg_isready -h 127.0.0.1 "), health);
-        assertNull(db.get("ports"), "umami-db publishes nothing");
-        assertEquals(List.of("analytics"), db.get("networks"));
-        assertEquals("unless-stopped", db.get("restart"));
-    }
-
-    /** AC 2: never Pressroom's server or its password. */
-    @Test
-    @SuppressWarnings("unchecked")
-    void umamiConnectsToItsOwnServer() {
-        Map<String, Object> umami = service("umami");
-        String url = String.valueOf(((Map<String, Object>) umami.get("environment")).get("DATABASE_URL"));
-        assertTrue(url.startsWith("postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?"), url);
-        assertTrue(url.endsWith("@umami-db:5432/${UMAMI_DB:-umami}"), url);
-        assertFalse(url.contains("POSTGRES_"), url);
-        Map<String, Object> deps = (Map<String, Object>) umami.get("depends_on");
-        assertEquals(Map.of("umami-db", Map.of("condition", "service_healthy")), deps,
-                "Umami waits for its own server and nothing else");
-    }
-
     /**
      * AC 7: a failed move must cost analytics, never the blog. Caddy is the
      * blog's only way in; were it to wait for umami, an Umami that cannot
@@ -1086,134 +821,6 @@ class ProductionComposeTest {
     }
 
     /**
-     * Back-office decoupling, step 1 (spec 2026-11-06-back-office-decoupling-design.md):
-     * Caddy reaches Umami and listmonk at addresses .env can change, so the
-     * services can leave this compose project without a new Caddyfile. The
-     * compose defaults keep today's in-project names; neither may be empty,
-     * since Caddy cannot adapt a bare {@code reverse_proxy}.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void caddyReachesBackOfficeServicesOnlyThroughSettings() throws IOException {
-        String directives = caddyDirectives();
-        for (String literal : List.of("umami:", "listmonk:")) {
-            assertFalse(directives.contains(literal),
-                    "the Caddyfile names a back-office host outright (" + literal + "); use the upstream setting");
-        }
-        assertTrue(directives.contains("reverse_proxy {$NEWSLETTER_UPSTREAM}"), "the newsletter site's upstream");
-
-        Map<String, Object> env = (Map<String, Object>) service("caddy").get("environment");
-        assertEquals("${ANALYTICS_UPSTREAM:-umami:3000}", env.get("ANALYTICS_UPSTREAM"));
-        assertEquals("${NEWSLETTER_UPSTREAM:-listmonk:9000}", env.get("NEWSLETTER_UPSTREAM"));
-
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        for (String key : List.of("ANALYTICS_UPSTREAM", "NEWSLETTER_UPSTREAM")) {
-            assertTrue(Pattern.compile("(?m)^#" + key + "=").matcher(envExample).find(),
-                    "deploy/.env.example must document " + key + ", commented out");
-        }
-    }
-
-    /** AC 3: the app is not on the network umami-db is on. */
-    @Test
-    void onlyTheAnalyticsServicesReachUmamisDatabase() {
-        assertTrue(((Map<?, ?>) compose.get("networks")).containsKey("analytics"));
-        Set<String> onAnalytics = new TreeSet<>();
-        services().forEach((name, svc) -> {
-            Object networks = ((Map<?, ?>) svc).get("networks");
-            if (networks instanceof List<?> list && list.contains("analytics")) {
-                onAnalytics.add(name);
-            }
-        });
-        assertEquals(new TreeSet<>(Set.of("umami-db", "umami", "analytics-views",
-                "backoffice-backup")), onAnalytics);
-    }
-
-    /**
-     * Back-office decoupling, step 2: listmonk leaves Pressroom's server for
-     * one of its own, as Umami did in 0.7.2. Its own login and network; the
-     * app reaches listmonk through its API alone, never its database.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void listmonkHasADatabaseServerOfItsOwn() {
-        Map<String, Object> db = service("listmonk-db");
-        assertEquals(service("postgres").get("image"), db.get("image"), "the same pinned engine as postgres");
-        Map<String, Object> dbEnv = (Map<String, Object>) db.get("environment");
-        assertEquals("${LISTMONK_DB:-listmonk}", dbEnv.get("POSTGRES_DB"));
-        assertEquals("${LISTMONK_DB_USER:-listmonk}", dbEnv.get("POSTGRES_USER"));
-        assertTrue(String.valueOf(dbEnv.get("POSTGRES_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
-        assertEquals(List.of("pressroom-listmonk-pgdata:/var/lib/postgresql"), db.get("volumes"));
-        String health = String.valueOf(((Map<String, Object>) db.get("healthcheck")).get("test"));
-        assertTrue(health.contains("pg_isready -h 127.0.0.1 "), health);
-        assertNull(db.get("ports"), "listmonk-db publishes nothing");
-        assertEquals(List.of("newsletter"), db.get("networks"));
-
-        Map<String, Object> listmonk = service("listmonk");
-        Map<String, Object> env = (Map<String, Object>) listmonk.get("environment");
-        assertEquals("listmonk-db", env.get("LISTMONK_db__host"));
-        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("LISTMONK_db__user"));
-        assertTrue(String.valueOf(env.get("LISTMONK_db__password")).startsWith("${LISTMONK_DB_PASSWORD:?"));
-        env.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
-                "listmonk never uses Pressroom's server login: " + v));
-        Map<String, Object> deps = (Map<String, Object>) listmonk.get("depends_on");
-        assertEquals(Map.of("listmonk-db", Map.of("condition", "service_healthy")), deps,
-                "listmonk waits for its own server and nothing else");
-        assertEquals(List.of("internal", "newsletter"), listmonk.get("networks"));
-
-        Set<String> onNewsletter = new TreeSet<>();
-        services().forEach((name, raw) -> {
-            Object networks = ((Map<String, Object>) raw).get("networks");
-            if (networks instanceof List<?> list && list.contains("newsletter")) {
-                onNewsletter.add(name);
-            }
-        });
-        assertEquals(new TreeSet<>(Set.of("listmonk-db", "listmonk", "backoffice-backup")),
-                onNewsletter, "only listmonk and the back-office backup reach listmonk-db");
-    }
-
-    /**
-     * The umami-move and listmonk-move one-shots copied each database off
-     * Pressroom's server once, on the upgrade to 0.7.2 / 0.8.5. Every host has
-     * moved and the old copies are dropped (docker1, 2026-11-24), so they are
-     * gone: no service runs the move script, the image does not bake it, and
-     * no back-office service logs in to, or waits for, Pressroom's server.
-     */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theBackOfficeNeverReachesPressroomsServer() throws IOException {
-        assertFalse(Files.exists(Paths.get("../deploy/db-move.sh")), "deploy/db-move.sh is retired");
-        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
-        assertFalse(dockerfile.contains("db-move"), "the image no longer bakes the move script");
-        for (String name : BACK_OFFICE_SERVICES) {
-            Map<String, Object> svc = service(name);
-            Object deps = svc.get("depends_on");
-            Collection<?> waitsFor = deps instanceof Map<?, ?> map ? map.keySet()
-                    : deps instanceof Collection<?> list ? list : List.of();
-            assertFalse(waitsFor.contains("postgres"), name + " waits for Pressroom's server");
-            Object env = svc.get("environment");
-            if (env instanceof Map<?, ?> map) {
-                map.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
-                        name + " holds Pressroom's server login: " + v));
-            }
-        }
-    }
-
-    /** AC 9-11: the one-shot and the backup reach Umami on umami-db with its own login. */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theAnalyticsJobsUseUmamisServer() {
-        for (String name : List.of("analytics-views", "backoffice-backup")) {
-            Map<String, Object> env = (Map<String, Object>) service(name).get("environment");
-            assertEquals("umami-db", env.get("UMAMI_PGHOST"), name);
-            assertEquals("${UMAMI_DB_USER:-umami}", env.get("UMAMI_DB_USER"), name);
-            assertTrue(String.valueOf(env.get("UMAMI_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"), name);
-        }
-        Map<String, Object> views = (Map<String, Object>) service("analytics-views").get("environment");
-        assertNull(views.get("POSTGRES_PASSWORD"), "analytics-views never needs Pressroom's server");
-        assertEquals(List.of("analytics"), service("analytics-views").get("networks"));
-    }
-
-    /**
      * AC 4: a grant on the old umami database would fail every deploy once it
      * is dropped. Since 0.8.5 the same holds for listmonk's: provision.sh
      * names no back-office database at all.
@@ -1229,31 +836,18 @@ class ProductionComposeTest {
         }
     }
 
-    /** AC 12 (the part a test can see): .env.example names both new settings. */
-    @Test
-    void theEnvExampleDocumentsUmamisServerLogin() throws IOException {
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        for (String key : List.of("UMAMI_DB_USER", "UMAMI_DB_PASSWORD", "LISTMONK_DB_USER", "LISTMONK_DB_PASSWORD")) {
-            assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
-                    "deploy/.env.example must document " + key);
-        }
-    }
-
     // ---------------------------------------------------------------------
-    // Back-office decoupling, steps 3 and 4 (spec 2026-11-06): the core file
-    // and the back-office overlay
+    // The back-office suite (wiki SA-15): Umami and listmonk run in their own
+    // repository and compose project (jakefearsd/backoffice), on another host.
+    // Pressroom is their API client and runs none of them (0.16.7).
     // ---------------------------------------------------------------------
 
     private static final Set<String> CORE_SERVICES = Set.of("postgres", "provision", "admin", "app", "caddy", "backup");
 
-    private static final Set<String> BACK_OFFICE_SERVICES = Set.of("umami", "umami-db",
-            "analytics-views", "listmonk", "listmonk-db", "backoffice-backup");
-
     /**
-     * The core runs alone once the services leave: nothing in it waits for,
-     * networks with, or holds the credentials of a back-office service, so
-     * dropping the overlay from COMPOSE_FILE is the whole cut-over on this
-     * side.
+     * The core runs alone: nothing in it waits for, networks with, or holds
+     * the credentials of a back-office service. Caddy's UMAMI_SCRIPT_NAME is
+     * the one exception, the tracker file name its allowlist lets through.
      */
     @Test
     @SuppressWarnings("unchecked")
@@ -1283,85 +877,92 @@ class ProductionComposeTest {
     }
 
     /**
-     * Every back-office service lives in the overlay, the seed of the
-     * suite's own repository; the overlay touches the core only to give the
-     * app the addresses of the services it holds.
+     * Pressroom's half of the suite cutover is finished (production,
+     * 2026-11-24), so nothing it ships runs, provisions or backs up a
+     * back-office service: no add-on compose file, no back-office one-shots
+     * or SQL, none of it baked into the image, attached to a release or
+     * fetched by upgrade.sh, and deploy.sh selects the core file alone and
+     * generates no suite secret.
      */
     @Test
-    @SuppressWarnings("unchecked")
-    void theOverlayHoldsEveryBackOfficeService() {
-        Set<String> expected = new TreeSet<>(BACK_OFFICE_SERVICES);
-        expected.add("app");
-        assertEquals(expected, new TreeSet<>(servicesOf(overlay).keySet()));
-        Map<String, Object> app = (Map<String, Object>) servicesOf(overlay).get("app");
-        assertEquals(Set.of("environment"), app.keySet(), "the overlay only adds the app's back-office addresses");
-        assertEquals(Map.of(
-                        "PRESSROOM_ANALYTICS_UMAMI_APIURL", "${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}",
-                        "PRESSROOM_ANALYTICS_UMAMI_PASSWORD", "${UMAMI_PRESSROOM_PASSWORD:-}",
-                        "PRESSROOM_NEWSLETTER_LISTMONK_BASEURL",
-                        "${PRESSROOM_NEWSLETTER_LISTMONK_BASEURL-http://listmonk:9000}"),
-                app.get("environment"));
-        Map<String, Object> coreApp = (Map<String, Object>) servicesOf(core).get("app");
-        assertFalse(String.valueOf(coreApp.get("environment")).contains("PRESSROOM_"),
-                "the core app takes PRESSROOM_* from .env only: " + coreApp.get("environment"));
-        assertTrue(((Map<String, Object>) overlay.get("x-logging")).containsKey("driver"),
-                "anchors do not cross files: the overlay declares its own log rotation");
-    }
-
-    /** The host deploys both files through .env, which Compose reads natively. */
-    @Test
-    void theEnvExampleSelectsBothFiles() throws IOException {
-        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        assertTrue(Pattern.compile("(?m)^COMPOSE_FILE=docker-compose\\.prod\\.yml:docker-compose\\.backoffice\\.yml$")
-                .matcher(envExample).find(), "deploy/.env.example must select the core file and the overlay");
-        assertFalse(Pattern.compile("(?m)^PRESSROOM_NEWSLETTER_LISTMONK_BASEURL=").matcher(envExample).find(),
-                "the overlay supplies listmonk's address; set in .env it would outlive the overlay");
-    }
-
-    /** upgrade.sh downloads the overlay from every release, so the release must attach it. */
-    @Test
-    void everyReleaseAttachesTheOverlay() throws IOException {
+    void pressroomShipsNoBackOfficeService() throws IOException {
+        for (String gone : List.of("../docker-compose.backoffice.yml", "../deploy/analytics-views.sh",
+                "../deploy/analytics", "../deploy/backup/backoffice-backup.sh", "../deploy/backup/umami-retention.sh")) {
+            assertFalse(Files.exists(Paths.get(gone)), gone + " belongs to the back-office suite now");
+        }
+        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
+        for (String marker : List.of("analytics-views", "deploy/analytics", "backoffice-backup", "umami-retention")) {
+            assertFalse(dockerfile.contains(marker), "the image still bakes " + marker);
+        }
         String workflow = Files.readString(Paths.get("../.github/workflows/release.yml"), StandardCharsets.UTF_8);
-        assertTrue(workflow.contains("cp docker-compose.backoffice.yml release-assets/"), "copied into the assets");
-        assertTrue(Pattern.compile("(?m)^\\s*release-assets/docker-compose\\.backoffice\\.yml$").matcher(workflow).find(),
-                "listed among the assets the release must carry");
+        assertFalse(workflow.contains("docker-compose.backoffice.yml"), "the release still attaches the add-on");
         String upgrade = Files.readString(Paths.get("../deploy/upgrade.sh"), StandardCharsets.UTF_8);
-        assertTrue(upgrade.contains("FILES=(docker-compose.prod.yml docker-compose.backoffice.yml deploy.sh env.example)"),
-                "upgrade.sh downloads it");
+        assertTrue(upgrade.contains("FILES=(docker-compose.prod.yml deploy.sh env.example)"),
+                "upgrade.sh fetches the core file, deploy.sh and env.example only");
+        assertFalse(stripShellComments(upgrade).contains("backoffice"), "upgrade.sh still backs up the back office");
+        String deploy = Files.readString(Paths.get("../deploy/deploy.sh"), StandardCharsets.UTF_8);
+        assertTrue(deploy.contains("DEFAULT_COMPOSE_FILES=\"docker-compose.prod.yml\""),
+                "deploy.sh selects the core file alone");
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        assertFalse(envExample.contains("docker-compose.backoffice.yml"), ".env.example still selects the add-on");
+        for (String key : List.of("UMAMI_PRESSROOM_PASSWORD", "UMAMI_DB_PASSWORD", "LISTMONK_DB_PASSWORD",
+                "UMAMI_APP_SECRET", "UMAMI_CONSOLE_BIND", "LISTMONK_DOMAIN", "NEWSLETTER_UPSTREAM")) {
+            assertFalse(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
+                    ".env.example still documents the suite's " + key);
+            assertFalse(stripShellComments(deploy).contains(key), "deploy.sh still handles " + key);
+        }
+        assertEquals(CORE_SERVICES, services().keySet());
     }
 
     /**
-     * Step 4: the core backup is Pressroom's database and media; the
-     * back-office databases are backed up beside their services, each from
-     * its own server with its own login, into a volume of their own.
+     * The owner reaches Umami's dashboard and listmonk's admin at the suite
+     * (umami.wikantik.com, listmonk.wikantik.com, routed by the tunnel to the
+     * suite's host), so Caddy keeps no console site for either and publishes
+     * only 80 and 443. The tracker still goes through Caddy, same-origin on
+     * every blog; ANALYTICS_UPSTREAM is the suite's LAN address. Unset, it
+     * falls back to a name that cannot resolve, so Caddy still starts (it
+     * cannot adapt a bare reverse_proxy) and only the tracker paths fail.
      */
     @Test
     @SuppressWarnings("unchecked")
-    void theBackOfficeIsBackedUpBesideItsServices() throws IOException {
-        Map<String, Object> backup = service("backoffice-backup");
-        assertEquals(service("app").get("image"), backup.get("image"));
-        assertEquals(List.of("/app/backup/loop.sh"), backup.get("entrypoint"));
-        assertEquals("0:0", backup.get("user"), "the backups volume is created root-owned");
-        assertEquals(List.of("pressroom-backoffice-backups:/backups"), backup.get("volumes"));
-        assertEquals(List.of("analytics", "newsletter"), backup.get("networks"));
-        Map<String, Object> env = (Map<String, Object>) backup.get("environment");
-        assertEquals("backoffice-backup.sh", env.get("BACKUP_SCRIPT"));
-        assertEquals("listmonk-db", env.get("LISTMONK_PGHOST"));
-        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("LISTMONK_DB_USER"));
-        assertTrue(String.valueOf(env.get("LISTMONK_DB_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
-        env.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
-                "the back-office backup never logs in to Pressroom's server: " + v));
-
-        Map<String, Object> coreBackup = (Map<String, Object>) service("backup").get("environment");
-        assertNull(coreBackup.get("BACKUP_SCRIPT"), "the core loop runs backup.sh, its default");
-        String script = stripShellComments(
-                Files.readString(Paths.get("../deploy/backup/backup.sh"), StandardCharsets.UTF_8));
-        for (String marker : List.of("UMAMI", "LISTMONK", "umami", "listmonk")) {
-            assertFalse(script.contains(marker), "backup.sh names a back-office database: " + marker);
+    void caddyReachesOnlyTheSuitesTrackerAndKeepsNoConsole() throws IOException {
+        String directives = caddyDirectives();
+        for (String literal : List.of("umami:", "listmonk:", ":8081", "LISTMONK_DOMAIN", "NEWSLETTER_UPSTREAM")) {
+            assertFalse(directives.contains(literal), "the Caddyfile still names " + literal);
         }
-        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
-        assertTrue(Pattern.compile("chmod 755[^\\n]*/app/backup/backoffice-backup\\.sh").matcher(dockerfile).find(),
-                "the back-office backup script must be baked and executable");
+        assertEquals(List.of("${SITE_HTTP_PORT:-80}:80", "${SITE_HTTPS_PORT:-443}:443"),
+                ((List<?>) service("caddy").get("ports")).stream().map(String::valueOf).toList(),
+                "caddy publishes the blog's ports and nothing else");
+        Map<String, Object> env = (Map<String, Object>) service("caddy").get("environment");
+        assertEquals("${ANALYTICS_UPSTREAM:-analytics.invalid:80}", env.get("ANALYTICS_UPSTREAM"));
+        for (String key : List.of("LISTMONK_DOMAIN", "NEWSLETTER_UPSTREAM")) {
+            assertFalse(env.containsKey(key), "caddy still receives " + key);
+        }
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^#?ANALYTICS_UPSTREAM=").matcher(envExample).find(),
+                "deploy/.env.example must document ANALYTICS_UPSTREAM");
+    }
+
+    /**
+     * The app's suite settings come from .env through env_file alone. A
+     * compose default would outlive the service it named, and Compose's
+     * {@code :-} would turn the documented blank
+     * {@code PRESSROOM_ANALYTICS_UMAMI_APIURL=} (analytics off) back into it.
+     */
+    @Test
+    void theAppTakesItsSuiteAddressesFromEnvOnly() throws IOException {
+        Object env = service("app").get("environment");
+        assertFalse(String.valueOf(env).contains("PRESSROOM_"),
+                "the app takes PRESSROOM_* from .env only: " + env);
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        for (String key : List.of("PRESSROOM_ANALYTICS_UMAMI_APIURL", "PRESSROOM_ANALYTICS_UMAMI_PASSWORD",
+                "PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL", "PRESSROOM_NEWSLETTER_LISTMONK_BASEURL")) {
+            assertTrue(Pattern.compile("(?m)^#?\\s*" + key + "=").matcher(envExample).find(),
+                    "deploy/.env.example must document " + key);
+        }
+        assertTrue(Pattern.compile("(?m)^#\\s*PRESSROOM_ANALYTICS_UMAMI_APIURL=$").matcher(envExample).find(),
+                "deploy/.env.example must show the blank PRESSROOM_ANALYTICS_UMAMI_APIURL= off switch");
+        assertFalse(envExample.contains("PRESSROOM_ANALYTICS_JDBC"), "the removed JDBC settings");
     }
 
     private static String stripShellComments(String script) {

@@ -49,11 +49,6 @@ class DeployScriptTest {
 
     @TempDir Path dir;
 
-    /** What the stub's `docker volume ls` prints for umami-db's volume: its name, or nothing. */
-    private String umamiVolume = "";
-
-    /** Likewise for listmonk-db's volume. */
-    private String listmonkVolume = "";
 
     private record Result(int exit, String out, String calls) {}
 
@@ -65,19 +60,13 @@ class DeployScriptTest {
                 echo "$*" >> "$STUB_LOG"
                 echo "compose-file: ${COMPOSE_FILE-unset}" >> "$STUB_LOG"
                 case "$*" in
-                  "volume ls"*pressroom-umami-pgdata*) [ -n "$STUB_UMAMI_VOLUME" ] && echo "$STUB_UMAMI_VOLUME"; exit 0 ;;
-                  "volume ls"*pressroom-listmonk-pgdata*) [ -n "$STUB_LISTMONK_VOLUME" ] && echo "$STUB_LISTMONK_VOLUME"; exit 0 ;;
                   "volume ls"*) exit 0 ;;
                   *" run --rm -T admin status"*) echo "STATUS-OUTPUT-LINE"; exit "$STUB_STATUS_RC" ;;
-                  *" up -d"*) echo "env-at-up: $(grep -c '^UMAMI_PRESSROOM_PASSWORD=.' .env)" >> "$STUB_LOG"
-                              echo "db-env-at-up: $(grep -c '^UMAMI_DB_PASSWORD=.' .env)" >> "$STUB_LOG"
-                              echo "listmonk-db-env-at-up: $(grep -c '^LISTMONK_DB_PASSWORD=.' .env)" >> "$STUB_LOG" ;;
                 esac
                 exit 0
                 """);
         stub.toFile().setExecutable(true);
         Files.writeString(dir.resolve("docker-compose.prod.yml"), "");
-        Files.writeString(dir.resolve("docker-compose.backoffice.yml"), "");
         if (!Files.exists(dir.resolve(".env"))) {
             Files.writeString(dir.resolve(".env"), "");
         }
@@ -86,8 +75,6 @@ class DeployScriptTest {
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
         pb.environment().put("STUB_LOG", dir.resolve("calls.log").toString());
         pb.environment().put("STUB_STATUS_RC", String.valueOf(statusRc));
-        pb.environment().put("STUB_UMAMI_VOLUME", umamiVolume);
-        pb.environment().put("STUB_LISTMONK_VOLUME", listmonkVolume);
         pb.environment().remove("COMPOSE_FILE");
         pb.environment().putAll(inherited);
         Process p = pb.start();
@@ -106,146 +93,7 @@ class DeployScriptTest {
         return command;
     }
 
-    /**
-     * Pressroom's Umami account password is generated, not chosen: the first
-     * deploy that finds none in .env appends one, before {@code up -d} so
-     * compose hands it to analytics-views and the app on that same run. Later
-     * deploys keep it. It is a secret, so it is never printed, and .env keeps
-     * its mode (the file holds every secret in the stack).
-     */
-    @Test
-    void deployGeneratesPasswordOnceAndNeverPrints() throws Exception {
-        Path env = dir.resolve(".env");
-        Files.writeString(env, "IMAGE_VERSION=0.6.1\nUMAMI_PRESSROOM_PASSWORD=\nSITE_DOMAIN=:80");
-        Files.setPosixFilePermissions(env, PosixFilePermissions.fromString("rw-------"));
-
-        Result first = deploy(0);
-        assertEquals(0, first.exit(), first.out());
-        List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
-        List<String> passwords = lines.stream().filter(l -> l.startsWith("UMAMI_PRESSROOM_PASSWORD=")).toList();
-        assertEquals(1, passwords.size(), "one password line, the blank one replaced: " + lines.size() + " lines");
-        String password = passwords.get(0).substring("UMAMI_PRESSROOM_PASSWORD=".length());
-        assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
-        assertEquals(List.of("IMAGE_VERSION=0.6.1", "SITE_DOMAIN=:80"),
-                lines.stream().filter(l -> !l.startsWith("UMAMI_PRESSROOM_PASSWORD="))
-                        .filter(l -> !l.startsWith("UMAMI_DB_PASSWORD="))
-                        .filter(l -> !l.startsWith("LISTMONK_DB_PASSWORD="))
-                        .filter(l -> !l.startsWith("COMPOSE_FILE=") && !l.startsWith("# ")).toList(),
-                "every other line kept, in order");
-        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
-        assertTrue(first.calls().contains("env-at-up: 1"), "generated before up -d: " + first.calls());
-        assertFalse(first.out().contains(password), "the password must never be printed");
-        assertFalse(first.calls().contains(password), "nor handed to docker on a command line");
-        assertTrue(first.out().contains("UMAMI_PRESSROOM_PASSWORD"), "the operator is told it was generated");
-
-        Result second = deploy(0);
-        assertEquals(0, second.exit(), second.out());
-        assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
-        assertFalse(second.out().contains(password), second.out());
-    }
-
-    /**
-     * Umami's own database server takes a generated password too (spec
-     * 2026-11-03, AC 8), on the same terms: once, before {@code up -d},
-     * never printed, distinct from the account password, and kept by later
-     * deploys. Compose refuses to start without it ({@code :?}).
-     */
-    @Test
-    void deployGeneratesTheUmamiDatabasePasswordOnceAndNeverPrints() throws Exception {
-        Path env = dir.resolve(".env");
-        Files.writeString(env, "IMAGE_VERSION=0.7.1\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48) + "\n");
-        Files.setPosixFilePermissions(env, PosixFilePermissions.fromString("rw-------"));
-
-        Result first = deploy(0);
-        assertEquals(0, first.exit(), first.out());
-        List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
-        List<String> db = lines.stream().filter(l -> l.startsWith("UMAMI_DB_PASSWORD=")).toList();
-        assertEquals(1, db.size(), String.valueOf(lines.size()));
-        String password = db.get(0).substring("UMAMI_DB_PASSWORD=".length());
-        assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
-        assertTrue(lines.contains("UMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48)), "the account password is kept");
-        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
-        assertTrue(first.calls().contains("db-env-at-up: 1"), "generated before up -d: " + first.calls());
-        assertFalse(first.out().contains(password), "never printed");
-        assertFalse(first.calls().contains(password), "nor handed to docker on a command line");
-        assertTrue(first.out().contains("UMAMI_DB_PASSWORD"), "the operator is told it was generated");
-
-        Result second = deploy(0);
-        assertEquals(0, second.exit(), second.out());
-        assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
-    }
-
-    /**
-     * umami-db keeps the password it was first started with. A .env without
-     * the line beside an existing umami-db volume (an old .env restored on a
-     * rollback) must stop the deploy before anything starts: a freshly
-     * generated password would lock the move and Umami out of their server.
-     */
-    @Test
-    void anExistingUmamiDbWithoutItsPasswordStopsTheDeploy() throws Exception {
-        Path env = dir.resolve(".env");
-        String before = "IMAGE_VERSION=0.7.2\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48) + "\n";
-        Files.writeString(env, before);
-        umamiVolume = "pressroom_pressroom-umami-pgdata";
-
-        Result r = deploy(0);
-
-        assertEquals(1, r.exit(), r.out());
-        assertEquals(before, Files.readString(env), ".env is left exactly as it was");
-        assertTrue(r.out().contains("UMAMI_DB_PASSWORD"), r.out());
-        assertTrue(r.out().contains("pressroom_pressroom-umami-pgdata"), "names the volume: " + r.out());
-        assertFalse(r.calls().contains(" up -d"), "nothing is started: " + r.calls());
-        assertFalse(r.calls().contains(" pull"), r.calls());
-    }
-
-    /**
-     * listmonk's own database server (0.8.5, back-office decoupling step 2)
-     * takes a generated password on the same terms as umami-db's.
-     */
-    @Test
-    void deployGeneratesTheListmonkDatabasePasswordOnceAndNeverPrints() throws Exception {
-        Path env = dir.resolve(".env");
-        Files.writeString(env, "IMAGE_VERSION=0.8.4\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48)
-                + "\nUMAMI_DB_PASSWORD=" + "b".repeat(48) + "\n");
-        Files.setPosixFilePermissions(env, PosixFilePermissions.fromString("rw-------"));
-
-        Result first = deploy(0);
-        assertEquals(0, first.exit(), first.out());
-        List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
-        List<String> db = lines.stream().filter(l -> l.startsWith("LISTMONK_DB_PASSWORD=")).toList();
-        assertEquals(1, db.size(), String.valueOf(lines.size()));
-        String password = db.get(0).substring("LISTMONK_DB_PASSWORD=".length());
-        assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
-        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
-        assertTrue(first.calls().contains("listmonk-db-env-at-up: 1"), "generated before up -d: " + first.calls());
-        assertFalse(first.out().contains(password), "never printed");
-        assertFalse(first.calls().contains(password), "nor handed to docker on a command line");
-        assertTrue(first.out().contains("LISTMONK_DB_PASSWORD"), "the operator is told it was generated");
-
-        Result second = deploy(0);
-        assertEquals(0, second.exit(), second.out());
-        assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
-    }
-
-    /** As for umami-db: an existing listmonk-db volume without its password stops the deploy. */
-    @Test
-    void anExistingListmonkDbWithoutItsPasswordStopsTheDeploy() throws Exception {
-        Path env = dir.resolve(".env");
-        String before = "IMAGE_VERSION=0.8.5\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48)
-                + "\nUMAMI_DB_PASSWORD=" + "b".repeat(48) + "\n";
-        Files.writeString(env, before);
-        listmonkVolume = "pressroom_pressroom-listmonk-pgdata";
-
-        Result r = deploy(0);
-
-        assertEquals(1, r.exit(), r.out());
-        assertEquals(before, Files.readString(env), ".env is left exactly as it was");
-        assertTrue(r.out().contains("LISTMONK_DB_PASSWORD"), r.out());
-        assertTrue(r.out().contains("pressroom_pressroom-listmonk-pgdata"), "names the volume: " + r.out());
-        assertFalse(r.calls().contains(" up -d"), "nothing is started: " + r.calls());
-    }
-
-    private static final String BOTH = "docker-compose.prod.yml:docker-compose.backoffice.yml";
+    private static final String CORE = "docker-compose.prod.yml";
 
     /** The COMPOSE_FILE each {@code docker compose} call saw (the stub logs it after each call). */
     private static Set<String> composeFiles(String calls) {
@@ -261,11 +109,12 @@ class DeployScriptTest {
     }
 
     /**
-     * Back-office decoupling, step 3: the host deploys the core file and the
-     * back-office overlay, selected by COMPOSE_FILE in .env, which plain
-     * {@code docker compose} reads by itself. A .env from before 0.8.5 has no
-     * such line; deploy.sh adds it once, so the operator's own commands see
-     * both files too, and every compose call it makes uses that setting.
+     * The host deploys the files COMPOSE_FILE in .env names, which plain
+     * {@code docker compose} reads by itself. A .env without the line gets
+     * the core file, once, so the operator's own commands see the same file,
+     * and every compose call deploy.sh makes uses that setting. (0.8.5 to
+     * 0.16.6 added the back-office add-on too; Umami and listmonk now run in
+     * the back-office suite.)
      */
     @Test
     void deployAddsTheComposeFileSettingOnceAndUsesIt() throws Exception {
@@ -277,23 +126,68 @@ class DeployScriptTest {
 
         assertEquals(0, first.exit(), first.out());
         List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
-        assertEquals(List.of("COMPOSE_FILE=" + BOTH), lines.stream().filter(l -> l.startsWith("COMPOSE_FILE")).toList());
+        assertEquals(List.of("COMPOSE_FILE=" + CORE), lines.stream().filter(l -> l.startsWith("COMPOSE_FILE")).toList());
         assertTrue(first.out().contains("COMPOSE_FILE"), "the operator is told: " + first.out());
         assertFalse(first.calls().contains(" -f "), "no -f: the setting chooses the files: " + first.calls());
-        assertEquals(Set.of(BOTH), composeFiles(first.calls()), first.calls());
+        assertEquals(Set.of(CORE), composeFiles(first.calls()), first.calls());
         assertEquals(0, second.exit(), second.out());
         assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
     }
 
-    /** After the cut-over the operator drops the overlay; deploy.sh deploys what .env says. */
+    /** deploy.sh deploys what .env says. */
     @Test
     void anExistingComposeFileSettingIsKept() throws Exception {
-        Files.writeString(dir.resolve(".env"), "IMAGE_VERSION=0.8.5\nCOMPOSE_FILE=docker-compose.prod.yml\n");
+        Files.writeString(dir.resolve("docker-compose.override.yml"), "");
+        Files.writeString(dir.resolve(".env"),
+                "IMAGE_VERSION=0.8.5\nCOMPOSE_FILE=docker-compose.prod.yml:docker-compose.override.yml\n");
 
         Result r = deploy(0);
 
         assertEquals(0, r.exit(), r.out());
-        assertEquals(Set.of("docker-compose.prod.yml"), composeFiles(r.calls()), r.calls());
+        assertEquals(Set.of("docker-compose.prod.yml:docker-compose.override.yml"), composeFiles(r.calls()),
+                r.calls());
+    }
+
+    /**
+     * A host still running Umami and listmonk from the 0.16.6 add-on must
+     * cut over to the back-office suite first: the add-on's one-shots and
+     * backup scripts are no longer in the image, so deploying it would leave
+     * them failing. Stop before anything is pulled or started (even with the
+     * old add-on file still lying in the directory), and say what to do.
+     */
+    @Test
+    void theRetiredAddOnInComposeFileStopsTheDeploy() throws Exception {
+        Files.writeString(dir.resolve("docker-compose.backoffice.yml"), "services: {}\n");
+        String before = "IMAGE_VERSION=0.16.6\nCOMPOSE_FILE=docker-compose.prod.yml:docker-compose.backoffice.yml\n";
+        Files.writeString(dir.resolve(".env"), before);
+
+        Result r = deploy(0);
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("docker-compose.backoffice.yml"), r.out());
+        assertTrue(r.out().contains("SimpleAgilityBackOfficeSuite"), "points at the cutover: " + r.out());
+        assertEquals(before, Files.readString(dir.resolve(".env")), ".env untouched");
+        assertFalse(r.calls().contains(" pull"), r.calls());
+        assertFalse(r.calls().contains(" up -d"), r.calls());
+    }
+
+    /**
+     * Umami's and listmonk's secrets (Pressroom's Umami account, their
+     * database servers) belong to the back-office suite now: deploy.sh
+     * generates none of them and probes no back-office volume.
+     */
+    @Test
+    void deployGeneratesNoBackOfficeSecret() throws Exception {
+        Path env = dir.resolve(".env");
+        String before = "IMAGE_VERSION=0.16.7\nCOMPOSE_FILE=docker-compose.prod.yml\n";
+        Files.writeString(env, before);
+
+        Result r = deploy(0);
+
+        assertEquals(0, r.exit(), r.out());
+        assertEquals(before, Files.readString(env), "nothing appended");
+        assertFalse(r.out().contains("Generated"), r.out());
+        assertFalse(r.calls().contains("volume ls"), r.calls());
     }
 
     /** .env decides, not whatever COMPOSE_FILE the calling shell (or upgrade.sh) exported. */
@@ -305,7 +199,7 @@ class DeployScriptTest {
         Result r = deploy(0);
 
         assertEquals(0, r.exit(), r.out());
-        assertEquals(Set.of(BOTH), composeFiles(r.calls()), r.calls());
+        assertEquals(Set.of(CORE), composeFiles(r.calls()), r.calls());
     }
 
     @Test
@@ -378,17 +272,18 @@ class DeployScriptTest {
                 IMAGE_VERSION=0.6.1
                 # VHOST_DNS_API_TOKEN=changeme-cloudflare-api-token
                 POSTGRES_PASSWORD=changeme-generate-a-real-secret
-                UMAMI_APP_SECRET="changeme-openssl-rand-hex-32"
-                LISTMONK_ADMIN_PASSWORD=a-real-one
+                VHOST_DNS_API_TOKEN="changeme-cloudflare-api-token"
+                PRESSROOM_ANALYTICS_UMAMI_PASSWORD=a-real-one
                 """;
         Files.writeString(env, original);
 
         Result r = deploy(0);
         assertEquals(1, r.exit(), r.out());
         assertTrue(r.out().contains("POSTGRES_PASSWORD"), r.out());
-        assertTrue(r.out().contains("UMAMI_APP_SECRET"), "a quoted placeholder too: " + r.out());
-        assertFalse(r.out().contains("VHOST_DNS_API_TOKEN"), "a commented-out line is not a setting: " + r.out());
-        assertFalse(r.out().contains("LISTMONK_ADMIN_PASSWORD"), r.out());
+        assertTrue(r.out().contains("    VHOST_DNS_API_TOKEN"), "a quoted placeholder too: " + r.out());
+        assertEquals(1, r.out().split("VHOST_DNS_API_TOKEN", -1).length - 1,
+                "the commented-out line is not a setting, so it is named once: " + r.out());
+        assertFalse(r.out().contains("PRESSROOM_ANALYTICS_UMAMI_PASSWORD"), r.out());
         assertFalse(r.out().contains("generate-a-real-secret"), "values are never printed: " + r.out());
         assertEquals("", r.calls(), "nothing pulled or started");
         assertEquals(original, Files.readString(env), ".env untouched (no password generated)");
@@ -396,7 +291,7 @@ class DeployScriptTest {
 
     @Test
     void aValueThatMerelyContainsChangemeIsAccepted() throws Exception {
-        Files.writeString(dir.resolve(".env"), "POSTGRES_PASSWORD=x-changeme-x\nUMAMI_PRESSROOM_PASSWORD=abc\n");
+        Files.writeString(dir.resolve(".env"), "POSTGRES_PASSWORD=x-changeme-x\nIMAGE_VERSION=0.16.7\n");
         Result r = deploy(0);
         assertEquals(0, r.exit(), r.out());
     }

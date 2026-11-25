@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Pressroom production backup -- single shot: pg_dump Pressroom's database,
 # tar the mediafiles/uploads volumes, then rotate anything older than
-# BACKUP_RETENTION_DAYS. Pressroom's own data only: the back-office
-# databases are dumped by backoffice-backup.sh, beside their services
-# (wiki SA-15). Both artifacts are written atomically: pg_dump/tar
+# BACKUP_RETENTION_DAYS. Pressroom's own data only: Umami's and listmonk's
+# databases are the back-office suite's to back up (wiki SA-15). Both artifacts are written atomically: pg_dump/tar
 # target "<final-name>.tmp" and a same-filesystem `mv` publishes it under
 # its final name only once the write is complete, so a backup killed
 # mid-write (OOM, container restart, disk full) leaves an orphaned .tmp
@@ -54,8 +53,8 @@
 #   docker compose start app
 #
 #   The back-office databases (Umami's, listmonk's) are not here: the
-#   backoffice-backup service dumps them from their own servers
-#   (/app/backup/backoffice-backup.sh, which says how to restore them).
+#   back-office suite backs them up, and its scripts/backup.sh says how to
+#   restore them (repo jakefearsd/backoffice).
 #
 #   (The dump lives in the pressroom-backups volume, at
 #   /backups/pressroom-<timestamp>.dump inside the backup container --

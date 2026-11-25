@@ -2,18 +2,16 @@
 # One-shot database provisioning for the production stack.
 #
 # Runs as the `provision` service in docker-compose.prod.yml, from the app
-# image, after postgres reports healthy and before app/listmonk start
+# image, after postgres reports healthy and before the app starts
 # (compose enforces both with depends_on conditions). Two steps: apply the
 # pressroom migration chain, and grant grafana_ro CONNECT on the pressroom
 # database. Every step is idempotent, so
 # it runs on every `docker compose up -d` and is a no-op once the stack is
 # current.
 #
-# No back-office database is here: Umami's lives on umami-db since 0.7.2 and
-# listmonk's on listmonk-db since 0.8.5, each created by its server's image
-# (wiki SA-15). An old host's former copies on this server are the moves'
-# rollback points and are dropped by hand; nothing here may name them, or a
-# statement on one would fail every deploy after the drop.
+# No back-office database is here: Umami's and listmonk's live in the
+# back-office suite (wiki SA-15), on servers of their own. Nothing here may
+# name them.
 #
 # This replaces the equivalent steps that used to live in deploy/deploy.sh and
 # needed a git checkout on the host to copy migrate.sh and the migrations into
@@ -27,13 +25,9 @@
 # postgres over the compose network rather than running inside the postgres
 # container itself.
 #
-# The analytics views used to be applied here too, as a fourth step. They
-# moved to deploy/analytics-views.sh, a separate one-shot that runs AFTER
-# umami starts, because analytics_traffic is defined over website_event -- a
-# table umami creates on its own first boot -- and provision runs entirely
-# before umami is allowed to start. Applying it here deadlocked every fresh
-# install: provision waited on a table only umami could create, and umami
-# waited on provision to exit. See analytics-views.sh for the full story.
+# The Umami side of the Grafana contract (the analytics_traffic view and
+# grafana_ro's grant on Umami's database) is the back-office suite's
+# provisioning, not this script's.
 set -euo pipefail
 
 export PGHOST="${PGHOST:-postgres}"

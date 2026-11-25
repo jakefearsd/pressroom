@@ -65,7 +65,6 @@ class UpgradeScriptTest {
 
         release = Files.createDirectories(dir.resolve("release/v0.2.2"));
         Files.writeString(release.resolve("docker-compose.prod.yml"), "new compose\n");
-        Files.writeString(release.resolve("docker-compose.backoffice.yml"), "new overlay\n");
         Files.writeString(release.resolve("deploy.sh"),
                 "#!/bin/bash\necho \"deploy.sh $* $(grep ^IMAGE_VERSION= .env)\" >> \"$STUB_LOG\"\n");
         Files.writeString(release.resolve("env.example"),
@@ -122,8 +121,8 @@ class UpgradeScriptTest {
         assertEquals(ENV.replace("IMAGE_VERSION=0.2.1", "IMAGE_VERSION=0.2.2"),
                 Files.readString(host.resolve(".env")));
         assertEquals("new compose\n", Files.readString(host.resolve("docker-compose.prod.yml")));
-        assertEquals("new overlay\n", Files.readString(host.resolve("docker-compose.backoffice.yml")),
-                "the back-office overlay ships with every release");
+        assertFalse(Files.exists(host.resolve("docker-compose.backoffice.yml")),
+                "the back-office add-on is no longer fetched (Umami and listmonk run in the suite)");
         assertTrue(Files.isExecutable(host.resolve("deploy.sh")));
         String calls = ScriptRun.log(log());
         assertTrue(calls.contains("deploy.sh  IMAGE_VERSION=0.2.2"), "deployed on the new version: " + calls);
@@ -185,37 +184,14 @@ class UpgradeScriptTest {
     }
 
     /**
-     * Back-office decoupling, step 4: the back-office databases are backed up
-     * by their own service. When it runs, the upgrade backs them up too, and
-     * a failure there stops it as the core backup's does.
+     * The back-office databases are the back-office suite's to back up
+     * (0.16.7). Even on a host where a 0.16.6 back-office backup container
+     * still runs, the upgrade backs up Pressroom only.
      */
     @Test
-    void aRunningBackOfficeIsBackedUpBeforeTheUpgrade() throws Exception {
+    void theUpgradeNeverBacksUpTheBackOffice() throws Exception {
         env.put("STUB_BACKOFFICE_RUNNING", "1");
 
-        ScriptRun.Result r = upgrade("0.2.2");
-
-        assertEquals(0, r.exit(), r.out());
-        String calls = ScriptRun.log(log());
-        int backOffice = calls.indexOf("exec -T backoffice-backup /app/backup/backoffice-backup.sh");
-        assertTrue(backOffice > 0, calls);
-        assertTrue(backOffice < calls.indexOf("deploy.sh"), "before anything changes: " + calls);
-    }
-
-    @Test
-    void aFailedBackOfficeBackupStopsTheUpgradeBeforeAnythingChanges() throws Exception {
-        env.put("STUB_BACKOFFICE_RUNNING", "1");
-        env.put("STUB_BACKOFFICE_RC", "1");
-
-        ScriptRun.Result r = upgrade("0.2.2");
-
-        assertNothingChanged(r);
-        assertTrue(r.out().contains("--no-backup"), r.out());
-    }
-
-    /** The first upgrade to 0.8.5: the old stack's single backup service still dumped everything. */
-    @Test
-    void aHostWithoutTheBackOfficeBackupServiceSkipsIt() throws Exception {
         ScriptRun.Result r = upgrade("0.2.2");
 
         assertEquals(0, r.exit(), r.out());
@@ -236,23 +212,25 @@ class UpgradeScriptTest {
 
         Files.delete(log());
         Files.writeString(host.resolve(".env"), Files.readString(host.resolve(".env"))
-                + "COMPOSE_FILE=docker-compose.prod.yml:docker-compose.backoffice.yml\n");
+                + "COMPOSE_FILE=docker-compose.prod.yml:docker-compose.override.yml\n");
         ScriptRun.Result both = upgrade("0.2.2", "--no-backup");
         assertEquals(0, both.exit(), both.out());
         assertTrue(ScriptRun.log(log()).lines().filter(l -> l.startsWith("compose-file: "))
-                .allMatch(l -> l.equals("compose-file: docker-compose.prod.yml:docker-compose.backoffice.yml")),
+                .allMatch(l -> l.equals("compose-file: docker-compose.prod.yml:docker-compose.override.yml")),
                 ScriptRun.log(log()));
     }
 
     /** A file the release adds had nothing to back up; the recipe puts back only what it replaced. */
     @Test
     void theRollbackRecipeRestoresOnlyTheFilesItReplaced() throws Exception {
+        Files.delete(host.resolve("env.example"));
+
         ScriptRun.Result r = upgrade("0.2.2");
 
         assertEquals(0, r.exit(), r.out());
         String loop = r.out().lines().filter(l -> l.contains("for f in ")).findFirst().orElseThrow();
         assertTrue(loop.contains("docker-compose.prod.yml"), loop);
-        assertFalse(loop.contains("docker-compose.backoffice.yml"), "it was new: " + loop);
+        assertFalse(loop.contains("env.example"), "it was new: " + loop);
     }
 
     @Test

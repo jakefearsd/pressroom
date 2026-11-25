@@ -146,7 +146,7 @@ read-only Grafana contract over two databases. Spec:
 
 - **Umami's HTTP API, as the pinned 3.3.0 image really behaves, is in
   [`umami-api.md`](umami-api.md)**: the dedicated `pressroom` account
-  (`deploy/analytics/umami-pressroom-account.sql`), registration with a
+  (provisioned by the suite: `sql/umami-pressroom-account.sql` in the `backoffice` repo), registration with a
   supplied website ID, the read endpoints with sample bodies, and what a visit
   stores. `UmamiApiContractTest` pins part of it against the real image
   (`UmamiContainer`), and the rest was observed by hand: the opening paragraph
@@ -190,15 +190,10 @@ read-only Grafana contract over two databases. Spec:
   across them.** `analytics_events` (outcomes from `pressroom_event`) and
   `analytics_weblog_sites` (handle ↔ Umami website-id) live in `pressroom`, via
   `bin/db/migrations/V017__analytics_contract.sql`. `analytics_traffic` (over
-  Umami's `website_event`) lives in Umami's database:
-  `deploy/analytics/umami-views.sql` (in the image at `/app/umami-views.sql`),
-  applied by the **separate** one-shot `analytics-views`
-  (`deploy/analytics-views.sh`), never by `provision.sh` or the migration chain
-  (which only touches `pressroom`). `website_event` exists only after Umami's
-  first boot and `provision` runs before `umami` starts, so applying the view
-  from `provision` deadlocked every fresh install; `analytics-views` gates
-  nothing — a failure costs only the Grafana traffic panel. Grafana joins the
-  halves on `website_id`; no server query spans both.
+  Umami's `website_event`) lives in Umami's database, which belongs to the
+  back-office suite: the suite's `sql/umami-views.sql`, applied by its own
+  provisioning. Pressroom ships and applies only the `pressroom` half.
+  Grafana joins the halves on `website_id`; no server query spans both.
   `page_slug`/`entry_anchor` on `FORM_SUBMITTED` rows are the contact form's
   reader-controlled `source` (untrusted), and `ENTRY_PUBLISHED` double-counts
   an unpublish/republish (see Audience).
@@ -231,8 +226,7 @@ read-only Grafana contract over two databases. Spec:
   views, never the tables. Enable with
   `ALTER ROLE grafana_ro LOGIN PASSWORD '...'` over
   `docker compose exec postgres psql` (`docker_deployment.md`); `provision.sh`
-  grants it `CONNECT` on `pressroom`. Umami's database is on its own server,
-  `umami-db` (0.7.2+), where `analytics-views.sh` creates `grafana_ro`
-  `NOLOGIN` and grants `CONNECT` and the view; its password is set there
+  grants it `CONNECT` on `pressroom`. Umami's database is on the suite's own
+  server, where the suite creates its `grafana_ro`; that password is set there
   separately. No
   compose file publishes a Postgres host port — tunnel-only.

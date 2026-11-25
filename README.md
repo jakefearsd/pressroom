@@ -62,9 +62,9 @@ The full map of the documentation is [docs/README.md](docs/README.md).
 ### Readers
 - Comments from readers signed in with Google; there are no anonymous comments
 - Contact form, with messages collected under **Inquiries**
-- Newsletter sign-up and sending through a bundled [listmonk](https://listmonk.app)
-- Cookie-free analytics through a bundled [Umami](https://umami.is), served
-  from the blog's own domain, with **Traffic** pages in the admin UI
+- Newsletter sign-up and sending through [listmonk](https://listmonk.app), run in the back-office suite
+- Cookie-free analytics through [Umami](https://umami.is) (also run in the
+  back-office suite), served from the blog's own domain, with **Traffic** pages in the admin UI
 - Full-text site search (Apache Lucene), across one blog or all of them
 - Atom feeds, sitemaps, canonical URLs, breadcrumbs, and JSON-LD for
   articles, businesses and places
@@ -152,7 +152,7 @@ sign-in, backup and restore, upgrades and troubleshooting.
 | `app/frontend/` | Editor and reader JavaScript bundles (esbuild, built by Maven) |
 | `bin/db/migrations/` | Schema migrations `V<NNN>__*.sql`, the only way the schema changes |
 | `bin/` | `release.sh`, `deploy-host.sh`, `pressroom-api`, coverage and quality-report scripts |
-| `deploy/` | Production deploy/upgrade scripts, Caddy, backup and analytics config |
+| `deploy/` | Production deploy/upgrade scripts, Caddy, backup config |
 | `it-selenium/` | Browser integration tests against the packaged WAR (`mvn verify -Pit`) |
 | `config/` | PMD and SpotBugs rule sets used by the build gates |
 | `docs/` | User guide, developer notes, API reference, design system, specs |

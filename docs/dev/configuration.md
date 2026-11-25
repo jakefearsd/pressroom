@@ -39,32 +39,29 @@ resolves through the index at the end of `CLAUDE.md`.
   app runs via `./pressroom dev` / `spring-boot:run`, not in a container),
   theme reload enabled, caching disabled.
 - **Production**: containerized end-to-end and **image-only** — the deploy
-  host holds `docker-compose.prod.yml`, `docker-compose.backoffice.yml` and
-  `.env`, nothing else; `.env`'s `COMPOSE_FILE` selects both compose files,
-  so plain `docker compose` sees them (no `-f` anywhere). Two images
+  host holds `docker-compose.prod.yml` and `.env`, nothing else; `.env`'s
+  `COMPOSE_FILE` is unset or just that file, so plain `docker compose` sees it
+  (no `-f` anywhere). Two images
   per release tag: `ghcr.io/jakefearsd/pressroom` (WAR, themes, migrations,
-  `provision.sh`, `analytics-views.sh`, `umami-views.sql`,
-  `migrate.sh`, backup scripts, a PostgreSQL client) and
+  `provision.sh`, `migrate.sh`, backup scripts, a PostgreSQL client) and
   `ghcr.io/jakefearsd/pressroom-caddy` (Caddy, Caddyfile baked in). The
-  core file is Pressroom: `postgres`, a one-shot `provision` (migration chain,
+  file is Pressroom: `postgres`, a one-shot `provision` (migration chain,
   `grafana_ro` grant; `app` declares
   `depends_on: { provision: { condition: service_completed_successfully } }`,
   so ordering is compose's job, not a bash script's), `app`, `caddy` and
-  `backup`. Nothing in it waits for, networks with, or holds the credentials
-  of a back-office service.
-  The **back-office overlay** (wiki SA-15; spec
-  `2026-11-06-back-office-decoupling-design.md`) holds the services Pressroom
-  uses: Umami on `umami-db` (`analytics` network) and listmonk on
-  `listmonk-db` (`newsletter` network), neither network the app's, and none
-  of them reaches Pressroom's server (the one-time `umami-move`/`listmonk-move`
-  copies off it were retired in 2026-11); `analytics-views` (`analytics-views.sh`) installs
-  `analytics_traffic` after `umami` starts — see Analytics for why it cannot
-  live in `provision`; `backoffice-backup` dumps both databases. The app and
-  Caddy reach the services only through settings (`PRESSROOM_ANALYTICS_UMAMI_APIURL`,
-  `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL`, `ANALYTICS_UPSTREAM`,
-  `NEWSLETTER_UPSTREAM`), whose defaults the overlay supplies.
-  `deploy/deploy.sh` is just pull/up/wait (plus generated secrets and the
-  `COMPOSE_FILE` line).
+  `backup`.
+  Umami and listmonk are not part of this stack. Since 2026-11-24 they run in
+  the back-office suite (repo `jakefearsd/backoffice`, wiki
+  `SimpleAgilityBackOfficeSuite`, SA-15) on docker2, with their own databases,
+  backups, Umami retention and provisioning of the `pressroom` Umami account and
+  the Grafana views. Pressroom is an API client: nothing in the compose file
+  waits for, networks with, or holds the credentials of a suite service. The
+  app and Caddy reach it only through settings
+  (`PRESSROOM_ANALYTICS_UMAMI_APIURL`, `_USERNAME`, `_PASSWORD`, `_DASHBOARDURL`,
+  `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL`, and Caddy's `ANALYTICS_UPSTREAM`, which
+  must be set to the suite's LAN `host:port`; unset it is an unresolvable
+  placeholder, so Caddy starts and only the tracker fails).
+  `deploy/deploy.sh` is just pull/up/wait (plus the `.env` checks).
   **Nothing may be bind-mounted from a checkout** — `ProductionComposeTest`
   fails the build if a bind mount, a `build:` stanza, or a non-loopback
   published port other than 80/443 reappears. Runbook:

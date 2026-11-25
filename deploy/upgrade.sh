@@ -12,12 +12,11 @@
 # the Upgrades steps of docker_deployment.md, ordered so that nothing changes
 # until everything needed to finish is in hand:
 #
-#   1. downloads the release's docker-compose.prod.yml,
-#      docker-compose.backoffice.yml, deploy.sh and env.example (a missing
-#      one stops here)
-#   2. takes a backup through the backup service, and through the
-#      backoffice-backup service when it runs (a failed one stops here); the
-#      rollback recipe it prints restores the core dump by name
+#   1. downloads the release's docker-compose.prod.yml, deploy.sh and
+#      env.example (a missing one stops here)
+#   2. takes a backup through the backup service (a failure stops here); the
+#      rollback recipe it prints restores that dump by name. Umami's and
+#      listmonk's databases are the back-office suite's to back up.
 #   3. shows how the downloaded files differ from the ones in place
 #   4. keeps .env and the files it replaces as <name>.bak-<timestamp>
 #   5. moves the new files in and sets IMAGE_VERSION in .env
@@ -38,7 +37,7 @@ set -euo pipefail
 RELEASE_URL="${RELEASE_URL:-https://github.com/jakefearsd/pressroom/releases/download}"
 RELEASE_URL="${RELEASE_URL%/}"
 COMPOSE=(docker compose)
-FILES=(docker-compose.prod.yml docker-compose.backoffice.yml deploy.sh env.example)
+FILES=(docker-compose.prod.yml deploy.sh env.example)
 
 usage() { awk '/^#!/{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"; }
 
@@ -124,14 +123,6 @@ if [[ "${BACKUP}" -eq 1 ]]; then
         exit 1
     fi
     dump=$(sed -n 's/^  database -> //p' "${staging}/backup.log" | tail -n 1)
-    # The back-office databases, when their own backup service runs (0.8.5+;
-    # before that, the backup above dumped them too).
-    if [[ -n "$("${COMPOSE[@]}" ps -q backoffice-backup </dev/null 2>/dev/null)" ]]; then
-        if ! "${COMPOSE[@]}" exec -T backoffice-backup /app/backup/backoffice-backup.sh </dev/null; then
-            echo "The back-office backup failed; nothing has changed. Fix it, or rerun with --no-backup." >&2
-            exit 1
-        fi
-    fi
 fi
 
 echo "==> How the release files differ from the ones in place:"

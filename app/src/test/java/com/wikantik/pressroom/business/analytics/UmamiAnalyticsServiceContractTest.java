@@ -51,7 +51,7 @@ class UmamiAnalyticsServiceContractTest {
         UmamiContainer umami = UmamiContainer.get();
         String username = "svc-" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pw-" + UUID.randomUUID();
-        umami.psql(Paths.get("../deploy/analytics/umami-pressroom-account.sql"),
+        umami.psql(Paths.get("src/test/resources/umami/umami-account.sql"),
                 Map.of("username", username, "pw", password));
         AnalyticsService service = UmamiAnalyticsService.of(
                 new UmamiClient(umami.baseUrl(), username, password), java.time.Clock.systemUTC());
@@ -95,7 +95,7 @@ class UmamiAnalyticsServiceContractTest {
         UmamiContainer umami = UmamiContainer.get();
         String username = "svc-" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pw-" + UUID.randomUUID();
-        umami.psql(Paths.get("../deploy/analytics/umami-pressroom-account.sql"),
+        umami.psql(Paths.get("src/test/resources/umami/umami-account.sql"),
                 Map.of("username", username, "pw", password));
         AnalyticsService service = UmamiAnalyticsService.of(
                 new UmamiClient(umami.baseUrl(), username, password), java.time.Clock.systemUTC());

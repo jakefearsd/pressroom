@@ -1,12 +1,12 @@
 # Umami 3.3.0 HTTP API, as observed
 
-What the digest-pinned Umami image in `docker-compose.prod.yml` (3.3.0) actually
-does, recorded 2026-11-02 by running it. The sample bodies are copied from real
+What the digest-pinned Umami image (3.3.0), the one the back-office suite runs,
+actually does, recorded 2026-11-02 by running it. The sample bodies are copied from real
 responses; later tasks build JSON fixtures from them.
 
 **What is pinned and what was only observed.** `UmamiApiContractTest` runs
-against that image via `UmamiContainer` (same image, read from the compose
-file; scratch PostgreSQL 18 on a private network) and pins: everything in the
+against that image via `UmamiContainer` (scratch PostgreSQL 18 on a private
+network) and pins: everything in the
 decisions table; the account script (role, bcrypt cost, idempotence, password
 rotation, nothing in the server log on failure); registration and the domain
 rule; the status codes and field names/types of `stats` (incl. `comparison`),
@@ -51,13 +51,14 @@ Spec: `docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md
   A cheap "is my token still good" probe.
 - `GET /api/me` also answers, but its body **includes a fresh token**; never log it.
 
-The image seeds `admin`/`umami` on first boot. Production changes that
+The image seeds `admin`/`umami` on first boot. The suite changes that
 password; Pressroom never uses `admin`.
 
 ## The `pressroom` account
 
-`deploy/analytics/umami-pressroom-account.sql`, run with psql variables
-`username` and `pw` against the **umami** database after Umami's first boot.
+The back-office suite provisions it: `sql/umami-pressroom-account.sql` in the
+`backoffice` repo, run with psql variables `username` and `pw` against the
+**umami** database after Umami's first boot.
 It inserts into `"user"` with role `user` and a pgcrypto bcrypt hash
 (`crypt(:'pw', gen_salt('bf', 10))`, a cost-10 `$2a$` hash Umami accepts;
 pgcrypto's default cost is 6). On conflict on
@@ -70,9 +71,9 @@ create it); the script's `CREATE EXTENSION IF NOT EXISTS` is a no-op there.
 **The password never reaches the server log.** psql pastes `:'pw'` into the
 statement text before sending it, and PostgreSQL's default
 `log_min_error_statement = error` would copy a failing statement, password and
-all, into the server log (in production, the shared `postgres` service's log).
+all, into the server log (the Umami server's log).
 So the script opens with `SET log_min_error_statement = panic` (superuser-only;
-the deploy's `POSTGRES_USER` is one), and a guard raises *"Umami has not created
+the role that runs it is one), and a guard raises *"Umami has not created
 its "user" table yet"* before the password is sent when Umami has not booted.
 Pinned for both failure modes: no `"user"` table, and an unset `:username`
 (a syntax error). It relies on `log_statement` staying at its default `none`.
@@ -365,13 +366,12 @@ or date value), e.g. the `dest` URL of a `cta-click`. Session replay
 
 ## Retention (what the nightly job deletes)
 
-The privacy policy promises "Analytics: two years, then deleted".
-`deploy/analytics/umami-retention.sql` keeps that promise. The backup loop
-runs it once a day, after a successful backup, through
-`deploy/backup/umami-retention.sh`, as `POSTGRES_USER`. The window is
-`UMAMI_RETENTION_DAYS`, default 730 days; the default lives only in the SQL,
-and 0 switches the job off. It runs in the deploy stack, not in Pressroom,
-which has no dependency on Umami's database.
+The privacy policy promises "Analytics: two years, then deleted". The
+back-office suite keeps that promise: its nightly job (`sql/umami-retention.sql`
+in the `backoffice` repo, window `UMAMI_RETENTION_DAYS`, default 730 days, 0
+switches it off) runs after its backup. Pressroom has no dependency on Umami's
+database. What follows is how Umami's schema behaves, for whoever maintains
+that job.
 
 Umami 3.3.0's schema has **no foreign keys** (Prisma relation mode), so
 nothing cascades. The SQL trims each table itself, children before parents,
@@ -396,15 +396,12 @@ big first run may log a timeout failure; what it committed stays deleted, and
 it finishes over the following nights. A failed table check is a failed run
 (exit 1), not "no tables yet". It logs
 one count per table and never a row. A table a later Umami drops is skipped.
-Pinned by `UmamiRetentionScriptTest` against the real schema, and by
-`BackupLoopTest` for the order (after a successful backup) and for a failing
-run leaving the loop running.
 
 ## Testing notes
 
 - `UmamiContainer.get()` is one instance per JVM; test classes share it, so use
   distinct usernames and website names. `jdbc()` reaches Umami's own database,
-  `psql(file, vars)` runs a SQL file the way the deploy one-shot does.
+  `psql(file, vars)` runs a SQL file against it.
 - Java's `HttpClient` must be pinned to `HTTP_1_1` against this image: the
   default HTTP/2 upgrade attempt on a POST gets an empty reply
   ("header parser received no bytes").
