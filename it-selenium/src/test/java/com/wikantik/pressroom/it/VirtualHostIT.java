@@ -529,7 +529,11 @@ class VirtualHostIT extends PressroomIT {
             HttpResponse<String> response = get("/pressroom-ui/menu.rol", VHOST);
             Optional<String> location = response.headers().firstValue("Location");
             if (location.isPresent()) {
-                assertEquals(VHOST, URI.create(location.get()).getHost(),
+                // Spring Security 7.2 sends the login redirect as a relative
+                // Location ("/pressroom-ui/login.rol"), which the browser resolves
+                // against the host it asked: same-host by construction. Resolve it
+                // the same way, so only an absolute Location can name another host.
+                assertEquals(VHOST, URI.create("http://" + VHOST + "/").resolve(location.get()).getHost(),
                         "the degraded path must never redirect cross-host, which is "
                                 + "exactly the loop this behaviour exists to avoid: " + location.get());
             }

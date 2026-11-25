@@ -65,11 +65,6 @@ class DependencySecurityFloorTest {
                     + "SCRAM-SHA-256-PLUS to SCRAM-SHA-256, losing MitM protection, when the "
                     + "server certificate's signature algorithm has no tls-server-end-point hash. "
                     + "Affects 42.7.4-42.7.11. Boot 4.1.0's BOM pins 42.7.11."),
-            new Floor(com.fasterxml.jackson.databind.ObjectMapper.class, "jackson-databind", "2.21.6",
-                    "CVE-2026-59889, CVE-2026-54515 and GHSA-mhm7-754m-9p8w: @JsonView and "
-                    + "per-property @JsonIgnoreProperties are bypassed on deserialization via "
-                    + "@JsonUnwrapped, case-insensitive matching, and EXTERNAL_PROPERTY creators. "
-                    + "Boot 4.1.0's BOM pins 2.21.4."),
             new Floor(tools.jackson.databind.ObjectMapper.class, "jackson-databind", "3.1.6",
                     "CVE-2026-59889 on the Jackson 3 line (tools.jackson), same @JsonUnwrapped "
                     + "@JsonView bypass. Boot 4.1.0's BOM pins 3.1.4."),

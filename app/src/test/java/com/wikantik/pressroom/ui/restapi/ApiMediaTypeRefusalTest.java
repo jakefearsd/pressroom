@@ -38,12 +38,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 class ApiMediaTypeRefusalTest {
 
+    /**
+     * The body every write route takes: a record. (Spring 7.1 reads a
+     * form-encoded body into a plain {@code Map}, so a {@code Map} probe
+     * would accept one; only AdminApi.patchConfig takes a Map.)
+     */
+    record ProbeBody(String a) {
+    }
+
     /** A handler in the restapi package, so ApiExceptionHandler advises it. */
     @RestController
     static class ProbeApi {
         @PostMapping("/v1/probe")
-        Map<String, String> write(@RequestBody Map<String, String> body) {
-            return body;
+        Map<String, String> write(@RequestBody ProbeBody body) {
+            return Map.of("a", body.a());
         }
 
         @GetMapping("/v1/probe")

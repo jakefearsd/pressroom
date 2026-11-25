@@ -19,8 +19,8 @@ package com.wikantik.pressroom.ui.controllers.ajax;
 
 import java.util.List;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.business.themes.SharedTheme;
@@ -164,10 +164,10 @@ class ThemeDataServletTest {
 
         String body = response.getContentAsString();
         JsonNode parsed = new ObjectMapper().readTree(body);
-        assertEquals("line one\nline \"two\"", parsed.get("description").asText(),
+        assertEquals("line one\nline \"two\"", parsed.get("description").asString(),
                 "the description must survive the round trip intact: " + body);
         assertEquals("/themes/awkward/awkward-preview.png",
-                parsed.get("previewPath").asText(), "got: " + body);
+                parsed.get("previewPath").asString(), "got: " + body);
     }
 
     /**

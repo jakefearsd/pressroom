@@ -16,7 +16,7 @@ mismatch 404s the asset on every page that includes this file.
 <meta name="description" content="${fn:escapeXml(metaDescription)}">
 </c:if>
 
-<script src="<c:url value='/webjars/jquery/4.0.0/jquery.min.js'/>"></script>
+<script src="<c:url value='/webjars/jquery/4.1.0/jquery.min.js'/>"></script>
 
 <script src="<c:url value='/webjars/jquery-validation/1.21.0/jquery.validate.min.js'/>"></script>
 

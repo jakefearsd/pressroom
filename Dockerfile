@@ -40,7 +40,7 @@
 # PRESSROOM_MAIL_* keys. See deploy/.env.example for the full set.
 
 # ---- Stage 1: build -------------------------------------------------------
-FROM maven:3.10-eclipse-temurin-25@sha256:a4734fd7909a9c2beddcacfa1229bd308a349f000bea1ec8db3287c8a16ca2a3 AS builder
+FROM maven:3.10-eclipse-temurin-25@sha256:4ed0327629de542aefd6ea9fd5da0c52e80143bf8405e5dc32ac2bde55d70d88 AS builder
 
 # Node 26's Linux binary (frontend-maven-plugin's pinned runtime, below)
 # links libatomic.so.1, which the maven image does not ship; without it
@@ -69,7 +69,7 @@ COPY bin/db/migrations bin/db/migrations
 RUN mvn -ntp -pl app -DskipTests package
 
 # ---- Stage 2: runtime -------------------------------------------------------
-FROM eclipse-temurin:25-jre@sha256:a640968ae55027b322cedd5f8228b01a84baff0b9e9360e47601c6a111ba1699 AS runtime
+FROM eclipse-temurin:25-jre@sha256:4ed132f6832e9804b123e89a849a7b4502756ae64a4ee08ebab939d9d5d0a9fa AS runtime
 
 # curl is not in the base JRE image; installed for container healthchecks
 # against the management port (docker exec ... curl 8090/actuator/health --

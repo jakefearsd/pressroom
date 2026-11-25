@@ -147,7 +147,7 @@ Details and history: `docs/dev/quality-gates.md`, `docs/dev/build-and-ci.md`.
 
 ## Architecture in one screen
 
-- Spring Boot 4.1 executable WAR, embedded Tomcat 11, **Java 25 LTS, held
+- Spring Boot 4.2 executable WAR, embedded Tomcat 11, **Java 25 LTS, held
   until Java 29** — never bump to 26/27/28 (the seven pins that move
   together: `docs/dev/architecture.md`).
 - Spring MVC `@Controller`s on `*.rol` (plus `/api/*`, SEO patterns,

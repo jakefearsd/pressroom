@@ -47,9 +47,9 @@ limitations under the License.
         <!-- Overridden on the command line to scope a mutation run. -->
         <pit.targets>com.wikantik.pressroom.util.*</pit.targets>
         <pit.tests>com.wikantik.pressroom.util.*</pit.tests>
-        <spring-boot.version>4.1.2</spring-boot.version>
+        <spring-boot.version>4.2.0</spring-boot.version>
         <velocity.version>2.4.1</velocity.version>
-        <!-- Ahead of Boot 4.1.2's managed 6.0.3; see the junit-bom import. -->
+        <!-- Equal to Boot 4.2.0's managed 6.1.3; the junit-bom import keeps it from falling behind. -->
         <junit.version>6.1.3</junit.version>
 
         <!-- jspc-maven-plugin (process-classes JSP validation, below) ships
@@ -65,11 +65,11 @@ limitations under the License.
              the compiler production uses, which is the entire point of pinning
              it. That used to mean "whatever the Spring Boot BOM says"; it now
              means the security override in <dependencyManagement> below
-             (11.0.29; Boot 4.1.2's BOM manages 11.0.27). Verify with:
+             (11.0.29; Boot 4.2.0's BOM manages 11.0.27). Verify with:
                mvn dependency:tree -Dincludes=org.apache.tomcat.embed:tomcat-embed-jasper -->
         <jspc-plugin.tomcat.version>${tomcat.security.version}</jspc-plugin.tomcat.version>
 
-        <!-- Security floors: versions raised past what Spring Boot 4.1.2's BOM
+        <!-- Security floors: versions raised past what Spring Boot 4.2.0's BOM
              manages, because the BOM's pins carry published advisories. Each is
              applied by a <dependencyManagement> entry below (NOT by naming the
              BOM's own property - see that block's comment for why that does
@@ -79,7 +79,7 @@ limitations under the License.
              When a future Spring Boot's BOM catches up, delete the override and
              let the BOM manage it again; that test fails if the deletion is
              premature, so the cleanup is safe to attempt. -->
-        <!-- Ahead of Boot 4.1.2's managed 11.0.27 (raised to the latest 11.0.x
+        <!-- Ahead of Boot 4.2.0's managed 11.0.27 (raised to the latest 11.0.x
              patch on 2026-11-13). Kept even when the BOM catches up, unlike the
              postgresql override, because jspc-plugin.tomcat.version reads it:
              one property names the Tomcat both the runtime and the build-time
@@ -89,7 +89,6 @@ limitations under the License.
              the 42.7.13 floor; DependencySecurityFloorTest still asserts it. -->
         <jackson2.security.version>2.23.0</jackson2.security.version>
         <jackson3.security.version>3.3.0</jackson3.security.version>
-        <log4j2.security.version>2.26.1</log4j2.security.version>
     </properties>
 
     <!-- Spring Boot 4's BOM manages JUnit 6 (junit-jupiter 6.0.3,
@@ -131,13 +130,6 @@ limitations under the License.
                 <groupId>tools.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson3.security.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j2.security.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -241,7 +233,7 @@ limitations under the License.
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
-            <version>3.2.0</version>
+            <version>3.2.1</version>
         </dependency>
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
@@ -508,7 +500,7 @@ limitations under the License.
                  throws). jquery-ui is gone now: the datepicker was replaced
                  by a native <input type="date">, and jquery-patch.js was
                  never in the loaded set it would have needed to matter. -->
-            <version>4.0.0</version>
+            <version>4.1.0</version>
         </dependency>
 
         <dependency>
@@ -688,7 +680,7 @@ limitations under the License.
         <dependency>
             <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
             <artifactId>owasp-java-html-sanitizer</artifactId>
-            <version>20261011.1</version>
+            <version>20261110.1</version>
         </dependency>
 
         <!-- Markdown: every entry is Markdown (Stage 2 Wave 4). Not managed by
@@ -697,32 +689,32 @@ limitations under the License.
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-tables</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-autolink</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-alerts</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-heading-anchor</artifactId>
-            <version>0.32.0</version>
+            <version>0.33.0</version>
         </dependency>
 
         <!-- Spring deps. Versions are no longer pinned here: spring-boot-dependencies
@@ -907,7 +899,7 @@ limitations under the License.
         <dependency>
             <groupId>org.instancio</groupId>
             <artifactId>instancio-junit</artifactId>
-            <version>6.2.1</version>
+            <version>6.2.2</version>
             <scope>test</scope>
         </dependency>
 

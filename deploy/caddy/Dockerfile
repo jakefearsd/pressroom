@@ -35,7 +35,7 @@
 #      in for the stock one -- everything else about the image (config path,
 #      entrypoint, exposed ports) is inherited unchanged from the upstream
 #      `caddy:2.11.9-alpine` image.
-FROM caddy:2.11.9-builder-alpine@sha256:646fee578e680989ca5c7fd1ce6f1de574d19fd71ef2221810cc0510a9f40c86 AS builder
+FROM caddy:2.11.9-builder-alpine@sha256:86e132d1d6db8850352b2dbc15f82a4cb25363ac305ee41e11405873e5931f37 AS builder
 
 # The module is pinned like the base images: without @version xcaddy takes
 # whatever its newest tag is on the day of the build, so one release tag could
