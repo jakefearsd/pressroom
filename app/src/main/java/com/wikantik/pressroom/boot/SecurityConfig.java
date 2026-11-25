@@ -28,6 +28,7 @@ import com.wikantik.pressroom.ui.core.security.LastLoginRecorder;
 import com.wikantik.pressroom.ui.core.security.PressroomRememberMeAuthenticationProvider;
 import com.wikantik.pressroom.ui.core.security.PressroomRememberMeServices;
 import com.wikantik.pressroom.ui.core.security.PressroomUserDetailsService;
+import com.wikantik.pressroom.ui.core.security.ReturnPathLoginSuccessHandler;
 import com.wikantik.pressroom.ui.core.security.sso.SsoLogin;
 import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
@@ -308,8 +309,10 @@ public class SecurityConfig {
                 // user was sent to a 403 the moment they signed in
                 // successfully. login-redirect.jsp already exists for exactly
                 // this job: straight to the editor when the user has one
-                // weblog, otherwise the menu.
-                .defaultSuccessUrl("/pressroom-ui/login-redirect.rol")
+                // weblog, otherwise the menu. A sign-in started from a page's
+                // Sign in link goes back to that page instead (the form posts
+                // it as "return"); ReturnPathLoginSuccessHandler holds both rules.
+                .successHandler(new ReturnPathLoginSuccessHandler())
                 .failureUrl("/pressroom-ui/login.rol?error=true"))
             // security.xml registered no <logout> element at all -- logout is
             // handled entirely at the application level (/logout.rol forwards

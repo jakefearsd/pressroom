@@ -2305,6 +2305,7 @@ page's newsletter band), and the site description as its own row.
 #macro(showSiteMasthead $weblog $term $mastNewsletter)
 <header class="fd-mast">
     <div class="fd-wrap">
+        <div class="fd-account-row">#showAccountLinks("fd")</div>
         <div class="fd-brand">
             #if($utils.isNotEmpty($config.siteName))<span class="fd-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span>#end
             ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
@@ -3050,8 +3051,15 @@ the showContentAssets macro emits into every bundled head. They colour
 nothing themselves: the bar inherits the theme's ink and font, and a theme
 names its menu surface and rule with --site-bar-surface and --site-bar-line.
 
-The classes (site-bar, -home, -mark, -name, -blogs) are stable markers the
-rendering tests pin: restyle through them, never by renaming them.
+The right end carries the way in and out (2026-11-24; before it a blog's
+only sign-in link was in the footer): Sign in for a visitor, else who is
+signed in, the Main Menu for anyone who can write, and Sign out. Same words
+and rules as the frontpage theme's top bar and the colophon. Pages are cached
+per signed-in user, so a name never leaks between visitors.
+
+The classes (site-bar, -home, -mark, -name, -blogs, -sign-in, -who) are
+stable markers the rendering tests pin: restyle through them, never by
+renaming them.
 *#
 #macro(showSiteBar $weblog)
 #if($discovery && $weblog && !$weblog.siteSpace)
@@ -3059,6 +3067,7 @@ rendering tests pin: restyle through them, never by renaming them.
 #set($sbBlogs = $discovery.frontPage.allBlogs)
 <nav class="site-bar" aria-label="$text.get("discovery.siteBar")">
     <a class="site-bar-home" href="$sbHome">#if($utils.isNotEmpty($config.siteName))<span class="site-bar-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span><span class="site-bar-name">$utils.escapeHTML($config.siteName)</span>#else<span class="site-bar-name">$text.get("discovery.frontPage")</span>#end</a>
+    <span class="site-bar-end">
     #if($sbBlogs.size() > 1)
     <details class="site-bar-blogs">
         <summary>$text.get("discovery.blogsNav")</summary>
@@ -3070,6 +3079,8 @@ rendering tests pin: restyle through them, never by renaming them.
         </ul>
     </details>
     #end
+    #showAccountLinks("site-bar")
+    </span>
 </nav>
 #if($sbBlogs.size() > 1)
 <script>
@@ -3096,6 +3107,54 @@ rendering tests pin: restyle through them, never by renaming them.
 #end
 
 #**
+The way in and out, wherever a page's top bar has room for it (the site
+bar on a blog, the masthead on the front page and the site search page):
+Sign in for a visitor, else who is signed in (a reader account and a
+password account can be the same person, and nothing else on the page
+tells them apart), the Main Menu for anyone who can write, and Sign out.
+Same words and rules as the frontpage theme's top bar and the colophon.
+The classes are the prefix plus -account, -sign-in and -who, stable
+markers the rendering tests pin. Pages are cached per signed-in user, so
+a name never leaks between visitors.
+*#
+#macro(showAccountLinks $acctPrefix)
+<span class="${acctPrefix}-account">
+#if(!$utils.isUserAuthenticated())
+    <a class="${acctPrefix}-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
+#else
+    #if($utils.authenticatedUser)<span class="${acctPrefix}-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
+    #if($utils.isUserAuthor())<a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a>#end
+    <a href="$url.logout">$text.get("navigationBar.logout")</a>
+#end
+</span>
+#if(!$utils.isUserAuthenticated())#showSignInReturnScript("${acctPrefix}-sign-in")#end
+#end
+
+#**
+Sends a visitor back to this page after signing in: every link with the
+given class, on this host, gets the page's path and query as "return" on its
+way to the sign-in page. Done in the browser so a cached page, shared by
+every visitor of one URL, carries no per-request value; without script the
+link still signs in and lands where it always did. LoginController and the
+success handlers keep only a path under the context. No dollar sign but the
+class and no hash in the script: Velocity would read either.
+*#
+#macro(showSignInReturnScript $signInClass)
+<script>
+(function () {
+    var links = document.querySelectorAll('a.$signInClass');
+    for (var i = 0; i < links.length; i++) {
+        var a = links[i];
+        if (a.host === window.location.host && a.search.indexOf('return=') < 0) {
+            a.search = (a.search ? a.search + '&' : '?') + 'return='
+                + encodeURIComponent(window.location.pathname + window.location.search);
+        }
+    }
+})();
+</script>
+#end
+
+#**
 The site bar's rules (see the showSiteBar macro), emitted into the head by
 the showContentAssets macro. Selectors that style links start at body nav so
 they outrank a theme's own "body.x a" colour.
@@ -3116,6 +3175,12 @@ body nav.site-bar a.site-bar-home { display: inline-flex; align-items: center; g
 }
 .site-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body nav.site-bar a.site-bar-home:hover .site-bar-name { text-decoration: underline; }
+.site-bar-end { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.site-bar-account { display: flex; align-items: center; gap: 12px; flex: none; white-space: nowrap; }
+.site-bar-who { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; opacity: .75; }
+body nav.site-bar .site-bar-account a { font-weight: 600; }
+body nav.site-bar .site-bar-account a:hover { text-decoration: underline; }
+@media (max-width: 480px) { .site-bar-who { display: none; } }
 .site-bar-blogs { position: relative; flex: none; }
 .site-bar-blogs summary {
   padding: 4px 10px; border: 1px solid var(--site-bar-line, color-mix(in srgb, currentColor 15%, transparent));

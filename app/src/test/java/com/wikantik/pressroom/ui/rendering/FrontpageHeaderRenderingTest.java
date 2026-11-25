@@ -80,6 +80,7 @@ class FrontpageHeaderRenderingTest {
         assertTrue(html.contains("fd-topbar"), html);
         assertTrue(html.contains(MENU), "an author must be offered the menu:\n" + html);
         assertTrue(html.contains("logout"), html);
+        assertTrue(html.contains("<span class=\"fd-topbar-who\">"), "who is signed in:\n" + html);
     }
 
     @Test
@@ -94,7 +95,9 @@ class FrontpageHeaderRenderingTest {
     void anAnonymousVisitorSeesLoginAndNoMainMenu() throws Exception {
         String html = render(null);
         assertTrue(html.contains("fd-topbar"), html);
-        assertTrue(html.contains("login"), html);
+        assertTrue(html.contains("<a class=\"fd-sign-in\" href=\"") && html.contains("/pressroom-ui/login.rol\">"),
+                "Sign in goes to the sign-in page, which can send the visitor back:\n" + html);
+        assertFalse(html.contains("fd-topbar-who"), html);
         assertFalse(html.contains("menu.rol"), html);
         assertFalse(html.contains("logout"), html);
     }

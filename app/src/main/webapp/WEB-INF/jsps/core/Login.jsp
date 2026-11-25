@@ -55,6 +55,11 @@
             </c:if>
 
             <sec:csrfInput/>
+            <%-- The page the visitor signed in from (LoginController keeps only a
+                 path under the context); ReturnPathLoginSuccessHandler goes back to it. --%>
+            <c:if test="${not empty returnPath}">
+                <input type="hidden" name="return" value="${fn:escapeXml(returnPath)}"/>
+            </c:if>
             <div class="mb-3">
                 <button class="btn btn-primary" type="submit" name="login" id="login">
                     <spring:message code='loginPage.login'/>
@@ -66,7 +71,10 @@
 
 <c:if test="${ssoEnabled}">
     <p class="mt-3">
-        <a class="btn btn-secondary" id="ssoSignIn" href="<c:url value='/pressroom-ui/sso/start'/>">
+        <c:url var="ssoStartUrl" value="/pressroom-ui/sso/start">
+            <c:if test="${not empty returnPath}"><c:param name="return" value="${returnPath}"/></c:if>
+        </c:url>
+        <a class="btn btn-secondary" id="ssoSignIn" href="${fn:escapeXml(ssoStartUrl)}">
             <spring:message code="loginPage.ssoSignIn" arguments="${ssoLabelArgs}"/>
         </a>
     </p>

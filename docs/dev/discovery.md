@@ -247,6 +247,19 @@ emitted by `showContentAssets`; they set no colour: the bar inherits the
 theme's ink, and a theme names `--site-bar-surface` and `--site-bar-line`
 (last block of each theme stylesheet). Pinned by `SiteBarRenderingTest`.
 
+**The way in and out** (2026-11-24) sits at the bar's right end: Sign in for
+a visitor (`.site-bar-sign-in`, to `login.rol`), else the account's screen
+name (`.site-bar-who`, hidden under 480px), Main menu under `isUserAuthor()`,
+and Sign out: the `showAccountLinks` macro, prefix `site-bar`. The site
+masthead (discovery `/` and site search) calls it with prefix `fd` in its own
+top row (`.fd-account-row`); the frontpage theme's top bar does the same by
+hand (`.fd-sign-in`, `.fd-topbar-who`). The `showSignInReturnScript` macro appends the page's path
+as `return` in the browser, so a cached page carries nothing per request; the
+sign-in page keeps only a path `ReturnPaths.sanitize` accepts, and both
+password and Google sign-in go back there (`docs/dev/sso.md`). Not on the site
+space (no bar there) nor on a custom-domain blog's own host (the script skips
+a link to another host). The colophon's links are unchanged.
+
 ## Places you've been
 
 `localStorage["pressroom.places"]` only: a JSON array of `{handle, name,

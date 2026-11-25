@@ -156,6 +156,8 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
 .fd-topbar-links { display: flex; gap: 1rem; }
 .fd-topbar-links a { color: var(--fd-ink-soft); text-decoration: none; }
 .fd-topbar-links a:hover { color: var(--fd-accent); }
+.fd-topbar-who { color: var(--fd-ink-soft); opacity: .75; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 480px) { .fd-topbar-who { display: none; } }
 
 /* ---- main panel ---- */
 

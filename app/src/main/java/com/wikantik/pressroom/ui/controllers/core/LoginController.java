@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.core.security.sso.ReturnPaths;
 import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -69,9 +70,18 @@ public class LoginController extends BaseController {
     @GetMapping("/login.rol")
     public String execute(HttpServletRequest request, Model model,
                           @RequestParam(value = "error", required = false) String error,
-                          @RequestParam(value = "sso", required = false) String ssoCode) {
+                          @RequestParam(value = "sso", required = false) String ssoCode,
+                          @RequestParam(value = "return", required = false) String returnPath) {
 
         populateCommonModel(request, model);
+
+        // A page's Sign in link carries the page's path. Only a path under the
+        // context reaches the page, where the form and the Google button hand
+        // it on; ReturnPathLoginSuccessHandler and SsoSuccessHandler check it
+        // again, since the posted value is the client's.
+        if (returnPath != null && returnPath.equals(ReturnPaths.sanitize(returnPath, request.getContextPath()))) {
+            model.addAttribute("returnPath", returnPath);
+        }
 
         // set action error message if there was login error
         if (error != null) {

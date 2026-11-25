@@ -49,8 +49,11 @@
         ## The same three keys the admin banner (bannerStatus.jsp) reads, so
         ## the front door and the admin chrome always use the same words.
         #if(!$utils.isUserAuthenticated())
-        <a href="$url.login">$text.get("navigationBar.login")</a>
+        <a class="fd-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
         #else
+        ## Who is signed in: a reader and an author can be the same person
+        ## under two accounts, and nothing else on the page tells them apart.
+        #if($utils.authenticatedUser)<span class="fd-topbar-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
         #if($utils.isUserAuthor())
         <a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a>
         #end
@@ -58,6 +61,7 @@
         #end
     </nav>
 </header>
+#showSignInReturnScript("fd-sign-in")
 
 <main class="fd-main" id="main">
   <div class="fd-hero">

@@ -213,6 +213,80 @@ class SiteBarRenderingTest {
         }
     }
 
+    /**
+     * The way in, at the top of every blog page: Sign in for a visitor, which
+     * goes to the sign-in page (a script adds the page as the return path);
+     * for anyone signed in, who they are signed in as, Main Menu if they can
+     * write, and Sign out. Before 2026-11-24 the only sign-in link on a blog
+     * was in the footer, under the comments and everything else.
+     */
+    @Test
+    void theBarCarriesTheWayInAndOut() throws Exception {
+        Weblog current = threeBlogs();
+        User reader = TestUtils.setupUser("sitebarreader");
+        try {
+            User managedReader = TestUtils.weblogger().getUserManager().getUserByUserName(reader.getUserName());
+            managedReader.setScreenName("Ann & Co");
+            TestUtils.weblogger().getUserManager().saveUser(managedReader);
+            TestUtils.weblogger().getUserManager().revokeRole("editor", managedReader);
+            TestUtils.weblogger().getUserManager().grantRole("reader", managedReader);
+            TestUtils.weblogger().flush();
+            TestUtils.endSession(true);
+            for (String theme : THEMES) {
+                useTheme(current, theme);
+                String path = "/" + current.getHandle() + "/entry/sitebar-a-0";
+
+                String anonymous = bar(page(path));
+                assertTrue(Pattern.compile("<a class=\"site-bar-sign-in\" href=\"[^\"]*/pressroom-ui/login\\.rol\">"
+                        + "Sign in</a>").matcher(anonymous).find(), theme + ": a visitor gets Sign in:\n" + anonymous);
+                assertFalse(anonymous.contains("logout") || anonymous.contains("menu.rol"), theme + ":\n" + anonymous);
+
+                String author = bar(pageAs(admin.getUserName(), path));
+                assertTrue(author.contains("<span class=\"site-bar-who\">"), theme + ": who is signed in:\n" + author);
+                assertTrue(author.contains("/pressroom-ui/menu.rol\">Main menu</a>"), theme + ":\n" + author);
+                assertTrue(author.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + author);
+                assertFalse(author.contains("site-bar-sign-in"), theme + ":\n" + author);
+
+                String asReader = bar(pageAs(reader.getUserName(), path));
+                assertTrue(asReader.contains("<span class=\"site-bar-who\">Ann &amp; Co</span>"),
+                        theme + ": the reader's name, escaped once:\n" + asReader);
+                assertTrue(asReader.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + asReader);
+                assertFalse(asReader.contains("menu.rol"), theme + ": no Main Menu for a reader:\n" + asReader);
+            }
+        } finally {
+            TestUtils.teardownUser(reader.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** A site of one blog still gets the way in: it does not hang on the blogs menu. */
+    @Test
+    void aSiteOfOneBlogStillHasSignIn() throws Exception {
+        Weblog only = blog("sitebarsolo", "Bar Solo");
+        post(only, "sitebar-solo-0", "Solo post", 10);
+        refresh();
+        useTheme(only, "journal");
+        assertTrue(bar(page("/" + only.getHandle() + "/")).contains("class=\"site-bar-sign-in\""));
+    }
+
+    private static String bar(String body) {
+        Matcher bar = BAR.matcher(body);
+        assertTrue(bar.find(), "no site bar:\n" + body);
+        return bar.group(1);
+    }
+
+    private static String pageAs(String userName, String pathInfo) throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(PAGE_SERVLET, pathInfo);
+        request.setUserPrincipal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                userName, "n/a", org.springframework.security.core.authority.AuthorityUtils.createAuthorityList(
+                        "ROLE_USER")));
+        MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
+        String body = response.getContentAsString();
+        assertEquals(200, response.getStatus(), pathInfo + ":\n" + body);
+        TestUtils.endSession(true);
+        return body;
+    }
+
     /** Blog A (returned, the current blog) and blogs B and C, one post each. */
     private Weblog threeBlogs() throws Exception {
         Weblog first = null;

@@ -58,7 +58,7 @@ class LoginControllerTest {
 
     @Test
     void theSignInPageStartsWithNoComplaint() {
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null, null);
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null);
 
         assertEquals(".Login", view);
         assertEquals(List.of(), ControllerTestFixture.errors(model),
@@ -70,7 +70,7 @@ class LoginControllerTest {
     void comingBackWithAnErrorParameterShowsTheFailureMessage() {
         // Spring Security bounces a failed login back to /login.rol?error, and
         // this is the only thing that tells the user their attempt failed.
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "", null);
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "", null, null);
 
         assertEquals(".Login", view);
         assertEquals(List.of("error.password.mismatch"), ControllerTestFixture.errors(model));
@@ -86,7 +86,7 @@ class LoginControllerTest {
 
     private String runWith(SsoSettings settings, String sso) {
         LoginController c = ControllerTestFixture.withMessages(new LoginController(settings));
-        return c.execute(ControllerTestFixture.requestFor(null), model, null, sso);
+        return c.execute(ControllerTestFixture.requestFor(null), model, null, sso, null);
     }
 
     @Test
@@ -125,5 +125,31 @@ class LoginControllerTest {
         runWith(new SsoSettings("id", "s", "", ""), "<script>");
 
         assertTrue(ControllerTestFixture.errors(model).isEmpty());
+    }
+    /**
+     * A page's Sign in link carries the page's path; the form and the Google
+     * button hand it on so the visitor comes back to that page. Anything but a
+     * path under the context is dropped, never echoed into the page.
+     */
+    @Test
+    void aReturnPathUnderTheContextIsHandedToTheForm() {
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, "/investing/entry/x?y=1");
+
+        assertEquals("/investing/entry/x?y=1", model.getAttribute("returnPath"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"//evil.example/", "https://evil.example/", "/a\r\nX: y", ""})
+    void anythingElseIsDropped(String hostile) {
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, hostile);
+
+        assertEquals(null, model.getAttribute("returnPath"), hostile);
+    }
+
+    @Test
+    void noReturnPathMeansNone() {
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null);
+
+        assertEquals(null, model.getAttribute("returnPath"));
     }
 }

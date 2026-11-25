@@ -346,6 +346,38 @@ class DiscoveryFrontPageRenderingTest {
         }
     }
 
+    /**
+     * The front page's way in and out, at the top of its masthead (2026-11-24;
+     * before it the only sign-in link was in the footer): Sign in to the
+     * sign-in page for a visitor, with the script that adds the page as the
+     * return path; for an author, their name, the Main Menu and Sign out.
+     */
+    @Test
+    void theMastheadCarriesTheWayInAndOut() throws Exception {
+        fiveBlogsOfFour();
+        Pattern mastPattern = Pattern.compile("<header class=\"fd-mast\">(.*?)</header>", Pattern.DOTALL);
+        for (String theme : THEMES) {
+            useSiteTheme(theme);
+            String anonymous = renderRootAs(null);
+            Matcher mast = mastPattern.matcher(anonymous);
+            assertTrue(mast.find(), theme + ":\n" + anonymous);
+            assertTrue(Pattern.compile("<div class=\"fd-account-row\"><span class=\"fd-account\">\\s*"
+                    + "<a class=\"fd-sign-in\" href=\"[^\"]*/pressroom-ui/login\\.rol\">Sign in</a>")
+                    .matcher(mast.group(1)).find(), theme + ": Sign in at the top:\n" + mast.group(1));
+            assertTrue(mast.group(1).contains("document.querySelectorAll('a.fd-sign-in')"),
+                    theme + ": with the return-path script:\n" + mast.group(1));
+
+            String signedIn = renderRootAs(admin.getUserName());
+            mast = mastPattern.matcher(signedIn);
+            assertTrue(mast.find(), theme + ":\n" + signedIn);
+            String inner = mast.group(1);
+            assertTrue(inner.contains("<span class=\"fd-who\">"), theme + ": who is signed in:\n" + inner);
+            assertTrue(inner.contains("/pressroom-ui/menu.rol\">Main menu</a>"), theme + ":\n" + inner);
+            assertTrue(inner.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + inner);
+            assertFalse(inner.contains("fd-sign-in"), theme + ": no Sign in, and no script:\n" + inner);
+        }
+    }
+
     /** An empty site name falls back to the placeholders that need no name; a name with markup is escaped. */
     @Test
     void placeholderFallsBackWhenSiteNameIsEmptyAndEscapesAName() throws Exception {
@@ -835,11 +867,21 @@ class DiscoveryFrontPageRenderingTest {
 
     /** {@link #root} in whatever theme the site space has now. */
     private String renderRoot() throws Exception {
+        return renderRootAs(null);
+    }
+
+    /** {@link #renderRoot}, signed in as {@code userName} when it is not null. */
+    private String renderRootAs(String userName) throws Exception {
         String theme = TestUtils.weblogger().getWeblogManager().getSiteSpace().getEditorTheme();
         String path = FrontDoor.forwardPath(TestUtils.weblogger());
         assertEquals(DISCOVERY, path);
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(PAGE_SERVLET,
                 path.substring(PAGE_SERVLET.length()));
+        if (userName != null) {
+            request.setUserPrincipal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                    userName, "n/a", org.springframework.security.core.authority.AuthorityUtils.createAuthorityList(
+                            "ROLE_USER")));
+        }
         request.setDispatcherType(DispatcherType.FORWARD);
         MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
         String body = response.getContentAsString();

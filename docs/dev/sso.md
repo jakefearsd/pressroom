@@ -46,6 +46,15 @@ the value `InitFilter` latches from the first request: a visitor on
 Sign-out is the existing `logout.rol`; the provider session stays. There is
 no remember-me for SSO sign-ins.
 
+**Return path for both kinds of sign-in** (2026-11-24). `login.rol?return=`
+(added by the page's Sign in link, `docs/dev/discovery.md`) puts a path that
+`ReturnPaths.sanitize` leaves unchanged in the model as `returnPath`;
+`Login.jsp` posts it as the hidden `return` field and adds it to the Google
+button's `sso/start?return=`. Password sign-in uses
+`ReturnPathLoginSuccessHandler` (it replaces `defaultSuccessUrl`): a valid
+`return` wins and spends any saved request; otherwise the saved request,
+else `login-redirect.rol` as before.
+
 ## Configuration
 
 | Property | Env var | Default |
