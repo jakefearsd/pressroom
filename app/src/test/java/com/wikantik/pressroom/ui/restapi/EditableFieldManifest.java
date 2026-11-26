@@ -9,7 +9,9 @@ import java.util.TreeSet;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.ui.restapi.dto.BusinessDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
+import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
+import com.wikantik.pressroom.ui.restapi.dto.TemplateDtos;
 
 /**
  * What each editing screen offers, in API vocabulary, and which API body
@@ -39,7 +41,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page(), business(), user());
+        return List.of(entry(), weblogSettings(), page(), business(), user(), template(), media());
     }
 
     static Resource entry() {
@@ -99,6 +101,20 @@ final class EditableFieldManifest {
         return new Resource("user", AdminDtos.UserPatch.class, sorted(
                 "screenName", "fullName", "emailAddress", "locale", "timeZone", "enabled", "writer"),
                 new TreeMap<>());
+    }
+
+    /** The Template Edit form (session-only routes, SA-18; wave 3). */
+    static Resource template() {
+        return new Resource("template", TemplateDtos.TemplateWrite.class, sorted(
+                "name", "description", "link", "navbar", "hidden", "contents", "contentType"),
+                new TreeMap<>());
+    }
+
+    /** The media edit form (Wave 2 of the React admin migration). */
+    static Resource media() {
+        return new Resource("media", MediaDtos.MediaPatch.class, sorted(
+                "name", "description", "altText", "copyrightText", "tags", "directoryId", "focalX", "focalY"),
+                new TreeMap<>(Map.of("clear", CLEAR)));
     }
 
     private static Set<String> sorted(String... names) {

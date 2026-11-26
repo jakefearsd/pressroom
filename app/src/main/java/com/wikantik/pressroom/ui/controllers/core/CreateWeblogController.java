@@ -101,8 +101,8 @@ public class CreateWeblogController extends BaseController {
         // Journal is the neutral default its own description promises; with
         // no preselection the picker fell to whichever theme listed first.
         if (bean.getTheme() == null
-                && themes.stream().anyMatch(t -> DEFAULT_THEME_ID.equals(t.getId()))) {
-            bean.setTheme(DEFAULT_THEME_ID);
+                && themes.stream().anyMatch(t -> WeblogCreationRules.DEFAULT_THEME_ID.equals(t.getId()))) {
+            bean.setTheme(WeblogCreationRules.DEFAULT_THEME_ID);
         }
 
         return ".CreateWeblog";
@@ -168,27 +168,12 @@ public class CreateWeblogController extends BaseController {
         }
     }
 
-    /**
-     * The {@code frontpage} theme is the {@code $site}-wide aggregator theme
-     * (see the matching constant/comment on {@code ThemeEditController}) and
-     * breaks any weblog that adopts it. A brand-new weblog can never
-     * already be on it, so -- unlike {@code ThemeEditController}'s picker --
-     * there is no grandfathering case to preserve here; it is excluded
-     * unconditionally.
-     */
-    private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
-
-    /** The theme a fresh form preselects, when it is enabled. */
-    private static final String DEFAULT_THEME_ID = "journal";
-
     private List<SharedTheme> addListsToModel(Model model) {
         model.addAttribute("localesList", UIUtils.getLocales());
         model.addAttribute("timeZonesList", UIUtils.getTimeZones());
 
         ThemeManager themeMgr = weblogger.getThemeManager();
-        List<SharedTheme> themes = themeMgr.getEnabledThemesList().stream()
-                .filter(t -> !SITEWIDE_ONLY_THEME_ID.equals(t.getId()))
-                .toList();
+        List<SharedTheme> themes = WeblogCreationRules.offeredThemes(themeMgr);
         model.addAttribute("themes", themes);
         return themes;
     }

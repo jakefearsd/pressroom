@@ -190,7 +190,13 @@ class ApiAuthorizationMatrixTest {
         /** HTTP Basic is accepted too (the token resource). */
         PASSWORD_TOO,
         /** A pinned token may call it although it names no weblog. */
-        PIN_EXEMPT
+        PIN_EXEMPT,
+        /**
+         * Only an interactive session may call it (SA-18): every token caller is refused 403 whatever its
+         * role, after the pin (a token pinned elsewhere still sees 404), and a password is refused with the
+         * chain's 401 as on every non-token resource.
+         */
+        SESSION_ONLY
     }
 
     /**
@@ -222,6 +228,7 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/meta",                                    READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/me/profile",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/me/weblogs",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
+            row("GET    /v1/meta/weblog-options",                     READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
 
             // --- The token resource: a password too. Not pin-exempt, and the
             //     role ceiling still applies to a token; TokensApi then refuses
@@ -276,6 +283,8 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs/{handle}/media/{id}/crop",        POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media/directories",      POST,  SITE_LOGIN, ON_POST),
+            row("DELETE /v1/weblogs/{handle}/media/directories/{id}", POST,  SITE_LOGIN, ON_POST),
+            row("PATCH  /v1/weblogs/{handle}/media/directories/{id}", POST,  SITE_LOGIN, ON_POST),
 
             // --- Pages: as the Pages page (POST)
             row("GET    /v1/weblogs/{handle}/pages",                  READ,  SITE_LOGIN, ON_POST),
@@ -284,6 +293,8 @@ class ApiAuthorizationMatrixTest {
             row("PATCH  /v1/weblogs/{handle}/pages/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/pages/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/pages/{id}/restore",     POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/pages/{id}/preview",     POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/pages/preview",          POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/pages/{id}/delete-forever", POST, SITE_LOGIN, ON_POST),
             row("PUT    /v1/weblogs/{handle}/pages/{id}/parts",       POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/pages/{id}/revisions",   READ,  SITE_LOGIN, ON_POST),
@@ -314,6 +325,31 @@ class ApiAuthorizationMatrixTest {
 
             // --- Members: the weblog admin reads who holds a role, as the Members page
             row("GET    /v1/weblogs/{handle}/members",                READ,  SITE_LOGIN, ON_ADMIN),
+
+            // --- Session-only (SA-18): the weblog admin's own screens, in the admin app only. Every token
+            //     caller reads 403 (after the pin's 404), whatever its role; the session reads as the
+            //     permission says. The permission is the page's: ADMIN, the inbox's POST.
+            row("POST   /v1/weblogs/{handle}/members",                ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("PATCH  /v1/weblogs/{handle}/members/{userName}",     ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("DELETE /v1/weblogs/{handle}/members/{userName}",     ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("POST   /v1/weblogs/{handle}/themes/custom",          ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("GET    /v1/weblogs/{handle}/templates",              ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("POST   /v1/weblogs/{handle}/templates",              ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("GET    /v1/weblogs/{handle}/templates/{id}",         ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("PATCH  /v1/weblogs/{handle}/templates/{id}",         ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("DELETE /v1/weblogs/{handle}/templates/{id}",         ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("GET    /v1/weblogs/{handle}/stylesheet",             ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("PUT    /v1/weblogs/{handle}/stylesheet",             ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("DELETE /v1/weblogs/{handle}/stylesheet",             ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("POST   /v1/weblogs/{handle}/stylesheet/copy-from-shared", ADMIN, SITE_LOGIN, ON_ADMIN,
+                    Flag.SESSION_ONLY),
+            row("POST   /v1/weblogs/{handle}/stylesheet/revert",      ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+            row("GET    /v1/weblogs/{handle}/submissions",            ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
+            row("DELETE /v1/weblogs/{handle}/submissions/{id}",       ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
+            row("DELETE /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+
+            // --- A weblog's shared themes: the owner's, with an ADMIN token, as the settings read
+            row("GET    /v1/weblogs/{handle}/themes",                 ADMIN, SITE_LOGIN, ON_ADMIN),
 
             // --- Weblogs: the list is the site admin's; create follows the Create Weblog page;
             //     one weblog's settings are its owner's, with an ADMIN token
@@ -457,6 +493,9 @@ class ApiAuthorizationMatrixTest {
             boolean pinAllowsRoute = row.namesAWeblog() ? pinAllowsTarget : who.pin() == null || row.has(Flag.PIN_EXEMPT);
             if (!pinAllowsRoute) {
                 return 404;
+            }
+            if (row.has(Flag.SESSION_ONLY)) {
+                return 403;
             }
             if (who.role().ordinal() < row.role().ordinal()) {
                 return 403;

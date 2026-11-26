@@ -23,7 +23,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.business.MediaFileManager;
-import com.wikantik.pressroom.util.Utilities;
+import com.wikantik.pressroom.ui.controllers.MediaMetadata;
 
 /**
  * Bean for managing media file.
@@ -117,15 +117,9 @@ public class MediaFileBean {
         dataHolder.setDescription(this.description);
         dataHolder.setAltText(this.altText);
         dataHolder.setCopyrightText(this.copyrightText);
-        // The tags go through the manager the caller hands in -- replacing a
-        // file's tags removes the ones no longer named, a write the entity used
-        // to issue itself through the static service locator; a form bean must
-        // not locate anything either. A null string clears them, as before.
-        if (this.tagsAsString == null) {
-            dataHolder.getTags().clear();
-        } else {
-            mediaFileManager.updateTags(dataHolder, Utilities.splitStringAsTags(this.tagsAsString));
-        }
+        // The tags go through the manager the caller hands in -- replacing a file's tags removes the ones
+        // no longer named; the API's patch runs the same write.
+        MediaMetadata.setTags(mediaFileManager, dataHolder, this.tagsAsString);
         // Only when the form offers the field: a custom theme's resources are
         // found by this path, and a form that never rendered it would null it.
         if (WebloggerRuntimeConfig.getBooleanProperty(ORIGINAL_PATH_EDIT_ENABLED)) {

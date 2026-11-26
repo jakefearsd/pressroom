@@ -64,6 +64,10 @@ public final class ColumnLimits {
     // V024__media_alt_text.sql)
     public static final int MEDIA_NAME = ColumnWidths.MEDIA_NAME;
     public static final int MEDIA_ALT_TEXT = 255;
+    public static final int MEDIA_DESCRIPTION = 255;
+    public static final int MEDIA_COPYRIGHT = 1023;
+    /** The media tag column (V002__baseline_schema.sql): far shorter than an entry tag's. */
+    public static final int MEDIA_TAG_NAME = 30;
     public static final int MEDIA_CONTENT_TYPE = 50;
     public static final int DIRECTORY_NAME = ColumnWidths.DIRECTORY_NAME;
     public static final int DIRECTORY_DESCRIPTION = 255;
@@ -74,6 +78,11 @@ public final class ColumnLimits {
     public static final int CATEGORY_IMAGE = ColumnWidths.CATEGORY_IMAGE;
 
     // pressroom_weblogpage (V014__weblog_pages.sql)
+    /** weblog_custom_template: name, description and link are varchar(255), outputtype varchar(48). */
+    public static final int TEMPLATE_NAME = 255;
+    public static final int TEMPLATE_DESCRIPTION = 255;
+    public static final int TEMPLATE_LINK = 255;
+    public static final int TEMPLATE_OUTPUT_TYPE = 48;
     public static final int PAGE_SLUG = ColumnWidths.PAGE_SLUG;
 
     // pressroom_weblog_redirect (V028__weblog_redirects.sql)

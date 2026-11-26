@@ -23,7 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.util.cache.CacheManager;
+import com.wikantik.pressroom.ui.controllers.WeblogRemoval;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,9 +68,7 @@ public class WeblogRemoveController extends BaseController {
         populateCommonModel(request, model);
 
         try {
-            weblogger.getWeblogManager().removeWeblog(getActionWeblog(request));
-            weblogger.flush();
-            CacheManager.invalidate(getActionWeblog(request));
+            WeblogRemoval.remove(weblogger, getActionWeblog(request));
             addFlashMessage(redirectAttributes, "websiteRemove.success",
                     StringEscapeUtils.escapeHtml4(getActionWeblog(request).getName()), request);
 

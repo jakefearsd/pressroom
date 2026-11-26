@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
-import java.util.Date;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -26,10 +25,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.util.cache.CacheManager;
+import com.wikantik.pressroom.ui.controllers.CustomTemplates;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -108,24 +107,7 @@ public class TemplateEditController extends BaseController {
 
         if (!hasErrors(model)) {
             try {
-                bean.copyTo(template);
-                // The bean writes the edited markup onto the STANDARD rendition
-                // (creating one if the template had none) but persists nothing;
-                // saving it is this controller's job, before the template
-                // itself, as it always was.
-                weblogger.getWeblogManager().saveTemplateRendition(
-                        template.getTemplateRendition(RenditionType.STANDARD));
-                template.setLastModified(new Date());
-
-                if (bean.getAutoContentType() == null || !bean.getAutoContentType()) {
-                    template.setOutputContentType(bean.getManualContentType());
-                } else {
-                    template.setOutputContentType(null);
-                }
-
-                weblogger.getWeblogManager().saveTemplate(template);
-                weblogger.flush();
-                CacheManager.invalidate(template);
+                CustomTemplates.save(weblogger, template, bean);
 
                 addMessage(model, "pageForm.save.success",
                         StringEscapeUtils.escapeHtml4(template.getName()), request);
@@ -141,35 +123,17 @@ public class TemplateEditController extends BaseController {
 
     private void myValidate(TemplateEditBean bean, WeblogTemplate template,
                             HttpServletRequest request, Model model) {
-        if (!template.getName().equals(bean.getName())) {
-            try {
-                if (weblogger.getWeblogManager()
-                        .getTemplateByName(getActionWeblog(request), bean.getName()) != null) {
-                    addError(model, "pagesForm.error.alreadyExists",
-                            StringEscapeUtils.escapeHtml4(bean.getName()), request);
-                }
-            } catch (WebloggerException ex) {
-                // Fail closed. A uniqueness check that could not run is not a
-                // check that passed, and the caller's hasErrors() gate would
-                // otherwise read the empty error list as "this name is free".
-                log.error("Error checking page name uniqueness", ex);
-                addError(model, "generic.error.check.logs", request);
+        try {
+            // Fail closed: a uniqueness check that could not run is not one that passed, and the caller's
+            // hasErrors() gate would otherwise read the empty error list as "this name is free".
+            for (RuleViolation v : CustomTemplates.editProblems(weblogger, getActionWeblog(request), template,
+                    bean.getName(), bean.getLink())) {
+                addError(model, v.messageKey(), StringEscapeUtils.escapeHtml4(String.valueOf(v.args().get(0))),
+                        request);
             }
-        }
-
-        if (!StringUtils.isEmpty(bean.getLink()) && !bean.getLink().equals(template.getLink())) {
-            try {
-                if (weblogger.getWeblogManager()
-                        .getTemplateByLink(getActionWeblog(request), bean.getLink()) != null) {
-                    addError(model, "pagesForm.error.alreadyExists",
-                            StringEscapeUtils.escapeHtml4(bean.getLink()), request);
-                }
-            } catch (WebloggerException ex) {
-                // Fail closed, as above -- the link is what the page is served
-                // under, so a collision is worse here than for the name.
-                log.error("Error checking page link uniqueness", ex);
-                addError(model, "generic.error.check.logs", request);
-            }
+        } catch (WebloggerException ex) {
+            log.error("Error checking the template's name and link", ex);
+            addError(model, "generic.error.check.logs", request);
         }
     }
 

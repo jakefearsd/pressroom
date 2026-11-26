@@ -94,7 +94,12 @@ public final class McpToolCatalog {
                             "POST " + W + "/media/{id}/crop"),
                     action("delete", "Delete a media file.", "DELETE " + W + "/media/{id}"),
                     action("list_directories", "List media directories.", "GET " + W + "/media/directories"),
-                    action("create_directory", "Create a media directory.", "POST " + W + "/media/directories")),
+                    action("create_directory", "Create a media directory.", "POST " + W + "/media/directories"),
+                    action("delete_directory", "Delete an empty media directory (not the default one).",
+                            "DELETE " + W + "/media/directories/{id}"),
+                    action("update_directory", "Make a media directory private (hidden from every public "
+                            + "surface) or public again: isPrivate true or false.",
+                            "PATCH " + W + "/media/directories/{id}")),
             tool("pages", "A weblog's standalone pages (DRAFT or PUBLISHED); delete moves one to the trash.", false,
                     action("list", "List pages.", "GET " + W + "/pages"),
                     action("get", "One page.", "GET " + W + "/pages/{id}"),
@@ -102,6 +107,9 @@ public final class McpToolCatalog {
                     action("update", "Change the fields given; others are left alone. expectedContentHash refuses "
                             + "the update if the page's text changed since it was read; revisionNote labels the "
                             + "revision it leaves.", "PATCH " + W + "/pages/{id}"),
+                    action("preview", "Render page text as it would publish, without saving; edits apply to "
+                            + "the stored text. Omit id for an unsaved page.",
+                            "POST " + W + "/pages/{id}/preview", "POST " + W + "/pages/preview"),
                     action("delete", "Move a page to the trash.", "DELETE " + W + "/pages/{id}"),
                     action("restore", "Bring a page back from the trash, as a DRAFT.",
                             "POST " + W + "/pages/{id}/restore"),
@@ -216,7 +224,39 @@ public final class McpToolCatalog {
             new Exclusion("POST " + W + "/entries/{id}/send-newsletter", "Emails every subscriber and cannot be "
                     + "undone: a person's decision, made on the editor or the REST API, never an agent's."),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
-                    + "Use media import to add an image by URL."));
+                    + "Use media import to add an image by URL."),
+            new Exclusion("GET /v1/meta/weblog-options", "A screen's picker (themes with previews, every locale and "
+                    + "time zone); creating a weblog with a wrong theme answers with the themes on offer."),
+            new Exclusion("GET " + W + "/themes", "A screen's picker; changing the theme with a wrong one answers "
+                    + "with the themes on offer."),
+            sessionOnly("POST " + W + "/themes/custom"),
+            sessionOnly("GET " + W + "/templates"),
+            sessionOnly("POST " + W + "/templates"),
+            sessionOnly("GET " + W + "/templates/{id}"),
+            sessionOnly("PATCH " + W + "/templates/{id}"),
+            sessionOnly("DELETE " + W + "/templates/{id}"),
+            sessionOnly("GET " + W + "/stylesheet"),
+            sessionOnly("PUT " + W + "/stylesheet"),
+            sessionOnly("DELETE " + W + "/stylesheet"),
+            sessionOnly("POST " + W + "/stylesheet/copy-from-shared"),
+            sessionOnly("POST " + W + "/stylesheet/revert"),
+            sessionOnly("POST " + W + "/members"),
+            sessionOnly("PATCH " + W + "/members/{userName}"),
+            sessionOnly("DELETE " + W + "/members/{userName}"),
+            sessionOnly("GET " + W + "/submissions"),
+            sessionOnly("DELETE " + W + "/submissions/{id}"),
+            sessionOnly("DELETE " + W));
+
+    /**
+     * The reason every session-only route (SA-18) is excluded: an {@code Exclusion} with exactly this
+     * reason, one for each route {@code @SessionOnly} marks ({@code SessionOnlyRoutesTest} sweeps both
+     * ways).
+     */
+    public static final String SESSION_ONLY = "session-only";
+
+    private static Exclusion sessionOnly(String route) {
+        return new Exclusion(route, SESSION_ONLY);
+    }
 
     private McpToolCatalog() {
     }

@@ -43,6 +43,11 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         UNRECOGNISED
     }
 
+    /** Whether the caller is an interactive session: the only kind the session-only guards let through. */
+    public boolean isSession() {
+        return kind == Kind.SESSION;
+    }
+
     private static final Caller NOBODY = new Caller(Kind.ANONYMOUS, null);
 
     /** The caller of the current request. */

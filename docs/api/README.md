@@ -138,7 +138,7 @@ Additive or narrower changes:
 
 - [Changes in 0.16.3](#changes-in-0163)
 - [Changes in 0.16.0](#changes-in-0160)
-- [Not available through the API](#not-available-through-the-api)
+- [Session-only](#session-only)
 - [Getting a token](#getting-a-token)
 - [Token scopes](#token-scopes)
 - [Making a request](#making-a-request)
@@ -585,7 +585,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `edits.findNotMatched` | 400 | `invalid-request` | An edit's `find` is not in the stored text. |
 | `edits.ambiguous` | 400 | `invalid-request` | An edit's `find` matches more than once. |
 | `edits.onCreate` | 400 | `invalid-request` | `edits` was sent on a create. |
-| `edits.previewNeedsEntry` | 400 | `invalid-request` | `edits` was sent to preview without an entry id. |
+| `edits.previewNeedsEntry` | 400 | `invalid-request` | `edits` was sent to preview without an entry or page id. |
 | `anchor.immutable` | 400 | `invalid-request` | An update sent a different `anchor`. |
 | `anchor.invalidForm` | 400 | `invalid-request` | `anchor` is not in the allowed form; `{0}` is the length limit. |
 | `anchor.heldByTrashedEntry` | 409 | `conflict` | A trashed entry of the weblog holds the `anchor`. |
@@ -689,6 +689,8 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `directory.notFound` | 404 | `not-found` | No media directory of the weblog has this id. |
 | `directory.nameReserved` | 400 | `invalid-request` | A directory may not be named `default`. |
 | `directory.nameInUse` | 409 | `conflict` | The weblog already has a directory with this `name`. |
+| `directory.isDefault` | 409 | `conflict` | The default directory cannot be deleted. |
+| `directory.notEmpty` | 409 | `conflict` | The directory still holds files, so it is not deleted. |
 | `focal.outOfRange` | 400 | `invalid-request` | `focalX` or `focalY` is outside 0 to 1. |
 | `focal.pairOnly` | 400 | `invalid-request` | One focal coordinate was sent for a file with no focal point. |
 | `category.notFound` | 404 | `not-found` | No category of the weblog has this id. |
@@ -761,6 +763,22 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `customDomain.siteHost` | 400 | `invalid-request` | `customDomain` is the site's own host. |
 | `customDomain.inUse` | 409 | `conflict` | Another weblog has this `customDomain`. |
 | `customDomain.uncheckable` | 400 | `invalid-request` | Whether `customDomain` is taken could not be checked; retry. |
+| `auth.sessionOnly` | 403 | `forbidden` | A session-only route called with anything but an interactive signed-in session (a token, a password, or no session). |
+| `template.notFound` | 404 | `not-found` | No template has this id in the weblog. |
+| `template.nameInUse` | 409 | `conflict` | Another template of the weblog already has this name or link. |
+| `template.required` | 409 | `conflict` | A template a custom theme requires cannot be removed. |
+| `template.actionUnavailable` | 400 | `invalid-request` | `action` is not one the weblog may add now; the detail lists the ones it may. |
+| `stylesheet.notFound` | 404 | `not-found` | The weblog holds no stylesheet of its own, or its theme has none. |
+| `stylesheet.customTheme` | 409 | `conflict` | The action applies only to a weblog on a shared theme. |
+| `theme.customisationDisabled` | 403 | `forbidden` | Custom themes are switched off on the site, or the weblog may not take one. |
+| `member.notFound` | 404 | `not-found` | The user holds no role on the weblog. |
+| `member.userUnknown` | 400 | `invalid-request` | `userName` names no enabled account. |
+| `member.readerAccount` | 400 | `invalid-request` | `userName` is a reader account, which cannot hold a role. |
+| `member.levelInvalid` | 400 | `invalid-request` | `permission` is not ADMIN, POST or EDIT_DRAFT. |
+| `member.groupBloggingOff` | 409 | `conflict` | Group blogging is off: nobody new may be granted a role (changes and removals still work). |
+| `member.selfChange` | 409 | `conflict` | A member asked to lower or remove their own role. |
+| `member.lastAdmin` | 409 | `conflict` | The change would leave the weblog with no admin. |
+| `submission.notFound` | 404 | `not-found` | No contact-form message has this id in the weblog. |
 | `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
 
 A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where
@@ -1418,7 +1436,7 @@ per-weblog tag cloud has never been large enough to need it.
 ## Media
 
 ```
-GET    /api/v1/weblogs/{handle}/media[?directoryId=&offset=&limit=]
+GET    /api/v1/weblogs/{handle}/media[?directoryId=&q=&type=&sort=&offset=&limit=]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
@@ -1427,6 +1445,8 @@ POST   /api/v1/weblogs/{handle}/media/{id}/crop   crop an image (cannot be undon
 DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
+PATCH  /api/v1/weblogs/{handle}/media/directories/{id}   set the private flag
+DELETE /api/v1/weblogs/{handle}/media/directories/{id}   delete an empty directory
 ```
 
 The three `GET`s need a `READ` token and any role on the weblog: a
@@ -1452,7 +1472,13 @@ Media Files pages do.
 > of that name answers the same 409, and the file is neither changed nor moved.
 
 `GET .../media` returns a `MediaPage` (`{items, offset, limit, hasMore}`) of
-`MediaView`s sorted by name. With `directoryId`, only that directory's files
+`MediaView`s sorted by name (or by `sort`, below). `q` keeps the files whose
+name starts with that text and `type` the files of one type (`image`, `video`,
+`audio` or `other`), exactly as the Media Files screen's search does: across the
+weblog, or within the directory when `directoryId` is also given. `sort` is
+`name` (the default, ignoring case), `date_uploaded` (newest first) or `type`
+(content type), each then by name; an unknown `sort` or `type` is a 400
+`parameter.invalidValue` naming it. With `directoryId`, only that directory's files
 (`dir` is its old name and still works; sending both with different values is
 a 400). With `offset`/`limit`, a page of the sorted list (limit capped at 200);
 **without either, every file**, as before, which on a large photo library is a
@@ -1508,7 +1534,24 @@ anything else a 400; a file has both or neither, so one coordinate moves an
 existing focal point and is a 400 on a file that has none), `name` (present-but-blank is rejected, not
 stored — unlike `altText`, there is no legitimate "deliberately unnamed"
 file), and `directoryId` (moves the file; a foreign or unknown directory id
-is a 404, checked before anything else in the request is applied).
+is a 404, checked before anything else in the request is applied),
+`description` (at most 255 characters), `copyrightText` (at most 1023) and
+`tags` (the file's whole tag set, replaced; each tag at most 30 characters,
+split on spaces and commas as the edit form's are; `[]` removes them all).
+`description` and `copyrightText` are removed with `clear`. A limit broken is a
+400 `field.tooLong` on that field. `MediaView` carries all three (`tags`
+sorted, never null).
+
+**Directories.** `PATCH .../media/directories/{id}` with `{"isPrivate": true}`
+(or `false`) hides the directory from every public surface (the base media
+path, inline galleries, the sitemap's images) while the weblog's members still
+see it; `isPrivate` is required, and the call states the value rather than
+flipping it, so a retry is harmless. `DELETE .../media/directories/{id}`
+answers 204 and removes the directory, but only an empty one that is not the
+default: 409 `directory.isDefault` or 409 `directory.notEmpty`, as the screen
+offers Delete folder only there. A directory of another weblog, or an unknown
+id, is a 404 `directory.notFound`. In the MCP endpoint these are `media` with
+`action: "update_directory"` and `"delete_directory"`.
 
 ### Cropping an image
 
@@ -1549,6 +1592,8 @@ DELETE /api/v1/weblogs/{handle}/pages/{id}                 move to the trash
 POST   /api/v1/weblogs/{handle}/pages/{id}/restore         restore (always to DRAFT)
 POST   /api/v1/weblogs/{handle}/pages/{id}/delete-forever  permanent delete
 PUT    /api/v1/weblogs/{handle}/pages/{id}/parts
+POST   /api/v1/weblogs/{handle}/pages/{id}/preview         render unsaved text, as the page would publish it
+POST   /api/v1/weblogs/{handle}/pages/preview              the same for a page not saved yet
 GET    /api/v1/weblogs/{handle}/pages?status=TRASHED       the page trash
 GET    /api/v1/weblogs/{handle}/pages/{id}/revisions                       a page's revisions
 GET    /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}          one revision, with a diff
@@ -1558,6 +1603,19 @@ POST   /api/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/restore  put a
 > **Changed in 0.13.0: `DELETE` on a page no longer deletes it permanently.**
 > It moves the page to the trash, as `DELETE` on an entry does. To remove a
 > page for good, trash it and then call `delete-forever`.
+
+### Page preview
+
+`POST .../pages/{id}/preview` with `{"text": "..."}` renders that Markdown as the
+page will publish it (shortcodes, Markdown, then the sanitizer), on the page's
+own slug, and saves nothing; `POST .../pages/preview` does the same for a page
+that does not exist yet. The answer is `{html, warnings}` as an entry preview's
+is, with the render warnings of an entry preview and none of its search checks.
+`edits` in place of `text` renders what an update with those edits would store;
+without an id there is no stored text, so `edits` is a 400
+`edits.previewNeedsEntry`. A trashed page or another weblog's is a 404. It is
+the Page editor's Preview, and in the MCP endpoint `pages` with
+`action: "preview"`. It needs publish rights, as page writes do.
 
 ### Page trash
 
@@ -2489,8 +2547,8 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `weblogs` | `list`, `get`, `create`, `update`, `list_members`, `list_businesses` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
-| `media` | `list`, `get`, `import`, `update`, `crop`, `delete`, `list_directories`, `create_directory` |
-| `pages` | `list`, `get`, `create`, `update`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision`, `set_parts` |
+| `media` | `list`, `get`, `import`, `update`, `crop`, `delete`, `list_directories`, `create_directory`, `delete_directory`, `update_directory` |
+| `pages` | `list`, `get`, `create`, `update`, `preview`, `delete`, `restore`, `delete_forever`, `revisions`, `revision`, `restore_revision`, `keep_revision`, `unkeep_revision`, `set_parts` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
@@ -2516,16 +2574,50 @@ internal-error problem. A
 through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
 through MCP: minting, listing or revoking tokens, uploading media from local files, duplicating an entry,
 sending an entry as a newsletter, and everything in
-[Not available through the API](#not-available-through-the-api).
+[Session-only](#session-only).
 
-## Not available through the API
+## Session-only
 
-A person does these in the admin UI; no token can, and the API has no route for them (weblog memberships
-can be read with a token, not changed): agent accounts, changes to admin accounts or the admin role, weblog
-membership changes, profile changes (email, password, names, locale), another
-user's email address, the site-wide token list,
-deleting a weblog, custom templates and stylesheets, and the contact-form inbox. They are reserved for
-an interactive signed-in session by design; a future session-based admin client will cover them.
+Some things are for a person signed in to the admin app, never for a token. A token of any role,
+a password (HTTP Basic), an anonymous caller and any other credential get **403** `auth.sessionOnly` on these
+routes; only an interactive signed-in session (the admin app's own cookie, with its CSRF header on every write) may
+call them. A caller who may not see the weblog still gets the 404 every weblog route gives, first. None of them is an MCP tool.
+
+| Route | What it does | Weblog permission |
+|---|---|---|
+| `POST /v1/weblogs/{handle}/members` | Grant an existing account a role: `{userName, permission}` (`ADMIN`, `POST` or `EDIT_DRAFT`), at once, no invitation. 201 with the member. | admin |
+| `PATCH /v1/weblogs/{handle}/members/{userName}` | Give a member the one level `{permission}`. | admin |
+| `DELETE /v1/weblogs/{handle}/members/{userName}` | Remove a member. 204. | admin |
+| `POST /v1/weblogs/{handle}/themes/custom` | Switch to a custom theme (one way), optionally importing a shared theme's templates: `{importTheme}`. | admin |
+| `GET`, `POST /v1/weblogs/{handle}/templates` | List the weblog's templates (with `availableActions`, the kinds that may be added now); add one: `{name, action}`, 201. | admin |
+| `GET`, `PATCH`, `DELETE /v1/weblogs/{handle}/templates/{id}` | Read one (with its `contents`), change `{contents, contentType, and, for a custom one, name, description, link, navbar, hidden}` (an empty `contentType` lets the engine choose), delete it (204). | admin |
+| `GET`, `PUT`, `DELETE /v1/weblogs/{handle}/stylesheet` | The weblog's own stylesheet: its state (`exists`, `customTheme`, `sharedThemeStylesheet`, `contents`), save `{contents}`, delete the copy (shared theme only). | admin |
+| `POST /v1/weblogs/{handle}/stylesheet/copy-from-shared`, `/revert` | Copy the shared theme's stylesheet to edit it, or reset the copy to the theme's text (shared theme only). | admin |
+| `GET /v1/weblogs/{handle}/submissions[?offset=&limit=]` | The contact-form inbox, newest first (default page 30, at most 200): `{items, offset, limit, hasMore, total}`, each message `{id, name, email, subject, message, pageSlug, entryAnchor, created}`. | post |
+| `DELETE /v1/weblogs/{handle}/submissions/{id}` | Delete one message (204); a bulk delete is a loop. | post |
+| `DELETE /v1/weblogs/{handle}` | Delete the weblog with everything on it, irreversibly (204). Confirming is the client's job. | admin |
+
+The rules are the admin screens' own. Members: one level per member; an existing, enabled account that is not a
+reader (`member.userUnknown`, `member.readerAccount`, `member.levelInvalid`); nobody new while group blogging is
+off (`member.groupBloggingOff`); nobody lowers or removes their own role (`member.selfChange`); a weblog keeps at
+least one admin (`member.lastAdmin`); an account with no role here is `member.notFound`. Templates: a name of at
+most 255 characters that no other template has (`template.nameInUse`, 409), an `action` the weblog may add now
+(`template.actionUnavailable`), a required template of a custom theme cannot be removed (`template.required`);
+removing the default page takes the stylesheet copy with it. Stylesheet: `stylesheet.notFound` when the
+weblog holds no copy (copy it first), `stylesheet.customTheme` for copy, revert and delete on a custom theme.
+Switching to a custom theme: `theme.customisationDisabled` (403) when the site has custom themes off or the
+weblog is the site space, `theme.notOffered` when `importTheme` is not an enabled theme on offer.
+
+Reading who holds a role (`GET .../members`) stays open to tokens. Also open to tokens, as screen pickers:
+`GET /v1/meta/weblog-options` (any authenticated caller: `themes` a new weblog may start on, each
+`{id, name, description, previewPath}` with `previewPath` relative to the site root, the preselected `defaultTheme`,
+every `locales[]` `{id, name}` and `timeZones[]`, exactly as the create form lists them) and
+`GET /v1/weblogs/{handle}/themes` (an ADMIN token: the shared themes the weblog may switch to, the `current` one,
+`custom`, `customAllowed`, `sharedStylesheetCustomised`, `firstCustomization`; switch with `PATCH` on the weblog).
+
+Not built over the API at all, and a person does them in the admin UI: agent accounts, changes to admin accounts
+or the admin role, profile changes (email, password, names, locale), another user's email address, and the
+site-wide token list. Policy: SA-18 in the Simple Agility decision log.
 
 ## The OpenAPI document
 

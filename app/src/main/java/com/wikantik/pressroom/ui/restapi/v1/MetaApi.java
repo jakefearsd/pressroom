@@ -13,6 +13,9 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.Memberships;
+import com.wikantik.pressroom.ui.controllers.WeblogCreationRules;
+import com.wikantik.pressroom.ui.controllers.util.UIUtils;
+import com.wikantik.pressroom.ui.restapi.dto.ThemeDtos;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
@@ -118,6 +121,27 @@ public class MetaApi {
                 ColumnLimits.ENTRY_TEXT);
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
                 siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits));
+    }
+
+    /**
+     * What the create-weblog screen offers: the shared themes a new weblog may start on (with the preview
+     * the screen shows), and the locales and time zones its dropdowns list, exactly as the JSP's do. The
+     * same for every authenticated caller, read afresh; no permission is asked (a caller who may not create
+     * a weblog is told so by {@code POST /v1/weblogs}, as the screen's refusal is).
+     */
+    @WeblogScopeExempt
+    @Operation(operationId = "metaWeblogOptionsGet",
+            summary = "The themes, locales and time zones the create-weblog screen offers.")
+    @GetMapping("/meta/weblog-options")
+    public ResponseEntity<MetaDtos.WeblogOptions> weblogOptions(HttpServletRequest request) {
+        requireUser(request);
+        List<ThemeDtos.ThemeChoice> themes = WeblogCreationRules.offeredThemes(weblogger.getThemeManager()).stream()
+                .map(ThemeDtos::toChoice).toList();
+        String preselected = themes.stream().map(ThemeDtos.ThemeChoice::id)
+                .filter(WeblogCreationRules.DEFAULT_THEME_ID::equals).findFirst().orElse(null);
+        List<MetaDtos.LocaleChoice> locales = UIUtils.getLocales().stream()
+                .map(l -> new MetaDtos.LocaleChoice(l.toString(), l.getDisplayName())).toList();
+        return ResponseEntity.ok(new MetaDtos.WeblogOptions(themes, preselected, locales, UIUtils.getTimeZones()));
     }
 
     /**

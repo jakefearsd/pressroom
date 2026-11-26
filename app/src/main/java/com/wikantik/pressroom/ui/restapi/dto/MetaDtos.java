@@ -186,4 +186,30 @@ public final class MetaDtos {
                     requiredMode = Schema.RequiredMode.REQUIRED)
             String kind) {
     }
+
+    /** One locale, as the create and settings forms offer it. */
+    public record LocaleChoice(
+            @Schema(description = "The locale id the forms post, such as en_US.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String id,
+            @Schema(description = "The locale's display name, such as English (United States).",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String name) {
+    }
+
+    /** What the create-weblog screen offers: shared themes, locales and time zones. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record WeblogOptions(
+            @Schema(description = "The shared themes a new weblog may start on, in the theme manager's order.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<ThemeDtos.ThemeChoice> themes,
+            @Schema(description = "The theme the form preselects (journal), absent when it is not enabled.")
+            String defaultTheme,
+            @Schema(description = "Every locale the forms offer, sorted by display name.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<LocaleChoice> locales,
+            @Schema(description = "Every time zone id the forms offer, sorted.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<String> timeZones) {
+    }
 }

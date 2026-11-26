@@ -28,12 +28,12 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.business.themes.ThemeManager;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Theme;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.SharedThemeRules;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
@@ -136,26 +136,13 @@ public class ThemeEditController extends BaseController {
      */
     private boolean importedForCustom(HttpServletRequest request, Model model, Weblog weblog,
             String selectedThemeId, boolean importTheme) {
-        if (weblog.isSiteSpace()) {
-            addError(model, "themeEditor.error.notOffered", request);
-        } else if (!customThemeAllowed(request)) {
-            addError(model, "themeEditor.error.customThemeNotAllowed", request);
-        } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)
-                && !offered(weblog, selectedThemeId, currentThemeId(request))) {
-            // The same rule as the shared branch: the picker leaves frontpage
-            // out, and this stops a form posted without the picker.
-            addError(model, "themeEditor.error.notOffered", request);
-        } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)) {
+        String importId = importTheme ? selectedThemeId : null;
+        RuleViolation refusal = SharedThemeRules.customViolation(weblogger.getThemeManager(), weblog, importId, false);
+        if (refusal != null) {
+            addError(model, refusal.messageKey(), request);
+        } else if (!StringUtils.isEmpty(importId)) {
             try {
-                ThemeManager themeMgr = weblogger.getThemeManager();
-                SharedTheme t = themeMgr.getTheme(selectedThemeId);
-                // Re-importing the current theme keeps a customised
-                // stylesheet. The check throws rather than answering
-                // "not customised" when it cannot run, so the catch
-                // below refuses instead of overwriting the stylesheet.
-                boolean skipStylesheet = selectedThemeId.equals(weblog.getEditorTheme())
-                        && hasCustomisedSharedStylesheet(weblog);
-                themeMgr.importTheme(getActionWeblog(request), t, skipStylesheet);
+                SharedTheme t = SharedThemeRules.importTemplates(weblogger, weblog, importId);
                 addMessage(model, "themeEditor.setCustomTheme.success", t.getName(), request);
             } catch (Exception re) {
                 log.error("Error customizing theme for weblog - {}", weblog.getHandle(), re);
@@ -168,10 +155,7 @@ public class ThemeEditController extends BaseController {
 
     private void enableCustomTheme(HttpServletRequest request, Model model, Weblog weblog) {
         try {
-            weblog.setEditorTheme(WeblogTheme.CUSTOM);
-            weblogger.getWeblogManager().saveWeblog(weblog);
-            weblogger.flush();
-            CacheManager.invalidate(weblog);
+            SharedThemeRules.enableCustom(weblogger, weblog);
             // NOT themeEditor.setTheme.success, whose {0} is a theme NAME: this
             // branch used to feed it the WeblogTheme.CUSTOM storage constant, so
             // the banner read "Theme set to custom". Nor setCustomTheme.success,
@@ -220,35 +204,6 @@ public class ThemeEditController extends BaseController {
         }
     }
 
-    /**
-     * Whether this weblog may adopt a custom theme.
-     *
-     * <p>{@code themes.customtheme.allowed} gates two of the Design tab's
-     * three items in {@code editor-menu.xml} -- {@code stylesheetEdit} and
-     * {@code templates}, which only matter once a weblog is customised --
-     * and the customise link on the main menu; {@code themeEdit} itself
-     * (picking among the shared themes) stays unconditionally reachable,
-     * since that part is safe and reversible. But a hidden menu entry stops
-     * nobody who posts to {@code themeEdit!save.rol} directly. The switch
-     * imports the shared theme's templates and is one-way, so an
-     * installation that has turned the option off needs the refusal
-     * enforced here, not merely rendered.
-     *
-     * <p>A weblog that is <em>already</em> custom stays editable whatever the
-     * setting says. Turning the option off is meant to stop new
-     * customisations; since there is no way back from custom, refusing here
-     * would strand any weblog customised while it was on.
-     *
-     * <p>The site space never takes a custom theme: its pages render with one
-     * of the four site themes, whatever the setting says.
-     */
-    private boolean customThemeAllowed(HttpServletRequest request) {
-        Weblog weblog = getActionWeblog(request);
-        return !weblog.isSiteSpace()
-                && (WebloggerRuntimeConfig.getBooleanProperty("themes.customtheme.allowed")
-                        || WeblogTheme.CUSTOM.equals(weblog.getEditorTheme()));
-    }
-
     /** {@link SharedThemeRules#offered}, the rule the API's theme switch applies too. */
     private static boolean offered(Weblog weblog, String themeId, String currentThemeId) {
         return SharedThemeRules.offered(weblog, themeId, currentThemeId);
@@ -284,7 +239,7 @@ public class ThemeEditController extends BaseController {
         List<SharedTheme> selectable = SharedThemeRules.offeredThemes(themeMgr, weblog, currentThemeId);
         model.addAttribute("themes", selectable);
         model.addAttribute("customTheme", WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme()));
-        model.addAttribute("customThemeAllowed", customThemeAllowed(request));
+        model.addAttribute("customThemeAllowed", SharedThemeRules.customThemeAllowed(getActionWeblog(request)));
         model.addAttribute("sharedThemeCustomStylesheet", isSharedThemeCustomStylesheet(request));
 
         // firstCustomization check
@@ -300,29 +255,14 @@ public class ThemeEditController extends BaseController {
     /**
      * Whether the page should say the shared theme's stylesheet was
      * customised. A display path: a lookup that fails reads as "no", and the
-     * import itself asks {@link #hasCustomisedSharedStylesheet} again.
+     * import itself asks {@link SharedThemeRules#hasCustomisedSharedStylesheet} again.
      */
     private boolean isSharedThemeCustomStylesheet(HttpServletRequest request) {
         try {
-            return hasCustomisedSharedStylesheet(getActionWeblog(request));
+            return SharedThemeRules.hasCustomisedSharedStylesheet(weblogger, getActionWeblog(request));
         } catch (WebloggerException ex) {
             log.error("Error looking up stylesheet on weblog - {}", getActionWeblog(request).getHandle(), ex);
             return false;
         }
-    }
-
-    /**
-     * Whether {@code weblog}, on a shared theme, holds its own copy of that
-     * theme's stylesheet. Throws when the theme or the template cannot be
-     * looked up: the import decides from this whether to overwrite the
-     * stylesheet, so a lookup that could not run must not read as "no".
-     */
-    private boolean hasCustomisedSharedStylesheet(Weblog weblog) throws WebloggerException {
-        if (WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())) {
-            return false;
-        }
-        WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
-        return theme != null && theme.getStylesheet() != null
-                && weblogger.getWeblogManager().getTemplateByLink(weblog, theme.getStylesheet().getLink()) != null;
     }
 }

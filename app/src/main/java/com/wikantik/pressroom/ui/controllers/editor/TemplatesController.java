@@ -18,31 +18,20 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.WeblogManager;
-import com.wikantik.pressroom.pojos.CustomTemplateRendition;
-import com.wikantik.pressroom.pojos.ThemeTemplate;
-import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.pojos.WeblogTheme;
-import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
-import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.util.cache.CacheManager;
+import com.wikantik.pressroom.ui.controllers.CustomTemplates;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -92,34 +81,8 @@ public class TemplatesController extends BaseController {
 
         if (!hasErrors(model)) {
             try {
-                WeblogTemplate newTemplate = new WeblogTemplate();
-                newTemplate.setWeblog(getActionWeblog(request));
-                newTemplate.setAction(newTmplAction);
-                newTemplate.setName(newTmplName);
-                newTemplate.setHidden(false);
-                newTemplate.setNavbar(false);
-                newTemplate.setLastModified(new Date());
-
-                if (newTmplAction == ComponentType.CUSTOM) {
-                    newTemplate.setLink(newTmplName);
-                }
-
-                if (newTmplAction == ComponentType.WEBLOG) {
-                    newTemplate.setName(WeblogTemplate.DEFAULT_PAGE);
-                }
-
-                weblogger.getWeblogManager().saveTemplate(newTemplate);
-
-                CustomTemplateRendition standardRendition = new CustomTemplateRendition(newTemplate, RenditionType.STANDARD);
-                standardRendition.setTemplate(getText("pageForm.newTemplateContent", request));
-                standardRendition.setTemplateLanguage(TemplateLanguage.VELOCITY);
-                weblogger.getWeblogManager().saveTemplateRendition(standardRendition);
-
-                if (WeblogTemplate.DEFAULT_PAGE.equals(newTemplate.getName())) {
-                    weblogger.getWeblogManager().saveWeblog(getActionWeblog(request));
-                }
-
-                weblogger.flush();
+                WeblogTemplate newTemplate = CustomTemplates.add(weblogger, getActionWeblog(request), newTmplName,
+                        newTmplAction, getText("pageForm.newTemplateContent", request));
                 // Post/redirect/get: rendering the list straight from this POST
                 // meant a reload re-submitted the add (and answered "already
                 // exists" for the template it had just created).
@@ -168,18 +131,7 @@ public class TemplatesController extends BaseController {
         // message names an emptied object.
         String removedName = template.getName();
         try {
-            if (!template.isRequired()
-                    || !WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())) {
-
-                WeblogManager mgr = weblogger.getWeblogManager();
-
-                if (WeblogTemplate.DEFAULT_PAGE.equals(template.getName())) {
-                    removeStylesheetTemplate(mgr, getActionWeblog(request));
-                }
-
-                CacheManager.invalidate(template);
-                mgr.removeTemplate(template);
-                weblogger.flush();
+            if (CustomTemplates.remove(weblogger, getActionWeblog(request), template)) {
                 addMessage(model, "pagesForm.removed", StringEscapeUtils.escapeHtml4(removedName), request);
             } else {
                 addError(model, "editPages.remove.requiredTemplate", request);
@@ -193,57 +145,11 @@ public class TemplatesController extends BaseController {
         return ".Templates";
     }
 
-    /** Removing the default page takes the weblog's copy of the theme stylesheet with it. */
-    private void removeStylesheetTemplate(WeblogManager mgr, Weblog weblog) throws WebloggerException {
-        WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
-        ThemeTemplate stylesheet = theme.getStylesheet();
-        if (stylesheet == null || theme.getStylesheet() == null
-                || !stylesheet.getLink().equals(theme.getStylesheet().getLink())) {
-            return;
-        }
-        WeblogTemplate css = mgr.getTemplateByLink(weblog, stylesheet.getLink());
-        if (css != null) {
-            mgr.removeTemplate(css);
-        }
-    }
-
     private void loadTemplatesList(HttpServletRequest request, Model model) {
         try {
-            List<WeblogTemplate> raw = weblogger.getWeblogManager().getTemplates(getActionWeblog(request));
-            List<WeblogTemplate> pages = new ArrayList<>(raw);
-
-            WeblogTheme theme = weblogger.getThemeManager().getTheme(getActionWeblog(request));
-            if (theme.getStylesheet() != null) {
-                pages.remove(weblogger.getWeblogManager()
-                        .getTemplateByLink(getActionWeblog(request),
-                                theme.getStylesheet().getLink()));
-            }
+            List<WeblogTemplate> pages = CustomTemplates.pages(weblogger, getActionWeblog(request));
             model.addAttribute("templates", pages);
-
-            Map<ComponentType, String> actionsMap = new EnumMap<>(ComponentType.class);
-            actionsMap.put(ComponentType.CUSTOM, ComponentType.CUSTOM.getReadableName());
-
-            if (WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())) {
-                actionsMap.put(ComponentType.PERMALINK, ComponentType.PERMALINK.getReadableName());
-                actionsMap.put(ComponentType.SEARCH, ComponentType.SEARCH.getReadableName());
-                actionsMap.put(ComponentType.WEBLOG, ComponentType.WEBLOG.getReadableName());
-                actionsMap.put(ComponentType.TAGSINDEX, ComponentType.TAGSINDEX.getReadableName());
-
-                for (WeblogTemplate tmpPage : pages) {
-                    if (tmpPage.getAction() != ComponentType.CUSTOM) {
-                        actionsMap.remove(tmpPage.getAction());
-                    }
-                }
-            } else {
-                actionsMap.put(ComponentType.WEBLOG, ComponentType.WEBLOG.getReadableName());
-                for (WeblogTemplate tmpPage : pages) {
-                    if (tmpPage.getAction() == ComponentType.WEBLOG) {
-                        actionsMap.remove(ComponentType.WEBLOG);
-                        break;
-                    }
-                }
-            }
-            model.addAttribute("availableActions", actionsMap);
+            model.addAttribute("availableActions", CustomTemplates.availableActions(getActionWeblog(request), pages));
             model.addAttribute("customTheme", WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme()));
 
         } catch (WebloggerException ex) {
@@ -254,29 +160,26 @@ public class TemplatesController extends BaseController {
 
     private void myValidate(String newTmplName, ComponentType newTmplAction,
                             HttpServletRequest request, Model model) {
-        if (StringUtils.isEmpty(newTmplName)) {
-            addFieldError(model, "newTmplName", "Template.error.nameNull", request);
-        } else if (newTmplName.length() > PressroomConstants.TEXTWIDTH_255) {
-            addFieldError(model, "newTmplName", "Template.error.nameSize", request);
-        }
-
-        if (newTmplAction == null) {
-            addFieldError(model, "newTmplAction", "Template.error.actionNull", request);
-        }
-
         try {
-            WeblogTemplate existingPage = weblogger.getWeblogManager()
-                    .getTemplateByName(getActionWeblog(request), newTmplName);
-            if (existingPage != null) {
-                addFieldError(model, "newTmplName", "pagesForm.error.alreadyExists",
-                        new Object[]{StringEscapeUtils.escapeHtml4(newTmplName)}, request);
+            // Fail closed: the caller adds this template only when no errors were recorded, so a check that
+            // could not run must not read as "no errors" and create the duplicate it exists to prevent.
+            for (RuleViolation v : CustomTemplates.newProblems(weblogger, getActionWeblog(request), newTmplName,
+                    newTmplAction)) {
+                if (v.args().isEmpty()) {
+                    addFieldError(model, fieldId(v), v.messageKey(), request);
+                } else {
+                    addFieldError(model, fieldId(v), v.messageKey(),
+                            new Object[]{StringEscapeUtils.escapeHtml4(String.valueOf(v.args().get(0)))}, request);
+                }
             }
         } catch (WebloggerException ex) {
-            // Fail closed: the caller adds this template only when no errors
-            // were recorded, so swallowing here creates the duplicate the
-            // check exists to prevent.
-            log.error("Error checking for existing template", ex);
+            log.error("Error checking the new template", ex);
             addError(model, "generic.error.check.logs", request);
         }
+    }
+
+    /** The form's field id for the rule's API field name. */
+    private static String fieldId(RuleViolation violation) {
+        return CustomTemplates.NAME.equals(violation.field()) ? "newTmplName" : "newTmplAction";
     }
 }

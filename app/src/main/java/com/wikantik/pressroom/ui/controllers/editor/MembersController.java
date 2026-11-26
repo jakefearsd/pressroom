@@ -32,7 +32,6 @@ import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
-import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.Memberships;
 import com.wikantik.pressroom.ui.view.WeblogPermissionView;
@@ -203,14 +202,11 @@ public class MembersController extends BaseController {
                 continue;
             }
             User permUser = row.member();
-            userMgr.revokeWeblogPermission(weblog, permUser, WeblogPermission.ALL_ACTIONS);
             if (Memberships.REMOVE.equals(sval)) {
-                AdminLog.record("membership.removed", user, Memberships.details(permUser, weblog));
+                Memberships.remove(userMgr, weblog, user, permUser);
                 removed++;
             } else {
-                userMgr.grantWeblogPermission(weblog, permUser, List.of(sval));
-                AdminLog.record("membership.changed", user,
-                        Memberships.details(permUser, weblog) + " level=" + sval);
+                Memberships.change(userMgr, weblog, user, permUser, sval);
                 changed++;
             }
         }
@@ -284,10 +280,9 @@ public class MembersController extends BaseController {
 
         if (!hasErrors(model)) {
             try {
-                userMgr.grantWeblogPermission(getActionWeblog(request), user, List.of(permissionString));
+                Memberships.grant(userMgr, getActionWeblog(request), getAuthenticatedUser(request), user,
+                        permissionString);
                 weblogger.flush();
-                AdminLog.record("membership.granted", getAuthenticatedUser(request),
-                        Memberships.details(user, getActionWeblog(request)) + " level=" + permissionString);
                 addMessage(model, "memberPermissions.memberChanged", StringEscapeUtils.escapeHtml4(user.getUserName()), request);
             } catch (Exception ex) {
                 log.error("Error granting permission on weblog - {}", getActionWeblog(request).getHandle(), ex);
