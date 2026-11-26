@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { call } from '../../api/client';
 import { useWeblog } from '../../api/queries';
 import { usePage, useStrandCandidates, type PageView, type PageWrite } from '../../api/pages';
 import { ApiError } from '../../api/problem';
+import { useBoot } from '../../context';
+import type { SaveState } from '../../editor/EditorSurface';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useApi } from '../../context';
@@ -14,7 +16,8 @@ import { useT } from '../../i18n/messages';
 import { DraftBar } from '../../session/DraftBar';
 import { useDraftKeeper } from '../../session/useDraftKeeper';
 import { MediaChooser } from '../media/MediaChooser';
-import { PageBodyEditor } from './PageBodyEditor';
+import { EditorSurface } from '../../editor/EditorSurface';
+import type { EditorHandle } from '../../editor/CodeMirrorField';
 import { RevisionsPanel } from './RevisionsPanel';
 import { StrandParts, type PartInfo } from './StrandParts';
 import { Markup, markupArg } from '../../components/Markup';
@@ -41,6 +44,8 @@ const EMPTY: FormState = {
   title: '', slug: '', status: 'DRAFT', text: '', showInNav: false, navOrder: '0', strand: false, parts: [],
   metaTitle: '', searchDescription: '', canonicalUrl: '', noindex: false, ogImageId: ''
 };
+
+const dirty0 = (snapshot: string, page: PageView | undefined): boolean => snapshot !== JSON.stringify(formOf(page));
 
 function formOf(page: PageView | undefined): FormState {
   return page === undefined ? EMPTY : {
@@ -135,10 +140,13 @@ function PageForm({ handle, page, onSaved }: {
 
   const [form, setForm] = useState<FormState>(() => formOf(page));
   const [seoOpen, setSeoOpen] = useState(false);
-  const [choosing, setChoosing] = useState(false);
+  const [chooser, setChooser] = useState<null | 'insert' | 'ogImage'>(null);
+  const editor = useRef<EditorHandle>(null);
+  const { contextPath } = useBoot();
   const [confirmingTrash, setConfirmingTrash] = useState(false);
   const [copied, setCopied] = useState(false);
   const snapshot = JSON.stringify(form);
+  const saveState: SaveState = !dirty0(snapshot, page) ? (page === undefined ? 'notSaved' : 'saved') : 'unsaved';
   const keeper = useDraftKeeper(`${handle}:pageEdit:${page?.id ?? 'new'}`, snapshot);
   const dirty = snapshot !== JSON.stringify(formOf(page));
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => { setForm((f) => ({ ...f, [key]: value })); };
@@ -230,13 +238,6 @@ function PageForm({ handle, page, onSaved }: {
     onSettled: () => { setConfirmingTrash(false); }
   });
 
-  const render = async (text: string) => {
-    const result = page?.id === undefined
-      ? await call(api.POST('/v1/weblogs/{handle}/pages/preview', { params: { path: { handle } }, body: { text } }))
-      : await call(api.POST('/v1/weblogs/{handle}/pages/{id}/preview', { params: { path: { handle, id: page.id } }, body: { text } }));
-    return { html: result.html ?? '', warnings: result.warnings ?? [] };
-  };
-
   const submit = (event: FormEvent) => {
     event.preventDefault();
     save.mutate();
@@ -285,11 +286,11 @@ function PageForm({ handle, page, onSaved }: {
             {page?.frontDoor === true && page.absoluteUrl !== undefined ? (
               <p className="form-text editor-permalink-note">{t('pageEdit.frontDoorNote', page.absoluteUrl)}</p>
             ) : null}
-            <PageBodyEditor value={form.text} onChange={(text) => { set('text', text); }} render={render}
-                            onSave={() => { save.mutate(); }} />
-            <div className="editor-status" id="editorStatus">
-              <span id="editorStatusSave">{dirty ? t('editor.status.unsaved') : page === undefined ? t('weblogEdit.unsaved') : t('editor.status.saved')}</span>
-            </div>
+            <EditorSurface editorRef={editor} handle={handle} entryId={page?.id} kind="page" contextPath={contextPath}
+                           text={form.text} onTextChange={(text) => { set('text', text); }} saveState={saveState}
+                           primaryActionKey="generic.save" saveActionKey="generic.save"
+                           onSave={() => { save.mutate(); }} onPublish={() => { save.mutate(); }}
+                           onChooseMedia={() => { setChooser('insert'); }} />
           </div>
 
           <div className="editor-rail">
@@ -378,7 +379,7 @@ function PageForm({ handle, page, onSaved }: {
                         </div>
                       )}
                       <button type="button" className="btn btn-secondary btn-sm" id="seo_ogImage_choose"
-                              onClick={() => { setChoosing(true); }}>
+                              onClick={() => { setChooser('ogImage'); }}>
                         {t('weblogEdit.chooseImage')}
                       </button>
                       {form.ogImageId === '' ? null : (
@@ -433,11 +434,21 @@ function PageForm({ handle, page, onSaved }: {
           {(page.parts?.length ?? 0) > 0 ? <p>{t('pages.deleteStrandConfirm', page.parts?.length ?? 0)}</p> : null}
         </ConfirmDialog>
       ) : null}
-      {choosing ? (
-        <MediaChooser handle={handle} imagesOnly
-                      onSelect={(media) => { set('ogImageId', media.id); setChoosing(false); }}
-                      onCancel={() => { setChoosing(false); }} />
-      ) : null}
+      {chooser === null ? null : (
+        <MediaChooser handle={handle} imagesOnly={chooser === 'ogImage'}
+                      onSelect={(media) => {
+                        const target = chooser;
+                        setChooser(null);
+                        if (target === 'ogImage') {
+                          set('ogImageId', media.id);
+                        } else if (media.isImage) {
+                          editor.current?.insert(`[image id="${media.id}"]`);
+                        } else {
+                          editor.current?.insert(`[${media.name.replace(/[[\]]/g, '')}](${media.url})`);
+                        }
+                      }}
+                      onCancel={() => { setChooser(null); }} />
+      )}
     </>
   );
 }

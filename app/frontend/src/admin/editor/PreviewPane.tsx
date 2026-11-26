@@ -13,8 +13,10 @@ export interface PreviewHandle {
 
 interface Props {
   handle: string;
-  /** The saved entry being edited; absent for a new one (previews a scratch row). */
+  /** The saved entry (or page) being edited; absent for a new one (previews a scratch row). */
   entryId: string | undefined;
+  /** What is being written: an entry (the default) or a static page, which has its own preview routes. */
+  kind?: 'entry' | 'page';
   /** The editor's current text. */
   text: string;
   /** Whether the pane is on screen: nothing is rendered while the author is only writing. */
@@ -35,7 +37,7 @@ export function previewShellUrl(contextPath: string, handle: string): string {
  * made meanwhile collapse into one follow-up, so a slow render never paints over a newer one.
  * The HTML never enters this document, so nothing here needs dangerouslySetInnerHTML.
  */
-export function PreviewPane({ handle, entryId, text, visible, scrollFraction, ref }: Props) {
+export function PreviewPane({ handle, entryId, kind = 'entry', text, visible, scrollFraction, ref }: Props) {
   const t = useT();
   const api = useApi();
   const { contextPath } = useBoot();
@@ -60,7 +62,11 @@ export function PreviewPane({ handle, entryId, text, visible, scrollFraction, re
     inflight.current = true;
     try {
       const { text: current, entryId: id, scrollFraction: fraction } = latest.current;
-      const view = id === undefined
+      const view = kind === 'page'
+        ? (id === undefined
+          ? await call(api.POST('/v1/weblogs/{handle}/pages/preview', { params: { path: { handle } }, body: { text: current } }))
+          : await call(api.POST('/v1/weblogs/{handle}/pages/{id}/preview', { params: { path: { handle, id } }, body: { text: current } })))
+        : id === undefined
         ? await call(api.POST('/v1/weblogs/{handle}/entries/preview', { params: { path: { handle } }, body: { text: current } }))
         : await call(api.POST('/v1/weblogs/{handle}/entries/{id}/preview', { params: { path: { handle, id } }, body: { text: current } }));
       post({ type: 'pressroom-preview', html: view.html ?? '', scroll: fraction() });
