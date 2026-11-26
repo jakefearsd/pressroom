@@ -98,6 +98,21 @@ class LegacyAdminRedirectsTest {
         }
     }
 
+    // ---- wave 4: site, people and own-account screens
+
+    @Test
+    void siteScreensGoToTheirReactRoutes() throws Exception {
+        for (String ctx : List.of("", "/pressroom")) {
+            assertRedirect(ctx, "/pressroom-ui/admin/globalConfig.rol", Map.of(), ctx + "/pressroom-ui/app/admin/config");
+            assertRedirect(ctx, "/pressroom-ui/setup.rol", Map.of(), ctx + "/pressroom-ui/app/admin/setup");
+            assertRedirect(ctx, "/pressroom-ui/admin/businesses.rol", Map.of(),
+                    ctx + "/pressroom-ui/app/admin/businesses");
+            assertRedirect(ctx, "/pressroom-ui/admin/maintenance.rol", Map.of(),
+                    ctx + "/pressroom-ui/app/admin/maintenance");
+            assertRedirect(ctx, "/pressroom-ui/admin/apiTokens.rol", Map.of(), ctx + "/pressroom-ui/app/admin/tokens");
+        }
+    }
+
     @Test
     void createWeblogHasNoParameters() throws Exception {
         assertRedirect("", "/pressroom-ui/createWeblog.rol", Map.of(), "/pressroom-ui/app/weblogs/new");
@@ -123,6 +138,157 @@ class LegacyAdminRedirectsTest {
                 "/pressroom-ui/app/weblogs/it_weblog/inbox?page=2");
     }
 
+    // ---- wave 2: pages and media
+
+    @Test
+    void pagesAndTheirTrashCarryTheHandleIncludingTheSiteSpaces() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/pages.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/pages.rol", Map.of("weblog", "site-space"),
+                "/pressroom/pressroom-ui/app/weblogs/site-space/pages");
+        assertRedirect("", "/pressroom-ui/authoring/pagesTrash.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/trash");
+        assertRedirect("", "/pressroom-ui/authoring/pages.rol", Map.of(), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void pageEditGoesToThePageWithAnIdAndToTheNewPageWithout() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog", "id", "p 1"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/p%201");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/pages/new");
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog", "id", " "),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/new");
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("id", "p1"), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void mediaLibraryCarriesTheFolderAndSortUnderTheirNewNames() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileView.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/mediaFileView.rol",
+                Map.of("weblog", "it_weblog", "directoryId", "d 1", "sortBy", "date_uploaded", "directoryName", "x"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/media?dir=d%201&sort=date_uploaded");
+    }
+
+    @Test
+    void mediaUploadAndEditCarryTheirTarget() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileAdd.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media/upload");
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileAdd.rol",
+                Map.of("weblog", "it_weblog", "directoryId", "d1"),
+                "/pressroom-ui/app/weblogs/it_weblog/media/upload?dir=d1");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/mediaFileEdit.rol",
+                Map.of("weblog", "it_weblog", "mediaFileId", "m/1"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/media/m%2F1");
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileEdit.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/");
+    }
+
+    /** The image chooser overlay has no React page (the editors open a modal); its address opens the library. */
+    @Test
+    void theImageChooserOverlayOpensTheMediaLibrary() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media");
+    }
+
+    @Test
+    void businessEditCarriesTheIdAndNewGoesToTheCreateForm() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/businesses!edit.rol", Map.of("id", "b 1"),
+                "/pressroom-ui/app/admin/businesses/b%201");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/businesses!edit.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/admin/businesses/new");
+        assertRedirect("", "/pressroom-ui/admin/businesses!edit.rol", Map.of("id", " "),
+                "/pressroom-ui/app/admin/businesses/new");
+    }
+
+    @Test
+    void theUserListCarriesItsTabAndFilter() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/userAdmin.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/userAdmin.rol", Map.of("kind", "agents", "q", "bo t"),
+                "/pressroom/pressroom-ui/app/admin/users?kind=agents&q=bo%20t");
+    }
+
+    @Test
+    void createUserAndItsCancelAndTheEditFormsGoToTheUserScreens() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/createUser.rol", Map.of(), "/pressroom-ui/app/admin/users/new");
+        assertRedirect("", "/pressroom-ui/admin/createUser!cancel.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        assertRedirect("", "/pressroom-ui/admin/modifyUser!cancel.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        for (String path : List.of("modifyUser", "modifyUser!firstSave")) {
+            assertRedirect("/pressroom", "/pressroom-ui/admin/" + path + ".rol", Map.of("bean.userName", "a b"),
+                    "/pressroom/pressroom-ui/app/admin/users/a%20b");
+            assertRedirect("", "/pressroom-ui/admin/" + path + ".rol", Map.of(), "/pressroom-ui/app/admin/users");
+        }
+    }
+
+    @Test
+    void agentScreensGoToTheAgentRoutes() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/createAgent.rol", Map.of(), "/pressroom-ui/app/admin/agents/new");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/agent.rol", Map.of("userName", "bot"),
+                "/pressroom/pressroom-ui/app/admin/agents/bot");
+        assertRedirect("", "/pressroom-ui/admin/agent.rol", Map.of(), "/pressroom-ui/app/admin/users?kind=agents");
+    }
+
+    @Test
+    void profileAndItsTokensGoToTheOwnAccountScreens() throws Exception {
+        assertRedirect("", "/pressroom-ui/profile.rol", Map.of(), "/pressroom-ui/app/profile");
+        assertRedirect("/pressroom", "/pressroom-ui/profileTokens.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/profile/tokens");
+        assertRedirect("", "/pressroom-ui/profileTokens!reveal.rol", Map.of(), "/pressroom-ui/app/profile/tokens");
+    }
+
+    @Test
+    void entriesCarriesTheFilterUnderTheReactNames() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entries.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/entries");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entries.rol",
+                Map.of("weblog", "it_weblog", "bean.status", "DRAFT", "bean.categoryName", "Trips",
+                        "bean.tagsAsString", "a b", "bean.text", "rome", "bean.startDateString", "2026-01-01",
+                        "bean.endDateString", "2026-02-01", "bean.sortBy", "PUBLICATION_TIME", "bean.page", "3"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/entries?status=DRAFT&category=Trips&tags=a%20b"
+                        + "&text=rome&startDate=2026-01-01&endDate=2026-02-01&sortBy=PUBLICATION_TIME");
+    }
+
+    @Test
+    void newEntryGoesToTheNewEntryRoute() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryAdd.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/entries/new");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryAdd.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/");
+    }
+
+    @Test
+    void editEntryCarriesTheIdAndIsHomeWithoutOne() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryEdit.rol", Map.of("weblog", "w", "bean.id", "e 1"),
+                "/pressroom-ui/app/weblogs/w/entries/e%201");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryEdit!firstSave.rol",
+                Map.of("weblog", "w", "bean.id", "e1"), "/pressroom/pressroom-ui/app/weblogs/w/entries/e1");
+        assertRedirect("", "/pressroom-ui/authoring/entryEdit.rol", Map.of("weblog", "w"), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void newEntryFromMediaCarriesTheChosenFilesAsMediaIds() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                Map.of("weblog", "w", "selectedImages", "m1"), "/pressroom-ui/app/weblogs/w/entries/new?mediaId=m1");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                Map.of("weblog", "w", "selectedImage", "m 2"),
+                "/pressroom/pressroom-ui/app/weblogs/w/entries/new?mediaId=m%202");
+        assertRedirect("", "/pressroom-ui/authoring/entryAddWithMediaFile.rol", Map.of("weblog", "w"),
+                "/pressroom-ui/app/weblogs/w/entries/new");
+    }
+
+    @Test
+    void trashCommentsAndCategoriesCarryTheHandle() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/trash.rol", Map.of("weblog", "w"),
+                "/pressroom-ui/app/weblogs/w/trash");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/categories.rol", Map.of("weblog", "w"),
+                "/pressroom/pressroom-ui/app/weblogs/w/categories");
+        assertRedirect("", "/pressroom-ui/authoring/comments.rol",
+                Map.of("weblog", "w", "status", "HIDDEN", "entry", "e1", "page", "2"),
+                "/pressroom-ui/app/weblogs/w/comments?status=HIDDEN&entry=e1");
+        assertRedirect("", "/pressroom-ui/authoring/comments.rol", Map.of(), "/pressroom-ui/app/");
+    }
+
     // ---- the filter
 
     @Test
@@ -136,7 +302,7 @@ class LegacyAdminRedirectsTest {
     @Test
     void aPostAndAnUnlistedPathPassThrough() throws Exception {
         for (MockHttpServletRequest req : List.of(new MockHttpServletRequest("POST", "/pressroom-ui/menu.rol"),
-                new MockHttpServletRequest("GET", "/pressroom-ui/profile.rol"))) {
+                new MockHttpServletRequest("GET", "/pressroom-ui/login.rol"))) {
             MockFilterChain chain = new MockFilterChain();
             MockHttpServletResponse res = new MockHttpServletResponse();
             filter.doFilter(req, res, chain);
@@ -170,7 +336,7 @@ class LegacyAdminRedirectsTest {
     void noRedirectedRouteIsStillHandledByAController() {
         Set<String> controllers = RouteCoverageTest.declaredGetRoutes();
         assertNotNull(controllers);
-        assertTrue(controllers.size() > 40, "the controller scan found them: " + controllers.size());
+        assertTrue(controllers.size() > 10, "the controller scan found them: " + controllers.size());
         for (String legacy : LegacyAdminRedirects.legacyPaths()) {
             assertFalse(controllers.contains(legacy),
                     legacy + " is redirected to the React admin and must not also have a controller GET handler:"
@@ -180,6 +346,6 @@ class LegacyAdminRedirectsTest {
 
     @Test
     void locateIgnoresPathsOutsideTheTable() {
-        assertTrue(LegacyAdminRedirects.locate("", "/pressroom-ui/profile.rol", n -> null).isEmpty());
+        assertTrue(LegacyAdminRedirects.locate("", "/pressroom-ui/login.rol", n -> null).isEmpty());
     }
 }

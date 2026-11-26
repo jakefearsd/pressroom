@@ -30,9 +30,12 @@ class ApiRouteTableTest {
         // + media folders: DELETE and PATCH media/directories/{id} (2026-11-25).
         // + Wave 0 screens: GET /v1/me/weblogs (the main menu) and GET /v1/admin/traffic/{handle} (the site space).
         
+        // + PUT /v1/weblogs/{handle}/media/{id}/content, the media edit screen's Replace file (wave 2 cutover).
         // + GET /v1/admin/config/definitions (Global Config screen, 2026-11-25).
+        // + Wave 2: page trash retention rides /meta (no route).
+        // + Wave 4: GET /v1/admin/site-pages and one more (W4 cutover; the count is confirmed by this test).
         // + GET and PUT /v1/admin/site-theme (the site space's theme, W3 cutover).
-        assertEquals(132, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        assertEquals(135, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep").isPresent());
@@ -70,6 +73,7 @@ class ApiRouteTableTest {
         owners.put("GET " + w + "/media/directories", "MediaReadApi");
         owners.put("PATCH " + w + "/media/{id}", "MediaApi");
         owners.put("POST " + w + "/media/{id}/crop", "MediaApi");
+        owners.put("PUT " + w + "/media/{id}/content", "MediaApi");
         owners.put("POST " + w + "/media/directories", "MediaApi");
         owners.forEach((route, owner) -> assertEquals(owner,
                 table.find(route).orElseThrow().handler().getBeanType().getSimpleName(), route));

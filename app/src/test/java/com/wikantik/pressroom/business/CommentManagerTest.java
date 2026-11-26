@@ -288,6 +288,27 @@ class CommentManagerTest {
         assertEquals(List.of(u2.getId(), u1.getId()), ids(mgr().getComments(wa, null, null, 1, 2)));
     }
 
+    /** The editor's counts line counts top-level comments only, as the entry page's heading does. */
+    @Test
+    void topLevelOnlyLeavesTheRepliesOutOfTheListAndTheCount() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        ReaderComment reply = comment(ea, owner, Status.PUBLISHED, parent);
+        ReaderComment pending = comment(ea, reader, Status.PENDING, null);
+        TestUtils.endSession(true);
+
+        Weblog wa = TestUtils.getManagedWebsite(a);
+        WeblogEntry entry = TestUtils.getManagedWeblogEntry(ea);
+        assertEquals(List.of(parent.getId()),
+                ids(mgr().getComments(wa, Status.PUBLISHED, entry, true, 0, 50)));
+        assertEquals(List.of(reply.getId(), parent.getId()),
+                ids(mgr().getComments(wa, Status.PUBLISHED, entry, false, 0, 50)));
+        assertEquals(1, mgr().countComments(wa, Status.PUBLISHED, entry, true));
+        assertEquals(2, mgr().countComments(wa, Status.PUBLISHED, entry, false));
+        assertEquals(2, mgr().countComments(wa, null, entry, true));
+        assertEquals(1, mgr().countComments(wa, Status.PENDING, null, true));
+        assertEquals(pending.getId(), mgr().getComments(wa, Status.PENDING, null, true, 0, 5).get(0).getId());
+    }
+
     private List<String> ids(List<ReaderComment> list) {
         return list.stream().map(ReaderComment::getId).toList();
     }

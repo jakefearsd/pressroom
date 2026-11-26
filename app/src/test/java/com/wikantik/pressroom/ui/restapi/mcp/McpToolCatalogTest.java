@@ -36,7 +36,7 @@ class McpToolCatalogTest {
                 Map.entry("comments", List.of("list", "get", "update", "delete", "reply")),
                 Map.entry("audits", List.of("seo", "seo_entry", "media")),
                 Map.entry("traffic", List.of("get", "site")),
-                Map.entry("users", List.of("list", "create", "update", "weblogs")),
+                Map.entry("users", List.of("list", "get", "create", "update", "weblogs")),
                 Map.entry("businesses", List.of("list", "get", "create", "update", "delete")),
                 Map.entry("site_settings", List.of("get", "update")),
                 Map.entry("maintenance", List.of("flush_cache", "rebuild_index", "regenerate_renditions"))),

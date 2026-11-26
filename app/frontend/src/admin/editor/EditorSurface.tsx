@@ -48,6 +48,8 @@ function readMode(key: string): Mode {
 interface Props {
   handle: string;
   entryId: string | undefined;
+  /** A static page is written on the same surface; only its preview routes differ. */
+  kind?: 'entry' | 'page';
   contextPath: string;
   text: string;
   onTextChange: (text: string) => void;
@@ -201,6 +203,14 @@ export function EditorSurface(props: Props) {
     void next();
   };
 
+  // The browser suite's seam (it/support, EditorUploadIT): the name the JSP editors' page script gave it.
+  const uploadRef = useLatest(upload);
+  useEffect(() => {
+    const seam = window as unknown as Record<string, unknown>;
+    seam['pressroomUploadImages'] = (files: File[]) => { uploadRef.current(files); };
+    return () => { delete seam['pressroomUploadImages']; };
+  }, [uploadRef]);
+
   const shortcodes = SHORTCODE_CARDS.map((c) => ({ name: c.name, snippet: c.snippet, label: t(c.labelKey) }));
   const saveLabel = {
     notSaved: t('weblogEdit.unsaved'), unsaved: t('editor.status.unsaved'),
@@ -270,7 +280,7 @@ export function EditorSurface(props: Props) {
                            onItalic={() => { commandsRef.current['italic']?.(); }}
                            onLink={() => { commandsRef.current['link']?.(); }}
                            onUpload={upload} />
-          <PreviewPane ref={preview} handle={props.handle} entryId={props.entryId} text={props.text}
+          <PreviewPane ref={preview} handle={props.handle} entryId={props.entryId} kind={props.kind ?? 'entry'} text={props.text}
                        visible={mode !== 'write'} scrollFraction={() => editor.current?.scrollFraction() ?? 0} />
         </div>
         <div className="editor-status" id="editorStatus">

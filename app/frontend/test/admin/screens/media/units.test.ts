@@ -1,7 +1,6 @@
 import { uploadFile } from '../../../../src/admin/api/upload';
 import { cropRectInNaturalPixels, loadCropper, seedSelection } from '../../../../src/admin/screens/media/crop';
 import { formatSize, isCroppable, libraryPath, splitTags } from '../../../../src/admin/screens/media/shared';
-import { narrow } from '../../../../src/admin/screens/media/MediaLibrary';
 import { sample } from '../../fixtures';
 import { file } from './mediaServer';
 
@@ -150,20 +149,5 @@ describe('shared helpers', () => {
     expect(libraryPath('a', '')).toBe('/weblogs/a/media');
     expect(libraryPath('a', 'd 1')).toBe('/weblogs/a/media?dir=d%201');
     expect(splitTags(' a, b  c,,')).toEqual(['a', 'b', 'c']);
-  });
-});
-
-describe('narrow', () => {
-  const files = [file('a', { length: 100, tags: ['Sea'] }), file('b', { length: 5000 }), { ...file('c'), length: undefined, tags: undefined }];
-  const c = (over: object) => ({ q: '', type: '', size: '', unit: 'bytes', tags: '', ...over });
-
-  it('keeps everything with no size or tags, filters by size in the chosen unit and by every tag', () => {
-    expect(narrow(files, c({})).map((f) => f.id)).toEqual(['a', 'b', 'c']);
-    expect(narrow(files, c({ size: '1', unit: 'kb' })).map((f) => f.id)).toEqual(['b']);
-    expect(narrow(files, c({ size: '1', unit: 'mb' }))).toEqual([]);
-    expect(narrow(files, c({ size: '50', unit: 'weird' })).map((f) => f.id)).toEqual(['a', 'b']);
-    expect(narrow(files, c({ tags: 'sea' })).map((f) => f.id)).toEqual(['a']);
-    expect(narrow(files, c({ tags: 'sea moon' }))).toEqual([]);
-    expect(narrow(files, c({ size: 'abc' })).map((f) => f.id)).toEqual(['a', 'b', 'c']);
   });
 });

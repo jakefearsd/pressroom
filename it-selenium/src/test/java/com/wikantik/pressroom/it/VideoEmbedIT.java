@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.Selenide;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -51,10 +52,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class VideoEmbedIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-
     /** Rendered on the edit page only once the entry has been saved. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     /** The id {@code https://youtu.be/dQw4w9WgXcQ} carries, per VideoShortcode's YouTube id pattern. */
     private static final String VIDEO_ID = "dQw4w9WgXcQ";
@@ -69,11 +68,11 @@ class VideoEmbedIT extends PressroomIT {
         String suffix = nonce();
 
         // --- author and publish an entry carrying [video] --------------------
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue("IT Video " + suffix);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue("IT Video " + suffix);
         Editor.setText("<p>Watch this.</p><p>[video url=\"https://youtu.be/" + VIDEO_ID + "\"]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");

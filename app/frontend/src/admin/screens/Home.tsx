@@ -5,12 +5,19 @@ import { AppLink } from '../frame/AppLink';
 import { PageTitle } from '../frame/PageTitle';
 import { useBoot } from '../context';
 import { useT } from '../i18n/messages';
-import type { LinkTarget } from '../routes/railTable';
+import { RAIL_ENTRIES, entryTarget, type LinkTarget } from '../routes/railTable';
 
 type MyWeblog = components['schemas']['MyWeblog'];
 
-/** A legacy authoring screen of one weblog (a full page load until that screen migrates). */
+/**
+ * An authoring screen of one weblog: its React route once it has migrated (the rail table says so),
+ * else its legacy page (a full page load).
+ */
 function authoring(contextPath: string, action: string, handle: string): LinkTarget {
+  const migrated = RAIL_ENTRIES.find((entry) => entry.id === action);
+  if (migrated !== undefined) {
+    return entryTarget(migrated, contextPath, handle);
+  }
   return { kind: 'legacy', to: `${contextPath}/pressroom-ui/authoring/${action}.rol?weblog=${encodeURIComponent(handle)}` };
 }
 

@@ -26,11 +26,10 @@ import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.ui.controllers.admin.MaintenanceController;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesBean;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
+import com.wikantik.pressroom.ui.restapi.v1.AdminSiteStatusApi;
 import com.wikantik.pressroom.ui.restapi.v1.AdminTrafficApi;
 import com.wikantik.pressroom.ui.restapi.v1.BaseApiController;
+import com.wikantik.pressroom.ui.restapi.v1.EntriesApi;
 import com.wikantik.pressroom.ui.restapi.v1.TrafficApi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,28 +88,30 @@ class AdminPagesNeverCallAnalyticsServiceTest {
                 assertEquals("30d", api.blog(t.blog.getHandle(), "30d").period());
             }
         },
+        /** The React entries list's Views (30d) column: the list route asked for views30d. */
         ENTRIES_WITH_VIEWS {
             @Override
-            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
-                ExtendedModelMap model = new ExtendedModelMap();
-                t.wire(new EntriesController()).execute(request, model, new EntriesBean());
-                assertEquals(Boolean.TRUE, model.getAttribute("viewsColumn"), "the Views column is computed");
+            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) throws Exception {
+                EntriesApi api = new EntriesApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
+                api.list(request, null, null, null, null, null, null, null, null, 0, 50, java.util.List.of("views30d"));
             }
         },
-        MAINTENANCE {
+        API_ANALYTICS_STATUS {
             @Override
             void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
-                ExtendedModelMap model = new ExtendedModelMap();
-                assertEquals(".Maintenance", t.wire(new MaintenanceController()).execute(request, model, null));
-                assertTrue(model.containsAttribute("analyticsStatus"));
+                AdminSiteStatusApi api = new AdminSiteStatusApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
+                assertTrue(api.analytics().configured());
             }
         },
-        MAINTENANCE_SYNC_NOW {
+        API_SYNC_NOW {
             @Override
             void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
+                AdminSiteStatusApi api = new AdminSiteStatusApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
                 int scheduled = t.tier.background.submitted.get();
-                assertEquals(".Maintenance", t.wire(new MaintenanceController())
-                        .syncAnalytics(request, new ExtendedModelMap()));
+                assertEquals(202, api.syncAnalytics().getStatusCode().value());
                 assertEquals(scheduled + 1, t.tier.background.submitted.get(), "a sync was handed to the pool");
             }
         },

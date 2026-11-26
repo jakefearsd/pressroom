@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -35,10 +34,9 @@ import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria.SortBy;
 /**
  * The one place a list of a weblog's entries is asked for: the filters become a
  * {@link WeblogEntrySearchCriteria}, the trash rule is applied, and one row more
- * than a page is fetched so "is there more?" needs no count query. The JSP
- * list ({@code entries.rol}) and {@code GET /v1/weblogs/{handle}/entries} both
- * call it; each parses its own parameters (the API's strict status and range
- * checks, the JSP's page number times its page size) before it does.
+ * than a page is fetched so "is there more?" needs no count query. The
+ * entries screen reads {@code GET /v1/weblogs/{handle}/entries}, which calls it and
+ * parses its own parameters (strict status and range checks) first.
  *
  * <p>Knows nothing of a servlet, a model or a form bean.
  */
@@ -64,22 +62,6 @@ public final class EntryListQuery {
      * @param hasMore whether a further page exists
      */
     public record EntryListPage(List<WeblogEntry> items, int offset, int limit, boolean hasMore) {
-    }
-
-    /**
-     * A status filter typed into a url: blank, "ALL" and anything that is not a
-     * status name mean no filter, so a stale bookmark shows the whole list.
-     * (The API is stricter and parses its own.)
-     */
-    public static PubStatus lenientStatus(String text) {
-        if (StringUtils.isBlank(text) || "ALL".equals(text)) {
-            return null;
-        }
-        try {
-            return PubStatus.valueOf(text);
-        } catch (IllegalArgumentException unknown) {
-            return null;
-        }
     }
 
     /**

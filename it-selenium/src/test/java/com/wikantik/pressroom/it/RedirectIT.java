@@ -26,6 +26,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.wikantik.pressroom.it.support.AdminToken;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,8 +86,8 @@ class RedirectIT extends PressroomIT {
         String newUrl = baseUrl() + "/" + handle + "/new-name";
 
         // --- a published page at its original slug ------------------------
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("old-name");
         $("#page_bean_title").setValue("Moving Target");
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
@@ -149,27 +150,19 @@ class RedirectIT extends PressroomIT {
     private String createWeblog() {
         String handle = "redirit" + Long.toString(System.nanoTime(), 36);
 
-        openPath(CREATE_WEBLOG);
-        $("#name").should(visible).setValue("Redirects " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Redirects " + handle, "journal");
         return handle;
     }
 
     private void openPageByTitle(String handle, String title) {
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
-        $$("a").findBy(text(title)).should(exist).click();
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $$("tr.page-row td a").findBy(text(title)).should(exist).click();
+        PagesMediaApp.awaitPageEditor();
     }
 
     private void saveOpenPage() {
-        $("#pageEditForm button[type='submit']").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
     }
 
     private HttpResponse<Void> send(HttpClient client, String url) throws Exception {

@@ -161,6 +161,20 @@ class EntryActionsApiTest {
         assertNotNull(body.get("newsletterSentAt"), "the view says when it went");
     }
 
+    /** Carried over from the entry screen's newsletter test: the campaign is the rendered body plus a link back. */
+    @Test
+    void theHtmlSentCarriesTheTransformedTextAndThePermalink() throws Exception {
+        when(listmonk.isCampaignConfigured()).thenReturn(true);
+
+        send("e1/send-newsletter").andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<String> html = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(listmonk).sendCampaign(anyString(), anyString(), html.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(html.getValue().contains("<p>Body</p>"), html.getValue());
+        org.junit.jupiter.api.Assertions.assertTrue(html.getValue().contains("https://x.test/myblog/entry/a"),
+                html.getValue());
+    }
+
     @Test
     void anEntryThatIsNotPublishedIsRefusedBeforeTheClientIsTouched() throws Exception {
         original.setStatus(WeblogEntry.PubStatus.DRAFT);

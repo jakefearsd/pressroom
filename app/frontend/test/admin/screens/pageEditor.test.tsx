@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { EditorView } from '@codemirror/view';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { appRoutes } from '../../../src/admin/router';
@@ -27,6 +28,7 @@ describe('PageEditor: a new page', () => {
     await waitFor(() => { expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://blog.example.com/alpha/'); });
     expect(input('page_bean_status')).toHaveValue('DRAFT');
     expect(input('page_bean_navOrder')).toHaveValue(0);
+    expect(screen.getByLabelText('Show in navigation')).toBeChecked();
     expect(document.getElementById('deletePageButton')).toBeNull();
     expect(document.getElementById('pageRevisionsCard')).toBeNull();
     expect(document.querySelector('.editor-preview-link')).toBeNull();
@@ -41,7 +43,7 @@ describe('PageEditor: a new page', () => {
     await screen.findByLabelText('Title');
     await user.type(input('page_bean_title'), 'Contact');
     await user.selectOptions(input('page_bean_status'), 'PUBLISHED');
-    await user.click(screen.getByLabelText('Show in navigation'));
+    expect(screen.getByLabelText('Show in navigation')).toBeChecked();
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/pages/p9'); });
@@ -262,6 +264,76 @@ describe('PageEditor: an existing page', () => {
     expect(writes.map((w) => w.method)).toEqual(['PUT']);
   });
 
+  it('finds posts to add by searching, not by listing the first 200', async () => {
+    const asked: URLSearchParams[] = [];
+    server.use(http.get(`${API}/weblogs/alpha/entries`, ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      asked.push(params);
+      return HttpResponse.json({ hasMore: false, offset: 0, limit: 20, items: params.get('text') === 'bea'
+        ? [{ id: 'e7', title: 'Beach day', status: 'PUBLISHED' }] : [{ id: 'e1', title: 'Newest post', status: 'PUBLISHED' }] });
+    }));
+    const { user } = await open('/weblogs/alpha/pages/new');
+    await screen.findByLabelText('Title');
+    await user.click(screen.getByLabelText('This page is a strand'));
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Newest post' })).toBeInTheDocument(); });
+    expect(asked[0]?.get('limit')).toBe('20');
+    expect(asked[0]?.has('text')).toBe(false);
+    await user.type(screen.getByLabelText('Find posts'), 'bea');
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Beach day' })).toBeInTheDocument(); });
+    expect(asked.at(-1)?.get('text')).toBe('bea');
+    await user.selectOptions(screen.getByLabelText('Add posts'), 'e7');
+    expect(document.querySelector('.strand-part-title')).toHaveTextContent('Beach day');
+    // A part chosen from one search stays named after the next search replaces the choices.
+    await user.clear(screen.getByLabelText('Find posts'));
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Newest post' })).toBeInTheDocument(); });
+    expect(document.querySelector('.strand-part-title')).toHaveTextContent('Beach day');
+  });
+
+  it('shows the address from the page itself: the blog root for its front page, a custom domain as the prefix', async () => {
+    server.use(http.get(`${API}/weblogs/:handle`, () => HttpResponse.json({
+      handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'UTC', frontPage: 'p2', absoluteUrl: 'https://maiia.example.org/' })));
+    withPage({ absoluteUrl: 'https://maiia.example.org/' });
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://maiia.example.org/');
+    expect(document.querySelector('.editor-preview-link')).toHaveAttribute('href', 'https://maiia.example.org/');
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+    await user.click(screen.getByRole('button', { name: 'Copy to clipboard' }));
+    expect(writeText).toHaveBeenCalledWith('https://maiia.example.org/');
+  });
+
+  it('offers no copy or full-preview link for a draft', async () => {
+    withPage({ status: 'DRAFT', absoluteUrl: 'https://blog.example.com/alpha/about' });
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('.editor-preview-link')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Copy to clipboard' })).toBeNull();
+  });
+
+  it('says the site page that is the front door is served at the site root', async () => {
+    server.use(http.get(`${API}/weblogs/site-space/pages/p2`, () => HttpResponse.json(page({
+      frontDoor: true, absoluteUrl: 'https://blog.example.com/' }))));
+    await open('/weblogs/site-space/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('p.editor-permalink-note'))
+      .toHaveTextContent('This page is the front door, so it is served at https://blog.example.com/ rather than at its slug.');
+  });
+
+  it('roots the site space\'s slug at the site address, without asking for the site space as a weblog', async () => {
+    server.use(http.get(`${API}/weblogs/site-space`, () => problem(404, 'weblog.notFound', 'No such weblog.')));
+    await open('/weblogs/site-space/pages/new');
+    await screen.findByLabelText('Title');
+    await waitFor(() => { expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://blog.example.com/'); });
+    expect(screen.queryByText('No such weblog.')).toBeNull();
+  });
+
+  it('has no front-door note for an ordinary page', async () => {
+    withPage();
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('p.editor-permalink-note')).toBeNull();
+  });
+
   it('asks before moving to the trash, says what a strand keeps, and returns to the list with the news', async () => {
     withPage({ strand: true, parts: [{ id: 'e1', title: 'First post', status: 'PUBLISHED' }] });
     server.use(
@@ -404,27 +476,106 @@ describe('PageEditor: revisions', () => {
   });
 });
 
-describe('PageEditor: preview', () => {
-  it('renders the page on the server and shows the sanitised HTML; a stored page previews by id', async () => {
+describe('PageEditor: revisions after a save', () => {
+  it('lists the revision a save just made, without a reload', async () => {
     withPage();
-    server.use(writing('post', '/weblogs/alpha/pages/p2/preview', () => HttpResponse.json({ html: '<h2>Hello</h2><p>world</p>', warnings: [] })));
+    let stored = 0;
+    server.use(
+      http.get(`${API}/weblogs/:handle/pages/p2/revisions`, () => HttpResponse.json(stored === 0 ? [] : [
+        { id: 'r1', savedAt: '2026-11-20T10:00:00Z', savedBy: 'jake', title: 'About us', kept: false }])),
+      writing('patch', '/weblogs/alpha/pages/p2', () => { stored = 1; return HttpResponse.json(page({ contentHash: 'h2' })); }));
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.getElementById('pageRevisionsCard')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(document.getElementById('pageRevisionsTable')).not.toBeNull(); });
+  });
+});
+
+describe('PageEditor: the writing surface', () => {
+  const editorView = () => {
+    const dom = document.querySelector('.cm-content') as HTMLElement;
+    return EditorView.findFromDOM(dom.closest('.cm-editor') as HTMLElement) as EditorView;
+  };
+  const frameOf = () => {
+    const frame = document.querySelector('#editorPreviewPane iframe') as HTMLIFrameElement;
+    const post = vi.fn();
+    Object.defineProperty(frame.contentWindow, 'postMessage', { value: post, configurable: true });
+    const announce = () => {
+      act(() => { window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'pressroom-preview-ready' }, origin: window.location.origin, source: frame.contentWindow })); });
+    };
+    return { frame, post, announce };
+  };
+
+  it('is the entry editor\'s surface: toolbar, write, split and preview, words and the save state', async () => {
+    withPage();
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.getElementById('editorToolbar')).not.toBeNull();
+    expect(within(document.getElementById('editorMode') as HTMLElement).getAllByRole('radio').map((r) => r.textContent))
+      .toEqual(['Write', 'Split', 'Preview']);
+    expect(document.getElementById('editorStatusWords')).toHaveTextContent('words');
+    expect(document.getElementById('editorStatusSave')).toHaveTextContent('Saved');
+    expect(document.getElementById('editorPreviewPane')).toBeNull();
+  });
+
+  it('previews a stored page by id in the theme frame, the server rendering what is typed', async () => {
+    withPage();
+    window.localStorage.clear();
+    server.use(writing('post', '/weblogs/alpha/pages/p2/preview', () => HttpResponse.json({ html: '<h2>Hello</h2>', warnings: [] })));
     const { user } = await open('/weblogs/alpha/pages/p2');
     await screen.findByDisplayValue('About us');
     await user.click(screen.getByRole('radio', { name: 'Preview' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Hello' })).toBeInTheDocument();
+    const { frame, post, announce } = frameOf();
+    expect(frame).toHaveAttribute('src', 'http://pressroom.test/pressroom/pressroom-ui/authoring/preview/alpha/?shell=true');
+    announce();
+    await waitFor(() => { expect(post).toHaveBeenCalled(); });
     expect(writes).toEqual([{ method: 'POST', url: '/weblogs/alpha/pages/p2/preview', body: { text: 'Hello **world**' } }]);
-    expect(screen.getByRole('radio', { name: 'Preview' })).toHaveAttribute('aria-checked', 'true');
+    expect(post).toHaveBeenCalledWith({ type: 'pressroom-preview', html: '<h2>Hello</h2>', scroll: 0 }, window.location.origin);
     await user.click(screen.getByRole('radio', { name: 'Write' }));
     expect(document.getElementById('editorPreviewPane')).toBeNull();
   });
 
-  it('previews a new page without an id, and says when the render failed', async () => {
-    server.use(writing('post', '/weblogs/alpha/pages/preview', () => problem(500, 'internal', 'Boom.')));
+  it('previews a new page without an id', async () => {
+    window.localStorage.clear();
+    server.use(writing('post', '/weblogs/alpha/pages/preview', () => HttpResponse.json({ html: '<p>x</p>', warnings: [] })));
     const { user } = await open('/weblogs/alpha/pages/new');
     await screen.findByLabelText('Title');
-    await user.click(screen.getByRole('radio', { name: 'Preview' }));
-    expect(await screen.findByText('Preview could not be rendered.', {}, { timeout: 5000 })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Split' }));
+    const { post, announce } = frameOf();
+    announce();
+    await waitFor(() => { expect(post).toHaveBeenCalled(); });
     expect(writes[0]?.url).toBe('/weblogs/alpha/pages/preview');
+    await user.click(screen.getByRole('radio', { name: 'Write' }));
+  });
+
+  it('inserts a chosen image as an [image] shortcode through the media chooser', async () => {
+    withPage({ text: '' });
+    server.use(
+      http.get(`${API}/weblogs/:handle/media/directories`, () => HttpResponse.json([{ id: 'd1', name: 'default', fileCount: 1 }])),
+      http.get(`${API}/weblogs/:handle/media`, () => HttpResponse.json({ offset: 0, limit: 1, hasMore: false, items: [
+        { id: 'img1', name: 'a.jpg', contentType: 'image/jpeg', directory: 'd1', url: 'https://x/m/img1', altText: 'a' }] })));
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    await user.click(screen.getByRole('button', { name: 'Insert media file' }));
+    await user.click(await screen.findByLabelText('a.jpg', { selector: '.mediaObject' }));
+    await waitFor(() => { expect(editorView().state.doc.toString()).toBe('[image id="img1"]'); });
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
+  });
+
+  it('saves the page on Ctrl+S and on Ctrl+Enter inside the editor: a page has one save', async () => {
+    withPage();
+    server.use(writing('patch', '/weblogs/alpha/pages/p2', () => HttpResponse.json(page())));
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    await waitFor(() => { expect(document.querySelector('.cm-content')).toHaveTextContent('Hello **world**'); });
+    const content = document.querySelector('.cm-content') as HTMLElement;
+    content.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
+    await waitFor(() => { expect(writes).toHaveLength(1); });
+    expect(await screen.findByText('Page saved.')).toBeInTheDocument();
+    content.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+    await waitFor(() => { expect(writes).toHaveLength(2); });
   });
 });
 

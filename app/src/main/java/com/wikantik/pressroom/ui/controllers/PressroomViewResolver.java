@@ -38,14 +38,10 @@ import java.util.Map;
  */
 public class PressroomViewResolver implements ViewResolver, Ordered {
 
-    private static final String MAINMENU = ".tiles-mainmenupage";
-    private static final String TABBED = ".tiles-tabbedpage";
     private static final String SIMPLE = ".tiles-simplepage";
     private static final String LOGIN = ".tiles-loginpage";
     private static final String INSTALL = ".tiles-installpage";
     private static final String ERROR = ".tiles-errorpage";
-    private static final String POPUP = ".tiles-popuppage";
-    private static final String BARE = ".tiles-barepage";
 
     private final Map<String, ViewDefinition> definitions = new HashMap<>();
     private int order;
@@ -238,19 +234,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                         "footer",   "/WEB-INF/jsps/tiles/footer.jsp"
                 ));
 
-        addDefinition(".tiles-popuppage",
-                "/WEB-INF/jsps/tiles/tiles-popuppage.jsp",
-                Map.of(
-                        "banner",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "messages", "/WEB-INF/jsps/tiles/messages.jsp",
-                        "styles",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "content",  "${content}"
-                ));
-
-        addDefinition(".tiles-barepage",
-                "/WEB-INF/jsps/tiles/tiles-barepage.jsp",
-                Map.of("content", "${content}"));
-
         // ---- error pages ----
 
         define(".denied").on(ERROR)
@@ -275,31 +258,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .register();
 
 
-        // ---- setup / install pages ----
-
-        define(".Setup").on(SIMPLE)
-                .content("/WEB-INF/jsps/core/Setup.jsp")
-                .register();
-
-        // Profile is a signed-in screen with no weblog scope, so it has no tabs
-        // to render -- but it is still admin chrome, and mainmenupage is the
-        // layout for exactly that (the rail with the account context block and
-        // no tab groups). On simplepage --
-        // the install/login chrome -- it rendered as a bare card with no rail,
-        // so a reader who opened it had nothing to navigate back by.
-        define(".Profile").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/Profile.jsp")
-                .register();
-
-        // Profile -> API tokens and the one-time reveal: signed-in, un-scoped
-        // screens in Profile's own chrome (spec 2026-10-13, section 3).
-        define(".ProfileTokens").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/ProfileTokens.jsp")
-                .register();
-
-        define(".TokenReveal").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/TokenReveal.jsp")
-                .register();
+        // ---- install pages ----
 
         // The reader's account page is the one admin-UI screen a reader can
         // open, and the rail has nowhere for a reader to go (its account link
@@ -337,128 +296,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
                 .register();
 
-        // ---- global admin pages ----
-
-        define(".GlobalConfig").on(TABBED)
-                .content("/WEB-INF/jsps/admin/GlobalConfig.jsp")
-                .register();
-
-        define(".Businesses").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Businesses.jsp")
-                .register();
-
-        define(".BusinessEdit").on(TABBED)
-                .content("/WEB-INF/jsps/admin/BusinessEdit.jsp")
-                .register();
-
-        define(".UserAdmin").on(TABBED)
-                .content("/WEB-INF/jsps/admin/UserAdmin.jsp")
-                .register();
-
-        define(".UserEdit").on(TABBED)
-                .content("/WEB-INF/jsps/admin/UserEdit.jsp")
-                .register();
-
-        define(".AgentCreate").on(TABBED)
-                .content("/WEB-INF/jsps/admin/AgentCreate.jsp")
-                .register();
-
-        define(".Agent").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Agent.jsp")
-                .register();
-
-        define(".ApiTokens").on(TABBED)
-                .content("/WEB-INF/jsps/admin/ApiTokens.jsp")
-                .register();
-
-        define(".Maintenance").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Maintenance.jsp")
-                .register();
-
         // ---- weblog editor pages ----
-
-        define(".MediaFileAdd").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
-                .register();
-
-        define(".MediaFileEdit").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileEdit.jsp")
-                .register();
-
-
-        define(".MediaFileImageChooser").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileImageChooser.jsp")
-                .register();
-
-        define(".MediaFileAddInclude").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
-                .register();
-
-        // Bare layout, not popuppage: this document exists only to call
-        // parent.onEditSuccess() and is destroyed by the parent's re-submit
-        // milliseconds later. Rendering it with the full admin head made the
-        // browser abort its webfont fetch mid-flight on every media rename --
-        // the GalleryIT "font ERR_ABORTED" flake.
-        define(".MediaFileEditSuccess").on(BARE)
-                .content("/WEB-INF/jsps/editor/MediaFileEditSuccess.jsp")
-                .register();
-
-        define(".MediaFileView").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileView.jsp")
-                .sidebar("/WEB-INF/jsps/editor/MediaFileSidebar.jsp")
-                .register();
-
-        define(".MediaFileAddSuccess").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileAddSuccess.jsp")
-                .register();
-
-        define(".EntryEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/EntryEdit.jsp")
-                .register();
-
-        define(".Entries").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Entries.jsp")
-                .sidebar("/WEB-INF/jsps/editor/EntriesSidebar.jsp")
-                .register();
-
-        define(".Trash").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Trash.jsp")
-                .register();
-
-        define(".Categories").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Categories.jsp")
-                .sidebar("/WEB-INF/jsps/editor/CategoriesSidebar.jsp")
-                .register();
-
-        // .CategoryEdit and .CategoryRemove used to live here. Their content tiles
-        // pointed at empty.jsp because CategoryEdit.jsp and CategoryRemove.jsp were
-        // deleted in 8da2fc0b2 when the forms moved into #category-edit-modal on
-        // Categories.jsp. The definitions survived, so the routes returned a
-        // healthy-looking 200 with no form on the page.
-
-        // ---- weblog admin pages ----
-
-        define(".Pages").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Pages.jsp")
-                .register();
-
-        define(".PagesTrash").on(TABBED)
-                .content("/WEB-INF/jsps/editor/PagesTrash.jsp")
-                .register();
-
-        define(".PageEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/PageEdit.jsp")
-                .register();
-
-        // Reader-comment moderation: an authoring screen on the editor tabs, so the tabbed chrome. The minimal
-        // tabbed shape: the content tile only, and the base layout's empty menu tile (the tabs come from the
-        // navMenu model attribute, not from a tile).
-        define(".Comments").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Comments.jsp")
-                .register();
 
     }
 

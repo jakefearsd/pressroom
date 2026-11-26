@@ -15,11 +15,14 @@ interface Props {
   /** The posts that could be added (not in this or another strand). */
   candidates: readonly PartInfo[];
   invalid?: boolean;
+  /** The text in the "Find posts" box; the host searches with it. */
+  search: string;
+  onSearch: (text: string) => void;
   onChange: (parts: string[]) => void;
 }
 
 /** The strand Parts panel of PageEdit.jsp (`#page_strand_parts`): move, remove, add and drag rows. */
-export function StrandParts({ parts, info, candidates, invalid = false, onChange }: Props) {
+export function StrandParts({ parts, info, candidates, invalid = false, search, onSearch, onChange }: Props) {
   const t = useT();
   const [dragging, setDragging] = useState<number | null>(null);
   const move = (from: number, to: number) => {
@@ -70,6 +73,9 @@ export function StrandParts({ parts, info, candidates, invalid = false, onChange
           );
         })}
       </ol>
+      <label className="editor-field-label" htmlFor="strandSearch">{t('pageEdit.parts.search')}</label>
+      <input type="search" id="strandSearch" className="form-control" value={search} autoComplete="off"
+             onChange={(event) => { onSearch(event.target.value); }} />
       <label className="editor-field-label" htmlFor="strandAddSelect">{t('pageEdit.parts.add')}</label>
       <select id="strandAddSelect" className="form-select" value=""
               onChange={(event) => {

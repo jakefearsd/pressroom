@@ -9,8 +9,10 @@ const COMMENTS = [
     created: '2026-03-01T09:30:00Z', authorUserName: 'reader1', authorDisplayName: 'Rita Reader', authorIsOwner: false },
   { id: 'c2', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'Published one',
     created: '2026-03-02T09:30:00Z', authorUserName: 'owner', authorDisplayName: 'The Owner', authorIsOwner: true },
-  { id: 'c3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'With a reply', reply: 'Thanks!',
+  { id: 'c3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'With a reply', reply: 'r3',
     created: '2026-03-03T09:30:00Z', authorUserName: 'reader3', authorDisplayName: 'Third', authorIsOwner: false },
+  { id: 'r3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'Thanks!', replyTo: 'c3',
+    created: '2026-03-03T10:30:00Z', authorUserName: 'owner', authorDisplayName: 'The Owner', authorIsOwner: true },
   { id: 'c4', entryId: 'e2', entryTitle: 'Other', status: 'HIDDEN', body: '',
     created: '2026-03-04T09:30:00Z', authorUserName: 'reader4', authorDisplayName: 'Fourth', authorIsOwner: false }
 ];
@@ -30,6 +32,20 @@ const rowOf = async (name: string) => (await screen.findByText(name)).closest('t
 describe('Comments', () => {
   useMockApi();
   beforeEach(() => { requests.length = 0; server.use(meHandler('POST'), list()); });
+
+  it('emits its list marker with comments and without (the browser route sweep waits for it)', async () => {
+    show();
+    await screen.findByText('Rita Reader');
+    expect(document.querySelectorAll('#comments-list-marker')).toHaveLength(1);
+    expect(document.querySelector('#comments-list-marker table')).not.toBeNull();
+  });
+
+  it('emits its list marker on an empty list too', async () => {
+    server.use(list([]));
+    show();
+    await screen.findByText('No comments here.');
+    expect(document.querySelectorAll('#comments-list-marker')).toHaveLength(1);
+  });
 
   it('opens on the Awaiting approval tab and tells the three tabs apart', async () => {
     show();

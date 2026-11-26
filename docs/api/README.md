@@ -374,8 +374,9 @@ The clearable fields, per resource:
 
 - **Entry:** `summary`, `metaTitle`, `searchDescription`, `canonicalUrl`,
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
-  `eventStart`, `eventEnd`, `eventLocation` and `strand` (takes the entry out of
-  its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
+  `eventStart`, `eventEnd`, `eventLocation`, `pubTime` (a draft goes back to having
+  none; publishing with none means now, scheduling with none is refused) and
+  `strand` (takes the entry out of its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
 - **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`,
   `newsletterListUuid`, `businessId`, `frontPage`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
@@ -679,6 +680,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `field.notUuid` | 400 | `invalid-request` | A field that holds a UUID does not. |
 | `media.fileRequired` | 400 | `invalid-request` | A media upload carried no file. |
 | `media.importRefused` | 400 | `invalid-request` | A media import could not fetch or store the image; `detail` says why. Text from the import step. |
+| `media.replaceRefused` | 400 | `invalid-request` | A replacement file failed the upload checks (size, quota, type, uploads switched off); `detail` says which. |
 | `media.notFound` | 404 | `not-found` | No media file of the weblog has this id. |
 | `media.nameInUse` | 409 | `conflict` | A media file's new `name` is held by another file in the directory it will be in. |
 | `media.notCroppable` | 409 | `conflict` | A crop was asked of a file that is not a JPEG or PNG image. |
@@ -886,18 +888,22 @@ setting an operator changes shows in the next response.
 | `features.uploads` | Media uploads are switched on. |
 | `features.readerSignIn` | Readers can sign in (single sign-on is configured). |
 | `features.analytics` | An analytics service is configured; `false` is what makes a traffic read answer `NOT_CONFIGURED`. |
+| `features.searchEnabled` | The site's search index is switched on (`search.enabled`); `false` hides the Maintenance screen's Rebuild index. |
+| `features.mailConfigured` | The server can email a set-password link (a mail transport and a site email address are set). |
 | `limits.maxBodyBytes` | The largest JSON request body, in bytes (see Errors, 413). |
 | `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
 | `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
 | `trashRetentionDays` | Days a trashed entry is kept before the sweep deletes it for good: negative keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request. |
 | `maxEntriesPerPage` | The most entries a weblog may show on one page (the `site.pages.maxEntries` setting): the ceiling a settings save refuses above. Read afresh on every request. |
+| `pageTrashRetentionDays` | The same for a trashed page (the page trash has its own setting). |
 
 ```
 GET /api/v1/me/profile
 ```
 
 The caller's own account, read-only: `userName`, `screenName`, `fullName`,
-`emailAddress`, `locale`, `timeZone` and `kind` (`PERSON` or `AGENT`). It never
+`emailAddress`, `locale`, `timeZone`, `kind` (`PERSON` or `AGENT`) and `sso` (single-sign-on accounts have no
+password to change). It never
 holds a password, a hash or a token. Changing any of it is done in the admin
 UI, not through the API. The MCP tools do not offer it (a person's contact
 details are nothing an agent acts on; `whoami` names the account); `site_info`
@@ -1450,12 +1456,13 @@ per-weblog tag cloud has never been large enough to need it.
 ## Media
 
 ```
-GET    /api/v1/weblogs/{handle}/media[?directoryId=&q=&type=&sort=&offset=&limit=]
+GET    /api/v1/weblogs/{handle}/media[?directoryId=&q=&type=&largerThan=&tags=&sort=&offset=&limit=]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
 PATCH  /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media/{id}/crop   crop an image (cannot be undone)
+PUT    /api/v1/weblogs/{handle}/media/{id}/content   replace a file's bytes (multipart `file`)
 DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
@@ -1489,7 +1496,10 @@ Media Files pages do.
 `MediaView`s sorted by name (or by `sort`, below). `q` keeps the files whose
 name starts with that text and `type` the files of one type (`image`, `video`,
 `audio` or `other`), exactly as the Media Files screen's search does: across the
-weblog, or within the directory when `directoryId` is also given. `sort` is
+weblog, or within the directory when `directoryId` is also given. `largerThan`
+keeps the files strictly larger than that many bytes (negative is a 400
+`parameter.invalidValue`) and `tags` those carrying any of the named tags
+(repeat it, or separate with commas), so a page of the answer holds the matches. `sort` is
 `name` (the default, ignoring case), `date_uploaded` (newest first) or `type`
 (content type), each then by name; an unknown `sort` or `type` is a 400
 `parameter.invalidValue` naming it. With `directoryId`, only that directory's files
@@ -1566,6 +1576,19 @@ default: 409 `directory.isDefault` or 409 `directory.notEmpty`, as the screen
 offers Delete folder only there. A directory of another weblog, or an unknown
 id, is a 404 `directory.notFound`. In the MCP endpoint these are `media` with
 `action: "update_directory"` and `"delete_directory"`.
+
+### Replacing a file's content
+
+`PUT .../media/{id}/content` with a multipart `file` part replaces the bytes of an
+existing file, as the media edit screen's Replace file does. The file keeps its
+name, folder, description and tags; its content type follows the new bytes (or
+the name when the client sends none), and the thumbnail, renditions, dimensions
+and EXIF are rebuilt from them. The upload's checks run first (uploads switched
+on, the per-file size, the weblog's quota with the replaced file's own bytes
+left out, forbidden types): a refusal is a 400 `media.replaceRefused` whose
+`detail` says which, and nothing changes. A missing or empty part is a 400
+`media.fileRequired` on `file`. Not an MCP tool (a call carries JSON): import the
+new image by URL.
 
 ### Cropping an image
 
@@ -1769,7 +1792,10 @@ future) shows "Part N of M" linking to the strand page, with links to the
 previous and next parts. A post is in at most one strand, and a strand's
 parts are posts of its own blog.
 
-Every page view carries `strand` (boolean) and `parts`, read-only: a strand's
+Every page view carries `absoluteUrl` (where readers reach the page: the blog's
+root for its front page, the site root for the front-door page) and `frontDoor`
+(true for the site page served at the site root instead of at its slug), both
+read-only, and `strand` (boolean) and `parts`, read-only: a strand's
 members in order, drafts and the trash included, each
 `{id, anchor, title, status, position}` (`title` is the entry's
 plain-text title, as in the entry view; `position` orders the parts and need not
@@ -1847,7 +1873,7 @@ referer, and user-agent for diagnosis.
 ## Comments
 
 ```
-GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&limit=&offset=]
+GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&topLevel=&limit=&offset=]
 GET    /api/v1/weblogs/{handle}/comments/{id}
 PATCH  /api/v1/weblogs/{handle}/comments/{id}
 DELETE /api/v1/weblogs/{handle}/comments/{id}
@@ -1859,7 +1885,10 @@ comments written by signed-in readers. A comment of another weblog, or an id
 that does not exist, answers 404. Moderation keeps working when comments are
 switched off on the weblog, so existing comments stay listable and actionable.
 
-`GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore"}`.
+`GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore", "total"}`;
+`total` counts every comment matching the filters, whatever the page, and
+`topLevel=true` leaves the replies out of both the items and the total (the
+number an entry page's heading shows).
 `status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entryId` is
 an entry id of the same weblog (another weblog's entry is a 404; `entry` is its
 old name and still works); `limit`
@@ -2188,11 +2217,13 @@ page (both below).
 ```
 GET   /api/v1/admin/users[?enabled=&q=&kind=&offset=&limit=]
 POST  /api/v1/admin/users
+GET   /api/v1/admin/users/{userName}                 one account (404 `user.notFound`); MCP `users` `get`
 PATCH /api/v1/admin/users/{userName}
 POST  /api/v1/admin/users/{userName}/password-link   email the person a set-password link
 GET   /api/v1/admin/users/{userName}/weblogs         the weblogs the account belongs to
 
 GET   /api/v1/admin/config
+GET   /api/v1/admin/site-pages          the site space's pages (slug, title, status), for the front-door choices; not an MCP tool
 GET   /api/v1/admin/config/definitions   the display groups and each property's message key, type and default (what the Global Config screen draws)
 PATCH /api/v1/admin/config
 GET   /api/v1/admin/revisions          what the revision store holds
@@ -2348,6 +2379,11 @@ The user view (`UserView`) carries these fields:
 | `fullName`, `locale`, `timeZone` | The account's profile. |
 | `writer` | Whether the account holds the editor (author) role. |
 | `sso` | `true` when the account signs in with single sign-on (Google). Such an account has no password. An email address patched on such an account is replaced at its next sign-in. |
+| `weblogCount` | How many weblogs the account holds a permission on. |
+| `lastActive` | A person's last sign-in; for an agent, its newest token use. Absent when it never was. |
+
+`POST /api/v1/admin/users` also takes `enabled` (default: true with a typed `password`, false when a link is
+mailed): the create form's Enabled box.
 
 `GET/PATCH /api/v1/admin/config` reads and writes Pressroom's runtime
 properties (`runtimeConfigDefs.xml` is the allowlist — a name that file
@@ -2528,7 +2564,8 @@ three answer **202 Accepted**, not 200:
 rebuilding the index and regenerating renditions are asynchronous
 background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a
-caller never has to special-case one of the three.
+caller never has to special-case one of the three. `regenerate-renditions` also answers
+`count`, the number of media files it processed.
 
 ### Discovery and analytics status
 
@@ -2592,7 +2629,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
 | `traffic` | `get`, `site` |
-| `users` | `list`, `create`, `update`, `weblogs` |
+| `users` | `list`, `get`, `create`, `update`, `weblogs` |
 | `businesses` | `list`, `get`, `create`, `update`, `delete` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
@@ -2743,6 +2780,7 @@ The CLI, REST and MCP name some operations differently:
 | `media patch` | `PATCH .../media/{id}` | `media` `update` |
 | `media dirs` / `media create-dir` | `GET`/`POST .../media/directories` | `media` `list_directories` / `create_directory` |
 | `media upload` | `POST .../media` (multipart) | not available; `media` `import` fetches from a URL instead |
+| `media replace` | `PUT .../media/{id}/content` (multipart) | not available |
 | `admin rebuild-index` | `POST /api/v1/admin/weblogs/{handle}/actions/rebuild-index` | `maintenance` `rebuild_index` |
 | `admin flush-cache` | `.../actions/flush-cache` | `maintenance` `flush_cache` |
 | `admin users patch` | `PATCH /api/v1/admin/users/{userName}` | `users` `update` |

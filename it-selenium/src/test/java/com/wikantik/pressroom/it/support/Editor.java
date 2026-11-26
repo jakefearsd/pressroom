@@ -55,14 +55,27 @@ public final class Editor {
         return $(ROOT).shouldBe(visible);
     }
 
+    /**
+     * Replaces the whole text. The JSP editors expose {@code pressroomSetEntryText}; the React admin's editor
+     * has no global, so there the contenteditable is selected and replaced as one insertion (a single
+     * multi-character input, which CodeMirror takes verbatim: no bracket pairing, no auto-indent).
+     */
     public static void setText(String markdown) {
         root();
-        executeJavaScript("pressroomSetEntryText(arguments[0]);", markdown);
+        executeJavaScript(
+                "if (typeof pressroomSetEntryText === 'function') { pressroomSetEntryText(arguments[1]); return; }"
+                        + "var el = arguments[0]; el.focus(); document.execCommand('selectAll');"
+                        + "if (arguments[1] === '') { document.execCommand('delete'); }"
+                        + "else { document.execCommand('insertText', false, arguments[1]); }",
+                $(CONTENT).shouldBe(visible).toWebElement(), markdown);
     }
 
     public static String getText() {
         root();
-        return executeJavaScript("return pressroomGetEntryText();");
+        return executeJavaScript(
+                "if (typeof pressroomGetEntryText === 'function') { return pressroomGetEntryText(); }"
+                        + "return Array.from(arguments[0].querySelectorAll('.cm-line')).map(function (l) { return l.textContent; }).join('\\n');",
+                $(CONTENT).toWebElement());
     }
 
     /** Types through the keyboard, for tests that need real input events. */

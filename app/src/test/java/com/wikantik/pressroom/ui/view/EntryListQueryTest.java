@@ -141,32 +141,8 @@ class EntryListQueryTest {
         assertThrows(WebloggerException.class, () -> EntryListQuery.run(manager, weblog, NONE, 0, 3));
     }
 
-    @Test
-    void aStatusTypedIntoAUrlIsLenient() {
-        assertNull(EntryListQuery.lenientStatus(null));
-        assertNull(EntryListQuery.lenientStatus(""));
-        assertNull(EntryListQuery.lenientStatus("  "));
-        assertNull(EntryListQuery.lenientStatus("ALL"));
-        assertNull(EntryListQuery.lenientStatus("NOPE"));
-        assertNull(EntryListQuery.lenientStatus("draft"));
-        assertEquals(PubStatus.PENDING, EntryListQuery.lenientStatus("PENDING"));
-        assertEquals(PubStatus.TRASHED, EntryListQuery.lenientStatus("TRASHED"));
-    }
-
     private WeblogEntryManager stubbed() throws Exception {
         when(manager.getWeblogEntries(any())).thenAnswer(inv -> found);
         return manager;
-    }
-
-    /** Acceptance criterion 5: neither surface builds the criteria itself any more. */
-    @Test
-    void neitherSurfaceBuildsTheCriteriaItself() throws Exception {
-        for (String file : List.of("src/main/java/com/wikantik/pressroom/ui/controllers/editor/EntriesController.java",
-                "src/main/java/com/wikantik/pressroom/ui/restapi/v1/EntriesApi.java")) {
-            java.nio.file.Path path = java.nio.file.Path.of(file);
-            String source = java.nio.file.Files.readString(
-                    java.nio.file.Files.exists(path) ? path : java.nio.file.Path.of("app", file));
-            assertFalse(source.contains("WeblogEntrySearchCriteria"), file);
-        }
     }
 }

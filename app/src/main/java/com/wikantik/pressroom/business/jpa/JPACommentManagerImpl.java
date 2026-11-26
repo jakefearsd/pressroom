@@ -125,7 +125,14 @@ public class JPACommentManagerImpl implements CommentManager {
     @Override
     public List<ReaderComment> getComments(Weblog weblog, Status status, WeblogEntry entry,
             int offset, int length) throws WebloggerException {
-        String jpql = "SELECT c FROM ReaderComment c WHERE c.entry.website = ?1" + filters(status, entry)
+        return getComments(weblog, status, entry, false, offset, length);
+    }
+
+    @Override
+    public List<ReaderComment> getComments(Weblog weblog, Status status, WeblogEntry entry, boolean topLevelOnly,
+            int offset, int length) throws WebloggerException {
+        String jpql = "SELECT c FROM ReaderComment c WHERE c.entry.website = ?1"
+                + filters(status, entry, topLevelOnly)
                 + " ORDER BY c.created DESC, c.id";
         TypedQuery<ReaderComment> query = strategy.getDynamicQuery(jpql, ReaderComment.class);
         bind(query, weblog, status, entry);
@@ -141,8 +148,15 @@ public class JPACommentManagerImpl implements CommentManager {
 
     @Override
     public long countComments(Weblog weblog, Status status, WeblogEntry entry) throws WebloggerException {
+        return countComments(weblog, status, entry, false);
+    }
+
+    @Override
+    public long countComments(Weblog weblog, Status status, WeblogEntry entry, boolean topLevelOnly)
+            throws WebloggerException {
         TypedQuery<Long> query = strategy.getDynamicQuery(
-                "SELECT COUNT(c) FROM ReaderComment c WHERE c.entry.website = ?1" + filters(status, entry), Long.class);
+                "SELECT COUNT(c) FROM ReaderComment c WHERE c.entry.website = ?1"
+                        + filters(status, entry, topLevelOnly), Long.class);
         bind(query, weblog, status, entry);
         return query.getSingleResult();
     }
@@ -160,7 +174,7 @@ public class JPACommentManagerImpl implements CommentManager {
     }
 
     /** The status and entry conditions after the weblog's, numbered as {@link #bind} binds them. */
-    private static String filters(Status status, WeblogEntry entry) {
+    private static String filters(Status status, WeblogEntry entry, boolean topLevelOnly) {
         StringBuilder where = new StringBuilder(64);
         int next = 2;
         if (status != null) {
@@ -168,6 +182,9 @@ public class JPACommentManagerImpl implements CommentManager {
         }
         if (entry != null) {
             where.append(" AND c.entry = ?").append(next);
+        }
+        if (topLevelOnly) {
+            where.append(" AND c.replyTo IS NULL");
         }
         return where.toString();
     }

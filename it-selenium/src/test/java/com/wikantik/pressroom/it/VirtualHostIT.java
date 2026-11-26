@@ -26,7 +26,9 @@ import java.util.Optional;
 
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.AfterAll;
@@ -665,11 +667,11 @@ class VirtualHostIT extends PressroomIT {
     }
 
     private String publishEntry(String handle, String title, String body) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText(body);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
@@ -689,24 +691,23 @@ class VirtualHostIT extends PressroomIT {
      * already exists.
      */
     private void createAndPublishPage(String handle, String slug, String title, String body) {
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue(slug);
         $("#page_bean_title").setValue(title);
         Editor.setText(body);
         saveOpenPage();
 
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
-        $$("#pageRemoveForm a").findBy(text(title)).should(exist).click();
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $$("tr.page-row td a").findBy(text(title)).should(exist).click();
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
         saveOpenPage();
     }
 
     private void saveOpenPage() {
-        $("#pageEditForm button[type='submit']").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
         BrowserHealth.current().settle();
     }
 

@@ -167,6 +167,7 @@ public final class McpToolCatalog {
                     + "they are managed in the admin UI.", false,
                     action("list", "List users and their roles; filter by q (name, email) and kind (people, agents, "
                             + "all).", "GET /v1/admin/users"),
+                    action("get", "One account by user name.", "GET /v1/admin/users/{userName}"),
                     action("create", "Create an account; it is emailed a link to set its password.",
                             "POST /v1/admin/users"),
                     action("update", "Change a non-admin account's screen name, full name, locale, time zone, "
@@ -207,6 +208,9 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),
             new Exclusion("GET /v1/ping", "Unauthenticated liveness check; nothing for an agent."),
+            new Exclusion("GET /v1/admin/site-pages",
+                    "Operator screen: the Global Config front-door choices; an agent reads the site space's "
+                    + "pages in the admin UI, which the API withholds by design."),
             new Exclusion("GET /v1/admin/config/definitions",
                     "Operator screen: how the Global Config page draws its form (groups, labels, types); "
                     + "an agent reads the values with site_settings."),
@@ -227,6 +231,8 @@ public final class McpToolCatalog {
             sessionOnly("POST " + W + "/entries/{id}/send-newsletter"),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."),
+            new Exclusion("PUT " + W + "/media/{id}/content", "Multipart file replacement; a tool call carries "
+                    + "JSON. Import the new image by URL instead."),
             new Exclusion("GET /v1/meta/weblog-options", "A screen's picker (themes with previews, every locale and "
                     + "time zone); creating a weblog with a wrong theme answers with the themes on offer."),
             new Exclusion("GET " + W + "/themes", "A screen's picker; changing the theme with a wrong one answers "

@@ -25,6 +25,7 @@ import java.util.List;
 
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -174,14 +175,7 @@ class ThemeMatrixIT extends PressroomIT {
     private String createWeblog(String themeId) {
         String handle = "thememx" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Theme Matrix " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue(themeId);
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Theme Matrix " + handle, themeId);
         return handle;
     }
 
@@ -192,12 +186,12 @@ class ThemeMatrixIT extends PressroomIT {
      * default directory cannot already hold a {@code hawk.jpg} to collide with.
      */
     private String uploadImage(String handle) {
-        openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + handle);
+        openPath(com.wikantik.pressroom.it.support.PagesMediaApp.mediaUpload(handle));
         $("#uploadedFiles").should(exist).uploadFile(testImage());
         $("#uploadButton").click();
 
-        $("button[formaction$='entryAddWithMediaFile.rol']").should(exist);
-        String mediaFileId = $("input[name='selectedImages']").should(exist).getValue();
+        $("#createPostButton").should(exist);
+        String mediaFileId = $("#entry input[type='checkbox']").should(exist).getValue();
         assertNotNull(mediaFileId, "the upload success page must carry the new file's id");
         return mediaFileId;
     }
@@ -207,7 +201,7 @@ class ThemeMatrixIT extends PressroomIT {
      * permalink.
      */
     private String publishRichEntry(String handle, String title, String mediaFileId) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("<p>Fixture body for the theme matrix.</p>"
@@ -217,7 +211,7 @@ class ThemeMatrixIT extends PressroomIT {
                         + "<p>[map][pin lat=\"48.8584\" lng=\"2.2945\" label=\"Eiffel Tower\"][/map]</p>"
                         + "<p>[faq][q]How do I get there?[/q][a]By train.[/a][/faq]</p>");
 
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
 
         String permalink = $(PERMALINK).getAttribute("href");

@@ -1,5 +1,7 @@
 # Comments (reader)
 
+> The moderation screen (`Comments.jsp`, `CommentsModerationController`) is a React screen since wave 1 (docs/dev/admin-ui.md, "Wave 1 screens"); references below to them describe deleted code. The API and the rules hold.
+
 Comments by signed-in readers, shipped 2026-10-12. Spec and acceptance
 criteria: `docs/superpowers/specs/2026-10-12-reader-comments-design.md`
 (rulings R3 to R7 below amend it where the code differs). Readers get their
@@ -165,8 +167,8 @@ by every controller in `ReaderRefusalSweepTest`.
   comment becomes or stops being PUBLISHED, a PUBLISHED comment is deleted, a
   reply is added or deleted, or a commenter with published comments renames
   (every weblog where they have one: `expireWhereShown`). A rename can come from
-  the account page, Profile (`ProfileController`) or User Admin
-  (`UserEditController`); each expires after its save commits. A PENDING
+  the account page, Profile (`MeProfileApi`) or User Admin
+  (`AdminApi`); each expires after its save commits. A PENDING
   comment changes no page and expires nothing.
 - Trashed entries render no page and their comments survive a restore;
   deleting an entry outright deletes them.

@@ -146,6 +146,40 @@ class MediaListFilterTest {
         oneField(refused("?type=pdf"), "type", "parameter.invalidValue", "type has an invalid value.");
     }
 
+    @Test
+    void largerThanAndTagsGoToTheManagersSearchSoThePageHoldsTheMatches() throws Exception {
+        when(files.searchMediaFiles(eq(weblog), any())).thenReturn(List.of(file(photos, "beach.jpg", "image/jpeg", 1)));
+
+        assertEquals(List.of("beach.jpg"), names(list("?largerThan=2048&tags=sea&tags=sun")));
+
+        MediaFileFilter filter = searched();
+        assertEquals(2048, filter.getSize());
+        assertEquals(MediaFileFilter.SizeFilterType.GT, filter.getSizeFilterType(), "strictly larger, as the screen said");
+        assertEquals(List.of("sea", "sun"), filter.getTags());
+    }
+
+    @Test
+    void tagsMayBeCommaSeparatedAndBlankOnesAreDropped() throws Exception {
+        when(files.searchMediaFiles(eq(weblog), any())).thenReturn(List.of());
+
+        list("?tags=sea,sun&tags=");
+
+        assertEquals(List.of("sea", "sun"), searched().getTags());
+    }
+
+    @Test
+    void aSizeOrTagsAloneIsASearchEvenWithADirectory() throws Exception {
+        when(files.searchMediaFiles(eq(weblog), any())).thenReturn(List.of(
+                file(photos, "beach.jpg", "image/jpeg", 1), file(other, "bean.jpg", "image/jpeg", 2)));
+
+        assertEquals(List.of("beach.jpg"), names(list("?largerThan=1&directoryId=photos-id")));
+    }
+
+    @Test
+    void aNegativeLargerThanIsA400NamingTheParameter() throws Exception {
+        oneField(refused("?largerThan=-1"), "largerThan", "parameter.invalidValue", "largerThan has an invalid value.");
+    }
+
     private JsonNode refused(String query) throws Exception {
         String body = mvc.perform(get("/v1/weblogs/myblog/media" + query).requestAttr("actionWeblog", weblog))
                 .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();

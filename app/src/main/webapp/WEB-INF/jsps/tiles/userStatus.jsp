@@ -41,7 +41,7 @@
     <c:when test="${authenticatedUser != null}">
         <span class="visually-hidden"><spring:message code="mainPage.loggedInAs"/>:</span>
         <div class="rail-context-name">
-            <a href="<c:url value="/pressroom-ui/profile.rol"/>">${fn:escapeXml(authenticatedUser.userName)}</a>
+            <a href="<c:url value="/pressroom-ui/app/profile"/>">${fn:escapeXml(authenticatedUser.userName)}</a>
         </div>
     </c:when>
 </c:choose>

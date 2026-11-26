@@ -83,6 +83,9 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
             @RequestParam(value = "entryId", required = false) String entryId,
             @Parameter(description = "Deprecated: the old name of entryId.")
             @RequestParam(value = "entry", required = false) String entryAlias,
+            @Parameter(description = "true leaves replies out of the items and the total: only the readers' own "
+                    + "comments, as the entry page's heading counts them.")
+            @RequestParam(value = "topLevel", defaultValue = "false") boolean topLevel,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
         Paging.requireRange(limit, offset);
@@ -98,12 +101,16 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         }
         int bounded = Math.min(limit, MAX_LIMIT);
         // One extra row decides hasMore without a count query.
-        List<ReaderComment> found = weblogger.getCommentManager()
-                .getComments(weblog, wanted, entry, offset, bounded + 1);
+        List<ReaderComment> found = topLevel
+                ? weblogger.getCommentManager().getComments(weblog, wanted, entry, true, offset, bounded + 1)
+                : weblogger.getCommentManager().getComments(weblog, wanted, entry, offset, bounded + 1);
+        long total = topLevel
+                ? weblogger.getCommentManager().countComments(weblog, wanted, entry, true)
+                : weblogger.getCommentManager().countComments(weblog, wanted, entry);
         boolean hasMore = found.size() > bounded;
         List<CommentDtos.CommentView> items = (hasMore ? found.subList(0, bounded) : found).stream()
                 .map(CommentDtos::toView).toList();
-        return new CommentDtos.CommentPage(items, offset, bounded, hasMore);
+        return new CommentDtos.CommentPage(items, offset, bounded, hasMore, total);
     }
 
     @Operation(operationId = "commentsGet")

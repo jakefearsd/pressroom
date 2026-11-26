@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../context';
 import { call } from './client';
-import type { components } from './schema';
+import type { components, paths } from './schema';
 
 export type MediaView = components['schemas']['MediaView'];
 export type MediaPatch = components['schemas']['MediaPatch'];
@@ -15,7 +15,13 @@ export interface MediaFilter {
   q?: string | undefined;
   type?: string | undefined;
   sort?: string | undefined;
+  /** Only files strictly larger than this many bytes. */
+  largerThan?: number | undefined;
+  /** Only files carrying any of these tags. */
+  tags?: readonly string[] | undefined;
 }
+
+type MediaQuery = NonNullable<paths['/v1/weblogs/{handle}/media']['get']['parameters']['query']>;
 
 const mediaKey = (handle: string) => ['media', handle] as const;
 
@@ -31,11 +37,12 @@ export function useDirectories(handle: string) {
 /** The files a filter keeps (every file, unpaged, as the Media Files screen lists them). */
 export function useMediaList(handle: string, filter: MediaFilter, enabled = true) {
   const api = useApi();
-  const query = Object.fromEntries(Object.entries(filter).filter(([, v]) => v !== undefined && v !== ''));
+  const query = Object.fromEntries(Object.entries(filter).filter(([, v]) =>
+    v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)));
   return useQuery({
     queryKey: [...mediaKey(handle), 'list', query],
     enabled,
-    queryFn: () => call(api.GET('/v1/weblogs/{handle}/media', { params: { path: { handle }, query } }))
+    queryFn: () => call(api.GET('/v1/weblogs/{handle}/media', { params: { path: { handle }, query: query as MediaQuery } }))
   });
 }
 

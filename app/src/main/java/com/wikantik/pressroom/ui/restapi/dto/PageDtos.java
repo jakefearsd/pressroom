@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
@@ -61,7 +62,14 @@ public final class PageDtos {
                             @Schema(description = "A strand's parts, every member in order, drafts and the trash "
                                     + "included; empty for a page that is not a strand. Change them with "
                                     + "PUT .../pages/{id}/parts.")
-                            List<PartView> parts) {
+                            List<PartView> parts,
+                            @Schema(description = "The page's absolute web address as readers reach it (the blog's "
+                                    + "root for its front page, the site root for the front-door page); absent when "
+                                    + "it cannot be built.")
+                            String absoluteUrl,
+                            @Schema(description = "True for the site page that is served at the site root instead "
+                                    + "of at its slug: the front-door page, which only the site space has.")
+                            boolean frontDoor) {
     }
 
     /**
@@ -153,6 +161,11 @@ public final class PageDtos {
      * since this pure mapper makes no manager lookup.
      */
     public static PageView toView(WeblogPage page, List<WeblogEntry> parts) {
+        return toView(page, parts, null);
+    }
+
+    /** {@link #toView(WeblogPage, List)} with the page's {@code absoluteUrl}, which only the URL strategy can build. */
+    public static PageView toView(WeblogPage page, List<WeblogEntry> parts, String absoluteUrl) {
         return new PageView(
                 page.getId(),
                 page.getSlug(),
@@ -170,7 +183,10 @@ public final class PageDtos {
                 EntryDtos.contentHash(page.getContent()),
                 instant(page.getTrashedAt()),
                 Boolean.TRUE.equals(page.getStrand()),
-                parts.stream().map(PageDtos::toPartView).toList());
+                parts.stream().map(PageDtos::toPartView).toList(),
+                absoluteUrl,
+                page.getWeblog() != null && page.getWeblog().isSiteSpace()
+                        && WebloggerRuntimeConfig.isFrontDoorPage(page.getSlug()));
     }
 
     private static PartView toPartView(WeblogEntry entry) {

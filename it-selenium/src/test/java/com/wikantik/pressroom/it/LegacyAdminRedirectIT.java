@@ -119,6 +119,130 @@ class LegacyAdminRedirectIT extends PressroomIT {
         logout();
     }
 
+    @Test
+    void pagesAndTheirTrashAndEditorGoToTheReactScreens() throws Exception {
+        loginAsAdmin();
+        assertRedirect("/pressroom-ui/authoring/pages.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages");
+        assertRedirect("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/trash");
+        assertRedirect("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/new");
+        assertRedirect("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE + "&id=abc",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/abc");
+
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages"));
+        $("#pages-list-marker").should(exist);
+
+        openPath("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + WEBLOG_HANDLE);
+        $("#pages-trash-list-marker").should(exist);
+
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/new"));
+        $("#pageEditForm").should(exist);
+        logout();
+    }
+
+    @Test
+    void mediaScreensCarryTheFolderAndTheOverlayOpensTheLibrary() throws Exception {
+        loginAsAdmin();
+        assertRedirect("/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
+                        + "&directoryId=d1&sortBy=type&directoryName=ignored",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media?dir=d1&sort=type");
+        assertRedirect("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/upload");
+        assertRedirect("/pressroom-ui/authoring/mediaFileEdit.rol?weblog=" + WEBLOG_HANDLE + "&mediaFileId=m1",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/m1");
+        assertRedirect("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media");
+
+        openPath("/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE);
+        $("#mediaFileSearchForm").should(exist);
+        openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/upload"));
+        $("#mediaDropZone").should(exist);
+        logout();
+    }
+
+    /** Wave 4, site admin: each old route answers 302 and the browser lands on the React screen's own marker. */
+    @Test
+    void theSiteAdminScreensRedirectToTheirReactRoutes() throws Exception {
+        loginAsAdmin();
+        String[][] rows = {
+            {"/pressroom-ui/admin/globalConfig.rol", "/pressroom-ui/app/admin/config", ".settings-rail"},
+            {"/pressroom-ui/setup.rol", "/pressroom-ui/app/admin/setup", "h2.setup-section-title"},
+            {"/pressroom-ui/admin/businesses.rol", "/pressroom-ui/app/admin/businesses", "#businesses-list-marker"},
+            {"/pressroom-ui/admin/businesses!edit.rol", "/pressroom-ui/app/admin/businesses/new", "#bean_name"},
+            {"/pressroom-ui/admin/maintenance.rol", "/pressroom-ui/app/admin/maintenance", "#maintenanceWeblog"},
+            {"/pressroom-ui/admin/apiTokens.rol", "/pressroom-ui/app/admin/tokens", "#apiTokensPage"},
+        };
+        for (String[] row : rows) {
+            assertRedirect(row[0], row[1]);
+            openPath(row[0]);
+            webdriver().shouldHave(url(baseUrl() + row[1]));
+            $(row[2]).should(exist);
+        }
+        logout();
+    }
+
+    /** Wave 4, people: the old user, agent and profile routes carry their names and tabs to the React routes. */
+    @Test
+    void thePeopleAndProfileScreensRedirectToTheirReactRoutes() throws Exception {
+        loginAsAdmin();
+        String[][] rows = {
+            {"/pressroom-ui/admin/userAdmin.rol?kind=agents&q=it", "/pressroom-ui/app/admin/users?kind=agents&q=it",
+                "#userListPage"},
+            {"/pressroom-ui/admin/createUser.rol", "/pressroom-ui/app/admin/users/new", "input[name='bean.userName']"},
+            {"/pressroom-ui/admin/modifyUser!cancel.rol", "/pressroom-ui/app/admin/users", "#userListPage"},
+            {"/pressroom-ui/admin/modifyUser.rol?bean.userName=" + ADMIN_USERNAME,
+                "/pressroom-ui/app/admin/users/" + ADMIN_USERNAME, "input[name='bean.userName']"},
+            {"/pressroom-ui/admin/createAgent.rol", "/pressroom-ui/app/admin/agents/new", "#agentCreateForm"},
+            {"/pressroom-ui/admin/agent.rol?userName=it_agent", "/pressroom-ui/app/admin/agents/it_agent",
+                "#agentPage"},
+            {"/pressroom-ui/profile.rol", "/pressroom-ui/app/profile", "input#userName[readonly]"},
+            {"/pressroom-ui/profileTokens.rol", "/pressroom-ui/app/profile/tokens", "#profileTokensPage"},
+            {"/pressroom-ui/profileTokens!reveal.rol", "/pressroom-ui/app/profile/tokens", "#profileTokensPage"},
+        };
+        for (String[] row : rows) {
+            assertRedirect(row[0], row[1]);
+            openPath(row[0]);
+            $(row[2]).should(exist);
+        }
+        logout();
+    }
+
+    /** Wave 1: the entry screens' old URLs, raw (status and Location) and in the browser (the screen's marker). */
+    @Test
+    void theEntryScreensKeepTheirOldUrls() throws Exception {
+        loginAsAdmin();
+        String app = "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE;
+        String legacy = "/pressroom-ui/authoring/";
+        String weblog = "?weblog=" + WEBLOG_HANDLE;
+        assertRedirect(legacy + "entries.rol" + weblog + "&bean.status=DRAFT&bean.text=rome&bean.page=2",
+                app + "/entries?status=DRAFT&text=rome");
+        assertRedirect(legacy + "entryAdd.rol" + weblog, app + "/entries/new");
+        assertRedirect(legacy + "entryEdit.rol" + weblog + "&bean.id=abc", app + "/entries/abc");
+        assertRedirect(legacy + "entryAddWithMediaFile.rol" + weblog + "&selectedImage=m1", app + "/entries/new?mediaId=m1");
+        assertRedirect(legacy + "trash.rol" + weblog, app + "/trash");
+        assertRedirect(legacy + "comments.rol" + weblog + "&status=HIDDEN&entry=e1", app + "/comments?status=HIDDEN&entry=e1");
+        assertRedirect(legacy + "categories.rol" + weblog, app + "/categories");
+
+        openPath(legacy + "entries.rol" + weblog);
+        webdriver().shouldHave(url(baseUrl() + app + "/entries"));
+        $("#entries-list-marker").should(exist);
+        openPath(legacy + "entryAdd.rol" + weblog);
+        webdriver().shouldHave(url(baseUrl() + app + "/entries/new"));
+        $("form#entry").should(exist);
+        openPath(legacy + "trash.rol" + weblog);
+        $("#trash-list-marker").should(exist);
+        openPath(legacy + "comments.rol" + weblog);
+        $("#comments-list-marker").should(exist);
+        openPath(legacy + "categories.rol" + weblog);
+        $("table#category-table").should(exist);
+        logout();
+    }
+
     /** A bookmark followed while signed out goes to sign in, and the sign-in returns to the new screen. */
     @Test
     void anOldBookmarkWhileSignedOutSignsInAndArrivesAtTheNewScreen() {

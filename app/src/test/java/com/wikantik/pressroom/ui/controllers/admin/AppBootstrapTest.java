@@ -15,7 +15,7 @@ class AppBootstrapTest {
     void aScreenNameCannotBreakOutOfTheScriptElement() throws Exception {
         String hostile = "</script><b>x</b> & <!--   ";
         AppBootstrap.Site site = new AppBootstrap.Site(hostile, "Short", "site-space");
-        AppBootstrap bootstrap = new AppBootstrap("/pressroom", "1.2.3", "X-CSRF-TOKEN", "tok",
+        AppBootstrap bootstrap = new AppBootstrap("/pressroom", "1.2.3", "X-CSRF-TOKEN", "tok", 1800,
                 "jake", hostile, "en", "admin", "en", "/pressroom/pressroom-ui/app-messages.rol?locale=en&v=1.2.3",
                 site, new Colophon("1.2.3", "abc1234", "2026-11-20", null, hostile, 2026, "https://x.test/privacy"));
 
@@ -31,6 +31,7 @@ class AppBootstrapTest {
         assertEquals("1.2.3", parsed.get("version").asString());
         assertEquals("X-CSRF-TOKEN", parsed.get("csrf").get("headerName").asString());
         assertEquals("tok", parsed.get("csrf").get("token").asString());
+        assertEquals(1800, parsed.get("sessionTimeoutSeconds").asInt());
         assertEquals("admin", parsed.get("user").get("globalPermission").asString());
         assertEquals("jake", parsed.get("user").get("userName").asString());
         assertEquals("en", parsed.get("user").get("locale").asString());
@@ -50,7 +51,7 @@ class AppBootstrapTest {
 
     @Test
     void aColophonFactThatIsNotKnownIsLeftOutNotWrittenEmpty() throws Exception {
-        AppBootstrap bootstrap = new AppBootstrap("", "1", "H", "t", "u", "U", "en", "editor", "en", "/m",
+        AppBootstrap bootstrap = new AppBootstrap("", "1", "H", "t", 0, "u", "U", "en", "editor", "en", "/m",
                 new AppBootstrap.Site("Pressroom", "Pressroom", "site-space"),
                 new Colophon("", "", null, null, "", 2026, null));
 

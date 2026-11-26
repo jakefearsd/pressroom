@@ -50,7 +50,7 @@ describe('Home (the main menu)', () => {
     await screen.findByText('Limited Blog');
     const actions = row('Limited Blog');
     expect(within(actions).getByRole('link', { name: 'New entry' }))
-      .toHaveAttribute('href', `${LEGACY}/authoring/entryAdd.rol?weblog=lim`);
+      .toHaveAttribute('href', '/weblogs/lim/entries/new');
     expect(within(actions).getAllByRole('link').map((a) => a.textContent)).toEqual(['Limited Blog', 'New entry']);
   });
 
@@ -59,11 +59,11 @@ describe('Home (the main menu)', () => {
     await screen.findByText('Author Blog');
     const actions = row('Author Blog');
     const entries = within(actions).getByRole('link', { name: /^Entries/ });
-    expect(entries).toHaveAttribute('href', `${LEGACY}/authoring/entries.rol?weblog=auth`);
+    expect(entries).toHaveAttribute('href', '/weblogs/auth/entries');
     expect(entries.querySelector('.data')).toHaveTextContent('12');
     const pill = within(actions).getByRole('link', { name: '3 awaiting approval' });
     expect(pill).toHaveClass('status-pill', 'status-pending');
-    expect(pill).toHaveAttribute('href', `${LEGACY}/authoring/comments.rol?weblog=auth`);
+    expect(pill).toHaveAttribute('href', '/weblogs/auth/comments');
     expect(within(actions).queryByRole('link', { name: 'Settings' })).toBeNull();
     expect(within(actions).queryByRole('link', { name: 'Theme' })).toBeNull();
   });
@@ -79,9 +79,9 @@ describe('Home (the main menu)', () => {
     home = { weblogs: [owner, { ...owner, handle: 'cus', name: 'Custom Blog', theme: 'custom' }] };
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     await screen.findByText('Custom Blog');
-    expect(within(row('Owner Blog')).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', `${LEGACY}/authoring/themeEdit.rol?weblog=own`);
-    expect(within(row('Owner Blog')).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', `${LEGACY}/authoring/weblogConfig.rol?weblog=own`);
-    expect(within(row('Custom Blog')).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', `${LEGACY}/authoring/templates.rol?weblog=cus`);
+    expect(within(row('Owner Blog')).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', '/weblogs/own/theme');
+    expect(within(row('Owner Blog')).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/weblogs/own/settings');
+    expect(within(row('Custom Blog')).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', '/weblogs/cus/templates');
   });
 
   it('leaves out the Theme link of a custom-theme weblog when custom themes are switched off', async () => {
@@ -116,9 +116,9 @@ describe('Home (the main menu)', () => {
     renderRoutes(appRoutes, '/', { boot: adminBoot });
     const site = (await screen.findByRole('heading', { level: 2, name: 'Site' })).closest('.weblog-row') as HTMLElement;
     expect(site).toHaveClass('site-row');
-    expect(within(site).getByRole('link', { name: 'Pages' })).toHaveAttribute('href', `${LEGACY}/authoring/pages.rol?weblog=site-space`);
-    expect(within(site).getByRole('link', { name: 'Media' })).toHaveAttribute('href', `${LEGACY}/authoring/mediaFileView.rol?weblog=site-space`);
-    expect(within(site).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', `${LEGACY}/authoring/themeEdit.rol?weblog=site-space`);
+    expect(within(site).getByRole('link', { name: 'Pages' })).toHaveAttribute('href', '/weblogs/site-space/pages');
+    expect(within(site).getByRole('link', { name: 'Media' })).toHaveAttribute('href', '/weblogs/site-space/media');
+    expect(within(site).getByRole('link', { name: 'Theme' })).toHaveAttribute('href', '/weblogs/site-space/theme');
   });
 
   it('shows no Site section without a site space', async () => {

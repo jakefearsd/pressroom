@@ -47,6 +47,8 @@ public final class EntryDtos {
             .field("eventStart", e -> e.setEventStart(null))
             .field("eventEnd", e -> e.setEventEnd(null))
             .field("eventLocation", e -> e.setEventLocation(null))
+            // A draft goes back to having no publish time; a PUBLISHED write re-stamps it as now.
+            .field("pubTime", e -> e.setPubTime(null))
             // Both fields, as WeblogEntryManager.leaveStrand clears them.
             .field("strand", e -> {
                 e.setStrandPageId(null);

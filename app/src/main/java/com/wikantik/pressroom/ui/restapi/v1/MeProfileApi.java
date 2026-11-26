@@ -76,7 +76,7 @@ public class MeProfileApi {
         }
         return ResponseEntity.ok(new MetaDtos.ProfileView(user.getUserName(), user.getScreenName(),
                 user.getFullName(), user.getEmailAddress(), user.getLocale(), user.getTimeZone(),
-                user.getKind().name()));
+                user.getKind().name(), user.isSsoBound()));
     }
 
     /**

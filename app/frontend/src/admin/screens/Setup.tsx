@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { useAccountCount, useAllWeblogs, useConfig, useSaveSettings } from '../api/siteQueries';
 import { ProblemBanner } from '../components/ProblemBanner';
 import { Markup } from '../components/Markup';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
-import { useBoot } from '../context';
 import { useT } from '../i18n/messages';
 
 const BLOG = 'site.frontpage.weblog.handle';
@@ -13,7 +13,6 @@ const AGGREGATED = 'site.frontpage.weblog.aggregated';
 /** Setup.jsp: the install checklist (a user, a weblog) and the front page weblog choice. */
 export function Setup() {
   const t = useT();
-  const boot = useBoot();
   const accounts = useAccountCount();
   const weblogs = useAllWeblogs();
   const config = useConfig();
@@ -41,9 +40,7 @@ export function Setup() {
     setSaved(false);
     save.mutate({ [BLOG]: blog, [AGGREGATED]: String(aggregated) }, { onSuccess: () => { setSaved(true); } });
   };
-  const link = (id: string, path: string, text: string) => (
-    <a id={id} href={`${boot.contextPath}${path}`}>{text}</a>
-  );
+  const link = (id: string, to: string, text: string) => <Link id={id} to={to}>{text}</Link>;
 
   return (
     <>
@@ -65,7 +62,7 @@ export function Setup() {
               <p><Markup text={t('index.createUserHelp')} /></p>
               <p>
                 {userCount === 0 ? (
-                  <>{t('index.createUserBy')}{link('a_createUser', '/pressroom-ui/admin/createUser.rol', t('index.createUserPage'))}.</>
+                  <>{t('index.createUserBy')}{link('a_createUser', '/admin/users/new', t('index.createUserPage'))}.</>
                 ) : null}
               </p>
             </div>
@@ -81,7 +78,7 @@ export function Setup() {
             <div className="card-body">
               <p><Markup text={t('index.createWeblogHelp')} /></p>
               {userCount > 0 && blogCount === 0 ? (
-                <>{t('index.createWeblogBy')}{link('a_createBlog', '/pressroom-ui/createWeblog.rol', t('index.createWeblogPage'))}.</>
+                <>{t('index.createWeblogBy')}{link('a_createBlog', '/weblogs/new', t('index.createWeblogPage'))}.</>
               ) : null}
             </div>
           </div>

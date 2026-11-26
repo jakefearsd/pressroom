@@ -161,6 +161,9 @@ export function buildWrite(form: EntryForm, ctx: WriteContext): EntryWrite {
     : publishedSoon(form.pubTime, ctx.tz, ctx.now) ? 'SCHEDULED' : 'PUBLISHED';
   if (form.pubTime !== '') {
     body.pubTime = form.pubTime;
+  } else if (original?.pubTime !== undefined) {
+    // An emptied box: a draft goes back to having none, a publish means now (the API's clear.pubTime).
+    clear.push('pubTime');
   }
   if (form.category !== '') {
     body.category = form.category;

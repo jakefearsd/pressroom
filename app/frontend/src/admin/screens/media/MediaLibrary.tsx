@@ -13,7 +13,7 @@ import { useBoot } from '../../context';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { useT } from '../../i18n/messages';
 import { useWeblogRights } from '../../lib/permission';
-import { isImage, splitTags, thumbnailUrl } from './shared';
+import { isImage, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 const SORTS = ['name', 'date_uploaded', 'type'] as const;
 const UNIT_BYTES: Record<string, number> = { bytes: 1, kb: 1024, mb: 1024 * 1024 };
@@ -34,13 +34,11 @@ const readCriteria = (params: URLSearchParams): Criteria => ({
 const sizeOf = (c: Criteria): number => Math.max(0, Number(c.size) || 0);
 const isSearch = (c: Criteria): boolean => c.q.trim() !== '' || c.type !== '' || sizeOf(c) > 0 || c.tags.trim() !== '';
 
-/** The search criteria the API cannot filter (size, tags) applied to what it returned. */
-export function narrow(files: readonly MediaView[], c: Criteria): MediaView[] {
-  const min = sizeOf(c) * (UNIT_BYTES[c.unit] ?? 1);
-  const wanted = splitTags(c.tags.toLowerCase());
-  return files.filter((f) => (min === 0 || (f.length ?? 0) > min)
-    && wanted.every((tag) => (f.tags ?? []).some((have) => have.toLowerCase() === tag)));
-}
+/** The size filter in bytes (the form says KB or MB; the API takes bytes), or undefined for none. */
+const largerThan = (c: Criteria): number | undefined => {
+  const bytes = Math.round(sizeOf(c) * (UNIT_BYTES[c.unit] ?? 1));
+  return bytes > 0 ? bytes : undefined;
+};
 
 function Tile({ file, selectable, selected, onToggle, onOpen }: {
   file: MediaView; selectable: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
@@ -106,10 +104,12 @@ export function MediaLibrary() {
   const sort = SORTS.find((s) => s === params.get('sort')) ?? 'name';
   const list = useMediaList(
     handle,
-    searching ? { q: criteria.q.trim(), type: criteria.type, sort } : { directoryId: dirId, sort },
+    searching
+      ? { q: criteria.q.trim(), type: criteria.type, sort, largerThan: largerThan(criteria), tags: splitTags(criteria.tags.toLowerCase()) }
+      : { directoryId: dirId, sort },
     dirs.isSuccess && (searching || dirId !== undefined)
   );
-  const files = searching ? narrow(list.data?.items ?? [], criteria) : (list.data?.items ?? []);
+  const files = list.data?.items ?? [];
 
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [moveTo, setMoveTo] = useState('');
@@ -140,6 +140,11 @@ export function MediaLibrary() {
     }
     setSelected(new Set());
     setParams(merged);
+  };
+  // The site space has no posts, so it offers no entry to start from files.
+  const siteSpace = handle === boot.site.siteSpaceHandle;
+  const newEntry = () => {
+    void navigate(newEntryPath(handle, selected));
   };
   const openFile = (file: MediaView) => { void navigate(`/weblogs/${encodeURIComponent(handle)}/media/${encodeURIComponent(file.id ?? '')}`); };
   const toggle = (id: string) => {
@@ -176,18 +181,11 @@ export function MediaLibrary() {
       t('mediaFile.move.success'), t('mediaFile.move.errors'));
   };
 
+  // Offered only for an empty folder, so the API's refusals (a default or non-empty folder) are not reachable
+  // from here; one that comes anyway (another tab filled it) is shown in place.
   const deleteFolder = async () => {
     setConfirm(null);
     if (current === undefined) {
-      return;
-    }
-    // The server refuses a non-empty folder (directory.notEmpty): the confirmed delete empties it first.
-    const ids = files.map((f) => f.id ?? '');
-    const results = await runBulk(ids, actions.remove);
-    const failed = failures(results);
-    if (failed.length > 0) {
-      await actions.refresh();
-      report([], [t('mediaFile.deleteFolder.error'), ...failed]);
       return;
     }
     try {
@@ -412,10 +410,12 @@ export function MediaLibrary() {
                           onChange={(e) => { setMoveTo(e.target.value); }}>
                     {folderOptions}
                   </select>
-                  <button id="newEntryButton" type="submit" form="createPostForm" className="btn btn-secondary"
-                          disabled={selected.size === 0}>
-                    {t('mediaFileView.newEntryWithSelected')}
-                  </button>
+                  {siteSpace ? null : (
+                    <button id="newEntryButton" type="button" className="btn btn-secondary"
+                            disabled={selected.size === 0} onClick={() => { newEntry(); }}>
+                      {t('mediaFileView.newEntryWithSelected')}
+                    </button>
+                  )}
                   <button id="deleteButton" type="button" className="btn btn-danger"
                           disabled={selected.size === 0 || progress !== null} onClick={() => { setConfirm('delete'); }}>
                     {t('mediaFileView.deleteSelected')}
@@ -425,7 +425,7 @@ export function MediaLibrary() {
             </>
           )}
 
-          {canManage && current !== undefined && current.name !== 'default' && !searching ? (
+          {canManage && current !== undefined && current.name !== 'default' && current.fileCount === 0 && !searching ? (
             <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
               <button id="deleteFolderButton" type="button" className="btn btn-secondary"
                       onClick={() => { setConfirm('folder'); }}>{t('mediaFileView.deleteFolder')}</button>
@@ -442,12 +442,6 @@ export function MediaLibrary() {
           </button>
         </EmptyState>
       ) : null}
-
-      <form id="createPostForm" method="post" action={`${boot.contextPath}/pressroom-ui/authoring/entryAddWithMediaFile.rol`}>
-        <input type="hidden" name="weblog" value={handle} />
-        {[...selected].map((id) => <input key={id} type="hidden" name="selectedImages" value={id} />)}
-        <input type="hidden" name="_csrf" value={boot.csrf.token} />
-      </form>
 
       {canManage && current !== undefined && !searching ? (
         <div id="directoryPrivacyCard" className="card mt-3">

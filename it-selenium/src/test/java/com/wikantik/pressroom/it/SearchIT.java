@@ -25,7 +25,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,9 +67,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SearchIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
 
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     /** Generous: a background index operation competes with the whole suite. */
     private static final Duration INDEX_TIMEOUT = Duration.ofSeconds(45);
@@ -324,37 +326,30 @@ class SearchIT extends PressroomIT {
 
     private void savePage(String handle, String slug, String title, String body, boolean noindex) {
         loginAsAdmin();
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue(slug);
         $("#page_bean_title").setValue(title);
         Editor.setText(body);
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
         if (noindex) {
-            $("a[data-bs-target='#collapseSeo']").click();
+            $("button[aria-controls='collapseSeo']").click();
             $("#seo_noindex").should(visible).click();
         }
-        clickAndAwaitNewPage($("#pageSaveButton"));
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
     }
 
     private String createWeblog(String name) {
         loginAsAdmin();
         String handle = "box" + nonce();
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue(name);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, name, "journal");
         return handle;
     }
 
     private void publishEntryOn(String handle, String title, String body) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         writeEntry(title, body);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
     }
 
@@ -433,7 +428,7 @@ class SearchIT extends PressroomIT {
     private String publishEntry(String title, String body) {
         openPath(ENTRY_ADD);
         writeEntry(title, body);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         return entryId();
     }
@@ -441,29 +436,26 @@ class SearchIT extends PressroomIT {
     private void saveDraft(String title, String body) {
         openPath(ENTRY_ADD);
         writeEntry(title, body);
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
+        AdminApp.saveDraftButton().click();
+        AdminApp.savedEntryId();
     }
 
     private void writeEntry(String title, String body) {
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
+        AdminApp.write(title, body);
     }
 
     private String entryId() {
-        String id = $("input[name='bean.id']").getValue();
-        assertNotNull(id, "the editor must expose the saved entry's id");
+        String id = AdminApp.savedEntryId();
+        assertNotNull(id, "the editor must be open on the saved entry");
         return id;
     }
 
     private void deleteEntry(String entryId) {
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
-        executeJavaScript("showDeleteModal(arguments[0], 'x');", entryId);
-        $("#delete-entry-modal").shouldBe(visible);
-        $("#delete-entry-modal button[type='submit']").click();
-        $("input[name='selectedEntries'][value='" + entryId + "']").should(
-                com.codeborne.selenide.Condition.disappear);
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        String link = "a.entry-title[href$='/entries/" + entryId + "']";
+        $(link).closest("tr").$("button.entry-delete-btn").shouldBe(visible).click();
+        AdminApp.confirmDialog();
+        $(link).should(com.codeborne.selenide.Condition.disappear);
     }
 
     private static void sleepFor(Duration duration) {

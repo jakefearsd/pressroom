@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { flashState } from '../../session/flash';
 import { call } from '../../api/client';
 import { ApiError } from '../../api/problem';
 import { PasswordField } from '../../components/PasswordFields';
@@ -50,11 +51,11 @@ function ProfileForm({ profile, options }: {
   const t = useT();
   const api = useApi();
   const queries = useQueryClient();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     screenName: profile.screenName ?? '', fullName: profile.fullName ?? '', emailAddress: profile.emailAddress ?? '',
     locale: profile.locale ?? '', timeZone: profile.timeZone ?? '', currentPassword: '', passwordText: '', passwordConfirm: ''
   });
-  const [notices, setNotices] = useState<string[]>([]);
   const [mismatch, setMismatch] = useState<ApiError | undefined>(undefined);
   const save = useAction(async () => {
     await call(api.PATCH('/v1/me/profile', {
@@ -72,15 +73,14 @@ function ProfileForm({ profile, options }: {
   const set = (key: keyof typeof form, value: string) => { setForm((f) => ({ ...f, [key]: value })); };
 
   const submit = async () => {
-    setNotices([]);
     if (form.passwordText !== '' && form.passwordText !== form.passwordConfirm) {
       setMismatch(new ApiError(400, 'client.passwordsNotSame', '', [{ field: 'passwordConfirm', message: t('yourProfile.passwordsNotSame') }]));
       return;
     }
     setMismatch(undefined);
     if ((await save.run()).ok) {
-      setForm((f) => ({ ...f, currentPassword: '', passwordText: '', passwordConfirm: '' }));
-      setNotices([t('generic.changes.saved')]);
+      // The JSP redirected to the main menu (now the app home) with its "changes saved" message.
+      void navigate('/', { state: flashState(t('generic.changes.saved')) });
     }
   };
 
@@ -97,7 +97,7 @@ function ProfileForm({ profile, options }: {
 
   return (
     <>
-      <ProblemBanner messages={notices} error={error} />
+      <ProblemBanner error={error} />
       <p className="subtitle">{t('yourProfile.subtitle')}</p>
       <form className="form-stacked" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <div className="row mb-3">
@@ -111,6 +111,8 @@ function ProfileForm({ profile, options }: {
         {row('fullName', t('userSettings.fullname'), { max: 255 })}
         {row('emailAddress', t('userSettings.email'), { max: 255 })}
 
+        {profile.sso ? null : (
+          <>
         <div className="row mb-3">
           <label className="col-sm-3 col-form-label" htmlFor="currentPassword">{t('yourProfile.currentPassword')}</label>
           <div className="col-sm-9">
@@ -134,6 +136,8 @@ function ProfileForm({ profile, options }: {
                            onChange={(v) => { set('passwordConfirm', v); }} />
           </div>
         </div>
+          </>
+        )}
 
         <div className="row mb-3">
           <label className="col-sm-3 col-form-label" htmlFor="locale">{t('userSettings.locale')}</label>

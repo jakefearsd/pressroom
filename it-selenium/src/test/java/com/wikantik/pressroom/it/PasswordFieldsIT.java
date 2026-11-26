@@ -165,7 +165,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void userEditorRevealsTheNewPassword() {
         loginAsAdmin();
-        openPath("/pressroom-ui/admin/createUser.rol");
+        openPath("/pressroom-ui/app/admin/users/new");
         $("#bean_password").setValue("for-someone-else");
         revealFor("bean_password").click();
         $("#bean_password").shouldHave(attribute("type", "text"), value("for-someone-else"));
@@ -174,7 +174,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void profileRevealsAllThreeFields() {
         loginAsAdmin();
-        openPath("/pressroom-ui/profile.rol");
+        openPath("/pressroom-ui/app/profile");
         for (String id : new String[] {"currentPassword", "passwordText", "passwordConfirm"}) {
             revealFor(id).click();
             $("#" + id).shouldHave(attribute("type", "text"));
@@ -188,7 +188,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void profileSaysWhetherTheNewPasswordsMatch() {
         loginAsAdmin();
-        openPath("/pressroom-ui/profile.rol");
+        openPath("/pressroom-ui/app/profile");
         $$(".password-match").shouldHave(size(1));
         SelenideElement line = $("#passwordConfirm-match");
         line.shouldHave(attribute("aria-live", "polite"), exactText(""));
@@ -204,7 +204,8 @@ class PasswordFieldsIT extends PressroomIT {
         // The two states must look different, not only read differently.
         assertNotEquals(mismatchColour, line.getCssValue("color"), "match and mismatch share a colour");
 
-        $("#passwordConfirm").setValue("");
+        // Typed away, not cleared by the driver: a driver clear fires no input event, so a React field keeps its state.
+        $("#passwordConfirm").sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.BACK_SPACE);
         line.shouldHave(exactText(""));
 
         $("#passwordConfirm").setValue("correct-horse-1");

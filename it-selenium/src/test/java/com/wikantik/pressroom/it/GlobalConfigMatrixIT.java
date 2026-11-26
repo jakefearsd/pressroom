@@ -23,6 +23,7 @@ import java.net.URL;
 import java.util.Map;
 
 import com.codeborne.selenide.CollectionCondition;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
                 "uploads.enabled", false,
                 "site.allowUserWeblogCreation", false));
         try {
-            openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
+            openPath(com.wikantik.pressroom.it.support.PagesMediaApp.mediaUpload(WEBLOG_HANDLE));
             $("#uploadedFiles").should(exist).uploadFile(testImage());
             $("#uploadButton").click();
             $("#errors").should(visible);
@@ -165,24 +166,17 @@ class GlobalConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "gcfg" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Global Config " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Global Config " + handle, "journal");
         return handle;
     }
 
     /** Publishes one entry and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");

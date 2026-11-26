@@ -205,14 +205,7 @@ class ThemeIT extends PressroomIT {
         String handle = "theme" + nonce();
 
         loginAsAdmin();
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Theme Blog " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue(themeId);
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Theme Blog " + handle, themeId);
         return handle;
     }
 

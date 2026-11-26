@@ -58,26 +58,6 @@ class MessageArgumentCommaTest {
         assertEquals("Delete Smith, Jones B&B?", render(List.of("Smith, Jones B&B")));
     }
 
-    /** Every site that passes free text a comma can occur in uses the list form. */
-    @Test
-    void freeTextArgumentsArePassedAsAList() throws IOException {
-        Map<String, String> sites = Map.of(
-                "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
-                "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
-                "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"");
-        List<String> missing = new ArrayList<>();
-        for (Map.Entry<String, String> site : sites.entrySet()) {
-            String src = Files.readString(JSPS.resolve(site.getKey()), StandardCharsets.UTF_8);
-            if (!src.contains(site.getValue())) {
-                missing.add(site.getKey() + " lacks " + site.getValue());
-            }
-        }
-        assertTrue(missing.isEmpty(), String.join("\n", missing));
-        assertTrue(Files.readString(JSPS.resolve("editor/MediaFileView.jsp"), StandardCharsets.UTF_8)
-                        .contains("arguments=\"${[fn:escapeXml(bean.tags)]}\""),
-                "MediaFileView.jsp: the tag search echo");
-    }
-
     private static String render(Object arguments) throws Exception {
         MockServletContext servletContext = new MockServletContext();
         StaticWebApplicationContext wac = new StaticWebApplicationContext();

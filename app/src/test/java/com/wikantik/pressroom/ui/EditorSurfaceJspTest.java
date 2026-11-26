@@ -44,8 +44,6 @@ class EditorSurfaceJspTest {
             Paths.get("src/main/webapp/WEB-INF/jsps/editor/EditorSurface.jsp");
     private static final Path SCRIPT =
             Paths.get("src/main/webapp/WEB-INF/jsps/editor/EditorScript.jsp");
-    private static final Path ENTRY_EDITOR =
-            Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEditor.jsp");
 
     private static String read(Path jsp) throws IOException {
         return Files.readString(jsp, StandardCharsets.UTF_8);
@@ -159,74 +157,14 @@ class EditorSurfaceJspTest {
                 "a refusal with no results must show the body's own detail: " + upload);
     }
 
-    /**
-     * A long title was cut off mid-word in a single-line input, on both
-     * editors. It is a one-row textarea that wraps and grows; the script
-     * keeps it one logical line (Enter moves on, a pasted break is a space).
-     */
     @Test
-    void aLongTitleWrapsInsteadOfBeingCutOff() throws IOException {
-        for (Path screen : new Path[]{
-                Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEdit.jsp"),
-                Paths.get("src/main/webapp/WEB-INF/jsps/editor/PageEdit.jsp")}) {
-            String jsp = read(screen);
-            int at = jsp.indexOf("class=\"editor-title\"");
-            assertTrue(at > 0, screen + ": the title field must exist");
-            String tag = jsp.substring(jsp.lastIndexOf('<', at), jsp.indexOf('>', at) + 1);
-            assertTrue(tag.startsWith("<textarea") && tag.contains("name=\"bean.title\"")
-                            && tag.contains("rows=\"1\""),
-                    screen + ": the title is a one-row textarea: " + tag);
-            assertTrue(jsp.contains("rows=\"1\"") && jsp.contains(">${fn:escapeXml(bean.title)}</textarea>"),
-                    screen + ": the title's text is the escaped textarea body, with no stray whitespace");
-            assertFalse(jsp.contains("input[name='bean.title']"),
-                    screen + ": a script still looks for the title as an input");
-        }
-        String fit = function(read(SCRIPT), "pressroomFitTitle");
-        assertTrue(fit.contains("scrollHeight"), "the title grows to its text: " + fit);
-        String js = read(SCRIPT);
-        assertTrue(js.contains("e.key === 'Enter' && !e.isComposing"),
-                "Enter leaves the title (but not mid-IME composition)");
-        assertTrue(read(Paths.get("src/main/webapp/pressroom-ui/styles/pressroom-editor.css"))
-                        .contains("textarea.editor-title"),
-                "the editor stylesheet takes the textarea's resize handle and scrollbar away");
-    }
-
-    @Test
-    void theWritingSurfaceAndTheSummaryHaveNames() throws IOException {
+    void theWritingSurfaceHasAName() throws IOException {
         String surface = read(SURFACE);
         int textarea = surface.indexOf("id=\"edit_content\"");
         assertTrue(textarea >= 0, "the editor's textarea must exist");
         String tag = surface.substring(surface.lastIndexOf("<textarea", textarea), surface.indexOf("</textarea>", textarea));
         assertTrue(tag.contains("aria-label=\"<spring:message code='editor.textLabel'/>\""),
                 "the editor's textarea carries the name editor.js hands the contenteditable: " + tag);
-        String entryEditor = read(ENTRY_EDITOR);
-        assertTrue(entryEditor.contains("id=\"edit_summary\"")
-                        && entryEditor.contains("aria-label=\"<spring:message code='weblogEdit.summary'/>\""),
-                "the summary textarea has no visible label of its own");
-        assertTrue(entryEditor.contains("<button type=\"button\" class=\"editor-drawer${empty bean.summary ? ' collapsed' : ''}\""),
-                "the summary drawer's toggle is a button, not an href=\"#\" anchor");
-    }
-
-    /**
-     * The summary is the line a list of entries shows under the title, and
-     * the drawer says so: a tip tied to the field with aria-describedby,
-     * naming the fallback. And an entry that has a summary opens with the
-     * drawer open, so a written summary is never out of sight.
-     */
-    @Test
-    void theSummaryDrawerSaysWhatItIsForAndOpensWhenThereIsOne() throws IOException {
-        String entryEditor = read(ENTRY_EDITOR);
-        int textarea = entryEditor.indexOf("id=\"edit_summary\"");
-        String tag = entryEditor.substring(entryEditor.lastIndexOf("<textarea", textarea),
-                entryEditor.indexOf(">", textarea));
-        assertTrue(tag.contains("aria-describedby=\"edit_summary_tip\""), "the tip names the field: " + tag);
-        assertTrue(tag.contains("rows=\"3\""), "a sentence or two, not a second editor: " + tag);
-        assertTrue(entryEditor.contains("<div id=\"edit_summary_tip\" class=\"form-text\">"
-                + "<spring:message code=\"weblogEdit.summary.tip\"/></div>"), entryEditor);
-        assertTrue(entryEditor.contains("<div id=\"collapseSummaryEditor\" class=\"collapse${empty bean.summary ? '' : ' show'}\">"),
-                "the drawer opens on an entry that has a summary");
-        assertTrue(entryEditor.contains("aria-expanded=\"${empty bean.summary ? 'false' : 'true'}\""),
-                "and its toggle says so");
     }
 
     /**
@@ -264,9 +202,6 @@ class EditorSurfaceJspTest {
         String surface = read(SURFACE);
         assertTrue(surface.contains("<c:when test=\"${editorNotYetSaved}\"><spring:message code=\"weblogEdit.unsaved\"/></c:when>"),
                 "the initial save state must honour editorNotYetSaved");
-        assertTrue(read(ENTRY_EDITOR).contains(
-                        "<c:set var=\"editorNotYetSaved\" scope=\"request\" value=\"${empty bean.id}\"/>"),
-                "the entry editor must say when its entry has no row yet");
     }
 
     /** The guide's two-key row keeps its space under JSP whitespace trimming. */

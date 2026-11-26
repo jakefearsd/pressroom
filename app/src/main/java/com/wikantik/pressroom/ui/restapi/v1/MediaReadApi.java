@@ -82,6 +82,12 @@ public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
             @Parameter(description = "Order by name (the default, ignoring case), date_uploaded (newest first) "
                     + "or type (content type), then name.")
             @RequestParam(value = "sort", required = false) String sort,
+            @Parameter(description = "Only files strictly larger than this many bytes, as the screen's Larger than "
+                    + "search does (the screen converts KB and MB).")
+            @RequestParam(value = "largerThan", required = false) Long largerThan,
+            @Parameter(description = "Only files carrying any of these tags (repeat the parameter or separate "
+                    + "with commas).")
+            @RequestParam(value = "tags", required = false) List<String> tags,
             @Parameter(description = "Skip this many files of the sorted list. Default 0.")
             @RequestParam(value = "offset", required = false) Integer offset,
             @Parameter(description = "At most this many files (capped at 200). Without it, every file.")
@@ -99,9 +105,13 @@ public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
         if (wantedType == null && type != null && !type.isBlank()) {
             throw ApiException.problemOnField("type", ProblemCode.PARAMETER_INVALID_VALUE, "type");
         }
+        if (largerThan != null && largerThan < 0) {
+            throw ApiException.problemOnField("largerThan", ProblemCode.PARAMETER_INVALID_VALUE, "largerThan");
+        }
         MediaFileDirectory directory = StringUtils.isNotBlank(wanted) ? requireDirectory(request, wanted) : null;
         List<MediaFile> files = MediaListing.sorted(
-                MediaListing.find(weblogger.getMediaFileManager(), weblog, directory, q, wantedType), order);
+                MediaListing.find(weblogger.getMediaFileManager(), weblog, directory, q, wantedType,
+                        largerThan == null ? 0 : largerThan, tags), order);
 
         long size = limit == null ? Long.MAX_VALUE : Math.min(limit, MAX_LIMIT);
         List<MediaDtos.MediaView> items = files.stream().skip(from).limit(size)
@@ -130,6 +140,12 @@ public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
                         MediaFileDirectory::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(MediaDtos::toView)
                 .toList();
+    }
+
+    /** The React admin's site Pages and Media screens read and write through the API, as a session only. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
     }
 
     @Override

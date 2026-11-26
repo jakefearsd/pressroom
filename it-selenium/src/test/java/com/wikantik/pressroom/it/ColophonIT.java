@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -55,7 +56,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class ColophonIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String PRIVACY_FIELD = "site.privacy.page";
 
@@ -77,7 +77,7 @@ class ColophonIT extends PressroomIT {
         String slug = "privacy";
         String title = "Privacy " + nonce;
 
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         String wasFront = $("select[name='" + FRONTPAGE_FIELD + "']").should(exist).getSelectedOptionValue();
         String wasPrivacy = $("input[name='" + PRIVACY_FIELD + "']").getValue();
         if (wasFront == null) {
@@ -91,28 +91,27 @@ class ColophonIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- a published page on the blog that will be the front-page blog
-            openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-            $("#pageEditForm").should(exist);
+            openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
             $("#page_bean_slug").setValue(slug);
             $("#page_bean_title").setValue(title);
             $("#page_bean_status").selectOptionByValue("PUBLISHED");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
             String pageUrl = baseUrl() + "/" + handle + "/" + slug;
             assertEquals(200, statusOf(pageUrl), "the published page must resolve");
 
             // --- the setting, through the real Global Config page ----------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(handle);
             $("input[name='" + PRIVACY_FIELD + "']").setValue(handle + "/" + slug);
             globalsChanged = true;
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "saving the privacy page reported an error: "
                     + ($$("#errors").isEmpty() ? "" : $("#errors").getText()));
 
             // --- an admin page ---------------------------------------------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $(".colophon .colophon-version").should(visible);
             String adminVersion = $(".colophon .colophon-version").getText().trim();
             assertTrue(adminVersion.startsWith("Pressroom ") && adminVersion.length() > "Pressroom ".length(),
@@ -176,28 +175,24 @@ class ColophonIT extends PressroomIT {
     private void cleanUp(String handle, String title, boolean globalsChanged,
                          String wasFront, String wasPrivacy) {
         if (globalsChanged) {
-            openPath(GLOBAL_CONFIG_PATH);
-            $("input[name='" + PRIVACY_FIELD + "']").setValue(wasPrivacy);
+            openGlobalConfig();
+            replaceText($("input[name='" + PRIVACY_FIELD + "']"), wasPrivacy);
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(wasFront);
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "restoring the settings reported an error");
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             assertEquals(wasPrivacy, $("input[name='" + PRIVACY_FIELD + "']").getValue(),
                     "site.privacy.page was not restored");
             assertEquals(wasFront, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "site.frontpage.weblog.handle was not restored");
         }
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         if ($$("tr[data-page-slug='privacy']").isEmpty()) {
             return; // never created
         }
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='privacy'] button[data-confirm]").click();
-            Selenide.confirm();
-        });
-        $("#messages").should(exist);
+        $("tr[data-page-slug='privacy'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
         $$("tr[data-page-slug='privacy']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
         // Trashed, which still holds the slug: out of the trash too.
         deletePageForeverFromTrash(handle, "privacy");
@@ -205,13 +200,7 @@ class ColophonIT extends PressroomIT {
 
     private String createWeblog(String nonce) {
         String handle = "colo" + nonce;
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Colophon " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Colophon " + handle, "journal");
         return handle;
     }
 }

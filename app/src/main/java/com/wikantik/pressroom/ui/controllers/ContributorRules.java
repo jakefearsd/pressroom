@@ -34,9 +34,8 @@ import org.slf4j.LoggerFactory;
 /**
  * What a member without publish rights -- a contributor, holding the weblog's
  * {@code EDIT_DRAFT} but not {@code POST} -- may do to an entry, as one rule
- * for the entry editor ({@code EntryEditController}, {@code
- * EntryRemoveController}, through {@code BaseController.lookupChangeableEntry}
- * and {@code SaveIntent}) and the entries API ({@code EntriesWriteApi}; spec
+ * for the entries API ({@code EntriesWriteApi}), which the React entry editor
+ * and entries list call (spec
  * 2026-11-21 owner decisions, Task 3). Both surfaces are gated on {@code
  * EDIT_DRAFT} and decide the rest here, from the caller's permission.
  */

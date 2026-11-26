@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { call } from '../../api/client';
 import { useMeta, useWeblog } from '../../api/queries';
 import { usePage, useStrandCandidates, type PageView, type PageWrite } from '../../api/pages';
 import { ApiError } from '../../api/problem';
+import { useBoot } from '../../context';
+import type { SaveState } from '../../editor/EditorSurface';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useApi } from '../../context';
@@ -14,11 +16,12 @@ import { useT } from '../../i18n/messages';
 import { DraftBar } from '../../session/DraftBar';
 import { useDraftKeeper } from '../../session/useDraftKeeper';
 import { MediaChooser } from '../media/MediaChooser';
-import { PageBodyEditor } from './PageBodyEditor';
+import { EditorSurface } from '../../editor/EditorSurface';
+import type { EditorHandle } from '../../editor/CodeMirrorField';
 import { RevisionsPanel } from './RevisionsPanel';
 import { StrandParts, type PartInfo } from './StrandParts';
 import { Markup, markupArg } from '../../components/Markup';
-import { isSiteSpace, pageUrl, weblogBase } from './urls';
+import { isSiteSpace } from './urls';
 
 /** Everything the form edits; its JSON is the unsaved-text snapshot and the dirty check. */
 export interface FormState {
@@ -38,9 +41,11 @@ export interface FormState {
 }
 
 const EMPTY: FormState = {
-  title: '', slug: '', status: 'DRAFT', text: '', showInNav: false, navOrder: '0', strand: false, parts: [],
+  title: '', slug: '', status: 'DRAFT', text: '', showInNav: true, navOrder: '0', strand: false, parts: [],
   metaTitle: '', searchDescription: '', canonicalUrl: '', noindex: false, ogImageId: ''
 };
+
+const dirty0 = (snapshot: string, page: PageView | undefined): boolean => snapshot !== JSON.stringify(formOf(page));
 
 function formOf(page: PageView | undefined): FormState {
   return page === undefined ? EMPTY : {
@@ -78,6 +83,16 @@ interface Saved {
   errors: string[];
 }
 
+/** `value`, but only once it has stopped changing for `ms`. */
+function useDebounced<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => { setSettled(value); }, ms);
+    return () => { clearTimeout(timer); };
+  }, [value, ms]);
+  return settled;
+}
+
 /** The page editor (PageEdit.jsp) for `pages/new` and `pages/:id`. */
 export function PageEditor() {
   const t = useT();
@@ -94,6 +109,8 @@ export function PageEditor() {
   const onSaved = ({ page: saved, messages: said, errors: failed }: Saved) => {
     queries.setQueryData(['page', handle, saved.id], saved);
     void queries.invalidateQueries({ queryKey: ['pages', handle] });
+    // A save that changed the text left a revision: the panel lists it without a reload.
+    void queries.invalidateQueries({ queryKey: ['page-revisions', handle, saved.id] });
     setMessages(said);
     setErrors(failed);
   };
@@ -119,16 +136,21 @@ function PageForm({ handle, page, onSaved }: {
   const api = useApi();
   const navigate = useNavigate();
   const siteSpace = isSiteSpace(handle);
-  const weblog = useWeblog(handle).data;
+  // The API never serves the site space as a weblog; its pages live at the site root.
+  const weblog = useWeblog(siteSpace ? undefined : handle).data;
   const siteUrl = useMeta().data?.siteUrl;
-  const base = weblogBase(handle, weblog, siteUrl);
+  // Where readers reach the blog (its own domain when it has one): the slug's prefix.
+  const base = siteSpace ? (siteUrl === undefined ? undefined : `${siteUrl}/`) : weblog?.absoluteUrl;
 
   const [form, setForm] = useState<FormState>(() => formOf(page));
   const [seoOpen, setSeoOpen] = useState(false);
-  const [choosing, setChoosing] = useState(false);
+  const [chooser, setChooser] = useState<null | 'insert' | 'ogImage'>(null);
+  const editor = useRef<EditorHandle>(null);
+  const { contextPath } = useBoot();
   const [confirmingTrash, setConfirmingTrash] = useState(false);
   const [copied, setCopied] = useState(false);
   const snapshot = JSON.stringify(form);
+  const saveState: SaveState = !dirty0(snapshot, page) ? (page === undefined ? 'notSaved' : 'saved') : 'unsaved';
   const keeper = useDraftKeeper(`${handle}:pageEdit:${page?.id ?? 'new'}`, snapshot);
   const dirty = snapshot !== JSON.stringify(formOf(page));
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => { setForm((f) => ({ ...f, [key]: value })); };
@@ -142,17 +164,32 @@ function PageForm({ handle, page, onSaved }: {
     return () => { window.removeEventListener('beforeunload', warn); };
   }, [dirty]);
 
-  const candidatesQuery = useStrandCandidates(handle, form.strand && !siteSpace);
+  const [strandSearch, setStrandSearch] = useState('');
+  const searched = useDebounced(strandSearch, 250);
+  const candidatesQuery = useStrandCandidates(handle, form.strand && !siteSpace, searched);
+  // The posts chosen so far, kept by title: a later search replaces the choices on offer.
+  const [chosen, setChosen] = useState<ReadonlyMap<string, PartInfo>>(new Map());
+  const changeParts = (parts: string[]) => {
+    const offered = new Map((candidatesQuery.data?.items ?? []).map((e): [string, PartInfo] =>
+      [e.id ?? '', { id: e.id ?? '', title: e.title ?? '', status: e.status ?? 'DRAFT' }]));
+    setChosen((previous) => new Map([...previous, ...parts.flatMap((id): [string, PartInfo][] => {
+      const found = offered.get(id);
+      return found === undefined ? [] : [[id, found]];
+    })]));
+    set('parts', parts);
+  };
   const info = useMemo(() => {
-    const map = new Map<string, PartInfo>();
+    const map = new Map<string, PartInfo>(chosen);
     for (const p of page?.parts ?? []) {
       map.set(p.id ?? '', { id: p.id ?? '', title: p.title ?? '', status: p.status ?? 'DRAFT' });
     }
     for (const e of candidatesQuery.data?.items ?? []) {
-      map.set(e.id ?? '', { id: e.id ?? '', title: e.title ?? '', status: e.status ?? 'DRAFT' });
+      if (!map.has(e.id ?? '')) {
+        map.set(e.id ?? '', { id: e.id ?? '', title: e.title ?? '', status: e.status ?? 'DRAFT' });
+      }
     }
     return map;
-  }, [page, candidatesQuery.data]);
+  }, [page, chosen, candidatesQuery.data]);
   const candidates = (candidatesQuery.data?.items ?? [])
     .filter((e) => e.strand === undefined || e.strand === '')
     .map((e) => info.get(e.id ?? ''))
@@ -205,20 +242,13 @@ function PageForm({ handle, page, onSaved }: {
     onSettled: () => { setConfirmingTrash(false); }
   });
 
-  const render = async (text: string) => {
-    const result = page?.id === undefined
-      ? await call(api.POST('/v1/weblogs/{handle}/pages/preview', { params: { path: { handle } }, body: { text } }))
-      : await call(api.POST('/v1/weblogs/{handle}/pages/{id}/preview', { params: { path: { handle, id: page.id } }, body: { text } }));
-    return { html: result.html ?? '', warnings: result.warnings ?? [] };
-  };
-
   const submit = (event: FormEvent) => {
     event.preventDefault();
     save.mutate();
   };
   const published = page?.id !== undefined && page.status === 'PUBLISHED';
-  const home = page?.id !== undefined && weblog?.frontPage === page.id;
-  const publicUrl = published ? pageUrl(base, form.slug, home) : undefined;
+  // The server says where the page is served: a blog's front page is the blog root, the front door the site root.
+  const publicUrl = published ? page.absoluteUrl : undefined;
   const copy = () => {
     if (publicUrl !== undefined) {
       void navigator.clipboard.writeText(publicUrl).then(() => {
@@ -257,11 +287,14 @@ function PageForm({ handle, page, onSaved }: {
                 </>
               ) : null}
             </p>
-            <PageBodyEditor value={form.text} onChange={(text) => { set('text', text); }} render={render}
-                            onSave={() => { save.mutate(); }} />
-            <div className="editor-status" id="editorStatus">
-              <span id="editorStatusSave">{dirty ? t('editor.status.unsaved') : page === undefined ? t('weblogEdit.unsaved') : t('editor.status.saved')}</span>
-            </div>
+            {page?.frontDoor === true && page.absoluteUrl !== undefined ? (
+              <p className="form-text editor-permalink-note">{t('pageEdit.frontDoorNote', page.absoluteUrl)}</p>
+            ) : null}
+            <EditorSurface editorRef={editor} handle={handle} entryId={page?.id} kind="page" contextPath={contextPath}
+                           text={form.text} onTextChange={(text) => { set('text', text); }} saveState={saveState}
+                           primaryActionKey="generic.save" saveActionKey="generic.save"
+                           onSave={() => { save.mutate(); }} onPublish={() => { save.mutate(); }}
+                           onChooseMedia={() => { setChooser('insert'); }} />
           </div>
 
           <div className="editor-rail">
@@ -313,7 +346,8 @@ function PageForm({ handle, page, onSaved }: {
                 <div className="form-text">{t('pageEdit.strand.help')}</div>
                 {form.strand ? (
                   <StrandParts parts={form.parts} info={info} candidates={candidates}
-                               invalid={fields.invalid('entries')} onChange={(parts) => { set('parts', parts); }} />
+                               search={strandSearch} onSearch={setStrandSearch}
+                               invalid={fields.invalid('entries')} onChange={changeParts} />
                 ) : null}
               </div>
             )}
@@ -349,7 +383,7 @@ function PageForm({ handle, page, onSaved }: {
                         </div>
                       )}
                       <button type="button" className="btn btn-secondary btn-sm" id="seo_ogImage_choose"
-                              onClick={() => { setChoosing(true); }}>
+                              onClick={() => { setChooser('ogImage'); }}>
                         {t('weblogEdit.chooseImage')}
                       </button>
                       {form.ogImageId === '' ? null : (
@@ -404,11 +438,21 @@ function PageForm({ handle, page, onSaved }: {
           {(page.parts?.length ?? 0) > 0 ? <p>{t('pages.deleteStrandConfirm', page.parts?.length ?? 0)}</p> : null}
         </ConfirmDialog>
       ) : null}
-      {choosing ? (
-        <MediaChooser handle={handle} imagesOnly
-                      onSelect={(media) => { set('ogImageId', media.id); setChoosing(false); }}
-                      onCancel={() => { setChoosing(false); }} />
-      ) : null}
+      {chooser === null ? null : (
+        <MediaChooser handle={handle} imagesOnly={chooser === 'ogImage'}
+                      onSelect={(media) => {
+                        const target = chooser;
+                        setChooser(null);
+                        if (target === 'ogImage') {
+                          set('ogImageId', media.id);
+                        } else if (media.isImage) {
+                          editor.current?.insert(`[image id="${media.id}"]`);
+                        } else {
+                          editor.current?.insert(`[${media.name.replace(/[[\]]/g, '')}](${media.url})`);
+                        }
+                      }}
+                      onCancel={() => { setChooser(null); }} />
+      )}
     </>
   );
 }

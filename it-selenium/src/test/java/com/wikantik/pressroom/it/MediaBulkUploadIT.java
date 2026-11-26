@@ -20,7 +20,9 @@ package com.wikantik.pressroom.it;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.WebDriverRunner;
 import com.codeborne.selenide.SelenideElement;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,10 +85,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class MediaBulkUploadIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_ADD = "/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_VIEW = "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
+    private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
+    private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";
@@ -121,7 +122,7 @@ class MediaBulkUploadIT extends PressroomIT {
         // The success page offers one checkbox per uploaded image; three
         // rows for one POST is the proof this was a bulk upload, not three
         // separate round trips.
-        $$("input[name='selectedImages']").shouldHave(size(3));
+        $$("#entry input[type='checkbox']").shouldHave(size(3));
 
         openPath(MEDIA_VIEW);
         $("img[alt='" + nameA + "']").should(exist);
@@ -148,7 +149,7 @@ class MediaBulkUploadIT extends PressroomIT {
         openPath(MEDIA_ADD);
         $("#uploadedFiles").should(exist).uploadFile(newImageFile(name, 20, 20, "png"));
         $("#uploadButton").click();
-        $$("input[name='selectedImages']").shouldHave(size(1));
+        $$("#entry input[type='checkbox']").shouldHave(size(1));
 
         // Found by TEXT among both element types inside the form, deliberately.
         // An earlier version of this test selected a[href*='mediaFileView.rol']
@@ -156,9 +157,10 @@ class MediaBulkUploadIT extends PressroomIT {
         // passed against the broken page by clicking something else entirely.
         // Matching either <a> or <button> keeps the assertion about behaviour
         // (does Done navigate?) rather than markup, which the unit test pins.
-        clickAndAwaitNewPage($$("#entry a, #entry button").findBy(text("Done")).should(exist));
+        $$("#entry a, #entry button").findBy(text("Done")).should(exist).click();
+        $("#mediaFileSearchForm").should(exist);
 
-        assertTrue(WebDriverRunner.url().contains("mediaFileView.rol"),
+        assertTrue(WebDriverRunner.url().contains("/media") && !WebDriverRunner.url().contains("/upload"),
                 "Done must land on the media view, not re-post the upload; was: "
                         + WebDriverRunner.url());
         $("img[alt='" + name + "']").should(exist);
@@ -179,7 +181,7 @@ class MediaBulkUploadIT extends PressroomIT {
         $("#entry").should(exist);
         $("[name='bean.title']").setValue("IT Alt Image " + suffix);
         Editor.setText("<p>Alt text entry " + suffix + "</p><p>[image id=" + mediaFileId + "]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -213,7 +215,7 @@ class MediaBulkUploadIT extends PressroomIT {
         $("#entry").should(exist);
         $("[name='bean.title']").setValue("IT Gallery Alt " + suffix);
         Editor.setText("<p>Gallery alt entry " + suffix + "</p><p>[gallery dir=\"default\"]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -290,13 +292,12 @@ class MediaBulkUploadIT extends PressroomIT {
      * property through the admin screen keeps this journey on real UI.
      */
     private void enableUploads() {
-        openPath(GLOBAL_CONFIG);
+        openGlobalConfig();
         WebElement checkbox = $("input[name='uploads.enabled']").should(exist).toWebElement();
         if (!checkbox.isSelected()) {
             checkbox.click();
         }
-        $("#saveButton").click();
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#saveButton"));
     }
 
     /**
@@ -309,8 +310,8 @@ class MediaBulkUploadIT extends PressroomIT {
         openPath(MEDIA_ADD);
         $("#uploadedFiles").should(exist).uploadFile(image);
         $("#uploadButton").click();
-        $("button[formaction$='entryAddWithMediaFile.rol']").should(exist);
-        String mediaFileId = $("input[name='selectedImages']").should(exist).getValue();
+        $("#createPostButton").should(exist);
+        String mediaFileId = $("#entry input[type='checkbox']").should(exist).getValue();
         assertNotNull(mediaFileId, "the upload success page must carry the new file's id");
         return mediaFileId;
     }
@@ -326,40 +327,17 @@ class MediaBulkUploadIT extends PressroomIT {
      */
     private void setAltText(String mediaFileId, String imageName, String altText) {
         openPath(MEDIA_VIEW);
-        // Marker for the re-submit dance below: onEditSuccess re-submits the
-        // view form, replacing this document with a new one that lacks the
-        // marker -- which is the only reliable arrival signal, since the URL
-        // does not change.
-        executeJavaScript("window.__altMarker = true;");
+        // The tile itself, found by its id (exact whatever the file is named), opens the edit screen.
         $(".mediaObject[data-media-file-id='" + mediaFileId + "']").should(exist).click();
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-        switchTo().frame("mediaFileEditor");
 
-        // Wait for the iframe to hold THIS file's form before typing into it;
-        // see GalleryIT.renameAndDescribe() for why this matters.
-        $("input[name='bean.name']").shouldHave(value(imageName));
-        $("input[name='bean.altText']").setValue(altText);
+        // Wait for THIS file's form before typing into it.
+        $("#mfedit_bean_name").shouldHave(value(imageName));
+        $("#mfedit_bean_altText").setValue(altText);
+        $("button[name='saveButton']").click();
 
-        waitForFontsReady();
-        $("input[name='saveButton']").click();
-        switchTo().defaultContent();
-
-        $("#mediafile_edit_lightbox").should(disappear, Duration.ofSeconds(30));
-
-        Selenide.Wait().withTimeout(Duration.ofSeconds(30)).until(d ->
-                Boolean.TRUE.equals(executeJavaScript("return window.__altMarker === undefined;")));
-        waitForFontsReady();
-    }
-
-    /**
-     * Blocks until every webfont the current page requested has finished
-     * loading (or failed on its own, not by cancellation). See {@code
-     * GalleryIT.waitForFontsReady()} for why this matters around the
-     * edit-modal iframe's navigation.
-     */
-    private void waitForFontsReady() {
-        Selenide.Wait().withTimeout(Duration.ofSeconds(10)).until(d ->
-                Boolean.TRUE.equals(executeJavaScript("return document.fonts.status === 'loaded';")));
+        // The save returns to the library with the news.
+        $("#messages").should(exist, Duration.ofSeconds(30));
+        $("#mediaFileSearchForm").should(exist);
     }
 
     /**

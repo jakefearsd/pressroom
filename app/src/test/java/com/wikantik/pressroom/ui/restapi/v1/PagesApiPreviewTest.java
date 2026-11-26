@@ -45,6 +45,7 @@ class PagesApiPreviewTest {
             return "<p>" + scratch.getContent() + "|" + scratch.getSlug() + "</p>";
         });
         PagesApi api = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         api.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(api).setControllerAdvice(new ApiExceptionHandler()).build();
     }

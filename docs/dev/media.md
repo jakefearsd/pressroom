@@ -95,7 +95,7 @@ resolves through the index at the end of `CLAUDE.md`.
   - **The filename stays the last fallback rather than `alt=""`**: empty alt
     asserts "decorative", wrong for a photograph, and would hide undescribed
     images from the marker.
-- **`MediaFileView.jsp` renders the "no alt text" marker from TWO `c:forEach`
+- **The media library (React; `MediaFileView.jsp` before wave 2) renders the "no alt text" marker from TWO `c:forEach`
   loops**: `childFiles` (primary — the unpaged folder-browse view an author
   sees on every visit) and `pager.items` (`MediaFileViewController` sets
   `pager` only in `mediaFileView!search.rol`, so only after a search). Its

@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.it;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -281,24 +282,17 @@ class WeblogConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "wcfg" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Weblog Config " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Weblog Config " + handle, "journal");
         return handle;
     }
 
     /** Publishes one entry and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");

@@ -140,7 +140,12 @@ public final class MetaDtos {
                     + "site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every "
                     + "request: a site admin can change it.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            int maxEntriesPerPage) {
+            int maxEntriesPerPage,
+            @Schema(description = "The same for a trashed page (the page trash has its own setting): a negative "
+                    + "number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on "
+                    + "every request.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int pageTrashRetentionDays) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */
@@ -162,7 +167,13 @@ public final class MetaDtos {
             boolean readerSignIn,
             @Schema(description = "True when an analytics service is configured; false is what makes a traffic "
                     + "read answer NOT_CONFIGURED.", requiredMode = Schema.RequiredMode.REQUIRED)
-            boolean analytics) {
+            boolean analytics,
+            @Schema(description = "True when the site's search index is switched on (search.enabled); false "
+                    + "hides the Maintenance screen's Rebuild index.", requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean searchEnabled,
+            @Schema(description = "True when the server can email a set-password link: a mail transport and a "
+                    + "site email address are configured.", requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean mailConfigured) {
     }
 
     /** The API's size limits. */
@@ -220,7 +231,10 @@ public final class MetaDtos {
             String timeZone,
             @Schema(description = "PERSON or AGENT: whether the account is a person or an agent.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            String kind) {
+            String kind,
+            @Schema(description = "True when the account signs in through single sign-on and so has no password "
+                    + "to change.", requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean sso) {
     }
 
     /** One locale, as the create and settings forms offer it. */

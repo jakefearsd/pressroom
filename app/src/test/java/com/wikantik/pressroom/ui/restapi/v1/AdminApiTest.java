@@ -454,13 +454,13 @@ class AdminApiTest {
     /**
      * The load-bearing shape of the create-user body: the one password field it has is documented session-only
      * (SA-18; {@code AdminUsersSessionOnlyApiTest} pins that a token sending it meets 403), and it still has no
-     * field that reads back or echoes a password. {@code UserCreate} carries the six account fields, that
+     * field that reads back or echoes a password. {@code UserCreate} carries the six account fields, the enabled flag, that
      * password and the administrator flag.
      */
     @Test
     void userCreateCarriesAPasswordOnlyAsTheSessionOnlyField() {
         var components = AdminDtos.UserCreate.class.getRecordComponents();
-        assertEquals(8, components.length);
+        assertEquals(9, components.length);
         long passwordFields = java.util.Arrays.stream(components)
                 .filter(c -> c.getName().toLowerCase().contains("password")).count();
         assertEquals(1, passwordFields);
@@ -535,6 +535,7 @@ class AdminApiTest {
         User agent = aUser("bot");
         agent.setKind(User.Kind.AGENT);
         when(weblogger.getUserManager().getUsers(null, null, null, 0, 51)).thenReturn(List.of(person, agent));
+        when(weblogger.getApiTokenManager()).thenReturn(mock(com.wikantik.pressroom.business.ApiTokenManager.class));
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(get("/v1/admin/users"))

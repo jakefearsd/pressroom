@@ -23,7 +23,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,14 +80,13 @@ class FrontDoorIT extends PressroomIT {
         assertFalse(before.contains(">Posts</a>"), "no Posts link without a front door");
 
         // --- a published page ---------------------------------------------
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("welcome");
         $("#page_bean_title").setValue(pageTitle);
         Editor.setText("Hello from the front page.");
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
-        $("#pageSaveButton").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
         BrowserHealth.current().settle();
 
         // --- choose it in the blog settings ----------------------------------
@@ -105,12 +106,12 @@ class FrontDoorIT extends PressroomIT {
         assertTrue(get(root + "posts").contains(postTitle), "/posts lists the post");
 
         // --- make the page a draft: the root lists posts again -----------------
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $$("a").findBy(text(pageTitle)).should(exist).click();
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $$("tr.page-row td a").findBy(text(pageTitle)).should(exist).click();
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_status").selectOptionByValue("DRAFT");
-        $("#pageSaveButton").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
         BrowserHealth.current().settle();
 
         String after = get(root);
@@ -119,21 +120,15 @@ class FrontDoorIT extends PressroomIT {
     }
 
     private void createWeblog(String handle) {
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Front " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("portfolio");
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Front " + handle, "portfolio");
     }
 
     private void publishPost(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title + ".");
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
     }
 

@@ -178,12 +178,12 @@ public class MessageKeyTest {
     }
 
     /**
-     * Guards the guard: if the scan stopped finding UserEdit.jsp, the check above
+     * Guards the guard: if the scan stopped finding Login.jsp, the check above
      * would pass while proving nothing.
      */
     @Test
     public void theScanCoversTheAdminPages() throws IOException {
-        Path userEdit = JSP_ROOT.resolve("jsps/admin/UserEdit.jsp");
+        Path userEdit = JSP_ROOT.resolve("jsps/core/Login.jsp");
         assertTrue(Files.exists(userEdit), "Expected " + userEdit.toAbsolutePath());
         assertTrue(templateFiles().contains(userEdit),
                 userEdit + " is not picked up by the template scan");
@@ -231,7 +231,7 @@ public class MessageKeyTest {
             }
         }
 
-        assertTrue(checked > 200,
+        assertTrue(checked > 100,
                 "Only " + checked + " literal message keys were found under "
                         + MessageUsageScanner.JAVA_ROOT.toAbsolutePath()
                         + " -- the scan is not looking where it thinks it is.");

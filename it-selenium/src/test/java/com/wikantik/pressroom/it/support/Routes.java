@@ -164,81 +164,12 @@ public final class Routes {
             // What / shows while no weblog is the front page; public.
             new Route("/pressroom-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
 
-            // SetupController.isUserRequired() is false, but SecurityConfig's
-            // authorization rule for /pressroom-ui/setup* still requires the
-            // "admin" authority, so this route is reachable only because the
-            // sweep is logged in as the seeded admin, not because it is public.
-            // Every link on Setup.jsp is conditional on user/blog counts; the
-            // three card headings are not. The marker is an app-owned class
-            // (not card-title) because Setup.jsp's headings sit in .card-header,
-            // not .card-body, where Bootstrap 5's card-title is normally used.
-            new Route("/pressroom-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
-
-            new Route("/pressroom-ui/profile.rol", Role.EDITOR, "",
-                    "form[action$='/pressroom-ui/profile!save.rol']"),
-
-            // Profile -> API tokens (spec 2026-10-13): the live tokens and the form.
-            new Route("/pressroom-ui/profileTokens.rol", Role.EDITOR, "", "#profileTokensPage"),
-
-            // The one-time reveal. Opened directly it has no flash secret, so it
-            // renders its "already shown" state -- still its own content tile.
-            new Route("/pressroom-ui/profileTokens!reveal.rol", Role.EDITOR, "", "#tokenRevealPage"),
-
             // The reader's account page. AccountController needs only the global
             // "comment" action, which readers hold -- but Role has no READER and
             // the sweep signs in as the seeded admin, who holds "comment" too, so
             // EDITOR (whose role grants "comment") is the lowest role listed here.
             new Route("/pressroom-ui/account.rol", Role.EDITOR, "", "#accountPage"),
 
-            // The settings rail (task B9a): the <form> IS the .settings-grid,
-            // so the rail is the marker that proves the page rendered its own
-            // content rather than the form action, which the old
-            // no-rail layout also had.
-            new Route("/pressroom-ui/admin/globalConfig.rol", Role.ADMIN, "",
-                    ".settings-rail"),
-
-            new Route("/pressroom-ui/admin/userAdmin.rol", Role.ADMIN, "",
-                    "#userListPage"),
-
-            // Businesses: the list's own wrapper, and the edit form, which a
-            // blank id opens empty (the new-business case), so neither needs seeding.
-            new Route("/pressroom-ui/admin/businesses.rol", Role.ADMIN, "",
-                    "#businesses-list-marker"),
-
-            // Admin -> API tokens (spec 2026-10-13): every live token on the site.
-            new Route("/pressroom-ui/admin/apiTokens.rol", Role.ADMIN, "", "#apiTokensPage"),
-
-            new Route("/pressroom-ui/admin/businesses!edit.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/businesses!save.rol']"),
-
-            // Maintenance moved off the blog-author tabs and into Global
-            // Admin: the three actions (flush cache, rebuild search index,
-            // regenerate media renditions) are operator work, not authoring
-            // work. MaintenanceController.isWeblogRequired() is false -- the
-            // target weblog is chosen from a <select> on the page instead of
-            // the weblog= action-context parameter -- so this reaches the
-            // page with no parameters at all, like globalConfig.rol/
-            // userAdmin.rol above. Maintenance.jsp's outer form posts back to
-            // maintenance.rol itself; the individual buttons override it with
-            // formaction.
-            new Route("/pressroom-ui/admin/maintenance.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/maintenance.rol']"),
-
-            // UserEdit.jsp posts to a runtime-chosen ${saveAction}, so the form
-            // action is not a stable selector; the username input is.
-            // Anchored on the username input by NAME. It used to anchor on
-            // id="bean_userName", which sat on the SCREEN NAME field -- so the
-            // marker was proving the wrong control existed.
-            new Route("/pressroom-ui/admin/createUser.rol", Role.ADMIN, "",
-                    "input[name='bean.userName']"),
-
-            // New agent (spec 2026-10-13): the create form.
-            new Route("/pressroom-ui/admin/createAgent.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/createAgent!save.rol']"),
-
-            // An agent's page, for the agent seed-it-data.sql creates -- the one
-            // route in this list that needs a query: a page needs its agent.
-            new Route("/pressroom-ui/admin/agent.rol", Role.ADMIN, "userName=it_agent", "#agentPage"),
 
             // SeoController's sitemap index. Not HTML: Chrome's built-in XML
             // viewer keeps the source document's elements in the DOM (inside
@@ -263,44 +194,6 @@ public final class Routes {
      */
     private static final List<Route> WEBLOG_ONLY = List.of(
 
-            // Anchored on the category table itself. It used to be anchored on a
-            // wrapper form posting to categories!move.rol -- a control nothing
-            // could submit, which is a poor thing to prove a page rendered by.
-            new Route("/pressroom-ui/authoring/categories.rol", Role.EDITOR, WEBLOG,
-                    "table#category-table"),
-
-            // The entry table is empty with no entries seeded; the delete-confirm
-            // modal is emitted unconditionally.
-            new Route("/pressroom-ui/authoring/entries.rol", Role.EDITOR, WEBLOG, "#delete-entry-modal"),
-
-            new Route("/pressroom-ui/authoring/entryAdd.rol", Role.EDITOR, WEBLOG, "#entry"),
-
-            // Trash is empty with nothing seeded to trash, but the wrapper div
-            // around the list region (table or empty-state invitation) is
-            // emitted unconditionally, same reasoning as entries.rol above.
-            new Route("/pressroom-ui/authoring/trash.rol", Role.EDITOR, WEBLOG, "#trash-list-marker"),
-
-            new Route("/pressroom-ui/authoring/mediaFileAdd.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/mediaFileAdd!save.rol']"),
-
-            // #mediaFileViewForm only renders when the directory has files;
-            // #createPostForm is at the top of the JSP and always renders.
-            new Route("/pressroom-ui/authoring/mediaFileView.rol", Role.EDITOR, WEBLOG, "#createPostForm"),
-
-            // Table is empty with no pages seeded, but the remove form around
-            // it is emitted unconditionally, same reasoning as entries.rol.
-            new Route("/pressroom-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
-
-            // The page trash: empty with nothing trashed, but its wrapper is
-            // emitted in both states, as trash.rol's is.
-            new Route("/pressroom-ui/authoring/pagesTrash.rol", Role.EDITOR, WEBLOG, "#pages-trash-list-marker"),
-
-            // "New page" mode (no id parameter): the edit form always renders.
-            new Route("/pressroom-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
-
-            // The moderation form is emitted unconditionally, empty list or not.
-            new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
-                    "#commentsModerationForm")
     );
 
     // ---------------------------------------------------------------- bucket c
@@ -350,30 +243,6 @@ public final class Routes {
 
             // --- need a seeded entity id ---
 
-            new SkippedRoute("/pressroom-ui/authoring/entryEdit.rol", Role.EDITOR,
-                    "Needs bean.id of a WeblogEntry; without one the controller "
-                            + "redirects to the app home. No entries are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/entryEdit!firstSave.rol", Role.EDITOR,
-                    "Post-save landing page for entryEdit; same missing entry id."),
-            new SkippedRoute("/pressroom-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
-                    "Needs selectedImage(s) holding MediaFile ids; no media files are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/mediaFileEdit.rol", Role.EDITOR,
-                    "Needs mediaFileId; no media files are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Role.EDITOR,
-                    "Takes no required parameter, but the whole of "
-                            + "MediaFileImageChooser.jsp sits inside "
-                            + "<c:if test=\"${not empty childFiles or not empty "
-                            + "allDirectories}\">, so with no media files seeded there is "
-                            + "nothing to assert on. Exercised with a real fixture by "
-                            + "EditorSeoIT's featured-image picker journey."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser.rol", Role.ADMIN,
-                    "Needs bean.id or bean.userName; without one it renders .UserAdmin "
-                            + "with a not-found error rather than the edit form. "
-                            + "UserAdminIT drives it with a fixture it creates, through "
-                            + "the admin search form."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser!firstSave.rol", Role.ADMIN,
-                    "Delegates to modifyUser; same missing user id."),
-
             // --- no page of their own ---
 
             new SkippedRoute("/pressroom-ui/home.rol", Role.ANONYMOUS,
@@ -385,10 +254,6 @@ public final class Routes {
                             + "entry= naming a published entry, and none is seeded, so "
                             + "without one it answers 404. CommentsControllerTest pins "
                             + "its contract."),
-            new SkippedRoute("/pressroom-ui/admin/createUser!cancel.rol", Role.ADMIN,
-                    "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
-                    "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
             new SkippedRoute("/pressroom-ui/login-redirect.rol", Role.EDITOR,
                     "A redirect: a signed-in user lands on the React admin's home, a "
                             + "visitor on the login page (SsoSignInIT and AuthoringJourneyIT "
@@ -457,7 +322,53 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/inbox", Role.EDITOR, "", "#submissionsDeleteForm, .empty-state"),
 
             // Remove: the irreversible-removal warning, which only this confirmation carries.
-            new Route("/pressroom-ui/app/weblogs/it_weblog/remove", Role.EDITOR, "", "span.warning")
+            new Route("/pressroom-ui/app/weblogs/it_weblog/remove", Role.EDITOR, "", "span.warning"),
+
+            // Wave 2: pages and media. The page list and its trash wrap the table or the empty invitation in a
+            // marker emitted in both states; the media library always has its search form; the upload page its
+            // drop zone; a new page its edit form. (A page's or a file's own editor needs a seeded id.)
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages", Role.EDITOR, "", "#pages-list-marker"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages/new", Role.EDITOR, "", "#pageEditForm"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages/trash", Role.EDITOR, "", "#pages-trash-list-marker"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/media", Role.EDITOR, "", "#mediaFileSearchForm"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/media/upload", Role.EDITOR, "", "#mediaDropZone"),
+
+            // Wave 4, site admin. Global Config's settings rail; Setup's three section headings; the
+            // Businesses list wrapper and its create form; Maintenance's weblog picker.
+            new Route("/pressroom-ui/app/admin/config", Role.ADMIN, "", ".settings-rail"),
+            new Route("/pressroom-ui/app/admin/setup", Role.ADMIN, "", "h2.setup-section-title"),
+            new Route("/pressroom-ui/app/admin/businesses", Role.ADMIN, "", "#businesses-list-marker"),
+            new Route("/pressroom-ui/app/admin/businesses/new", Role.ADMIN, "", "#bean_name"),
+            new Route("/pressroom-ui/app/admin/maintenance", Role.ADMIN, "", "#maintenanceWeblog"),
+
+            // Wave 4, people: the user list, the create form (anchored on the username input by name), the
+            // agent create form, an agent's page for the agent seed-it-data.sql creates, every live token on
+            // the site, and the signed-in account's own profile and tokens.
+            new Route("/pressroom-ui/app/admin/users", Role.ADMIN, "", "#userListPage"),
+            new Route("/pressroom-ui/app/admin/users/new", Role.ADMIN, "", "input[name='bean.userName']"),
+            new Route("/pressroom-ui/app/admin/agents/new", Role.ADMIN, "", "#agentCreateForm"),
+            new Route("/pressroom-ui/app/admin/agents/it_agent", Role.ADMIN, "", "#agentPage"),
+            new Route("/pressroom-ui/app/admin/tokens", Role.ADMIN, "", "#apiTokensPage"),
+            new Route("/pressroom-ui/app/profile", Role.EDITOR, "", "input#userName[readonly]"),
+            new Route("/pressroom-ui/app/profile/tokens", Role.EDITOR, "", "#profileTokensPage"),
+
+            // Wave 1: the entry screens (they were entries.rol, entryAdd.rol, trash.rol, comments.rol and
+            // categories.rol; entryEdit.rol and entryAddWithMediaFile.rol redirect into the editor).
+            // The entry table renders only with entries, so the marker is the list's own wrapper, which is
+            // emitted for an empty list too.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/entries", Role.EDITOR, "", "#entries-list-marker"),
+
+            // The editor for a new entry: its form, whatever the weblog holds.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/entries/new", Role.EDITOR, "", "form#entry"),
+
+            // The entry trash: the wrapper around the list region (table or empty-state invitation).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/trash", Role.EDITOR, "", "#trash-list-marker"),
+
+            // The moderation list: its wrapper, emitted for an empty tab as for a full one.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/comments", Role.EDITOR, "", "#comments-list-marker"),
+
+            // The category table itself (seed-it-data.sql seeds a category, so it renders).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/categories", Role.EDITOR, "", "table#category-table")
     );
 
     // ------------------------------------------------------------ known broken

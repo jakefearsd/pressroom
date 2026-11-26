@@ -62,13 +62,6 @@ public class StoredTextRenderingTest {
     private static final Map<String, String> PROPS = new HashMap<>();
 
     @Test
-    void anUntitledEntrysTitleIsTextInTheTrash() throws IOException {
-        Map<String, Object> beans = untitledEntryBeans("entry");
-
-        assertRendersAsText(render("editor/Trash.jsp", "<td>${", beans));
-    }
-
-    @Test
     void anUntitledEntrysTitleIsTextOnTheReadersAccountPage() throws IOException {
         Map<String, Object> beans = untitledEntryBeans("entry");
         beans.put("c", Map.of("entry", beans.get("entry")));
@@ -100,7 +93,7 @@ public class StoredTextRenderingTest {
 
         assertRendersAsText(render("tiles/bannerStatus.jsp", "navbar-brand", new HashMap<>()));
         for (String layout : new String[] {"tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp",
-                "tiles/tiles-loginpage.jsp", "tiles/tiles-popuppage.jsp", "tiles/tiles-simplepage.jsp",
+                "tiles/tiles-loginpage.jsp", "tiles/tiles-simplepage.jsp",
                 "tiles/tiles-errorpage.jsp"}) {
             Map<String, Object> beans = new HashMap<>();
             beans.put("pageTitle", "title");

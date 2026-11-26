@@ -63,6 +63,7 @@ class PageProblemCodesTest {
         weblog.setHandle("myblog");
         page = page("p1", "about", WeblogPage.PubStatus.PUBLISHED);
         PagesApi controller = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
     }

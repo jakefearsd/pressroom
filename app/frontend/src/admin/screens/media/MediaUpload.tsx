@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useDirectories, useMediaActions, type MediaView } from '../../api/media';
 import { ApiError } from '../../api/problem';
 import { useUploader } from '../../api/upload';
@@ -8,7 +8,7 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { PageTitle } from '../../frame/PageTitle';
 import { useBoot } from '../../context';
 import { useT } from '../../i18n/messages';
-import { formatSize, isImage, libraryPath, splitTags, thumbnailUrl } from './shared';
+import { formatSize, isImage, libraryPath, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 interface Row {
   file: File;
@@ -38,15 +38,23 @@ function LinkField({ id, value }: { id: string; value: string }) {
   );
 }
 
-/** The success half: MediaFileAddSuccess.jsp. */
+/**
+ * The success half: MediaFileAddSuccess.jsp. Images can start an entry (the entry editor opens
+ * with them, `?mediaId=`); the site space has no posts, so it shows the files and a way back only.
+ * The JSP's "file enclosure" choice is gone: the server never read it.
+ */
 function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: string; created: MediaView[]; onMore: () => void }) {
   const t = useT();
   const boot = useBoot();
+  const navigate = useNavigate();
+  const siteSpace = handle === boot.site.siteSpaceHandle;
   const images = created.filter(isImage);
   const others = created.filter((f) => !isImage(f));
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const [enclosure, setEnclosure] = useState('');
-  const ready = picked.size > 0 || enclosure !== '';
+  const ready = picked.size > 0;
+  const startEntry = () => {
+    void navigate(newEntryPath(handle, picked));
+  };
   const card = (children: ReactNode, key?: string) => (
     <div className="card" key={key}><div className="card-body"><div className="row">{children}</div></div></div>
   );
@@ -65,29 +73,30 @@ function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: strin
   return (
     <>
       <p className="subtitle">{t('mediaFileSuccess.subtitle')}</p>
-      <p className="pagetip">{t('mediaFileSuccess.pageTip')}</p>
-      <form id="entry" method="post" action={`${boot.contextPath}/pressroom-ui/authoring/entryAddWithMediaFile.rol`}>
-        <input type="hidden" name="weblog" value={handle} />
-        <input type="hidden" name="bean.enclosureURL" id="enclosureURL" value={enclosure} />
-        {[...picked].map((id) => <input key={id} type="hidden" name="selectedImages" value={id} />)}
-        <input type="hidden" name="_csrf" value={boot.csrf.token} />
-
+      {siteSpace ? null : <p className="pagetip">{t('mediaFileSuccess.pageTip')}</p>}
+      <div id="entry">
         {images.length > 0 ? (
           <>
-            <h2 className="section-head">{t('mediaFileSuccess.selectImagesTitle')}</h2>
-            <p>{t('mediaFileSuccess.selectImages')}</p>
+            {siteSpace ? null : (
+              <>
+                <h2 className="section-head">{t('mediaFileSuccess.selectImagesTitle')}</h2>
+                <p>{t('mediaFileSuccess.selectImages')}</p>
+              </>
+            )}
             {images.map((f) => card(
               <>
-                <div className="col-md-1">
-                  <input type="checkbox" value={f.id} aria-label={f.name} checked={picked.has(f.id ?? '')}
-                         onChange={() => {
-                           const next = new Set(picked);
-                           if (!next.delete(f.id ?? '')) {
-                             next.add(f.id ?? '');
-                           }
-                           setPicked(next);
-                         }} />
-                </div>
+                {siteSpace ? null : (
+                  <div className="col-md-1">
+                    <input type="checkbox" value={f.id} aria-label={f.name} checked={picked.has(f.id ?? '')}
+                           onChange={() => {
+                             const next = new Set(picked);
+                             if (!next.delete(f.id ?? '')) {
+                               next.add(f.id ?? '');
+                             }
+                             setPicked(next);
+                           }} />
+                  </div>
+                )}
                 <div className="col-md-2"><img className="mediaFileImage" src={thumbnailUrl(f)} alt="" /></div>
                 <div className="col-md-9">{facts(f, true)}<LinkField id={`clip_image_${f.id ?? ''}`} value={f.url ?? ''} /></div>
               </>, f.id))}
@@ -96,37 +105,27 @@ function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: strin
 
         {others.length > 0 ? (
           <>
-            <h2 className="section-head">{t('mediaFileSuccess.selectEnclosureTitle')}</h2>
-            <p>{t('mediaFileSuccess.selectEnclosure')}</p>
+            <h2 className="section-head">{t('mediaFileSuccess.otherFilesTitle')}</h2>
             {others.map((f) => card(
-              <>
-                <div className="col-md-1">
-                  <input type="radio" name="enclosure" aria-label={f.name} checked={enclosure === f.url}
-                         onChange={() => { setEnclosure(f.url ?? ''); }} />
-                </div>
-                <div className="col-md-11">{facts(f, false)}<LinkField id={`clip_file_${f.id ?? ''}`} value={f.url ?? ''} /></div>
-              </>, f.id))}
-            {card(
-              <>
-                <div className="col-md-1">
-                  <input type="radio" name="enclosure" aria-label={t('mediaFileSuccess.noEnclosure')} checked={enclosure === ''}
-                         onChange={() => { setEnclosure(''); }} />
-                </div>
-                <div className="col-md-10">{t('mediaFileSuccess.noEnclosure')}</div>
-              </>)}
+              <div className="col-md-12">{facts(f, false)}<LinkField id={`clip_file_${f.id ?? ''}`} value={f.url ?? ''} /></div>,
+              f.id))}
           </>
         ) : null}
 
         <div>
-          <button type="submit" id="createPostButton" className="btn btn-primary" disabled={!ready}>
-            {t('mediaFileSuccess.createPost')}
-          </button>
-          {' '}
+          {siteSpace ? null : (
+            <>
+              <button type="button" id="createPostButton" className="btn btn-primary" disabled={!ready} onClick={startEntry}>
+                {t('mediaFileSuccess.createPost')}
+              </button>
+              {' '}
+            </>
+          )}
           <button type="button" className="btn btn-secondary" onClick={onMore}>{t('mediaFileSuccess.uploadMore')}</button>
           {' '}
           <Link to={libraryPath(handle, dir)} className="btn btn-secondary">{t('generic.done')}</Link>
         </div>
-      </form>
+      </div>
     </>
   );
 }

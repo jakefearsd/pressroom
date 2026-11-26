@@ -239,19 +239,17 @@ class AdminJspHygieneTest {
     // ---------------------------------------------------------------- Task 14
 
     private static final List<String> TILES_LAYOUTS = List.of(
-            "tiles/tiles-barepage.jsp",
             "tiles/tiles-errorpage.jsp",
             "tiles/tiles-installpage.jsp",
             "tiles/tiles-loginpage.jsp",
             "tiles/tiles-mainmenupage.jsp",
-            "tiles/tiles-popuppage.jsp",
             "tiles/tiles-simplepage.jsp",
             "tiles/tiles-tabbedpage.jsp");
 
     /**
      * Without a document language a screen reader picks its own -- usually the
      * user's OS locale -- and reads English admin copy with, say, German
-     * phonemes. Eight layouts, so one missing declaration hides in seven
+     * phonemes. Six layouts, so one missing declaration hides in five
      * correct ones.
      */
     @Test
@@ -265,15 +263,11 @@ class AdminJspHygieneTest {
         assertTrue(missing.isEmpty(), "layouts with no <html lang>: " + missing);
     }
 
-    /** Every layout must name the tab; popuppage used to ship none at all. */
+    /** Every layout must name the tab. */
     @Test
     void everyChromeLayoutSetsATitle() {
         List<String> missing = new ArrayList<>();
         for (String layout : TILES_LAYOUTS) {
-            // barepage is deliberately chrome-free -- see its own comment.
-            if (layout.endsWith("barepage.jsp")) {
-                continue;
-            }
             if (!jsp(layout).contains("<title>")) {
                 missing.add(layout);
             }
@@ -322,7 +316,7 @@ class AdminJspHygieneTest {
     @Test
     void everyDataTableScopesItsHeaders() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "editor", "tiles")) {
+        for (String dir : List.of("core", "editor", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -351,7 +345,7 @@ class AdminJspHygieneTest {
     @Test
     void everyModalIsAnAccessibleDialog() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "editor", "tiles")) {
+        for (String dir : List.of("core", "editor", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -409,33 +403,13 @@ class AdminJspHygieneTest {
     @Test
     void eachFormScreenHasExactlyOnePrimaryAction() {
         List<String> wrong = new ArrayList<>();
-        for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/Setup.jsp",
-                "core/CreateDatabase.jsp")) {
+        for (String screen : List.of("core/CreateDatabase.jsp")) {
             int primaries = jsp(screen).split("btn-primary", -1).length - 1;
             if (primaries != 1) {
                 wrong.add(screen + " has " + primaries);
             }
         }
         assertTrue(wrong.isEmpty(), "expected exactly one btn-primary per screen: " + wrong);
-    }
-
-    /**
-     * Rebuild-index and regenerate-renditions run for minutes against the
-     * weblog named in a &lt;select&gt; the operator may well have scrolled
-     * past. Both confirm, and the confirmation names the weblog.
-     */
-    @Test
-    void theLongMaintenanceOperationsConfirmAndNameTheirWeblog() {
-        String src = jsp("admin/Maintenance.jsp");
-        List<String> missing = new ArrayList<>();
-        for (String key : List.of("maintenance.confirm.index",
-                "maintenance.confirm.regenerateRenditions")) {
-            if (!src.contains(key)) {
-                missing.add(key);
-            }
-        }
-        assertTrue(missing.isEmpty(), "admin/Maintenance.jsp: unconfirmed long operations: " + missing);
     }
 
     /**
@@ -474,27 +448,12 @@ class AdminJspHygieneTest {
     @Test
     void theSweptScreensCarryNoInlineStyleAttributes() {
         List<String> found = new ArrayList<>();
-        for (String screen : List.of("tiles/tiles-installpage.jsp", "core/Setup.jsp")) {
+        for (String screen : List.of("tiles/tiles-installpage.jsp")) {
             if (jsp(screen).contains("style=\"")) {
                 found.add(screen);
             }
         }
         assertTrue(found.isEmpty(), "inline style= attributes remain in: " + found);
-    }
-
-    /**
-     * form-vertical is a Bootstrap 3 class that does nothing in Bootstrap 5.
-     * .form-stacked is this repo's real labels-above conversion.
-     */
-    @Test
-    void noAdminFormRidesTheDeadBootstrap3FormClass() {
-        List<String> found = new ArrayList<>();
-        for (String screen : List.of("admin/Maintenance.jsp", "admin/UserAdmin.jsp")) {
-            if (jsp(screen).contains("form-vertical")) {
-                found.add(screen);
-            }
-        }
-        assertTrue(found.isEmpty(), "dead form-vertical still in: " + found);
     }
 
     // ----------------------------------------------------------------- Task 9
@@ -549,7 +508,7 @@ class AdminJspHygieneTest {
     @Test
     void everyLabelForTargetsAnIdInTheSameFile() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "tiles")) {
+        for (String dir : List.of("core", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String src = read(f);
@@ -564,27 +523,6 @@ class AdminJspHygieneTest {
             }
         }
         assertTrue(violations.isEmpty(), "dangling <label for=>:\n  " + String.join("\n  ", violations));
-    }
-
-    /**
-     * The complement of the test above, and the one that actually found the
-     * ~40 unbound controls on these five screens: a label that carries no
-     * {@code for=} at all. Restricted to the five form screens repaired here
-     * so the assertion stays a repair pin rather than a general style rule.
-     */
-    @Test
-    void theRepairedFormScreensBindEveryLabel() {
-        List<String> violations = new ArrayList<>();
-        for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/Setup.jsp")) {
-            String src = jsp(screen);
-            Matcher m = Pattern.compile("<label(?![^>]*\\bfor=)[^>]*>(?!\\s*</label>)").matcher(src);
-            while (m.find()) {
-                int line = (int) src.chars().limit(m.start()).filter(c -> c == '\n').count() + 1;
-                violations.add(screen + ":" + line + " label with no for=");
-            }
-        }
-        assertTrue(violations.isEmpty(), "unbound labels:\n  " + String.join("\n  ", violations));
     }
 
     // ---------------------------------------------------------------- Task 17
@@ -603,10 +541,7 @@ class AdminJspHygieneTest {
                 new Field("core/Login.jsp", "j_username", "username"),
                 new Field("core/Login.jsp", "j_password", "current-password"),
                 new Field("core/ResetPassword.jsp", "passwordText", "new-password"),
-                new Field("core/ResetPassword.jsp", "passwordConfirm", "new-password"),
-                new Field("core/Profile.jsp", "passwordText", "new-password"),
-                new Field("core/Profile.jsp", "passwordConfirm", "new-password"),
-                new Field("admin/UserEdit.jsp", "bean_password", "new-password"))) {
+                new Field("core/ResetPassword.jsp", "passwordConfirm", "new-password"))) {
             // Anchored on the element carrying the id: a file-wide contains()
             // let ONE autocomplete="new-password" anywhere in Profile.jsp
             // satisfy both of its password fields, so the confirm field could
@@ -619,30 +554,6 @@ class AdminJspHygieneTest {
             }
         }
         assertTrue(missing.isEmpty(), "credential fields with no autocomplete role: " + missing);
-    }
-
-    /**
-     * Two screens ran {@code document.forms[0].elements[0].focus()}. In a form
-     * whose first element is the hidden CSRF input -- both of these -- that
-     * focuses the hidden input, i.e. nothing at all. The attribute does what
-     * the script was trying to do, and does it without a script.
-     */
-    @Test
-    void noScreenFocusesTheHiddenCsrfInput() {
-        List<String> found = new ArrayList<>();
-        for (String screen : List.of("admin/UserEdit.jsp")) {
-            String src = jsp(screen);
-            if (src.contains("elements[0].focus()")) {
-                found.add(screen + " still focuses elements[0]");
-            }
-            // Comments stripped: the first version of this arm was satisfied
-            // by the comment that explains the fix, which would have passed on
-            // a screen where the attribute had been dropped again.
-            if (!withoutJspComments(src).contains("autofocus")) {
-                found.add(screen + " has no autofocus replacement");
-            }
-        }
-        assertTrue(found.isEmpty(), String.join("; ", found));
     }
 
     // ---------------------------------------------------------------- Task 19
@@ -725,7 +636,7 @@ class AdminJspHygieneTest {
         Pattern unescapedMessageInSingleQuotedConfirm = Pattern.compile(
                 "confirm\\(\\s*'[^']*<spring:message\\b((?:(?!/>).)*?)/>");
         List<String> found = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "tiles", "editor")) {
+        for (String dir : List.of("core", "tiles", "editor")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String src = read(f);
@@ -764,8 +675,7 @@ class AdminJspHygieneTest {
     void theRepairedPromptsSitOnTheirControlNotTheirForm() {
         List<String> wrong = new ArrayList<>();
         record Screen(String file, int expected) { }
-        for (Screen screen : List.of(new Screen("admin/Maintenance.jsp", 3),
-                new Screen("admin/UserEdit.jsp", 1))) {
+        for (Screen screen : List.<Screen>of()) {
             List<String> owners = ownersOf(withoutJspComments(jsp(screen.file())), "data-confirm");
             if (owners.size() != screen.expected()) {
                 wrong.add(screen.file() + " has " + owners.size()
@@ -875,7 +785,7 @@ class AdminJspHygieneTest {
     @Test
     void everyPasswordInputOptsIntoReveal() throws IOException {
         Map<String, String> fields = passwordFields();
-        assertTrue(fields.size() >= 7, "the scan found only " + fields.keySet());
+        assertTrue(fields.size() >= 3, "the scan found only " + fields.keySet());
         Set<String> offenders = new TreeSet<>();
         fields.forEach((name, element) -> {
             // Spring's form tags drop an EMPTY dynamic attribute, so
@@ -922,7 +832,7 @@ class AdminJspHygieneTest {
     @Test
     void confirmFieldsPointAtTheirPassword() {
         Set<String> offenders = new TreeSet<>();
-        for (String page : List.of("core/ResetPassword.jsp", "core/Profile.jsp")) {
+        for (String page : List.of("core/ResetPassword.jsp")) {
             String confirm = elementCarrying(withoutJspComments(jsp(page)), "passwordConfirm");
             if (!confirm.contains("data-match=\"passwordText\"")) {
                 offenders.add(page);

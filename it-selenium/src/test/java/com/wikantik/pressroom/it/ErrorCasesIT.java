@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class ErrorCasesIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String CREATE_USER = "/pressroom-ui/app/admin/users/new";
     private static final String CREATE_WEBLOG = "/pressroom-ui/app/weblogs/new";
 
     // ------------------------------------------------------------ not found
@@ -93,7 +94,7 @@ class ErrorCasesIT extends PressroomIT {
 
         // Back at a login form, and the editor is still closed to us.
         $("#j_username").should(exist);
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
         assertTrue($$("table.pressroomtable").isEmpty(),
                 "a failed login left the entry list reachable");
     }
@@ -132,10 +133,12 @@ class ErrorCasesIT extends PressroomIT {
         $("input[name='bean.fullName']").setValue("Impostor");
         $("input[name='bean.password']").setValue("some-password");
         $("input[name='bean.emailAddress']").setValue("impostor@example.com");
-        // Not click-then-settle: that read the form we had typed into, passed on it, and
-        // signed out under the still-unsent POST, which then reached a dead session --
-        // the 403 on createUser!save.rol (docs/dev/build-and-ci.md).
-        clickAndAwaitNewPage($("#save_button"));
+        // The React form saves through the API: the refusal is the answer the screen shows in place, so
+        // wait for it (an error banner), not for a navigation that never comes.
+        BrowserHealth.current().expectRefusal("/api/v1/admin/users");
+        $("#save_button").click();
+        $("#errors").should(exist);
+        BrowserHealth.current().settle();
 
         assertFalse($$("#messages").size() > 0,
                 "creating a second account with an existing username reported success");
@@ -189,7 +192,7 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void adminScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
-                "/pressroom-ui/admin/globalConfig.rol",
+                "/pressroom-ui/app/admin/config",
                 "/pressroom-ui/admin/createUser.rol",
                 "/pressroom-ui/admin/userAdmin.rol"}) {
             int status = statusOf(baseUrl() + path);
@@ -211,9 +214,13 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void authoringScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
+                // the old URLs redirect (to the app, which then wants a sign-in); the app's own are closed too
                 "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE,
                 "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE,
-                "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE}) {
+                AdminApp.entries(WEBLOG_HANDLE),
+                AdminApp.newEntry(WEBLOG_HANDLE),
+                "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media"}) {
             // A redirect to the login page is the expected answer and carries
             // no body, so judge on the status first and only inspect content
             // when something was actually served.

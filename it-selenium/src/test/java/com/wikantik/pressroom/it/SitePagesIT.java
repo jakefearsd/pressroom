@@ -26,6 +26,7 @@ import java.time.Duration;
 import com.codeborne.selenide.CollectionCondition;
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -59,7 +60,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class SitePagesIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String SLUG = "it-front";
     private static final String HEADING = "Front door heading";
@@ -73,7 +73,7 @@ class SitePagesIT extends PressroomIT {
     void aSitePageIsTheFrontDoorUntilItIsUnpublished() throws Exception {
         loginAsAdmin();
 
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         String wasFront = $("select[name='" + FRONTPAGE_FIELD + "']").should(exist).getSelectedOptionValue();
         if (wasFront == null) {
             wasFront = "";
@@ -85,24 +85,23 @@ class SitePagesIT extends PressroomIT {
             // --- Site -> Pages from the main menu (the React home), then create and publish --
             openPath("/pressroom-ui/app/");
             $(".site-row").should(exist);
-            clickAndAwaitNewPage($$(".site-row a.quiet-link").first());
-            $("#pageRemoveForm").should(exist);
+            $$(".site-row a.quiet-link").first().click();
+            PagesMediaApp.awaitPagesList();
             removeSitePage(); // a leftover from an aborted run would clash
             openPath(sitePageEditPath());
-            $("#pageEditForm").should(exist);
+            PagesMediaApp.awaitPageEditor();
             $("#page_bean_slug").setValue(SLUG);
             $("#page_bean_title").setValue("It Front");
             Editor.setText("## " + HEADING + "\n\nWelcome.");
             $("#page_bean_status").selectOptionByValue("PUBLISHED");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
 
             // --- choose it as the front door ---------------------------------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue("page:" + SLUG);
             globalsChanged = true;
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "choosing the front door reported an error: "
                     + ($$("#errors").isEmpty() ? "" : $("#errors").getText()));
 
@@ -125,12 +124,12 @@ class SitePagesIT extends PressroomIT {
                     "the site sitemap must be a urlset with the page, got: " + truncate(sitemap.body));
 
             // --- unpublish: / shows the discovery page, the slug is a 404 -----
-            openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
-            $("#pageRemoveForm").should(exist);
-            $$("a").findBy(text("It Front")).should(exist).click();
-            $("#pageEditForm").should(exist);
+            openPath(PagesMediaApp.pages("site-space"));
+            PagesMediaApp.awaitPagesList();
+            $$("tr.page-row td a").findBy(text("It Front")).should(exist).click();
+            PagesMediaApp.awaitPageEditor();
             $("#page_bean_status").selectOptionByValue("DRAFT");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
 
             Fetched after = fetch(root);
@@ -160,13 +159,13 @@ class SitePagesIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private static String sitePageEditPath() {
-        return "/pressroom-ui/authoring/pageEdit.rol?weblog=site-space";
+        return PagesMediaApp.newPage("site-space");
     }
 
     /** Restores the front-door choice, then deletes the page: identity cleanup. */
     private void cleanUp(boolean globalsChanged, String wasFront) {
         if (globalsChanged) {
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             String restore = wasFront;
             // A page that was the front door before this run may be a draft now,
             // and so absent from the select; fall back to the directory.
@@ -174,15 +173,14 @@ class SitePagesIT extends PressroomIT {
                 restore = "";
             }
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(restore);
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "restoring the front door reported an error");
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             assertEquals(restore, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "the front door was not restored");
         }
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages("site-space"));
+        PagesMediaApp.awaitPagesList();
         removeSitePage();
     }
 
@@ -193,11 +191,8 @@ class SitePagesIT extends PressroomIT {
             deletePageForeverFromTrash("site-space", SLUG);
             return;
         }
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='" + SLUG + "'] button[data-confirm]").click();
-            Selenide.confirm();
-        });
-        $("#messages").should(exist);
+        $("tr[data-page-slug='" + SLUG + "'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
         $$("tr[data-page-slug='" + SLUG + "']").shouldHave(CollectionCondition.size(0));
         // Trashed, which still holds the slug: out of the trash too.
         deletePageForeverFromTrash("site-space", SLUG);

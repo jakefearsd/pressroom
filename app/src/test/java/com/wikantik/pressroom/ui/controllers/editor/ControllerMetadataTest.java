@@ -19,17 +19,14 @@ package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.List;
 
-import com.wikantik.pressroom.pojos.GlobalPermission;
-import com.wikantik.pressroom.pojos.WeblogPermission;
-import com.wikantik.pressroom.ui.controllers.BaseController;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins the declarative metadata every editor controller exposes.
+ * Pins the request-binding hygiene of every controller. (The per-controller metadata checks went with the JSP
+ * controllers when their screens moved to the React admin.)
  *
  * <p>None of this is decorative. {@code requiredWeblogPermissionActions} is the
  * authorization contract the {@code PressroomHandlerInterceptor} enforces before
@@ -40,94 +37,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * that no behavioural test touches, which is exactly why they can rot unnoticed.
  */
 class ControllerMetadataTest {
-
-    @Test
-    void entryEditingRequiresOnlyDraftPermissionSoContributorsCanWrite() {
-        // EDIT_DRAFT rather than POST: a contributor must be able to write and
-        // submit for review. The publish path checks POST separately.
-        assertEquals(List.of(WeblogPermission.EDIT_DRAFT),
-                new EntryEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.EDIT_DRAFT),
-                new EntryRemoveController().requiredWeblogPermissionActions());
-    }
-
-    @Test
-    void categoryAndMediaManagementRequirePostPermission() {
-        // Categories and media are blog-wide structure, not a single draft, so
-        // they sit above the contributor level.
-        assertEquals(List.of(WeblogPermission.POST),
-                new CategoryEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new CategoryRemoveController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileAddController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileViewController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileEditController().requiredWeblogPermissionActions());
-    }
-
-    @Test
-    void pageManagementRequiresPostPermission() {
-        // Static pages are blog-wide structure like categories and media, not
-        // a single draft, so they sit at the same POST level rather than
-        // falling back to the ADMIN default.
-        assertEquals(List.of(WeblogPermission.POST),
-                new PageEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new PagesController().requiredWeblogPermissionActions());
-    }
-
-    @Test
-    void everyEditorControllerRequiresALoggedInUserAndTheLoginPermission() {
-        for (BaseController controller : allControllers()) {
-            assertTrue(controller.isUserRequired(),
-                    controller.getClass().getSimpleName() + " must require an authenticated user");
-            assertEquals(List.of(GlobalPermission.LOGIN),
-                    controller.requiredGlobalPermissionActions(),
-                    controller.getClass().getSimpleName() + " must require the LOGIN permission");
-        }
-    }
-
-    @Test
-    void everyEditorControllerRendersUnderTheEditorMenu() {
-        // A null menu id makes MenuHelper return no menu at all, leaving the
-        // page with no navigation.
-        for (BaseController controller : allControllers()) {
-            assertEquals("editor", controller.getDesiredMenu(),
-                    controller.getClass().getSimpleName() + " must render the editor menu");
-        }
-    }
-
-    @Test
-    void controllersThatHighlightAMenuItemDeclareTheirActionName() {
-        // The action name is matched against the menu definition to decide
-        // which tab is shown as current.
-        assertEquals("categoryRemove", new CategoryRemoveController().getActionName());
-        assertEquals("mediaFileAdd", new MediaFileAddController().getActionName());
-        assertEquals("mediaFileView", new MediaFileViewController().getActionName());
-        assertEquals("mediaFileEdit", new MediaFileEditController().getActionName());
-    }
-
-    @Test
-    void controllersThatOwnAPageDeclareItsTitleKey() {
-        assertEquals("categoryDeleteOK.title", new CategoryRemoveController().getPageTitle());
-        assertEquals("weblogEdit.deleteEntry", new EntryRemoveController().getPageTitle());
-        assertEquals("mediaFileAdd.title", new MediaFileAddController().getPageTitle());
-        assertEquals("mediaFileView.title", new MediaFileViewController().getPageTitle());
-        assertEquals("mediaFile.edit.title", new MediaFileEditController().getPageTitle());
-    }
-
-    private static List<BaseController> allControllers() {
-        return List.of(
-                new CategoryEditController(),
-                new CategoryRemoveController(),
-                new EntryEditController(),
-                new EntryRemoveController(),
-                new MediaFileAddController(),
-                new MediaFileEditController(),
-                new MediaFileViewController());
-    }
 
     /**
      * Every {@code @RequestParam}, {@code @PathVariable} and

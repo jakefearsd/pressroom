@@ -25,6 +25,7 @@ import java.time.Duration;
 
 import com.codeborne.selenide.CollectionCondition;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -158,14 +159,7 @@ class ContactFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "contactit" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("CFIT Weblog " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "CFIT Weblog " + handle, "journal");
         return handle;
     }
 
@@ -175,28 +169,27 @@ class ContactFormIT extends PressroomIT {
      * draft-then-publish flow {@code PageIT} exercises.
      */
     private void createAndPublishContactPage(String handle) {
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("contact");
         $("#page_bean_title").setValue("Contact");
         Editor.setText("[contact]");
         saveOpenPage();
 
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         // Scoped to the pages table itself: the admin header carries its own
         // "visit site" link naming the weblog, and a $$("a") search of the
         // WHOLE page can match that one first if the weblog's own name
         // happens to contain the page title as a substring.
-        $$("#pageRemoveForm a").findBy(text("Contact")).should(exist).click();
-        $("#pageEditForm").should(exist);
+        $$("tr.page-row td a").findBy(text("Contact")).should(exist).click();
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
         saveOpenPage();
     }
 
     private void saveOpenPage() {
-        $("#pageEditForm button[type='submit']").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
         BrowserHealth.current().settle();
     }
 

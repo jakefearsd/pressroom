@@ -36,16 +36,6 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.controllers.admin.UserWeblogsController;
-import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
-import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileAddController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileEditController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileImageChooserController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileViewController;
-import com.wikantik.pressroom.ui.controllers.editor.PageEditController;
-import com.wikantik.pressroom.ui.controllers.editor.PagesController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
@@ -80,7 +70,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 /**
  * The site space's access boundary (spec AC7, AC13, Review Focus 4): only a
- * global admin reaches it, only through the Pages, Media and Theme screens
+ * global admin reaches it, only through the Theme screen and, in React, the Pages and Media screens
  * and, for its traffic numbers, one admin-only API route (ruling R25: Global ›
  * Traffic links the site pages' row there), and never through the rest of the
  * automation API.
@@ -150,58 +140,7 @@ class SiteSpaceAccessTest {
             return new WebMvcConfig(interceptor);
         }
 
-        // --- the screens the site space offers that are still JSP (its theme moved to the React admin: AdminSiteThemeApi)
-        @Bean
-        PagesController pagesController() {
-            return new PagesController();
-        }
-
-        @Bean
-        PageEditController pageEditController() {
-            return new PageEditController();
-        }
-
-        @Bean
-        MediaFileViewController mediaFileViewController() {
-            return new MediaFileViewController();
-        }
-
-        @Bean
-        MediaFileAddController mediaFileAddController() {
-            return new MediaFileAddController();
-        }
-
-        @Bean
-        MediaFileEditController mediaFileEditController() {
-            return new MediaFileEditController();
-        }
-
-        @Bean
-        MediaFileImageChooserController mediaFileImageChooserController() {
-            return new MediaFileImageChooserController();
-        }
-
         // --- blog screens it does not
-        @Bean
-        EntriesController entriesController() {
-            return new EntriesController();
-        }
-
-        @Bean
-        CommentsModerationController commentsModerationController(CommentService comments) {
-            return new CommentsModerationController(comments);
-        }
-
-        @Bean
-        CategoriesController categoriesController() {
-            return new CategoriesController();
-        }
-
-        @Bean
-        UserWeblogsController userWeblogsController() {
-            return new UserWeblogsController();
-        }
-
         @Bean
         com.wikantik.pressroom.ui.restapi.v1.MetaApi metaApi() {
             return new com.wikantik.pressroom.ui.restapi.v1.MetaApi();
@@ -222,6 +161,11 @@ class SiteSpaceAccessTest {
         @Bean
         PagesApi pagesApi() {
             return new PagesApi();
+        }
+
+        @Bean
+        com.wikantik.pressroom.ui.restapi.v1.MediaReadApi mediaReadApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.MediaReadApi();
         }
 
         @Bean
@@ -283,83 +227,30 @@ class SiteSpaceAccessTest {
         TestUtils.endSession(true);
     }
 
-    // ------------------------------------------------------------ the screens it offers
-
-    @Test
-    void aGlobalAdminReachesTheSitePagesAndMedia() throws Exception {
-        siteSpace();
-        signIn(admin);
-
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "mediaFileView.rol",
-                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol")) {
-            MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
-            assertEquals(200, result.getResponse().getStatus(), screen + " is offered on the site space");
-            Weblog acting = (Weblog) result.getRequest().getAttribute("actionWeblog");
-            assertNotNull(acting, screen + " acts on the site space");
-            assertTrue(acting.isSiteSpace(), screen);
-        }
-    }
-
     // ------------------------------------------------------------ the screens it does not
 
+    // ------------------------------------------------------------ the React admin's session
+
     @Test
-    void aGlobalAdminIsRefusedEveryOtherBlogScreenAsForAWeblogThatDoesNotExist() throws Exception {
+    void anAdminsSessionReadsTheSitePagesAndMediaThroughTheApiButNothingElse() throws Exception {
         siteSpace();
-        signIn(admin);
-
-        for (Function<String, MockHttpServletRequestBuilder> screen : List.<Function<String, MockHttpServletRequestBuilder>>of(
-                h -> get(AUTHORING + "entries.rol").param("weblog", h),
-                h -> get(AUTHORING + "comments.rol").param("weblog", h),
-                h -> get(AUTHORING + "categories.rol").param("weblog", h))) {
-            MvcResult unknown = perform(screen.apply("ssanosuchblog"));
-            MvcResult refused = perform(screen.apply(SITE));
-            String uri = refused.getRequest().getRequestURI();
-
-            assertEquals(302, unknown.getResponse().getStatus(), uri + ": today's unknown-weblog answer");
-            assertEquals(unknown.getResponse().getStatus(), refused.getResponse().getStatus(), uri);
-            assertEquals(unknown.getResponse().getRedirectedUrl(), refused.getResponse().getRedirectedUrl(), uri);
-            assertNull(refused.getRequest().getAttribute("actionWeblog"),
-                    uri + " never sees the site space");
-        }
+        signInWithSession(admin);
+        assertEquals(200, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus(),
+                "the site pages for the admin's session");
+        assertEquals(200, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus(),
+                "the site media for the admin's session");
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/entries"))).getResponse().getStatus(),
+                "a route that does not offer the site space still withholds it");
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE))).getResponse().getStatus(),
+                "and so do its settings");
     }
 
     @Test
-    void aBlogAuthorIsRefusedTheSitePages() throws Exception {
+    void aBlogAuthorsSessionNeverReachesTheSitePages() throws Exception {
         siteSpace();
-        signIn(author);
-
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "mediaFileView.rol")) {
-            MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
-            assertEquals(302, result.getResponse().getStatus(), screen);
-            assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
-        }
-    }
-
-    /**
-     * Global Admin's per-person weblog grants name the weblog by a handle in
-     * the form, outside the interceptor. A row on the site space would list it
-     * among that person's blogs, so its handle is refused there exactly as one
-     * naming no weblog, and no row is written.
-     */
-    @Test
-    void noOneIsGrantedARoleOnTheSiteSpace() throws Exception {
-        Weblog site = siteSpace();
-        signIn(admin);
-        Function<String, MockHttpServletRequestBuilder> grant = h -> post("/pressroom-ui/admin/userWeblogs!grant.rol")
-                .param("userName", author.getUserName()).param("handle", h).param("level", "admin");
-
-        MvcResult unknown = perform(grant.apply("ssanosuchblog"));
-        MvcResult refused = perform(grant.apply(SITE));
-
-        assertEquals(302, refused.getResponse().getStatus());
-        assertEquals(unknown.getResponse().getRedirectedUrl(), refused.getResponse().getRedirectedUrl());
-        assertEquals(unknown.getFlashMap().get("errors"), refused.getFlashMap().get("errors"));
-        // This context registers no bundle, so a message reads as its code (BaseController.getText).
-        assertEquals(List.of("userWeblogs.error.noSuchWeblog"), refused.getFlashMap().get("errors"),
-                "refused as a weblog that does not exist");
-        assertTrue(TestUtils.weblogger().getUserManager()
-                .getWeblogPermissions(TestUtils.weblogger().getWeblogManager().getWeblog(site.getId())).isEmpty(),
-                "no permission row on the site space");
+        signInWithSession(author);
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus());
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus());
     }
 
     // ------------------------------------------------------------ the automation API
@@ -373,6 +264,12 @@ class SiteSpaceAccessTest {
             assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus(),
                     who.getUserName() + ": the site pages through the API");
         }
+
+        // ... a token never opens it, however privileged; only an admin's own session does, and only on the
+        // routes that offer it (below).
+        signInWithToken(admin, ApiToken.Role.ADMIN);
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus(),
+                "the site media through the API with a token");
 
         // WeblogsApi once served these routes requiring no action weblog, so a rule that only ran when
         // one was required would have let an admin token read and rewrite the site space's settings
@@ -459,6 +356,14 @@ class SiteSpaceAccessTest {
     private static void signIn(User who) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(who.getUserName(), null, List.of()));
+    }
+
+    /** A form-login session, as the React admin's calls arrive: the details are the web authentication's. */
+    private static void signInWithSession(User who) {
+        var auth = new UsernamePasswordAuthenticationToken(who.getUserName(), null, List.of());
+        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
+                new org.springframework.mock.web.MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     private static void signInWithToken(User who, ApiToken.Role role) {

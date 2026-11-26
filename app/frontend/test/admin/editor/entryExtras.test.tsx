@@ -8,11 +8,8 @@ import { SHORTCODE_CARDS } from '../../../src/admin/editor/shortcodeCards';
 import { markdownLink } from '../../../src/admin/screens/EntryEditor';
 import { API, cm, lastRequest, open, problem, resetState, server, state } from './harness';
 
-const hard = vi.hoisted(() => ({ navigate: vi.fn() }));
-vi.mock('../../../src/admin/routes/hardNavigate', () => ({ hardNavigate: hard.navigate }));
-
 beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); });
-afterEach(() => { server.resetHandlers(); hard.navigate.mockClear(); });
+afterEach(() => { server.resetHandlers(); });
 afterAll(() => { server.close(); });
 beforeEach(() => { resetState(); window.localStorage.clear(); });
 
@@ -181,8 +178,8 @@ describe('send as newsletter', () => {
 });
 
 describe('delete (move to the Trash)', () => {
-  it('asks, names the entry, moves it to the trash and goes to the entries list', async () => {
-    open('/weblogs/alpha/entries/e1');
+  it('asks, names the entry, moves it to the trash and goes to the entries list with the removed flash', async () => {
+    const { router } = open('/weblogs/alpha/entries/e1');
     await ready();
     await click(/Delete entry/);
     const dialog = screen.getByRole('dialog');
@@ -192,26 +189,28 @@ describe('delete (move to the Trash)', () => {
     expect(state.requests).toHaveLength(0);
     await click(/Delete entry/);
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Move to Trash/i }));
-    await waitFor(() => { expect(hard.navigate).toHaveBeenCalledWith('http://pressroom.test/pressroom/pressroom-ui/authoring/entries.rol?weblog=alpha'); });
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/entries'); });
+    // The one flash channel: router state {message}, shown above the list by the frame.
+    expect(router.state.location.state).toEqual({ message: 'Entry "Rome trip" moved to Trash. It can be restored from there.' });
     expect(lastRequest('DELETE')?.path).toBe('/weblogs/alpha/entries/e1');
   });
 
   it('shows a refused delete in place and keeps the editor', async () => {
     server.use(http.delete(`${API}/weblogs/:handle/entries/:id`, () => problem(409, 'entry.alreadyTrashed', 'Already in the trash.')));
-    open('/weblogs/alpha/entries/e1');
+    const { router } = open('/weblogs/alpha/entries/e1');
     await ready();
     await click(/Delete entry/);
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Move to Trash/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Already in the trash.');
-    expect(hard.navigate).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe('/weblogs/alpha/entries/e1');
   });
 });
 
 describe('trashed entries', () => {
   it('are sent to the Trash, not edited', async () => {
     state.entry['status'] = 'TRASHED';
-    open('/weblogs/alpha/entries/e1');
-    await waitFor(() => { expect(hard.navigate).toHaveBeenCalledWith('http://pressroom.test/pressroom/pressroom-ui/authoring/trash.rol?weblog=alpha'); });
+    const { router } = open('/weblogs/alpha/entries/e1');
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/trash'); });
     expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull();
   });
 });

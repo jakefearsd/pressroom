@@ -283,6 +283,7 @@ class ApiAuthorizationMatrixTest {
             row("PATCH  /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/media/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/media/{id}/crop",        POST,  SITE_LOGIN, ON_POST),
+            row("PUT    /v1/weblogs/{handle}/media/{id}/content",     POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media/directories",      POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/media/directories/{id}", POST,  SITE_LOGIN, ON_POST),
@@ -383,8 +384,10 @@ class ApiAuthorizationMatrixTest {
 
             // --- Site administration: a site admin with an ADMIN token
             row("GET    /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/site-pages",                        ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/traffic",                           ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/traffic/{handle}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users/{userName}/password-link",    ADMIN, SITE_ADMIN, NO_WEBLOG),
@@ -539,7 +542,8 @@ class ApiAuthorizationMatrixTest {
     private static final AtomicInteger REQUESTS = new AtomicInteger();
     private static final String RAW_TOKEN_PREFIX = "prs_matrix_";
     /** Routes whose mapping requires a multipart body. */
-    private static final Set<String> MULTIPART = Set.of("POST /v1/weblogs/{handle}/media");
+    private static final Set<String> MULTIPART = Set.of("POST /v1/weblogs/{handle}/media",
+            "PUT /v1/weblogs/{handle}/media/{id}/content");
 
     /**
      * Stands in for the MCP SDK's transport behind the real {@link McpEndpointServlet}: answers
@@ -854,6 +858,16 @@ class ApiAuthorizationMatrixTest {
         Row patch = ROWS.stream().filter(r -> r.key().equals("PATCH /v1/weblogs/{handle}/media/{id}"))
                 .findFirst().orElseThrow();
         String key = "POST /v1/weblogs/{handle}/media/{id}/crop";
+        Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
+        assertEquals(new Row(key, patch.role(), patch.global(), patch.weblog(), patch.flags()), row, key);
+    }
+
+    /** Replacing a file's content is a media write: asked exactly as the media patch is. */
+    @Test
+    void replaceRowEqualsTheMediaPatchRow() {
+        Row patch = ROWS.stream().filter(r -> r.key().equals("PATCH /v1/weblogs/{handle}/media/{id}"))
+                .findFirst().orElseThrow();
+        String key = "PUT /v1/weblogs/{handle}/media/{id}/content";
         Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
         assertEquals(new Row(key, patch.role(), patch.global(), patch.weblog(), patch.flags()), row, key);
     }

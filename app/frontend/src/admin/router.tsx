@@ -25,6 +25,7 @@ import { Members } from './screens/people/Members';
 import { Stylesheet } from './screens/people/Stylesheet';
 import { TemplateEdit } from './screens/people/TemplateEdit';
 import { Templates } from './screens/people/Templates';
+import { RequireAdmin } from './routes/RequireAdmin';
 import { siteAdminRoutes } from './routes/siteRoutes';
 import { peopleRoutes } from './screens/people/routes';
 
@@ -65,7 +66,7 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/members', element: <Members />, ...scoped('weblog') },
     { path: 'weblogs/:handle/inbox', element: <Inbox />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
-    { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
+    { path: 'admin/traffic', element: <RequireAdmin><SiteTraffic /></RequireAdmin>, ...scoped('admin') },
     ...siteAdminRoutes,
     ...peopleRoutes,
     { path: '*', element: <NotFound />, ...scoped('none') }

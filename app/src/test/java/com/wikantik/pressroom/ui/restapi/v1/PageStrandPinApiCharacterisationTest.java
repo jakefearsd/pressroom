@@ -62,6 +62,7 @@ class PageStrandPinApiCharacterisationTest {
         entry.setStatus(WeblogEntry.PubStatus.DRAFT);
         when(entries.getWeblogEntry("e1")).thenReturn(entry);
         pagesApi = new PagesApi();
+        when(fx.weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         pagesApi.weblogger = fx.weblogger;
     }
 

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { usePages, type PageView } from '../../api/pages';
 import { call } from '../../api/client';
-import { useMeta, useWeblog } from '../../api/queries';
+import { useWeblog } from '../../api/queries';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { ProblemBanner } from '../../components/ProblemBanner';
@@ -13,7 +13,7 @@ import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
 import { Markup, markupArg } from '../../components/Markup';
 import { runBulk } from '../../lib/bulk';
-import { isSiteSpace, pageUrl, weblogBase } from './urls';
+import { isSiteSpace } from './urls';
 
 
 interface Progress {
@@ -29,9 +29,7 @@ export function PagesList() {
   const handle = useParams()['handle'] ?? '';
   const pagesQuery = usePages(handle);
   const trashQuery = usePages(handle, 'TRASHED');
-  const weblog = useWeblog(handle).data;
-  const siteUrl = useMeta().data?.siteUrl;
-  const base = weblogBase(handle, weblog, siteUrl);
+  const weblog = useWeblog(isSiteSpace(handle) ? undefined : handle).data;
 
   const pages = pagesQuery.data ?? [];
   const [order, setOrder] = useState<string[] | null>(null);
@@ -128,6 +126,7 @@ export function PagesList() {
         </p>
       )}
 
+      <div id="pages-list-marker">
       {pages.length === 0 ? (
         pagesQuery.isSuccess ? (
           <EmptyState title={t('empty.pages.title')} body={t('empty.pages.body')}>
@@ -153,7 +152,7 @@ export function PagesList() {
               {rows.map((p, index) => {
                 const title = p.title ?? '';
                 const home = frontPage !== undefined && frontPage === p.id;
-                const href = p.status === 'PUBLISHED' ? pageUrl(base, p.slug ?? '', home) : undefined;
+                const href = p.status === 'PUBLISHED' ? p.absoluteUrl : undefined;
                 const edit = p.id ?? '';
                 return (
                   <tr key={p.id} className="page-row" draggable data-page-id={p.id} data-page-slug={p.slug}
@@ -206,6 +205,7 @@ export function PagesList() {
           </table>
         </div>
       )}
+      </div>
 
       {confirming === null ? null : (
         <ConfirmDialog

@@ -19,8 +19,10 @@ package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,15 +39,12 @@ import java.net.URL;
 import static com.codeborne.selenide.CollectionCondition.sizeGreaterThan;
 import static com.codeborne.selenide.Condition.appear;
 import static com.codeborne.selenide.Condition.attribute;
-import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.value;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
-import static com.codeborne.selenide.Selenide.switchTo;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -78,10 +77,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 })
 class GalleryIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_ADD = "/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_VIEW = "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
+    private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
+    private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";
@@ -109,7 +107,7 @@ class GalleryIT extends PressroomIT {
         $("#entry").should(exist);
         $("[name='bean.title']").setValue("IT Gallery " + suffix);
         Editor.setText("<p>Shot log " + suffix + "</p><p>[gallery dir=\"default\"]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -139,13 +137,12 @@ class GalleryIT extends PressroomIT {
      * property through the admin screen keeps this journey on real UI.
      */
     private void enableUploads() {
-        openPath(GLOBAL_CONFIG);
+        openGlobalConfig();
         WebElement checkbox = $("input[name='uploads.enabled']").should(exist).toWebElement();
         if (!checkbox.isSelected()) {
             checkbox.click();
         }
-        $("#saveButton").click();
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#saveButton"));
     }
 
     /**
@@ -156,9 +153,9 @@ class GalleryIT extends PressroomIT {
         openPath(MEDIA_ADD);
         $("#uploadedFiles").should(exist).uploadFile(testImage());
         $("#uploadButton").click();
-        // Only the success page offers to create a post from the upload.
-        $("button[formaction$='entryAddWithMediaFile.rol']").should(exist);
-        String mediaFileId = $("input[name='selectedImages']").should(exist).getValue();
+        // Only the success step offers to create a post from the upload.
+        $("#createPostButton").should(exist);
+        String mediaFileId = $("#entry input[type='checkbox']").should(exist).getValue();
         assertNotNull(mediaFileId, "the upload success page must carry the new file's id");
         return mediaFileId;
     }
@@ -173,87 +170,17 @@ class GalleryIT extends PressroomIT {
      * into the figcaption and {@code data-caption} the lightbox displays.
      */
     private void renameAndDescribe(String mediaFileId, String name, String caption) {
-        openPath(MEDIA_VIEW);
-        // Marker for the re-submit dance below: onEditSuccess re-submits the
-        // view form, replacing this document with a new one that lacks the
-        // marker -- which is the only reliable arrival signal, since the URL
-        // does not change.
-        executeJavaScript("window.__renameMarker = true;");
-        // the page's own tile-click handler: fills the modal's iframe and shows it
-        executeJavaScript("onClickEdit(arguments[0], arguments[1]);", mediaFileId, name);
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-        switchTo().frame("mediaFileEditor");
+        openPath(MEDIA_VIEW + "/" + mediaFileId);
+        // The edit screen is a page of its own: wait for THIS file's form before typing into it.
+        $("#mfedit_bean_name").shouldHave(value(ORIGINAL_UPLOAD_NAME));
+        $("#mfedit_bean_name").setValue(name);
+        $("#mfedit_bean_description").setValue(caption);
+        $("button[name='saveButton']").click();
 
-        // Wait for the iframe to hold THIS file's form before typing into it.
-        // The modal is shown and the iframe's src set in the same handler, so
-        // the frame can still be blank (or showing the previous file) when the
-        // switch succeeds -- and a setValue into that is silently discarded,
-        // which surfaces later as a rename that simply did not happen.
-        $("input[name='bean.name']").shouldHave(value(ORIGINAL_UPLOAD_NAME));
-
-        $("input[name='bean.name']").setValue(name);
-        $("textarea[name='bean.description']").setValue(caption);
-        // The iframe's document declares the same Plex webfonts as every admin
-        // page; submitting the form navigates the IFRAME while its font fetch
-        // can still be in flight, and Chrome reports that abort against the
-        // top-level page. Wait out the iframe's fonts first (we are still
-        // switched into the frame, so document.fonts here is the iframe's).
-        waitForFontsReady();
-        $("input[name='saveButton']").click();
-        switchTo().defaultContent();
-
-        // Wait for the modal to go before touching the top window. This one is
-        // not an animation to be skipped: the iframe POSTs the rename, and only
-        // its success page calls parent.onEditSuccess(), which is what hides
-        // the modal. So the modal disappearing IS the evidence that the write
-        // completed, and navigating before it would abandon the request. Given
-        // generously long, because it spans a form POST on a loaded runner.
-        $("#mediafile_edit_lightbox").should(disappear, Duration.ofSeconds(30));
-
-        // onEditSuccess also re-submits the view form. That navigation is
-        // still in flight and racing anything asserted against the current
-        // page. Wait for the NEW document to arrive (the marker planted above
-        // vanishes with the old one -- same URL, so nothing else signals it)
-        // and for ITS fonts to finish, before navigating again: polling
-        // document.fonts on the OLD document reports 'loaded' and would let
-        // openPath cancel the incoming page's font requests, which is exactly
-        // the ERR_ABORTED flake this dance exists to close.
-        Selenide.Wait().withTimeout(Duration.ofSeconds(30)).until(d ->
-                Boolean.TRUE.equals(executeJavaScript("return window.__renameMarker === undefined;")));
-        waitForFontsReady();
-        openPath(MEDIA_VIEW);
-        BrowserHealth.current().settle();
-        // Explicit timeout, not Selenide's 4s default: every other wait in
-        // this method is already 30s because a loaded runner stretches the
-        // POST-then-reload dance above, and this assertion is the one that
-        // reads the result of it. It has failed in CI ("Element not found
-        // {img[alt=...]}") on a run where the write itself demonstrably
-        // succeeded -- the modal disappearing, waited for above, IS that
-        // evidence -- so the listing simply had not painted yet.
+        // The save returns to the library with the news; the renamed tile is in it.
+        $("#messages").should(exist, Duration.ofSeconds(30));
         $("img[alt='" + name + "']").should(exist, Duration.ofSeconds(30));
-
-        // Flake: mediaFileView.rol's own stylesheet pulls in the Plex webfont,
-        // but @font-face only triggers the woff2 fetch once the browser lays
-        // out text that uses it -- which can still be in flight after
-        // settle()'s quiet period (a network event, not a DOM/layout one) has
-        // already elapsed. The caller navigates away from this page right
-        // after returning, and Chrome reports that as ERR_ABORTED on the font
-        // request, which BrowserHealth.assertNoFailedRequests() rightly does
-        // not excuse (fonts are declared by the document, not cancellable by
-        // page script -- see BrowserHealth.ABORT_IS_EXPECTED_FOR). Wait for
-        // the font to actually settle before leaving this page, rather than
-        // widen that doctrine or the shared settle() every test pays for.
-        waitForFontsReady();
-    }
-
-    /**
-     * Blocks until every webfont the current page requested has finished
-     * loading (or failed on its own, not by cancellation). Local to this test
-     * on purpose -- see the flake comment at its one call site above.
-     */
-    private void waitForFontsReady() {
-        Selenide.Wait().withTimeout(Duration.ofSeconds(10)).until(d ->
-                Boolean.TRUE.equals(executeJavaScript("return document.fonts.status === 'loaded';")));
+        BrowserHealth.current().settle();
     }
 
     private File testImage() {
