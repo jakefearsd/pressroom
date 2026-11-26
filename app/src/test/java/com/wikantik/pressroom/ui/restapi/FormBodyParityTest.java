@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
 import com.wikantik.pressroom.ui.controllers.admin.CreateUserBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
+import com.wikantik.pressroom.ui.controllers.editor.MediaFileBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
 import com.wikantik.pressroom.ui.controllers.editor.TemplateEditBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -95,6 +96,19 @@ class FormBodyParityTest {
                                 "standardTemplateId", "The STANDARD rendition's id, round-tripped by the form; "
                                         + "the API addresses the template, not its renditions.",
                                 "type", "A hidden form field the page does not use; no surface edits it.")),
+                new Parity("MediaFileBean -> media", MediaFileBean.class, EditableFieldManifest.media(),
+                        Map.of("tagsAsString", "tags"),
+                        Map.ofEntries(
+                                Map.entry("id", "The file's id is the route's path variable."),
+                                Map.entry("contentType", "Read-only on the form; the type is the file's own."),
+                                Map.entry("permalink", "Read-only on the form: the file's URL, which the view carries."),
+                                Map.entry("thumbnailURL", "Read-only on the form: a preview of the file."),
+                                Map.entry("isImage", "Read-only on the form; the view's contentType says it."),
+                                Map.entry("width", "Read-only on the form; the view carries it."),
+                                Map.entry("height", "Read-only on the form; the view carries it."),
+                                Map.entry("length", "Read-only on the form; the view carries it."),
+                                Map.entry("originalPath", "Shown only when mediafile.originalPathEdit.enabled, "
+                                        + "for a custom theme's own resources; not an API field."))),
                 new Parity("BusinessBean -> business", BusinessBean.class, EditableFieldManifest.business(),
                         Map.of(),
                         Map.of("id", "The business's id is the update route's path variable; create assigns "

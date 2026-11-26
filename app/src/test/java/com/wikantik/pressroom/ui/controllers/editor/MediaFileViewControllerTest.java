@@ -373,6 +373,27 @@ class MediaFileViewControllerTest extends EditorControllerTestSupport {
         assertEquals(defaultDirectory, model.getAttribute("currentDirectory"));
     }
 
+    /** The JSP offers Delete folder only on an empty folder that is not the default; the server holds the same line. */
+    @Test
+    void theDefaultFolderCannotBeDeleted() throws Exception {
+        controller.deleteFolder(request, model, "dir-1", null, null);
+
+        verify(weblogger.getMediaFileManager(), never()).removeMediaFileDirectory(any());
+        assertTrue(errors(model).contains("mediaFile.deleteFolder.error"), String.valueOf(errors(model)));
+    }
+
+    @Test
+    void aFolderStillHoldingFilesCannotBeDeleted() throws Exception {
+        targetDirectory.getMediaFiles().add(mediaFile("file-9", "kept.jpg"));
+        when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-2")).thenReturn(targetDirectory);
+
+        controller.deleteFolder(request, model, "dir-2", null, null);
+
+        verify(weblogger.getMediaFileManager(), never()).removeMediaFileDirectory(any());
+        assertTrue(errors(model).contains("mediaFile.deleteFolder.error"), String.valueOf(errors(model)));
+        assertTrue(messages(model).isEmpty(), "a refused delete must not also report success");
+    }
+
     @Test
     void deletingAFolderWithNoIdDoesNothing() throws Exception {
         controller.deleteFolder(request, model, null, null, null);

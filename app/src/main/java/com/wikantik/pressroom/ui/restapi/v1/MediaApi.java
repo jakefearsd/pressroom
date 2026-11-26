@@ -23,7 +23,10 @@ import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.MediaDirectories;
+import com.wikantik.pressroom.ui.controllers.MediaMetadata;
 import com.wikantik.pressroom.ui.controllers.MediaRules;
+import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -230,6 +233,9 @@ public class MediaApi extends MediaApiBase implements UISecurityEnforced {
 
         MediaDtos.applyPatch(file, body, cleared, target != null ? target : file.getDirectory());
         weblogger.getMediaFileManager().updateMediaFile(weblog, file);
+        if (body.tags() != null) {
+            MediaMetadata.setTags(weblogger.getMediaFileManager(), file, String.join(" ", body.tags()));
+        }
 
         if (target != null && (file.getDirectory() == null || !target.getId().equals(file.getDirectory().getId()))) {
             weblogger.getMediaFileManager().moveMediaFile(file, target);
@@ -343,6 +349,41 @@ public class MediaApi extends MediaApiBase implements UISecurityEnforced {
         weblogger.flush();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(MediaDtos.toView(directory));
+    }
+
+    /**
+     * Deletes a folder, as the Media Files screen's Delete folder does, under the rules the screen offers it
+     * by: not the default folder, and nothing left in it ({@link MediaDirectories#deleteProblem}, the one
+     * copy). The folder is looked up through the ownership check: the removal is recursive, so a global by-id
+     * lookup would let one weblog's editor wipe another's.
+     */
+    @Operation(operationId = "mediaDeleteDirectory")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
+    @DeleteMapping("/directories/{id}")
+    public ResponseEntity<Void> deleteDirectory(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        Weblog weblog = requireActionWeblog(request);
+        MediaFileDirectory directory = requireDirectory(request, id);
+        RuleViolation refused = MediaDirectories.deleteProblem(directory);
+        if (refused != null) {
+            throw RuleProblems.problem(refused, false);
+        }
+        MediaDirectories.delete(weblogger, weblog, directory);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Sets a folder's private flag (the screen's toggle, stated rather than flipped, so a retry is harmless). */
+    @Operation(operationId = "mediaUpdateDirectory")
+    @PatchMapping("/directories/{id}")
+    public MediaDtos.DirectoryView updateDirectory(HttpServletRequest request, @PathVariable("id") String id,
+            @RequestBody MediaDtos.DirectoryPatch body) throws WebloggerException {
+        Weblog weblog = requireActionWeblog(request);
+        MediaFileDirectory directory = requireDirectory(request, id);
+        if (body.isPrivate() == null) {
+            throw ApiException.problemOnField("isPrivate", ProblemCode.FIELD_REQUIRED, "isPrivate");
+        }
+        MediaDirectories.setPrivate(weblogger, weblog, directory, body.isPrivate());
+        return MediaDtos.toView(directory);
     }
 
     @Override

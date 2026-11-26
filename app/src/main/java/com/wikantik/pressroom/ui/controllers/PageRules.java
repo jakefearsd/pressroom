@@ -46,6 +46,19 @@ public final class PageRules {
     private PageRules() {
     }
 
+    /**
+     * The page a preview renders: never the stored row (so a preview cannot dirty the persistence context),
+     * only the weblog, the stored page's slug when there is one (all a {@code ShortcodeContext} exposes), and
+     * the text. The one place the JSP editor's and the API's page previews both build it.
+     */
+    public static WeblogPage previewScratch(Weblog weblog, String slug, String text) {
+        WeblogPage scratch = new WeblogPage();
+        scratch.setWeblog(weblog);
+        scratch.setSlug(slug);
+        scratch.setContent(text == null ? "" : text);
+        return scratch;
+    }
+
     /** The slug a new page left without one takes: its title's. May be empty, which the shape rule refuses. */
     public static String defaultSlug(String title) {
         return WeblogPage.slugFromTitle(title);

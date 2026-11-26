@@ -94,7 +94,12 @@ public final class McpToolCatalog {
                             "POST " + W + "/media/{id}/crop"),
                     action("delete", "Delete a media file.", "DELETE " + W + "/media/{id}"),
                     action("list_directories", "List media directories.", "GET " + W + "/media/directories"),
-                    action("create_directory", "Create a media directory.", "POST " + W + "/media/directories")),
+                    action("create_directory", "Create a media directory.", "POST " + W + "/media/directories"),
+                    action("delete_directory", "Delete an empty media directory (not the default one).",
+                            "DELETE " + W + "/media/directories/{id}"),
+                    action("update_directory", "Make a media directory private (hidden from every public "
+                            + "surface) or public again: isPrivate true or false.",
+                            "PATCH " + W + "/media/directories/{id}")),
             tool("pages", "A weblog's standalone pages (DRAFT or PUBLISHED); delete moves one to the trash.", false,
                     action("list", "List pages.", "GET " + W + "/pages"),
                     action("get", "One page.", "GET " + W + "/pages/{id}"),
@@ -102,6 +107,9 @@ public final class McpToolCatalog {
                     action("update", "Change the fields given; others are left alone. expectedContentHash refuses "
                             + "the update if the page's text changed since it was read; revisionNote labels the "
                             + "revision it leaves.", "PATCH " + W + "/pages/{id}"),
+                    action("preview", "Render page text as it would publish, without saving; edits apply to "
+                            + "the stored text. Omit id for an unsaved page.",
+                            "POST " + W + "/pages/{id}/preview", "POST " + W + "/pages/preview"),
                     action("delete", "Move a page to the trash.", "DELETE " + W + "/pages/{id}"),
                     action("restore", "Bring a page back from the trash, as a DRAFT.",
                             "POST " + W + "/pages/{id}/restore"),

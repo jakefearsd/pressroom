@@ -81,7 +81,7 @@ class MediaApiTest {
     void anAbsentAltTextInAPatchLeavesTheStoredValue() {
         MediaFile file = new MediaFile();
         file.setAltText("kept");
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(null, 0.5, 0.5, null, null, null), java.util.Set.of());
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(null, 0.5, 0.5, null, null, null, null, null, null), java.util.Set.of());
         assertEquals("kept", file.getAltText());
     }
 
@@ -94,7 +94,7 @@ class MediaApiTest {
     void anExplicitlyEmptyAltTextIsStored() {
         MediaFile file = new MediaFile();
         file.setAltText("was here");
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch("", null, null, null, null, null), java.util.Set.of());
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch("", null, null, null, null, null, null, null, null), java.util.Set.of());
         assertEquals("", file.getAltText());
     }
 
@@ -113,7 +113,7 @@ class MediaApiTest {
         String tooLong = "a".repeat(300);
 
         ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(
-                file, new MediaDtos.MediaPatch(tooLong, null, null, null, null, null), java.util.Set.of()));
+                file, new MediaDtos.MediaPatch(tooLong, null, null, null, null, null, null, null, null), java.util.Set.of()));
 
         assertEquals(400, ex.getStatus());
         assertNull(file.getAltText(), "the in-memory file must be untouched on refusal");
@@ -124,7 +124,7 @@ class MediaApiTest {
     void anAltTextAtExactlyTheColumnLimitIsAccepted() {
         MediaFile file = new MediaFile();
         String atLimit = "a".repeat(255);
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(atLimit, null, null, null, null, null), java.util.Set.of());
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(atLimit, null, null, null, null, null, null, null, null), java.util.Set.of());
         assertEquals(255, file.getAltText().length());
     }
 
@@ -140,7 +140,7 @@ class MediaApiTest {
         file.setName("original.jpg");
 
         ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(
-                file, new MediaDtos.MediaPatch(null, null, null, null, "   ", null), java.util.Set.of()));
+                file, new MediaDtos.MediaPatch(null, null, null, null, "   ", null, null, null, null), java.util.Set.of()));
 
         assertEquals(400, ex.getStatus());
         assertEquals("original.jpg", file.getName(), "the in-memory file must be untouched on refusal");
@@ -152,7 +152,7 @@ class MediaApiTest {
         file.setName("original.jpg");
 
         ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(file,
-                new MediaDtos.MediaPatch("a".repeat(256), 2.0, null, null, " ", null), java.util.Set.of()));
+                new MediaDtos.MediaPatch("a".repeat(256), 2.0, null, null, " ", null, null, null, null), java.util.Set.of()));
 
         assertEquals(java.util.List.of("focalX", "altText", "name"),
                 ex.getFieldErrors().stream().map(f -> f.field()).toList());

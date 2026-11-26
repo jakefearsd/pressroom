@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.ui.restapi.dto.BusinessDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
+import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import com.wikantik.pressroom.ui.restapi.dto.TemplateDtos;
 
@@ -40,7 +41,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page(), business(), user(), template());
+        return List.of(entry(), weblogSettings(), page(), business(), user(), template(), media());
     }
 
     static Resource entry() {
@@ -107,6 +108,13 @@ final class EditableFieldManifest {
         return new Resource("template", TemplateDtos.TemplateWrite.class, sorted(
                 "name", "description", "link", "navbar", "hidden", "contents", "contentType"),
                 new TreeMap<>());
+    }
+
+    /** The media edit form (Wave 2 of the React admin migration). */
+    static Resource media() {
+        return new Resource("media", MediaDtos.MediaPatch.class, sorted(
+                "name", "description", "altText", "copyrightText", "tags", "directoryId", "focalX", "focalY"),
+                new TreeMap<>(Map.of("clear", CLEAR)));
     }
 
     private static Set<String> sorted(String... names) {

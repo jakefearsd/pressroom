@@ -266,6 +266,17 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `MediaDtos.applyPatch` after every 400 and before anything is applied). A move with no `name` is
   judged on the name the file keeps whenever the target folder is not its current one (final review
   I1; it used to pass unjudged and leave two files at one public address).
+- **Media folders, listing and metadata, page preview (React migration Wave 2)**: the Media Files
+  screen and the API share one copy of each rule. `MediaDirectories` holds the delete rule (not the
+  default folder, nothing in it: the screen only ever offered the button there, and the JSP action now
+  refuses the same, so a crafted POST can no longer wipe a folder), the delete and the private flag
+  (both save the weblog, which is what expires rendered pages). `MediaListing` holds the sort keys
+  and the search (a name prefix and a type through `searchMediaFiles`); name order ignores case on both
+  surfaces. `MediaMetadata` is the one tag write. `PageRules.previewScratch` builds the page both
+  previews render. The API states `isPrivate` rather than toggling it. Limits the JSP never checked
+  (description 255, copyright 1023, tag 30 characters: the columns) are 400s here; on the form they are
+  still a 500, which is a known gap. MCP: page `preview` and media `update_directory`/`delete_directory`
+  are actions (an agent previews shortcodes and tidies folders; a delete is refused unless empty).
 - **A category name lost to an overlapping create** is a
   `DuplicateCategoryNameException` from the manager's locked check: the API
   answers 409 on `name`, the category screen its duplicate-name error.
