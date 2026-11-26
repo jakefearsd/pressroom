@@ -19,6 +19,8 @@ interface FieldProps {
   autoComplete?: string;
   /** On a confirm field: the new-password value to compare with; shows the live match line. */
   matchWith?: string;
+  /** The server refused this field: `is-invalid` and `aria-invalid` together. */
+  invalid?: boolean;
 }
 
 /**
@@ -27,7 +29,7 @@ interface FieldProps {
  * type=password when its form submits or the page is left, so password managers still see
  * a password field.
  */
-export function PasswordField({ id, name, value, onChange, autoComplete, matchWith }: FieldProps) {
+export function PasswordField({ id, name, value, onChange, autoComplete, matchWith, invalid }: FieldProps) {
   const t = useT();
   const [shown, setShown] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -48,7 +50,8 @@ export function PasswordField({ id, name, value, onChange, autoComplete, matchWi
     <>
       <div className="input-group">
         <input ref={input} id={id} name={name ?? id} type={shown ? 'text' : 'password'}
-               className="form-control" value={value} autoComplete={autoComplete}
+               className={invalid === true ? 'form-control is-invalid' : 'form-control'} value={value}
+               autoComplete={autoComplete} {...(invalid === true ? { 'aria-invalid': true as const } : {})}
                onChange={(event) => { onChange(event.target.value); }} />
         <button type="button" className="btn btn-outline-secondary password-reveal"
                 aria-controls={id} aria-pressed={shown}

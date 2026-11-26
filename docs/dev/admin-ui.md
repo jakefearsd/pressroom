@@ -466,3 +466,23 @@ styles it. Spec: `docs/superpowers/specs/2026-11-25-react-admin-migration-design
   whose sweeper deletes keys of any other shape); sign-out clears both.
 - `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST`
   (`eslint.config.js`, empty).
+
+### Wave 4 people screens (`screens/people/`)
+
+Routes: `/admin/users` (`?kind=&q=`), `/admin/users/new`, `/admin/users/:userName`,
+`/admin/agents/new`, `/admin/agents/:userName`, `/admin/tokens`, `/profile`, `/profile/tokens`
+(`routes.tsx`; the admin ones sit behind `AdminOnly`, which renders nothing and fetches nothing
+for a non-admin). Not yet cut over: no legacy redirect, no JSP deleted, no rail `path`.
+
+- **A token's secret lives in component state only** (`tokens.tsx`, `TokenReveal`), and writes
+  go through `useAction`, not a TanStack mutation (whose result stays in the mutation cache
+  for minutes). Tests assert the secret is in no storage and no cache after Done and after
+  navigating away.
+- The user edit page reads its account from `GET /v1/admin/users?q=<userName>` (no read-one
+  route) and takes the exact match.
+- JSP behaviour the API cannot reproduce, so the screen omits it: the Users list's "Last active"
+  column (no such field on `UserView`; the weblog count is one `/weblogs` call per row), the
+  create form's Enabled box (`POST` takes none: a typed password enables, a link leaves it
+  disabled) and its mail-configured default (the link mode is always offered and a missing
+  mailer is refused in the JSP's words), and the profile's single-sign-on hiding of the
+  password fields (`ProfileView` has no `sso`; the refusal is shown when it comes).
