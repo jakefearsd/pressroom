@@ -28,14 +28,10 @@ resolves through the index at the end of `CLAUDE.md`.
   in the same commit as the CSS.
 - **The tiles system** is homegrown, not Apache Tiles: `ViewDefinition`
   (layout JSP + attribute JSPs such as `content`, `menu`) is resolved by
-  `PressroomViewResolver`, which registers eight base layouts in `init()`:
+  `PressroomViewResolver`, which registers six base layouts in `init()`:
   `.tiles-mainmenupage`, `.tiles-tabbedpage`, `.tiles-simplepage`,
-  `.tiles-loginpage`, `.tiles-installpage`, `.tiles-errorpage`,
-  `.tiles-popuppage`, `.tiles-barepage`. `.tiles-barepage` (content, no head)
-  exists only for `.MediaFileEditSuccess`, which calls
-  `parent.onEditSuccess()` and dies milliseconds later, aborting a full head's
-  webfont fetch on every rename (the `GalleryIT` "font ERR_ABORTED" flake).
-  Never reuse it for a page a human reads.
+  `.tiles-loginpage`, `.tiles-installpage`, `.tiles-errorpage`. (`.tiles-popuppage` and
+  `.tiles-barepage` went with the media screens' iframes in the wave 2 cutover.)
   `tiles-tabbedpage.jsp`/`tiles-mainmenupage.jsp` render `#adminRail`
   (`navMenu` tool groups under caps-labels, `.rail-active` on the current
   tab), smoke-tested on the Entries route by
@@ -506,24 +502,38 @@ traffic) are the worked example: `LegacyAdminRedirects`, `LegacyAdminRedirectsTe
 7. **Hazards**: a session read of `/api` needs no CSRF header, a write does (the client sets it); the shell
    is served for any path under `/pressroom-ui/app/`, so a React route needs no server mapping; an
    unauthenticated SPA call is a 401 the session-expired bar handles.
-### Media screens (`screens/media`, wave 2, not yet cut over)
+### Pages and media screens (`screens/pages`, `screens/media`, wave 2, cut over)
 
-Routes `/weblogs/:handle/media` (+ `?dir=<directoryId>&sort=&q=&type=&size=&unit=&tags=`), `.../media/upload`
-(`?dir=` preselects the folder), `.../media/:id`. They replace `MediaFileView`, `MediaFileAdd(Success)`,
-`MediaFileEdit(Success)` and `MediaFileSidebar` (the sidebar groups render inline, there is no sidebar column).
+Routes `/weblogs/:handle/pages` (+ `/new`, `/trash`, `/:id`) and `/weblogs/:handle/media`
+(+ `?dir=<directoryId>&sort=&q=&type=&size=&unit=&tags=`), `.../media/upload` (`?dir=` preselects the folder),
+`.../media/:id`. The legacy routes redirect (`LegacyAdminRedirects`: `pages.rol`, `pageEdit.rol` (an `id` or the
+new page), `pagesTrash.rol`, `mediaFileView.rol` (`directoryId` is `dir`, `sortBy` is `sort`), `mediaFileAdd.rol`,
+`mediaFileEdit.rol`, and the image chooser overlay, which has no page of its own and opens the library); the JSPs,
+controllers, beans and POST actions are gone. The table gained two optional parts for this: an alternative route when
+a path parameter is missing (`otherwise`) and query-name renames (`queryNames`).
 
+- **The page editor writes on the shared `EditorSurface`** (`kind="page"` picks the page preview routes): toolbar,
+  write/split/preview with the weblog's theme in the frame, media insert, shortcodes. A page has one save, so
+  Ctrl+S and Ctrl+Enter both save. Its address, and the front-door note, come from the page view
+  (`absoluteUrl`, `frontDoor`), never rebuilt from the site URL; the slug prefix is `WeblogView.absoluteUrl`.
+- **Strand "Add posts"** is a search box over the entries `text` search (20 results), not the first 200 posts; a
+  chosen part keeps its title when a later search replaces the choices.
+- **The page trash** shows the retention sentence and the "Deleted permanently" date from
+  `meta.pageTrashRetentionDays` (its own setting, not the entries') plus the page's `trashedAt`.
 - **Uploads are one multipart XHR per file** (`api/upload.ts`; fetch has no upload progress), two at a
   time, each with its own progress bar and its own refusal. The shared description, copyright and tags are
   PATCHed onto every created file afterwards. Bulk move/delete use `api/bulk.ts` (spec A6).
-- **Search**: `q` and `type` go to the API; "larger than" and tags are applied client-side to what it returned
-  (`narrow`), because the API has no such filters.
-- **Delete folder** empties the folder file by file first, then deletes it: the API refuses a non-empty or
-  default folder (`directory.notEmpty`, `directory.isDefault`), where the JSP deleted both in one go.
+- **Search**: `q`, `type`, `largerThan` (bytes; the form converts KB and MB) and `tags` (any of) all go to the API,
+  so a page of results holds the matches.
+- **Delete folder** is offered only for an empty, non-default folder (the API refuses the others:
+  `directory.notEmpty`, `directory.isDefault`); the JSP offered it only with no files listed too.
+- **Replace file** (`PUT .../media/{id}/content`, multipart) is sent first on Save, so a refusal (size, quota, type)
+  stops before any other change.
 - **Crop** loads the Cropper.js v2 webjar on demand (`crop.ts`, `loadCropper`); the maths (`cropRectInNaturalPixels`,
   `seedSelection`) are pure and tested, the custom elements are typed in `cropper-elements.d.ts`.
-- **Gaps against the JSP**: no *Replace file* (the API has no replace operation); no site-space check for
-  "New entry with selected" (WeblogView has no `siteSpace`); "New entry with selected" and the post-upload
-  entry step still POST a form (with `_csrf`) to `entryAddWithMediaFile.rol` until the entry editor migrates.
+- **Entries from files**: "New entry with selected" and the post-upload step open
+  `/weblogs/:h/entries/new?mediaId=...` (one `mediaId` per file); the site space has no posts, so it offers neither.
+  The JSP's "file enclosure" choice is gone: the server never read it.
 - **`MediaChooser`** (`screens/media/MediaChooser.tsx`) is the reusable modal for the entry and page editors:
   `<MediaChooser handle imagesOnly? onSelect(choice) onCancel />`, `choice = {id, name, url, isImage, file}`;
   `imagesOnly` lists images outside private folders (what featured and share images accept). It does not close

@@ -311,3 +311,13 @@ alone exercises a servlet prefix end-to-end. The prefix pass found a defect
 the root pass could not; `SeoController.robots()`'s test, already under
 `/pressroom`, had hardcoded the buggy url. A fixture pinning a context path must
 *derive* its expected url, never hardcode a shape.
+
+## Pages and media ITs on the React screens (wave 2)
+
+`support/PagesMediaApp` names the routes and the few shared controls: `awaitPageEditor`, `awaitPagesList` (the table
+or the empty invitation: `#pages-list-marker` exists while the query is still loading), `savePage` (waits for the
+editor's status to read "Saved": a save is an XHR, not a navigation, and a banner alone cannot tell this save from the
+last), and `confirmDialog` (the React screens' modal replaces `Selenide.confirm()`). `Editor.setText`/`getText` fall
+back to a single `insertText` on the contenteditable where the JSP editors' globals are absent. The edit-modal
+iframe dances (`onClickEdit`, `reenterFrameAfterPost`) are gone: the edit screen is a page. `MediaCropIT`'s
+hidden-lightbox race has no counterpart (a `ResizeObserver` seeds the selection whenever the canvas gets a size).
