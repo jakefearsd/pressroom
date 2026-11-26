@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.controllers.admin;
 
+import jakarta.mail.MessagingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -386,7 +387,7 @@ public class UserEditController extends BaseController {
             } else {
                 addMessage(model, successKey, request);
             }
-        } catch (Exception ex) {
+        } catch (WebloggerException | MessagingException | RuntimeException ex) {
             log.error("Error sending set-password link for {}", user.getUserName(), ex);
             addError(model, "generic.error.check.logs", request);
         }

@@ -134,15 +134,15 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         return new AdminDtos.UserPage(views, offset, boundedLimit, rows.size() > boundedLimit);
     }
 
-    /** The screen's tab for {@code kind}: null for all. Anything but people, agents or all is refused. */
+    /** The screen's tab for {@code kind}: null for all. Anything but people, agents or all (lower case) is refused. */
     private static User.Kind accountKind(String kind) {
-        if (kind == null || "all".equalsIgnoreCase(kind)) {
+        if (kind == null || "all".equals(kind)) {
             return null;
         }
-        if ("people".equalsIgnoreCase(kind)) {
+        if ("people".equals(kind)) {
             return User.Kind.PERSON;
         }
-        if ("agents".equalsIgnoreCase(kind)) {
+        if ("agents".equals(kind)) {
             return User.Kind.AGENT;
         }
         throw ApiException.problemOnField("kind", ProblemCode.PARAMETER_INVALID_VALUE, "kind");
