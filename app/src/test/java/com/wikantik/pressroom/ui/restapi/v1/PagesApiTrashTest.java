@@ -54,6 +54,7 @@ class PagesApiTrashTest {
         weblog = weblog("myblog");
         other = weblog("someoneelse");
         PagesApi controller = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ApiExceptionHandler())

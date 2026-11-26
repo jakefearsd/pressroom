@@ -679,6 +679,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `field.notUuid` | 400 | `invalid-request` | A field that holds a UUID does not. |
 | `media.fileRequired` | 400 | `invalid-request` | A media upload carried no file. |
 | `media.importRefused` | 400 | `invalid-request` | A media import could not fetch or store the image; `detail` says why. Text from the import step. |
+| `media.replaceRefused` | 400 | `invalid-request` | A replacement file failed the upload checks (size, quota, type, uploads switched off); `detail` says which. |
 | `media.notFound` | 404 | `not-found` | No media file of the weblog has this id. |
 | `media.nameInUse` | 409 | `conflict` | A media file's new `name` is held by another file in the directory it will be in. |
 | `media.notCroppable` | 409 | `conflict` | A crop was asked of a file that is not a JPEG or PNG image. |
@@ -890,6 +891,7 @@ setting an operator changes shows in the next response.
 | `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
 | `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
 | `trashRetentionDays` | Days a trashed entry is kept before the sweep deletes it for good: negative keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request. |
+| `pageTrashRetentionDays` | The same for a trashed page (the page trash has its own setting). |
 
 ```
 GET /api/v1/me/profile
@@ -1449,12 +1451,13 @@ per-weblog tag cloud has never been large enough to need it.
 ## Media
 
 ```
-GET    /api/v1/weblogs/{handle}/media[?directoryId=&q=&type=&sort=&offset=&limit=]
+GET    /api/v1/weblogs/{handle}/media[?directoryId=&q=&type=&largerThan=&tags=&sort=&offset=&limit=]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
 PATCH  /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media/{id}/crop   crop an image (cannot be undone)
+PUT    /api/v1/weblogs/{handle}/media/{id}/content   replace a file's bytes (multipart `file`)
 DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
@@ -1488,7 +1491,10 @@ Media Files pages do.
 `MediaView`s sorted by name (or by `sort`, below). `q` keeps the files whose
 name starts with that text and `type` the files of one type (`image`, `video`,
 `audio` or `other`), exactly as the Media Files screen's search does: across the
-weblog, or within the directory when `directoryId` is also given. `sort` is
+weblog, or within the directory when `directoryId` is also given. `largerThan`
+keeps the files strictly larger than that many bytes (negative is a 400
+`parameter.invalidValue`) and `tags` those carrying any of the named tags
+(repeat it, or separate with commas), so a page of the answer holds the matches. `sort` is
 `name` (the default, ignoring case), `date_uploaded` (newest first) or `type`
 (content type), each then by name; an unknown `sort` or `type` is a 400
 `parameter.invalidValue` naming it. With `directoryId`, only that directory's files
@@ -1565,6 +1571,19 @@ default: 409 `directory.isDefault` or 409 `directory.notEmpty`, as the screen
 offers Delete folder only there. A directory of another weblog, or an unknown
 id, is a 404 `directory.notFound`. In the MCP endpoint these are `media` with
 `action: "update_directory"` and `"delete_directory"`.
+
+### Replacing a file's content
+
+`PUT .../media/{id}/content` with a multipart `file` part replaces the bytes of an
+existing file, as the media edit screen's Replace file does. The file keeps its
+name, folder, description and tags; its content type follows the new bytes (or
+the name when the client sends none), and the thumbnail, renditions, dimensions
+and EXIF are rebuilt from them. The upload's checks run first (uploads switched
+on, the per-file size, the weblog's quota with the replaced file's own bytes
+left out, forbidden types): a refusal is a 400 `media.replaceRefused` whose
+`detail` says which, and nothing changes. A missing or empty part is a 400
+`media.fileRequired` on `file`. Not an MCP tool (a call carries JSON): import the
+new image by URL.
 
 ### Cropping an image
 
@@ -1768,7 +1787,10 @@ future) shows "Part N of M" linking to the strand page, with links to the
 previous and next parts. A post is in at most one strand, and a strand's
 parts are posts of its own blog.
 
-Every page view carries `strand` (boolean) and `parts`, read-only: a strand's
+Every page view carries `absoluteUrl` (where readers reach the page: the blog's
+root for its front page, the site root for the front-door page) and `frontDoor`
+(true for the site page served at the site root instead of at its slug), both
+read-only, and `strand` (boolean) and `parts`, read-only: a strand's
 members in order, drafts and the trash included, each
 `{id, anchor, title, status, position}` (`title` is the entry's
 plain-text title, as in the entry view; `position` orders the parts and need not
@@ -2735,6 +2757,7 @@ The CLI, REST and MCP name some operations differently:
 | `media patch` | `PATCH .../media/{id}` | `media` `update` |
 | `media dirs` / `media create-dir` | `GET`/`POST .../media/directories` | `media` `list_directories` / `create_directory` |
 | `media upload` | `POST .../media` (multipart) | not available; `media` `import` fetches from a URL instead |
+| `media replace` | `PUT .../media/{id}/content` (multipart) | not available |
 | `admin rebuild-index` | `POST /api/v1/admin/weblogs/{handle}/actions/rebuild-index` | `maintenance` `rebuild_index` |
 | `admin flush-cache` | `.../actions/flush-cache` | `maintenance` `flush_cache` |
 | `admin users patch` | `PATCH /api/v1/admin/users/{userName}` | `users` `update` |

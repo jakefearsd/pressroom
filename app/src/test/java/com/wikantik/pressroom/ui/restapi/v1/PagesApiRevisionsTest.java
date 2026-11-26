@@ -62,6 +62,7 @@ class PagesApiRevisionsTest {
         user = new User();
         user.setUserName("alice");
         PagesApi controller = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         controller.weblogger = weblogger;
         // The manager's restore is mocked: stand in for what it does to the
         // page, so what the route answers can be checked. That it never

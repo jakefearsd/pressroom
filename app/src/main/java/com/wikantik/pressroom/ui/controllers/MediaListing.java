@@ -78,13 +78,18 @@ public final class MediaListing {
     }
 
     /**
-     * The files to list: with no {@code text} and no {@code type}, those of {@code directory} or, with no
-     * directory, every file of the weblog; with either, the manager's search of the weblog, narrowed to
-     * {@code directory} when one is given.
+     * The files to list: with no search criteria, those of {@code directory} or, with no directory, every file
+     * of the weblog; with any, the manager's search of the weblog, narrowed to {@code directory} when one is
+     * given. {@code largerThan} is a size in bytes (files strictly larger; 0 or less is no size filter) and
+     * {@code tags} are tag names a file may carry any of (split on commas and spaces; blank ones are ignored).
      */
     public static List<MediaFile> find(MediaFileManager manager, com.wikantik.pressroom.pojos.Weblog weblog,
-            MediaFileDirectory directory, String text, MediaFileType type) throws WebloggerException {
-        boolean filtered = StringUtils.isNotBlank(text) || type != null;
+            MediaFileDirectory directory, String text, MediaFileType type, long largerThan, List<String> tags)
+            throws WebloggerException {
+        List<String> wantedTags = tags == null ? List.of() : tags.stream()
+                .flatMap(value -> java.util.Arrays.stream(StringUtils.defaultString(value).split("[\\s,]+")))
+                .filter(StringUtils::isNotBlank).toList();
+        boolean filtered = StringUtils.isNotBlank(text) || type != null || largerThan > 0 || !wantedTags.isEmpty();
         if (directory != null && !filtered) {
             return new ArrayList<>(directory.getMediaFiles());
         }
@@ -93,6 +98,13 @@ public final class MediaListing {
             filter.setName(text.trim());
         }
         filter.setType(type);
+        if (largerThan > 0) {
+            filter.setSize(largerThan);
+            filter.setSizeFilterType(MediaFileFilter.SizeFilterType.GT);
+        }
+        if (!wantedTags.isEmpty()) {
+            filter.setTags(wantedTags);
+        }
         // Copied: the manager's list is not promised to be sortable.
         List<MediaFile> found = new ArrayList<>(manager.searchMediaFiles(weblog, filter));
         if (directory != null) {

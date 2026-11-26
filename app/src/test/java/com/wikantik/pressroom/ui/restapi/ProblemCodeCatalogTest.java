@@ -202,6 +202,7 @@ class ProblemCodeCatalogTest {
                         "field.notUuid",
                         "media.fileRequired",
                         "media.importRefused",
+                        "media.replaceRefused",
                         "media.notFound",
                         "media.nameInUse",
                         "media.notCroppable",

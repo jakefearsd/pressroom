@@ -135,7 +135,12 @@ public final class MetaDtos {
                     + "good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. "
                     + "Read afresh on every request: a site admin can change it.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            int trashRetentionDays) {
+            int trashRetentionDays,
+            @Schema(description = "The same for a trashed page (the page trash has its own setting): a negative "
+                    + "number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on "
+                    + "every request.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int pageTrashRetentionDays) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */

@@ -390,7 +390,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         List<WeblogEntry> parts = Boolean.TRUE.equals(page.getStrand())
                 ? weblogger.getWeblogEntryManager().getStrandParts(page, false)
                 : List.of();
-        return PageDtos.toView(page, parts);
+        return PageDtos.toView(page, parts, weblogger.getUrlStrategy().getWeblogStaticPageURL(page.getWeblog(), page, true));
     }
 
     /**

@@ -227,6 +227,8 @@ public final class McpToolCatalog {
             sessionOnly("POST " + W + "/entries/{id}/send-newsletter"),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."),
+            new Exclusion("PUT " + W + "/media/{id}/content", "Multipart file replacement; a tool call carries "
+                    + "JSON. Import the new image by URL instead."),
             new Exclusion("GET /v1/meta/weblog-options", "A screen's picker (themes with previews, every locale and "
                     + "time zone); creating a weblog with a wrong theme answers with the themes on offer."),
             new Exclusion("GET " + W + "/themes", "A screen's picker; changing the theme with a wrong one answers "

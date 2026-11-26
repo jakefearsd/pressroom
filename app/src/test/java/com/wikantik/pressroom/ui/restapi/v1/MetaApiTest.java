@@ -468,6 +468,19 @@ class MetaApiTest {
         }
     }
 
+    /** The page trash has its own retention setting (page.trash.retention.days), read afresh like the entries'. */
+    @Test
+    void pageTrashRetentionDaysFollowsItsOwnRuntimeSettingOnEveryRequest() throws Exception {
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("entry.trash.retention.days")).thenReturn(14);
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("page.trash.retention.days")).thenReturn(30);
+            assertEquals(30, meta().get("pageTrashRetentionDays").asInt());
+            assertEquals(14, meta().get("trashRetentionDays").asInt());
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("page.trash.retention.days")).thenReturn(-1);
+            assertEquals(-1, meta().get("pageTrashRetentionDays").asInt());
+        }
+    }
+
     // ------------------------------------------------- GET /v1/me/profile
 
     @Test
