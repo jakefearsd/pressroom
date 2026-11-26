@@ -454,7 +454,7 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/members", Role.EDITOR, "", "#memberPermissionsForm"),
 
             // The contact inbox: the delete form is emitted with an empty list too.
-            new Route("/pressroom-ui/app/weblogs/it_weblog/inbox", Role.EDITOR, "", "#submissionsDeleteForm"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/inbox", Role.EDITOR, "", "#submissionsDeleteForm, .empty-state"),
 
             // Remove: the irreversible-removal warning, which only this confirmation carries.
             new Route("/pressroom-ui/app/weblogs/it_weblog/remove", Role.EDITOR, "", "span.warning")

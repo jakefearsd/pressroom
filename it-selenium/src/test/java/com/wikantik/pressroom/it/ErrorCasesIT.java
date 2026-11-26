@@ -111,6 +111,7 @@ class ErrorCasesIT extends PressroomIT {
         $("#name").should(visible).setValue("Clashing Blog");
         $("#handle").setValue(WEBLOG_HANDLE);
         $("#emailAddress").setValue("clash@example.invalid");
+        BrowserHealth.current().expectRefusal("/api/v1/weblogs");
         $("button[type='submit']").click();
 
         // The React screen refuses in place: the error banner, no success message.
@@ -154,6 +155,7 @@ class ErrorCasesIT extends PressroomIT {
         openPath(CREATE_WEBLOG);
         $("#name").should(visible).setValue("No Handle Blog");
         $("#emailAddress").setValue("nohandle@example.invalid");
+        BrowserHealth.current().expectRefusal("/api/v1/weblogs");
         $("button[type='submit']").click();
 
         // The screen refused: the handle field is marked and says why; no success message.

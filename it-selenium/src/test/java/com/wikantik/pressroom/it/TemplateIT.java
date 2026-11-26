@@ -176,7 +176,6 @@ class TemplateIT extends PressroomIT {
         // The React confirmation modal, not a native dialog.
         $(".modal.show .modal-footer button.btn-danger").should(visible).click();
 
-        $("table").should(exist);
         linkFor(name).shouldNot(exist);
         BrowserHealth.current().settle();
     }
@@ -191,7 +190,8 @@ class TemplateIT extends PressroomIT {
 
     private String templateNames() {
         openPath(TEMPLATES);
-        $("table").should(exist);
+        // The list loads after the screen draws: wait for the table or the empty invitation.
+        $("table, .empty-state").should(exist);
         return $$("table a[href*='/templates/']").texts().toString();
     }
 

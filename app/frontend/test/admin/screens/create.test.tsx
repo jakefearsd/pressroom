@@ -42,6 +42,13 @@ const open = async () => {
 };
 
 describe('CreateWeblog', () => {
+  it('keeps the JSP form control names (the ITs and browser autofill select on them)', async () => {
+    await open();
+    for (const field of ['name', 'handle', 'emailAddress', 'locale', 'timeZone', 'theme']) {
+      expect(document.getElementById(field)).toHaveAttribute('name', field);
+    }
+  });
+
   it('shows the JSP form: the handle preview, the theme with description and thumbnail, journal preselected', async () => {
     const user = userEvent.setup();
     await open();

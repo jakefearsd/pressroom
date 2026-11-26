@@ -297,7 +297,8 @@ class ThemeIT extends PressroomIT {
     }
 
     private String templateNames() {
-        $("table").should(exist);
+        // The list loads after the screen draws: wait for the table or the empty invitation.
+        $("table, .empty-state").should(exist);
         return $$("table a[href*='/templates/']").texts().toString()
                 .replace("[", "").replace("]", "");
     }

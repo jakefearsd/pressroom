@@ -99,7 +99,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="name">{t('generic.name')}</label>
               <div className="col-sm-9">
-                <input type="text" autoFocus size={30} maxLength={30} required {...fields.props('name', 'form-control')}
+                <input type="text" autoFocus size={30} maxLength={30} required {...fields.props('name', 'form-control')} name="name"
                        value={name} onChange={(e) => { setName(e.target.value); }} />
                 <FieldFeedback message={fields.message('name')} />
               </div>
@@ -107,7 +107,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="handle">{t('createWebsite.handle')}</label>
               <div className="col-sm-9">
-                <input type="text" size={30} maxLength={30} required {...fields.props('handle', 'form-control')}
+                <input type="text" size={30} maxLength={30} required {...fields.props('handle', 'form-control')} name="handle"
                        value={handle} onChange={(e) => { setHandle(e.target.value); }} />
                 <FieldFeedback message={fields.message('handle')} />
               </div>
@@ -118,7 +118,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="emailAddress">{t('createWebsite.emailAddress')}</label>
               <div className="col-sm-9">
-                <input type="email" size={40} maxLength={255} {...fields.props('emailAddress', 'form-control validate-email')}
+                <input type="email" size={40} maxLength={255} {...fields.props('emailAddress', 'form-control validate-email')} name="emailAddress"
                        value={chosenEmail} onChange={(e) => { setEmail(e.target.value); }} />
                 <FieldFeedback message={fields.message('emailAddress')} />
               </div>
@@ -126,7 +126,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="locale">{t('createWebsite.locale')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('locale', 'form-select')} value={chosenLocale}
+                <select {...fields.props('locale', 'form-select')} name="locale" value={chosenLocale}
                         onChange={(e) => { setLocale(e.target.value); }}>
                   {chosenLocale === '' ? <option value="" /> : null}
                   {(choices?.locales ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -137,7 +137,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="timeZone">{t('createWebsite.timezone')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('timeZone', 'form-select')} value={chosenZone}
+                <select {...fields.props('timeZone', 'form-select')} name="timeZone" value={chosenZone}
                         onChange={(e) => { setTimeZone(e.target.value); }}>
                   {chosenZone === '' ? <option value="" /> : null}
                   {(choices?.timeZones ?? []).map((z) => <option key={z} value={z}>{z}</option>)}
@@ -148,7 +148,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="theme">{t('createWebsite.theme')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('theme', 'form-select')} value={chosenTheme}
+                <select {...fields.props('theme', 'form-select')} name="theme" value={chosenTheme}
                         onChange={(e) => { setTheme(e.target.value); }}>
                   {themes.map((th) => <option key={th.id} value={th.id}>{th.name}</option>)}
                 </select>
