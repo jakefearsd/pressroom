@@ -9,6 +9,7 @@ import { Categories } from './screens/Categories';
 import { Comments } from './screens/Comments';
 import { Entries } from './screens/Entries';
 import { Trash } from './screens/Trash';
+import { EntryEditor } from './screens/EntryEditor';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -28,6 +29,8 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/trash', element: <Trash />, ...scoped('weblog') },
     { path: 'weblogs/:handle/comments', element: <Comments />, ...scoped('weblog') },
     { path: 'weblogs/:handle/categories', element: <Categories />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/entries/new', element: <EntryEditor />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/entries/:id', element: <EntryEditor />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }

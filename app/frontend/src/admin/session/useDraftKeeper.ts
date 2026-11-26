@@ -13,6 +13,10 @@ export interface DraftKeeper {
   discard(): void;
   /** Call after a successful save: nothing is left to recover. */
   clear(): void;
+  /** Writes the current text now, without waiting out the debounce (a save that met a 401 must not lose the last seconds). */
+  flush(): void;
+  /** When the text was last written to storage; null until it has been (the editor's "Draft saved locally"). */
+  savedAt: number | null;
 }
 
 /**
@@ -29,6 +33,7 @@ export function useDraftKeeper(key: string, value: string): DraftKeeper {
     const found = readDraft(storageKey, Date.now());
     return found !== null && found.text !== value ? found : null;
   });
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const pending = offer !== null;
 
   useEffect(() => {
@@ -38,7 +43,9 @@ export function useDraftKeeper(key: string, value: string): DraftKeeper {
     const timer = setTimeout(() => {
       // clear() after a save moves `initial` to the saved text: a timer from before it must not write.
       if (value !== initial.current) {
-        writeDraft(storageKey, { text: value, at: Date.now() });
+        const at = Date.now();
+        writeDraft(storageKey, { text: value, at });
+        setSavedAt(at);
       }
     }, DRAFT_DEBOUNCE_MS);
     return () => { clearTimeout(timer); };
@@ -57,7 +64,15 @@ export function useDraftKeeper(key: string, value: string): DraftKeeper {
     removeDraft(storageKey);
     initial.current = value;
     setOffer(null);
+    setSavedAt(null);
   }, [storageKey, value]);
+  const flush = useCallback(() => {
+    if (!pending && value !== initial.current) {
+      const at = Date.now();
+      writeDraft(storageKey, { text: value, at });
+      setSavedAt(at);
+    }
+  }, [pending, storageKey, value]);
 
-  return { offer, restore, discard, clear };
+  return { offer, restore, discard, clear, flush, savedAt };
 }
