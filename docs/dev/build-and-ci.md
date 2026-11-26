@@ -27,6 +27,42 @@ there, so blame reaches the real authors instead of the move commit.
   that path both `maven-war-plugin` and `spring-boot:run` serve.
 - `-DskipTests` skips the bundle's `npm test` (`test` phase, `skipTests`
   property), not the build.
+- **The React admin** (spec `docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`)
+  lives in the same package: source `app/frontend/src/admin/` (TypeScript
+  strict, React 19, React Router, TanStack Query, `openapi-fetch`), tests
+  `app/frontend/test/admin/` (Vitest + Testing Library + jsdom + MSW).
+  - `npm run build` = `openapi-typescript` (snapshot -> git-ignored
+    `src/admin/api/schema.d.ts`) -> `tsc --noEmit` -> esbuild. A type error fails
+    the Maven build (`generate-resources`, so `-DskipTests` does not skip it).
+    Output `app/src/main/webapp/pressroom-ui/app/admin.js` (git-ignored,
+    unhashed, loaded by the `app.rol` shell as `admin.js?v=<version>`).
+  - `npm test` = the `node --test "test/*.test.mjs"` suite, `eslint
+    --max-warnings=0` (React admin only), `vitest run --coverage` with floors
+    on `src/admin` lines 90 / branches 80 (ratchet up only; `main.tsx`, the
+    two-line entry, is excluded). Runs in the Maven `test` phase.
+  - **API snapshot:** `src/admin/api/openapi.json` is a committed copy of
+    `/api/v1/openapi.json`; `OpenApiSnapshotTest` fails when the live document
+    differs. After an intended API change run
+    `mvn -pl app test -Dtest=OpenApiSnapshotTest -Dopenapi.snapshot.update=true`
+    and commit the file.
+  - **Dev loop:** `./pressroom dev` serves `src/main/webapp` directly, so in a
+    second terminal run, from `app/frontend`,
+    `PATH=$PWD/node:$PATH node/npm run watch` (esbuild watch, unminified, source
+    map) and reload the browser at `http://localhost:8083/pressroom-ui/app/`;
+    the real session and CSRF token apply, no proxy. Run the first `npm run build`
+    (or `mvn -pl app -DskipTests generate-resources`) once so `schema.d.ts` exists.
+  - **Shell and strings:** `GET /pressroom-ui/app.rol` (`AppShellController`,
+    `app/Shell.jsp`) carries one JSON bootstrap block (context path, version,
+    CSRF header and token, user, UI locale, messages URL);
+    `AppShellForwardFilter` (order 75) forwards any other GET under
+    `/pressroom-ui/app/` to it. `GET /pressroom-ui/app-messages.rol?locale=&v=`
+    (`AppMessagesController`) returns the resolved `ApplicationResources`
+    bundle as JSON, cached a year (the URL carries the version).
+    `MessageKeyTest` scans `src/admin/**/*.{ts,tsx}` for `t('key')` literals.
+  - Lockfile: regenerate with the Maven-installed node only, from
+    `app/frontend`: `PATH=$PWD/node:$PATH node/npm install --no-audit --no-fund`
+    (never a system npm). TypeScript is held at 5.9.x: `typescript-eslint`
+    and `openapi-typescript` do not yet accept 6.1+/7.
 - **After bumping `nodeVersion`, `rm -rf app/frontend/node` on any existing
   checkout.** The plugin unpacks the new tarball over the old one without
   clearing it, leaving npm's own `node_modules` mixed across versions;

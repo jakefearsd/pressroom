@@ -16,7 +16,10 @@
    src/main/webapp as the document root directly. The files themselves are
    build outputs and are git-ignored; EditorBundlePomTest pins that.
 
-   Two bundles. pressroom-editor.js serves the two login-gated editors.
+   Three bundles. admin.js (src/admin/main.tsx, the React admin) lands in
+   pressroom-ui/app/ beside the .rol shell route, unhashed and with ?v= cache
+   busting like the others; `node build.mjs --watch` rebuilds only it, and
+   unminified with a source map, for the dev loop. pressroom-editor.js serves the two login-gated editors.
    pressroom-content.js serves READERS: weblog.vm's content-asset macro injects it
    on a public page that has a code block or a content heading to enhance
    (highlighting, copy buttons, line numbers, heading anchors). Being public,
@@ -24,7 +27,25 @@
    on a weblog's custom domain -- a redirect to the site host would be
    cross-origin and refused by every theme's script-src 'self'. */
 import { readFileSync } from 'node:fs';
-import { build } from 'esbuild';
+import { build, context } from 'esbuild';
+
+const admin = {
+  entryPoints: ['src/admin/main.tsx'],
+  bundle: true,
+  format: 'iife',
+  target: ['es2020'],
+  legalComments: 'none',
+  logLevel: 'info',
+  define: { 'process.env.NODE_ENV': '"production"' },
+  outfile: '../src/main/webapp/pressroom-ui/app/admin.js'
+};
+
+if (process.argv.includes('--watch')) {
+  const watcher = await context({ ...admin, sourcemap: true });
+  await watcher.watch();
+  console.log('watching src/admin; reload the browser after each rebuild');
+  await new Promise(() => {});
+}
 
 const common = {
   bundle: true,
@@ -54,3 +75,5 @@ await build({
   banner: { js: `/*! highlight.js ${hljsVersion} | BSD-3-Clause | Copyright (c) 2006, Ivan Sagalaev */` },
   outfile: '../src/main/webapp/pressroom-ui/scripts/pressroom-content.js'
 });
+
+await build({ ...admin, minify: true });

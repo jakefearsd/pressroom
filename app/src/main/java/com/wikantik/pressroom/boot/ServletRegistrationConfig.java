@@ -27,6 +27,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
+import com.wikantik.pressroom.ui.core.filters.AppShellForwardFilter;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
 import com.wikantik.pressroom.ui.core.filters.LegacyUiRedirectFilter;
@@ -383,6 +384,25 @@ public class ServletRegistrationConfig {
         FilterRegistrationBean<BootstrapFilter> registration = new FilterRegistrationBean<>(bootstrapFilter);
         registration.setOrder(50);
         registration.setUrlPatterns(List.of("/*"));
+        registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
+        return registration;
+    }
+
+    /**
+     * Order 75: after Spring Security (40), so a deep link under
+     * {@code /pressroom-ui/app/} is authorised, or sent to the login page with
+     * its own URL as the return path, before it is forwarded to the shell; and
+     * after PersistenceSessionFilter (60) and InitFilter (70), which are REQUEST
+     * only and so never run for the forwarded dispatch the shell controller
+     * needs them for. Before RequestMappingFilter (80), whose forwards work the
+     * same way. REQUEST only: the forwarded request is not forwarded again.
+     */
+    @Bean
+    public FilterRegistrationBean<AppShellForwardFilter> appShellForwardFilterRegistration() {
+        FilterRegistrationBean<AppShellForwardFilter> registration =
+                new FilterRegistrationBean<>(new AppShellForwardFilter());
+        registration.setOrder(75);
+        registration.setUrlPatterns(List.of("/pressroom-ui/app", "/pressroom-ui/app/*"));
         registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
         return registration;
     }
