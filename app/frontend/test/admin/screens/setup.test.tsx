@@ -6,15 +6,20 @@ import { siteAdminRoutes } from '../../../src/admin/routes/siteRoutes';
 import { adminBoot, editorBoot, renderRoutes } from '../support';
 
 const API = 'http://pressroom.test/pressroom/api/v1';
-const ROOT = 'http://pressroom.test/pressroom';
 let users: object[];
 let blogs: object[];
 let config: Record<string, string>;
 let patched: { body: unknown; csrf: string | null }[];
 
+/** The API's paging envelope: 200 at most per page, `hasMore` while rows remain. */
+const page = (rows: object[], request: Request) => {
+  const offset = Number(new URL(request.url).searchParams.get('offset') ?? '0');
+  return HttpResponse.json({ items: rows.slice(offset, offset + 200), offset, limit: 200, hasMore: rows.length > offset + 200 });
+};
+
 const server = setupServer(
-  http.get(`${API}/admin/users`, () => HttpResponse.json({ items: users, offset: 0, limit: 200, hasMore: false })),
-  http.get(`${API}/weblogs`, () => HttpResponse.json({ items: blogs, offset: 0, limit: 200, hasMore: false })),
+  http.get(`${API}/admin/users`, ({ request }) => page(users, request)),
+  http.get(`${API}/weblogs`, ({ request }) => page(blogs, request)),
   http.get(`${API}/admin/config`, () => HttpResponse.json(Object.entries(config).map(([name, value]) => ({ name, value, type: 'string' }))))
 );
 beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); });
@@ -48,6 +53,14 @@ describe('Setup', () => {
     expect(document.title).toBe('Pressroom: Welcome to Pressroom!');
   });
 
+  it('counts every account and weblog, not the first page of each', async () => {
+    users = Array.from({ length: 250 }, (_v, i) => ({ userName: `u${String(i)}` }));
+    blogs = Array.from({ length: 205 }, (_v, i) => ({ handle: `b${String(i)}`, name: `Blog ${String(i)}` }));
+    await openScreen();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Create a user - Done: this site has 250 users.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Create a weblog - Done: this site has 205 weblogs.' })).toBeInTheDocument();
+  });
+
   it('formats the help the way the bundle wrote it', async () => {
     await openScreen();
     const help = await screen.findByText(/Choose a weblog to serve as the site's front page/);
@@ -62,7 +75,7 @@ describe('Setup', () => {
     await openScreen();
     const user = await screen.findByRole('link', { name: 'new user page' });
     expect(user).toHaveAttribute('id', 'a_createUser');
-    expect(user).toHaveAttribute('href', `${ROOT}/pressroom-ui/admin/createUser.rol`);
+    expect(user).toHaveAttribute('href', '/admin/users/new');
     expect(screen.queryByRole('link', { name: 'new weblog page' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Create a user' })).toBeInTheDocument();
@@ -73,7 +86,7 @@ describe('Setup', () => {
     await openScreen();
     const link = await screen.findByRole('link', { name: 'new weblog page' });
     expect(link).toHaveAttribute('id', 'a_createBlog');
-    expect(link).toHaveAttribute('href', `${ROOT}/pressroom-ui/createWeblog.rol`);
+    expect(link).toHaveAttribute('href', '/weblogs/new');
     expect(screen.queryByLabelText('Weblog to serve as the site front page')).not.toBeInTheDocument();
   });
 

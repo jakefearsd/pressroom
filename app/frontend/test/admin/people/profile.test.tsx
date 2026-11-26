@@ -35,13 +35,15 @@ describe('Profile', () => {
   it('saves the fields and, with no new password, calls nothing else', async () => {
     const user = userEvent.setup();
     server.use(http.patch(`${API}/me/profile`, recording(() => HttpResponse.json(profile))));
-    renderPeople('/profile', editorBoot);
+    const { router } = renderPeople('/profile', editorBoot);
     const name = await screen.findByLabelText('Screen name');
     await user.clear(name);
     await user.type(name, 'Jake F');
     await user.selectOptions(screen.getByLabelText('Locale'), 'de');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Changes saved');
+    // Where the JSP landed: the app home, with its "changes saved" message.
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
+    expect(router.state.location.state).toEqual({ message: 'Changes saved' });
     expect(seen.filter((s) => s.method !== 'GET')).toEqual([{ method: 'PATCH', path: '/me/profile', body: {
       screenName: 'Jake F', fullName: 'Jake Fear', emailAddress: 'jake@example.com', locale: 'de', timeZone: 'Europe/London' } }]);
   });
@@ -52,17 +54,25 @@ describe('Profile', () => {
       http.patch(`${API}/me/profile`, recording(() => HttpResponse.json(profile))),
       http.put(`${API}/me/password`, recording(() => new HttpResponse(null, { status: 204 })))
     );
-    renderPeople('/profile', editorBoot);
+    const { router } = renderPeople('/profile', editorBoot);
     await user.type(await screen.findByLabelText('Current password'), 'oldpassword');
     await user.type(screen.getByLabelText('Password'), 'newpassword1');
     await user.type(screen.getByLabelText('Confirm password'), 'newpassword1');
     expect(screen.getByText('Passwords match')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Changes saved');
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
     expect(seen.filter((s) => s.method !== 'GET').map((s) => s.method)).toEqual(['PATCH', 'PUT']);
     expect(seen.find((s) => s.method === 'PUT')?.body).toEqual({ currentPassword: 'oldpassword', newPassword: 'newpassword1' });
-    expect(screen.getByLabelText('Password')).toHaveValue('');
-    expect(screen.getByLabelText('Current password')).toHaveValue('');
+  });
+
+  it('hides the password fields for a single-sign-on account, as the JSP did', async () => {
+    server.use(http.get(`${API}/me/profile`, () => HttpResponse.json({ ...profile, sso: true })));
+    renderPeople('/profile', editorBoot);
+    expect(await screen.findByLabelText('Screen name')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Current password')).toBeNull();
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect(screen.queryByLabelText('Confirm password')).toBeNull();
+    expect(screen.getByLabelText('Locale')).toBeInTheDocument();
   });
 
   it('refuses mismatched passwords on the confirm field without calling the API', async () => {

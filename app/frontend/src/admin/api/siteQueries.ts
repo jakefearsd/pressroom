@@ -54,12 +54,21 @@ export type AnalyticsStatus = components['schemas']['AnalyticsStatusView'];
 
 export type SiteAction = 'flush-cache' | 'rebuild-index' | 'regenerate-renditions';
 
-/** Every weblog, for the maintenance picker (a site has tens, one page of up to 200). */
+/** Every weblog (all pages), for the pickers and the setup checklist's total. */
 export function useAllWeblogs() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'weblogs'],
-    queryFn: () => call(api.GET('/v1/weblogs', { params: { query: { limit: 200 } } }))
+    queryFn: async () => {
+      const items: components['schemas']['WeblogView'][] = [];
+      for (let offset = 0; ; offset += 200) {
+        const page = await call(api.GET('/v1/weblogs', { params: { query: { limit: 200, offset } } }));
+        items.push(...page.items);
+        if (!page.hasMore) {
+          return { items };
+        }
+      }
+    }
   });
 }
 
@@ -195,12 +204,21 @@ export function useSaveConfig(sayNextSweep: (total: number | undefined) => strin
   });
 }
 
-/** Accounts on the site (people and agents), for the setup checklist; a site has far fewer than 200. */
+/** Accounts on the site (people and agents), counted over every page, for the setup checklist. */
 export function useAccountCount() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'accountCount'],
-    queryFn: async () => (await call(api.GET('/v1/admin/users', { params: { query: { limit: 200 } } }))).items.length
+    queryFn: async () => {
+      let count = 0;
+      for (let offset = 0; ; offset += 200) {
+        const page = await call(api.GET('/v1/admin/users', { params: { query: { limit: 200, offset } } }));
+        count += page.items.length;
+        if (!page.hasMore) {
+          return count;
+        }
+      }
+    }
   });
 }
 

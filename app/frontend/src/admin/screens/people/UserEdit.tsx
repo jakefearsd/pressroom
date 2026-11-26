@@ -11,6 +11,7 @@ import { PageTitle } from '../../frame/PageTitle';
 import { useApi, useBoot } from '../../context';
 import { useT } from '../../i18n/messages';
 import { inJspWords } from './problemText';
+import { useMeta } from '../../api/queries';
 import { useUser, useWeblogOptions, type UserView } from './queries';
 import { useAction } from './useAction';
 import { UserWeblogs } from './UserWeblogs';
@@ -76,6 +77,8 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
   const t = useT();
   const api = useApi();
   const boot = useBoot();
+  // The emailed link is offered (and the default) only while the server can send one, as the JSP did.
+  const mailConfigured = useMeta().data?.features.mailConfigured === true;
   const navigate = useNavigate();
   const queries = useQueryClient();
   const creating = account === undefined;
@@ -95,6 +98,7 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
     writer: account?.writer === true,
     passwordMode: 'link'
   });
+  const mode = creating && !mailConfigured ? 'now' : form.passwordMode;
   const [notices, setNotices] = useState<string[]>([]);
   const [confirmLink, setConfirmLink] = useState(false);
   const set = <K extends keyof Form>(key: K, value: Form[K]) => { setForm((f) => ({ ...f, [key]: value })); };
@@ -105,8 +109,8 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
         body: {
           userName: form.userName, screenName: form.screenName, fullName: form.fullName,
           emailAddress: form.emailAddress, locale: form.locale, timeZone: form.timeZone,
-          administrator: form.administrator,
-          ...(form.passwordMode === 'now' ? { password: form.password } : {})
+          administrator: form.administrator, enabled: form.enabled,
+          ...(mode === 'now' ? { password: form.password } : {})
         }
       }));
     } else {
@@ -137,7 +141,7 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
     sendLink.reset();
     if ((await save.run()).ok) {
       const flash = creating
-        ? (form.passwordMode === 'link' ? t('userAdmin.userCreatedLinkSent') : t('createUser.add.success', form.userName))
+        ? (mode === 'link' ? t('userAdmin.userCreatedLinkSent') : t('createUser.add.success', form.userName))
         : t('userAdmin.userSaved');
       void navigate('/admin/users', { state: flashState(flash) });
     }
@@ -183,7 +187,7 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
 
         {sso ? null : (
           <>
-            {creating ? (
+            {creating && mailConfigured ? (
               <fieldset className="row mb-3">
                 <legend className="col-sm-3 col-form-label">{t('personForm.password')}</legend>
                 <div className="col-sm-9">
@@ -233,16 +237,14 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
           </div>
         </div>
 
-        {creating ? null : (
-          <div className="row mb-3">
-            <label className="col-sm-3 col-form-label" htmlFor="bean_enabled">{t('userAdmin.enabled')}</label>
-            <div className="col-sm-9">
-              <input type="checkbox" {...fields.props('enabled', 'form-check-input')} name="bean.enabled" checked={form.enabled}
-                     onChange={(event) => { set('enabled', event.target.checked); }} />
-              <div className="form-text">{t('userAdmin.enabled.signsOutNote')}</div>
-            </div>
+        <div className="row mb-3">
+          <label className="col-sm-3 col-form-label" htmlFor="bean_enabled">{t('userAdmin.enabled')}</label>
+          <div className="col-sm-9">
+            <input type="checkbox" {...fields.props('enabled', 'form-check-input')} name="bean.enabled" checked={form.enabled}
+                   onChange={(event) => { set('enabled', event.target.checked); }} />
+            <div className="form-text">{t('userAdmin.enabled.signsOutNote')}</div>
           </div>
-        )}
+        </div>
 
         {sso ? (
           <div className="row mb-3">

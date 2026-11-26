@@ -7,11 +7,12 @@ const { http, HttpResponse } = handlers;
 
 const accounts = [
   { userName: 'ada', screenName: 'Ada L', fullName: 'Ada Lovelace', emailAddress: 'ada@example.com', enabled: true,
-    globalRoles: ['admin', 'editor'], sso: false, kind: 'PERSON', locale: 'en', timeZone: 'UTC', writer: true },
+    globalRoles: ['admin', 'editor'], sso: false, kind: 'PERSON', locale: 'en', timeZone: 'UTC', writer: true,
+    weblogCount: 2, lastActive: '2026-11-25T08:30:00Z' },
   { userName: 'bot', screenName: 'Bot', emailAddress: 'bot@agents.invalid', enabled: false,
-    globalRoles: ['editor'], sso: false, kind: 'AGENT' },
+    globalRoles: ['editor'], sso: false, kind: 'AGENT', weblogCount: 0 },
   { userName: 'rae', screenName: 'Rae', emailAddress: 'rae@example.com', enabled: true,
-    globalRoles: ['reader'], sso: true, kind: 'PERSON' }
+    globalRoles: ['reader'], sso: true, kind: 'PERSON', weblogCount: 0 }
 ];
 const page = (items: object[]) => ({ items, offset: 0, limit: 200, hasMore: false });
 
@@ -39,7 +40,7 @@ describe('Users list', () => {
     expect(table).toHaveClass('pressroomtable', 'table');
     expect(table.id).toBe('userListTable');
     expect(within(table).getAllByRole('columnheader').map((h) => h.textContent))
-      .toEqual(['Account', 'Kind', 'Role', 'Status', 'Weblogs']);
+      .toEqual(['Account', 'Kind', 'Role', 'Status', 'Weblogs', 'Last active']);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(3);
     const ada = within(rows[0] as HTMLElement);
@@ -48,7 +49,10 @@ describe('Users list', () => {
     expect(ada.getByText('Person')).toBeInTheDocument();
     expect(ada.getByText('Site admin')).toBeInTheDocument();
     expect(ada.getByText('Enabled')).toHaveClass('status-pill', 'status-enabled');
-    await waitFor(() => { expect(rows[0]).toHaveTextContent(/2$/); });
+    expect(ada.getAllByRole('cell')[4]).toHaveTextContent('2');
+    expect(ada.getByText('2026-11-25 08:30 UTC')).toBeInTheDocument();
+    expect(within(rows[2] as HTMLElement).getByText('Never')).toHaveClass('text-muted');
+    expect(seen.filter((s) => s.path.endsWith('/weblogs'))).toEqual([]);
     const bot = within(rows[1] as HTMLElement);
     expect(bot.getByRole('link', { name: 'Bot' })).toHaveAttribute('href', '/admin/agents/bot');
     expect(bot.getByText('Agent')).toBeInTheDocument();

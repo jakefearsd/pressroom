@@ -283,11 +283,13 @@ describe('site traffic', () => {
     expect(screen.getByText('Nothing in this report for this period.')).toBeInTheDocument();
   });
 
-  it('refuses an editor who is no site admin with the API problem, and shows no numbers', async () => {
-    server.use(http.get(`${API}/admin/traffic`, () => HttpResponse.json({ code: 'auth.forbidden', detail: 'Site admins only.' }, { status: 403 })));
+  it('shows an editor who is no site admin the not-found page and never reads the numbers (RequireAdmin)', async () => {
+    const reads: string[] = [];
+    server.events.on('request:start', ({ request }) => { reads.push(new URL(request.url).pathname); });
     renderRoutes(appRoutes, '/admin/traffic', { boot: editorBoot });
-    expect(await screen.findByText('Site admins only.')).toBeInTheDocument();
-    expect(root().querySelector('table')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Maintenance' })).toBeNull();
+    expect(await screen.findByText('That page does not exist.')).toBeInTheDocument();
+    expect(reads.some((path) => path.includes('/admin/traffic'))).toBe(false);
+    expect(document.querySelector('table')).toBeNull();
+    server.events.removeAllListeners();
   });
 });

@@ -1,9 +1,10 @@
 import { Link, useSearchParams } from 'react-router';
+import { DateTime } from '../../components/DateTime';
 import { EmptyState } from '../../components/EmptyState';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useT } from '../../i18n/messages';
 import { PageTitle } from '../../frame/PageTitle';
-import { useUsers, useUserWeblogs, type Kind, type UserView } from './queries';
+import { useUsers, type Kind, type UserView } from './queries';
 
 function kindOf(raw: string | null): Kind {
   return raw === 'people' || raw === 'agents' ? raw : undefined;
@@ -13,12 +14,6 @@ function Role({ user }: { user: UserView }) {
   const t = useT();
   const roles = user.globalRoles ?? [];
   return <>{roles.includes('admin') ? t('userList.role.siteAdmin') : roles.includes('editor') ? t('userList.role.author') : t('userList.role.reader')}</>;
-}
-
-/** The weblog count column: the account's memberships (the list view itself carries none). */
-function WeblogCount({ userName }: { userName: string }) {
-  const weblogs = useUserWeblogs(userName);
-  return <td className="data">{weblogs.data === undefined ? '' : weblogs.data.length}</td>;
 }
 
 /** Admin -> Users: every account, All / People / Agents tabs and the server-side filter (Users list, UserAdmin.jsp). */
@@ -72,6 +67,7 @@ export function UserList() {
                 <th scope="col">{t('userList.column.role')}</th>
                 <th scope="col">{t('userList.column.status')}</th>
                 <th scope="col">{t('userList.column.weblogs')}</th>
+                <th scope="col">{t('userList.column.lastActive')}</th>
               </tr>
               {users.data.map((row) => {
                 const agent = row.kind === 'AGENT';
@@ -90,7 +86,12 @@ export function UserList() {
                         ? <span className="status-pill status-enabled">{t('userList.status.enabled')}</span>
                         : <span className="status-pill status-disabled">{t('userList.status.disabled')}</span>}
                     </td>
-                    <WeblogCount userName={row.userName ?? ''} />
+                    <td className="data">{row.weblogCount}</td>
+                    <td className="data">
+                      {row.lastActive === undefined
+                        ? <span className="text-muted">{t('userList.lastActive.never')}</span>
+                        : <DateTime value={row.lastActive} />}
+                    </td>
                   </tr>
                 );
               })}
