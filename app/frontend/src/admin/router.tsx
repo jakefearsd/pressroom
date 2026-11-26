@@ -3,6 +3,9 @@ import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
 import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
+import { PageEditor } from './screens/pages/PageEditor';
+import { PagesList } from './screens/pages/PagesList';
+import { PagesTrash } from './screens/pages/PagesTrash';
 
 const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ handle: { scope } });
 
@@ -16,6 +19,10 @@ export const appRoutes: RouteObject[] = [{
   children: [
     { index: true, element: <Home />, ...scoped('none') },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages', element: <PagesList />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/new', element: <PageEditor />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/trash', element: <PagesTrash />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/:id', element: <PageEditor />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
