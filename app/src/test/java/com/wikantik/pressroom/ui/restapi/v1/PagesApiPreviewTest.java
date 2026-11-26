@@ -125,4 +125,15 @@ class PagesApiPreviewTest {
 
         send("/v1/weblogs/myblog/pages/p9/preview", "{\"text\":\"t\"}", 404);
     }
+
+    @Test
+    void aTrashedPageIsA404LikeAnUnknownOne() throws Exception {
+        WeblogPage trashed = page(weblog, "p8", "old", "t");
+        trashed.setStatus(WeblogPage.PubStatus.TRASHED);
+        when(pages.getPage("p8")).thenReturn(trashed);
+
+        JsonNode problem = send("/v1/weblogs/myblog/pages/p8/preview", "{\"text\":\"t\"}", 404);
+
+        assertEquals("page.notFound", problem.get("code").asString());
+    }
 }
