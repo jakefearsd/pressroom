@@ -3,6 +3,7 @@ import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
 import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
+import { EntryEditor } from './screens/EntryEditor';
 
 const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ handle: { scope } });
 
@@ -16,6 +17,8 @@ export const appRoutes: RouteObject[] = [{
   children: [
     { index: true, element: <Home />, ...scoped('none') },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/entries/new', element: <EntryEditor />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/entries/:id', element: <EntryEditor />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
