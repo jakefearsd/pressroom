@@ -33,7 +33,7 @@ export function useSessionExpired(): boolean {
 }
 
 /** A 4xx is the answer, not a glitch: retrying it only delays the message. */
-function retryable(count: number, error: Error): boolean {
+export function retryable(count: number, error: Error): boolean {
   return !(error instanceof ApiError && error.status < 500) && count < 2;
 }
 
