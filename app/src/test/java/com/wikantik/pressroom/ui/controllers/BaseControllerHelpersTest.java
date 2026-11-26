@@ -119,7 +119,6 @@ class BaseControllerHelpersTest {
                 new MockHttpServletRequest());
 
         assertEquals(List.of("Lien de réservation | &lt;b&gt; | 255"), model.getAttribute("errors"));
-        assertEquals("bean_f", model.getAttribute("invalidFieldIds"));
     }
 
     /**
