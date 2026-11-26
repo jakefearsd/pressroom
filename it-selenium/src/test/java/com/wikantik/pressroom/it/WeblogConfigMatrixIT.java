@@ -200,7 +200,10 @@ class WeblogConfigMatrixIT extends PressroomIT {
         // A form with nothing wrong must carry no marker at all -- otherwise
         // the attribute would be sticky and every later save would look
         // refused.
-        $("#weblog_bean_newsletterListUuid").setValue("");
+        // Real key presses, not clear(): WebDriver's clear() sets the value without an input event, which a React
+        // controlled input never sees, so the field would snap back to what was typed.
+        $("#weblog_bean_newsletterListUuid").sendKeys(org.openqa.selenium.Keys.chord(org.openqa.selenium.Keys.CONTROL, "a"),
+                org.openqa.selenium.Keys.BACK_SPACE);
         saveSettings();
         $("#weblog_bean_newsletterListUuid").shouldNotHave(cssClass("is-invalid"));
         assertTrue($$("body[data-invalid-fields]").isEmpty(),

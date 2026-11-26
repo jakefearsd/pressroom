@@ -10,10 +10,11 @@ import { API, alpha, me, meta, problem, record, type Seen } from './weblogFixtur
 let seen: Seen[];
 let who: object;
 let refuse: ReturnType<typeof problem> | null;
+let weblogReads: number;
 const server = setupServer(
   http.get(`${API}/me`, () => HttpResponse.json(who)),
   http.get(`${API}/meta`, () => HttpResponse.json(meta())),
-  http.get(`${API}/weblogs/alpha`, () => HttpResponse.json({ ...alpha, name: 'Alpha <i>Blog</i>' })),
+  http.get(`${API}/weblogs/alpha`, () => { weblogReads += 1; return HttpResponse.json({ ...alpha, name: 'Alpha <i>Blog</i>' }); }),
   http.delete(`${API}/weblogs/alpha`, async ({ request }) => {
     await record(seen, request);
     return refuse ?? new HttpResponse(null, { status: 204 });
@@ -24,6 +25,7 @@ afterEach(() => { server.resetHandlers(); });
 afterAll(() => { server.close(); });
 beforeEach(() => {
   seen = [];
+  weblogReads = 0;
   who = me();
   refuse = null;
 });
@@ -46,6 +48,15 @@ describe('RemoveWeblog', () => {
     await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
     expect(seen[0]).toEqual({ method: 'DELETE', path: '/weblogs/alpha', csrf: 'tok', body: null });
     expect(await screen.findByText('Weblog "Alpha <i>Blog</i>" removed.')).toBeInTheDocument();
+  });
+
+  it('does not ask the server for the weblog it has just deleted (that read would be a 404)', async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoutes(appRoutes, '/weblogs/alpha/remove', { boot: adminBoot });
+    await user.click(await screen.findByRole('button', { name: 'Remove weblog' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
+    await screen.findByText('Weblog "Alpha <i>Blog</i>" removed.');
+    expect(weblogReads).toBe(1);
   });
 
   it('shows a refusal in place and stays on the page', async () => {

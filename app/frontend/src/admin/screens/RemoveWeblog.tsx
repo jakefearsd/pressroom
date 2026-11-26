@@ -24,7 +24,8 @@ export function RemoveWeblog() {
   const remove = useMutation({
     mutationFn: () => call(api.DELETE('/v1/weblogs/{handle}', { params: { path: { handle: handle ?? '' } } })),
     onSuccess: () => {
-      queries.removeQueries({ queryKey: ['weblog', handle] });
+      // Mark it stale without reading it again: the weblog is gone, and a read now would be a 404.
+      void queries.invalidateQueries({ queryKey: ['weblog', handle], refetchType: 'none' });
       void queries.invalidateQueries({ queryKey: ['me'] });
       void queries.invalidateQueries({ queryKey: ['weblogs'] });
       void navigate('/', { state: flashState(t('websiteRemove.success', name)) });
