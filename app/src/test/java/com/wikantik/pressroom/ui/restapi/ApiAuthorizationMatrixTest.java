@@ -53,6 +53,12 @@ import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.test.web.servlet.MockMvc;
@@ -78,6 +84,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
@@ -140,6 +147,9 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
  * else and nothing finer: no caller here lacks the {@code login} action. The
  * permission stub answers with the real {@code implies} ladders over these
  * grants.
+ *
+ * <p><b>Session callers</b> (spec 2026-11-25, A3) read as an unpinned {@code ADMIN}-role token of the same
+ * user: the user's own permissions, no token ceiling. They write with the session's CSRF token.
  *
  * <p><b>Adding a route</b>: add its row to {@link #ROWS}, stating what it
  * should require; if the matrix disagrees, either the row or the route is
@@ -336,7 +346,7 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/admin/weblogs/{handle}/actions/regenerate-renditions", ADMIN, SITE_ADMIN, NO_WEBLOG));
 
     /** How a caller authenticates. */
-    enum Kind { ANONYMOUS, PASSWORD, TOKEN }
+    enum Kind { ANONYMOUS, PASSWORD, TOKEN, SESSION }
 
     /** A person in the fixture: their global role and their weblog roles. */
     record Person(String name, String global, Map<String, String> weblogs, boolean agent) {
@@ -392,7 +402,19 @@ class ApiAuthorizationMatrixTest {
             token("ADMIN token(POST member, pinned elsewhere)", ABE, ADMIN, OTHER),
             token("ADMIN token(EDIT_DRAFT member)", DORA, ADMIN, null),
             token("ADMIN token(no role)", SAM, ADMIN, null),
-            token("POST token(agent, POST member)", ROBOT, POST, null));
+            token("POST token(agent, POST member)", ROBOT, POST, null),
+            // A session caller has the signed-in user's own permissions and no token ceiling: the cells read
+            // as an unpinned ADMIN-role token of the same user (spec 2026-11-25, A3). Writes carry the
+            // session's CSRF token, as the admin app sends it.
+            session("session(site admin)", ROOT),
+            session("session(owner)", OWEN),
+            session("session(POST member)", ABE),
+            session("session(EDIT_DRAFT member)", DORA),
+            session("session(no role)", SAM));
+
+    private static Who session(String name, Person person) {
+        return new Who(name, Kind.SESSION, person, null, null);
+    }
 
     /**
      * The cell: what {@code who} gets on {@code row}. The error contract, in
@@ -630,10 +652,28 @@ class ApiAuthorizationMatrixTest {
         } else if (who.kind() == Kind.TOKEN) {
             request.header("Authorization", "Bearer " + RAW_TOKEN_PREFIX + CALLERS.indexOf(who) + "_" + n);
         }
+        if (who.kind() == Kind.SESSION) {
+            request.session(sessionOf(who.person()));
+            if (!"GET".equals(method)) {
+                request.with(csrf().asHeader());
+            }
+        }
         if (body != null) {
             request.contentType(contentType).content(body);
         }
         return mockMvc.perform(request).andReturn();
+    }
+
+    /** The session form login leaves: the stock details, and the one authority the user's global role gives. */
+    private static MockHttpSession sessionOf(Person person) {
+        UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.authenticated(
+                person.name(), null, List.of(new SimpleGrantedAuthority(
+                        GlobalPermission.ADMIN.equals(person.global()) ? "admin" : "editor")));
+        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(new MockHttpServletRequest()));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                new SecurityContextImpl(auth));
+        return session;
     }
 
     private static String concretePath(String template) {

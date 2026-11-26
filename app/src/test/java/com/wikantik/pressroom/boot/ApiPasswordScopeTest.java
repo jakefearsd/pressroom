@@ -391,12 +391,13 @@ class ApiPasswordScopeTest {
     // ----------------------------------------------------------- the session
 
     /**
-     * Criterion 5: an admin-UI session is no credential on the API. Both API
-     * chains are stateless and never read the session, which is what keeps a
-     * SESSION caller off {@code /api} until that is built deliberately.
+     * Criterion 5, superseded by spec 2026-11-25 (A3): a real form-login
+     * session now authenticates a header-less read on {@code /api}, a write
+     * without the CSRF token is refused, and a password-less session never
+     * reaches {@code /api/mcp} ({@code ApiSessionAccessTest} pins the rest).
      */
     @Test
-    void anAdminUiSessionIsNoCredentialOnTheApi() throws Exception {
+    void anAdminUiSessionIsACredentialOnTheApiForReadsAndNeedsCsrfForWrites() throws Exception {
         MvcResult login = mockMvc.perform(formLogin("/pressroom_j_security_check")
                         .user("j_username", "alice").password("j_password", TestUtils.TEST_PASSWORD))
                 .andReturn();
@@ -407,9 +408,11 @@ class ApiPasswordScopeTest {
         MvcResult menu = mockMvc.perform(get("/pressroom-ui/menu.rol").session(session)).andReturn();
         assertEquals("MenuController SESSION", body(menu));
 
-        assertProblem(mockMvc.perform(get("/api/v1/me").session(session)).andReturn(), "Authentication required.");
-        assertProblem(mockMvc.perform(get("/api/v1/tokens").session(session)).andReturn(),
-                "Authentication required.");
+        assertEquals(200, mockMvc.perform(get("/api/v1/me").session(session)).andReturn().getResponse().getStatus());
+        MvcResult write = mockMvc.perform(post("/api/v1/tokens").session(session)).andReturn();
+        assertEquals(403, write.getResponse().getStatus(), body(write));
+        assertEquals("csrf.invalid", JSON.readTree(body(write)).get("code").asString());
+        assertProblem(mockMvc.perform(get("/api/mcp").session(session)).andReturn(), "Authentication required.");
     }
 
     // ---------------------------------------------------------------- helpers

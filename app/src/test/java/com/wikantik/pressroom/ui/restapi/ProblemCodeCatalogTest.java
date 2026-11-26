@@ -144,6 +144,7 @@ class ProblemCodeCatalogTest {
                         "parameter.aliasConflict",
                         "auth.passwordNotAcceptedHere",
                         "auth.passwordRejected",
+                        "csrf.invalid",
                         "auth.noPermission",
                         "auth.apiNotAllowed",
                         "token.notAdminScoped",

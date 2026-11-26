@@ -34,4 +34,23 @@ class ApiAccessDeniedHandlerTest {
         assertEquals(403, body.get("status").asInt());
         assertEquals("/api/v1/weblogs/x/entries", body.get("instance").asString());
     }
+
+    /** A refusal by the CSRF filter (a session write with no or a wrong token) is csrf.invalid, still a 403. */
+    @Test
+    void aCsrfRefusalCarriesTheCsrfInvalidCode() throws Exception {
+        for (AccessDeniedException refusal : new AccessDeniedException[] {
+                new org.springframework.security.web.csrf.MissingCsrfTokenException("none"),
+                new org.springframework.security.web.csrf.InvalidCsrfTokenException(
+                        new org.springframework.security.web.csrf.DefaultCsrfToken("X-CSRF-TOKEN", "_csrf", "t"),
+                        "wrong")}) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            handler.handle(new MockHttpServletRequest("PATCH", "/api/v1/me"), response, refusal);
+
+            assertEquals(403, response.getStatus());
+            JsonNode body = OBJECT_MAPPER.readTree(response.getContentAsByteArray());
+            assertEquals("csrf.invalid", body.get("code").asString());
+            assertEquals("forbidden", body.get("type").asString().replaceAll(".*/", ""));
+        }
+    }
 }

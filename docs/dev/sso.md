@@ -135,7 +135,7 @@ fails closed; `docs/dev/comments.md`). It reaches the comment endpoints and the
 account page (`/pressroom-ui/account.rol`) only. The interceptor's default
 (`login`) refuses a reader on every other secured UI controller
 (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
-API chain ignores session cookies; `TokensApi` refuses an account without the
+API chains accept a session only for `admin`/`editor` (`ApiSessionAuthFilter`), so a reader's cookie is a 401 there; `TokensApi` refuses an account without the
 `login` action. Members -> Invite refuses a reader-only account
 (`inviteMember.error.readerAccount`). **A weblog permission ignores global
 roles**, and unticking "Can write" revokes `editor` only, so a demoted reader
@@ -161,8 +161,8 @@ principal's authorities are the roles read at sign-in, `SecurityConfig`
 checks them on `menu.rol` and `/pressroom-ui/authoring/**`, and promotion
 invalidates no session, so until then the menu answers 403. **It writes in
 the UI only**: it has no password, so Basic sign-in, and with it minting an
-API token (`POST /api/v1/tokens`), is refused, and the API chain ignores
-session cookies. `GET /api/v1/admin/users` reports `"sso"`.
+API token (`POST /api/v1/tokens`), is refused, and a reader's session
+cookie is no credential on the API (401). `GET /api/v1/admin/users` reports `"sso"`.
 
 ## Session and cookies
 

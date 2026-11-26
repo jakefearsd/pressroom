@@ -37,8 +37,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `rendering.weblogMapper.pressroomProtectedUrls` so no weblog handle can shadow
   them.
 - **HTTP Basic authenticates only the token resource (2026-11-20, 0.16.0).**
-  Two chains serve `/api/**`, both stateless (they never read a session, so an
-  admin-UI login is no API credential): `apiTokenResourceSecurityFilterChain`
+  Two chains serve `/api/**`, both stateless (they store no security context;
+  a session is read only as the next bullet says): `apiTokenResourceSecurityFilterChain`
   (`@Order(0)`, `SecurityConfig.TOKEN_RESOURCE`: `/api/v1/tokens` and
   `/api/v1/tokens/*`) carries `httpBasic` with the `PasswordCallerDetails`
   marker, and `apiSecurityFilterChain` (`@Order(1)`, the rest) has no Basic
@@ -64,6 +64,33 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   adding it to `TOKEN_RESOURCE`, which is a decision, not a convenience.
   Browser ITs call the API with `it.support.AdminToken` (minted over Basic,
   revoked by id), never with the admin's password.
+- **Session access to `/api` (2026-11-25, SA-18 rules 1 and 2; spec
+  `docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`, A3).**
+  A request with **no `Authorization` header** may authenticate from the admin
+  UI's HTTP session: `ApiSessionAuthFilter` (first filter on both API chains,
+  after `SecurityContextHolderFilter`) copies the session's `Authentication`
+  into the request when `Caller` calls it `SESSION` and it holds `admin` or
+  `editor`; anyone else (an SSO reader, an unrecognised kind) stays anonymous
+  and gets the anonymous 401. It uses `getSession(false)` and writes nothing,
+  so no `/api` response sets `JSESSIONID` or a remember-me cookie
+  (remember-me is off on both chains). A request **with** an `Authorization`
+  header of any kind never falls back to the session (session plus a bad
+  Bearer is 401). `/api/mcp` never takes a session. `CredentialStampFilter`
+  runs for an accepted session, so a changed password ends it on `/api` too.
+  A session **write** (any method but GET, HEAD, OPTIONS) needs the session's
+  CSRF token in the `SecurityConfig.CSRF_HEADER_NAME` header (`X-CSRF-TOKEN`),
+  checked by the chain's own `CsrfFilter` over the same
+  `HttpSessionCsrfTokenRepository` the UI chain uses, so the token the shell
+  embeds serves both; missing or wrong is 403 `csrf.invalid` (problem+json,
+  `ApiAccessDeniedHandler`). The check applies only when the caller is a
+  session (`SecurityConfig.isSessionWrite`); Bearer and Basic are
+  authenticated after it and stay CSRF-free, and an unauthenticated write is
+  still 401. Gotcha: the API chains replace `CsrfAuthenticationStrategy` with a
+  no-op, or `SessionManagementFilter` (it sees a session caller as a fresh
+  sign-in on a chain that stores no context) clears the session's token after
+  every call. The throttle keys a session caller by user, not address
+  (`ApiTokenAuthFilter`). Tests: `ApiSessionAccessTest`, `ApiSessionAuthFilterTest`,
+  the SESSION callers in `ApiAuthorizationMatrixTest`.
 - **How a request authenticated is decided only by `Caller`
   (`ui.restapi.auth.Caller`, 2026-11-20).** `Caller.current().kind()` is one of
   `TOKEN` (Bearer; carries the `ApiPrincipal` ceiling), `PASSWORD` (HTTP Basic,
@@ -748,8 +775,8 @@ pins it (red when the `saveWeblog` call is removed).
 Decision: SA-18 in `SimpleAgilityDecisionLog` (Wikantik); drafting record in
 `docs/superpowers/specs/2026-11-21-session-only-policy-decision.md`.
 
-These are built only for `SESSION` callers, once session login on `/api` exists. Until then they stay
-in the JSP admin UI and have no API route (weblog memberships are readable with a token, never
+These are built only for `SESSION` callers; session access to `/api` now exists, but none of these
+routes is built yet, so they stay in the JSP admin UI and have no API route (weblog memberships are readable with a token, never
 writable):
 
 - agent accounts (create, change, site-admin switch, their tokens);
@@ -766,8 +793,8 @@ Rules for building one: the route's caller-kind check refuses `TOKEN` and `PASSW
 (`ANONYMOUS` and anything unrecognised fail closed), after the visibility rules (a caller who may not
 see the weblog still gets 404); the route is an MCP `Exclusion` with the reason "session-only" and its
 authorization-matrix row shows 403 for every token caller. **Session writes on `/api` need CSRF
-protection first**: the API chains are CSRF-free today because they are stateless and bearer-only.
-Moving a resource on or off this list is a new decision naming its threat.
+protection**: they have it (see "Session access to `/api`" above), and a Bearer or Basic call stays
+CSRF-free. Moving a resource on or off this list is a new decision naming its threat.
 
 Not on the list: a site-admin token may still create ordinary accounts and enable or disable them, and edit
 their screen name, via `/v1/admin/users` (`AdminApi`); the account guard keeps admin and agent accounts out

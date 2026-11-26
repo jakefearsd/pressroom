@@ -217,6 +217,8 @@ public enum ProblemCode {
     AUTH_PASSWORD_NOT_ACCEPTED_HERE("auth.passwordNotAcceptedHere", ProblemType.UNAUTHORIZED, 0),
     /** The token resource turned the password away: wrong, a disabled account, an agent or an unknown user, told alike. */
     AUTH_PASSWORD_REJECTED("auth.passwordRejected", ProblemType.UNAUTHORIZED, 0),
+    /** A write authenticated by the admin UI's session carried no CSRF token, or the wrong one. */
+    CSRF_INVALID("csrf.invalid", ProblemType.FORBIDDEN, 0),
     /** The caller lacks the role this route needs (on the site, or on a weblog it is a member of). */
     AUTH_NO_PERMISSION("auth.noPermission", ProblemType.FORBIDDEN, 0),
     /** The account (a reader signed in with SSO) holds no login permission, so it may not use the API. */
