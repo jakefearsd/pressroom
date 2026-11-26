@@ -9,8 +9,7 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
@@ -48,13 +47,12 @@ public class WeblogReadApi extends BaseApiController implements UISecurityEnforc
      * the settings page's, so a READ or POST token never carries them out, whoever holds it. A check that
      * cannot be answered is a denial.
      */
-    private boolean mayReadAdminFields(Weblog weblog, Object caller) {
-        if (!(caller instanceof User user)) {
+    private boolean mayReadAdminFields(Weblog weblog, Object requester) {
+        if (!(requester instanceof User user)) {
             return false;
         }
-        if (SecurityContextHolder.getContext().getAuthentication() != null
-                && SecurityContextHolder.getContext().getAuthentication().getDetails() instanceof ApiPrincipal token
-                && token.scopeRole() != ApiToken.Role.ADMIN) {
+        Caller caller = Caller.current();
+        if (caller.kind() == Caller.Kind.TOKEN && caller.principal().scopeRole() != ApiToken.Role.ADMIN) {
             return false;
         }
         try {

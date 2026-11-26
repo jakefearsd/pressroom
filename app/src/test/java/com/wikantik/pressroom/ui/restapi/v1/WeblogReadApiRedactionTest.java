@@ -68,7 +68,7 @@ class WeblogReadApiRedactionTest {
         when(users.checkPermission(any(WeblogPermission.class), any(User.class))).thenReturn(weblogAdmin);
 
         if (tokenRole != null) {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("u", null);
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("u", null, java.util.List.of());
             auth.setDetails(new ApiPrincipal("u", null, tokenRole, "t1"));
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
