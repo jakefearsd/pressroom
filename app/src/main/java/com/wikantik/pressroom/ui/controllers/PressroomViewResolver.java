@@ -167,7 +167,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // ---- 7 base layout definitions ----
 
-        addDefinition(".tiles-mainmenupage",
+        addDefinition(MAINMENU,
                 "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp",
                 Map.of(
                         "banner",   "/WEB-INF/jsps/tiles/bannerStatus.jsp",
