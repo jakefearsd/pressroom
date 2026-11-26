@@ -119,6 +119,52 @@ class LegacyAdminRedirectIT extends PressroomIT {
         logout();
     }
 
+    @Test
+    void pagesAndTheirTrashAndEditorGoToTheReactScreens() throws Exception {
+        loginAsAdmin();
+        assertRedirect("/pressroom-ui/authoring/pages.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages");
+        assertRedirect("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/trash");
+        assertRedirect("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/new");
+        assertRedirect("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE + "&id=abc",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/abc");
+
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages"));
+        $("#pages-list-marker").should(exist);
+
+        openPath("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + WEBLOG_HANDLE);
+        $("#pages-trash-list-marker").should(exist);
+
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/pages/new"));
+        $("#pageEditForm").should(exist);
+        logout();
+    }
+
+    @Test
+    void mediaScreensCarryTheFolderAndTheOverlayOpensTheLibrary() throws Exception {
+        loginAsAdmin();
+        assertRedirect("/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
+                        + "&directoryId=d1&sortBy=type&directoryName=ignored",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media?dir=d1&sort=type");
+        assertRedirect("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/upload");
+        assertRedirect("/pressroom-ui/authoring/mediaFileEdit.rol?weblog=" + WEBLOG_HANDLE + "&mediaFileId=m1",
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/m1");
+        assertRedirect("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media");
+
+        openPath("/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE);
+        $("#mediaFileSearchForm").should(exist);
+        openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media/upload"));
+        $("#mediaDropZone").should(exist);
+        logout();
+    }
+
     /** A bookmark followed while signed out goes to sign in, and the sign-in returns to the new screen. */
     @Test
     void anOldBookmarkWhileSignedOutSignsInAndArrivesAtTheNewScreen() {

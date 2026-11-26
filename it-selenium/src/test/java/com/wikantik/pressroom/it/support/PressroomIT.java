@@ -791,16 +791,16 @@ public abstract class PressroomIT {
      * after.
      */
     protected void deletePageForeverFromTrash(String handle, String slug) {
-        openPath("/pressroom-ui/authoring/pagesTrash.rol?weblog=" + handle);
-        $("#pages-trash-list-marker").should(com.codeborne.selenide.Condition.exist);
+        openPath(PagesMediaApp.pagesTrash(handle));
+        // The list is client-rendered: wait for the table or the empty invitation before deciding it is empty.
+        $("#pages-trash-list-marker table, #pages-trash-list-marker .empty-state")
+                .should(com.codeborne.selenide.Condition.exist);
         String row = "tr.trashed-page-row[data-page-slug='" + slug + "']";
         if (com.codeborne.selenide.Selenide.$$(row).isEmpty()) {
             return;
         }
-        awaitNewPageAfter(() -> {
-            $(row + " button.page-delete-forever-btn").click();
-            Selenide.confirm();
-        });
+        $(row + " button.page-delete-forever-btn").click();
+        PagesMediaApp.confirmDialog();
         com.codeborne.selenide.Selenide.$$(row).shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
     }
 }

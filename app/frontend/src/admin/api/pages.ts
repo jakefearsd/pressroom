@@ -42,14 +42,25 @@ export function usePageRevisions(handle: string, id: string | undefined) {
   });
 }
 
-/** The weblog's posts that could join a strand: those not in one already (the editor's "Add posts" choices). */
-export function useStrandCandidates(handle: string, enabled: boolean) {
+/** How many posts the strand panel's "Add posts" choices show at once; a search narrows them. */
+export const STRAND_CANDIDATE_LIMIT = 20;
+
+/**
+ * The weblog's posts that could join a strand (the editor's "Add posts" choices): the newest
+ * few, or those matching `text`, found by the entries search rather than by reading a long list.
+ * The caller drops the ones already in a strand.
+ */
+export function useStrandCandidates(handle: string, enabled: boolean, text: string) {
   const api = useApi();
+  const search = text.trim();
   return useQuery({
-    queryKey: ['strand-candidates', handle],
+    queryKey: ['strand-candidates', handle, search],
     enabled,
     queryFn: () => call(api.GET('/v1/weblogs/{handle}/entries', {
-      params: { path: { handle }, query: { limit: 200, fields: ['title', 'status', 'strand'] } }
+      params: {
+        path: { handle },
+        query: { limit: STRAND_CANDIDATE_LIMIT, fields: ['title', 'status', 'strand'], ...(search === '' ? {} : { text: search }) }
+      }
     }))
   });
 }

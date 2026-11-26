@@ -20,7 +20,9 @@ beforeEach(() => {
   ];
 });
 
-const open = (at = '/weblogs/alpha/media/upload') => renderRoutes(appRoutes, at);
+let last: ReturnType<typeof renderRoutes>;
+const open = (at = '/weblogs/alpha/media/upload') => (last = renderRoutes(appRoutes, at));
+const router = () => last.router;
 const png = (name: string, bytes = 10) => new File([new Uint8Array(bytes)], name, { type: 'image/png' });
 const choose = async (...files: File[]) => {
   await userEvent.upload(await screen.findByLabelText('Choose media files to upload', { selector: 'input' }), files);
@@ -250,22 +252,21 @@ describe('Media upload success page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Upload' }));
     await screen.findByText('Your upload was successful');
   };
-  const form = () => document.getElementById('entry') as HTMLFormElement;
 
-  it('lists images with facts and a copyable link, and others as enclosure choices', async () => {
+  it('lists images with facts and a copyable link, and other files as plain information', async () => {
     await uploadMixed();
-    expect(form()).toHaveAttribute('action', 'http://pressroom.test/pressroom/pressroom-ui/authoring/entryAddWithMediaFile.rol');
-    expect(form()).toHaveAttribute('method', 'post');
+    expect(document.getElementById('entry')?.getAttribute('method')).toBeNull();
     const card = screen.getByRole('checkbox', { name: 'pic.png' }).closest('.card') as HTMLElement;
     expect(card).toHaveTextContent('Name: pic.png');
     expect(card).toHaveTextContent('Type: image/png, Size: 123 bytes, 3 x 2 pixels');
     expect(card.querySelector('img.mediaFileImage')).toHaveAttribute('src', expect.stringContaining('/media/img1?t=true'));
     expect(within(card).getByLabelText('Link:')).toHaveValue('http://pressroom.test/pressroom/media/img1');
-    expect(screen.getByText('Select file enclosure')).toBeInTheDocument();
-    const other = screen.getByRole('radio', { name: 'guide.pdf' }).closest('.card') as HTMLElement;
+    expect(screen.getByText('Other files')).toBeInTheDocument();
+    const other = screen.getByText('guide.pdf', { exact: false, selector: 'p' }).closest('.card') as HTMLElement;
     expect(other).toHaveTextContent('Size: 77 bytes');
     expect(other).not.toHaveTextContent('pixels');
-    expect(screen.getByRole('radio', { name: 'No enclosure' })).toBeChecked();
+    expect(within(other).getByLabelText('Link:')).toHaveValue('http://pressroom.test/pressroom/media/doc1');
+    expect(screen.queryByRole('radio')).toBeNull();
   });
 
   it('copies a link with feedback', async () => {
@@ -279,22 +280,37 @@ describe('Media upload success page', () => {
     await waitFor(() => { expect(button).not.toHaveClass('copied'); }, { timeout: 3000 });
   });
 
-  it('keeps New entry disabled until an image or an enclosure is chosen, and posts the choice', async () => {
+  it('keeps New entry disabled until an image is chosen, then opens the entry editor with it, no form post', async () => {
     await uploadMixed();
     const button = screen.getByRole('button', { name: 'New entry with these' });
     expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('type', 'button');
     await userEvent.click(screen.getByRole('checkbox', { name: 'pic.png' }));
     expect(button).toBeEnabled();
-    expect((form().querySelector('input[name=selectedImages]') as HTMLInputElement).value).toBe('img1');
     await userEvent.click(screen.getByRole('checkbox', { name: 'pic.png' }));
     expect(button).toBeDisabled();
-    await userEvent.click(screen.getByRole('radio', { name: 'guide.pdf' }));
-    expect(button).toBeEnabled();
-    expect((document.getElementById('enclosureURL') as HTMLInputElement).value).toBe('http://pressroom.test/pressroom/media/doc1');
-    expect((form().querySelector('input[name=_csrf]') as HTMLInputElement).value).toBe('tok');
-    expect((form().querySelector('input[name=weblog]') as HTMLInputElement).value).toBe('alpha');
-    await userEvent.click(screen.getByRole('radio', { name: 'No enclosure' }));
-    expect(button).toBeDisabled();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'pic.png' }));
+    await userEvent.click(button);
+    await waitFor(() => { expect(router().state.location.pathname).toBe('/weblogs/alpha/entries/new'); });
+    expect(new URLSearchParams(router().state.location.search).getAll('mediaId')).toEqual(['img1']);
+    expect(state.calls.filter((c) => c.method === 'POST' && c.path !== '/media')).toEqual([]);
+  });
+
+  it('offers the site space no entry step: it has no posts', async () => {
+    state.me = { userName: 'jake', screenName: 'Jake', kind: 'PERSON', globalAdmin: false, tokenScope: {},
+      weblogs: [{ handle: 'site-space', name: 'Site', permission: 'POST' }] };
+    server.use(
+      http.get(`${API}/weblogs/site-space`, () => HttpResponse.json({ handle: 'site-space', name: 'Site', active: true, timeZone: 'UTC' })),
+      http.get(`${API}/weblogs/site-space/media/directories`, () => HttpResponse.json(state.dirs)),
+      http.post(`${API}/weblogs/site-space/media`, () => HttpResponse.json({ created: 1, failed: 0, results: [
+        { status: 'created', file: file('s1', { name: 'logo.png', contentType: 'image/png' }) }] }, { status: 201 })));
+    last = open('/weblogs/site-space/media/upload');
+    await choose(png('logo.png'));
+    await userEvent.click(screen.getByRole('button', { name: 'Upload' }));
+    await screen.findByText('Your upload was successful');
+    expect(screen.queryByRole('button', { name: 'New entry with these' })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'logo.png' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Done' })).toBeInTheDocument();
   });
 
   it('goes back to an empty form with Upload more', async () => {

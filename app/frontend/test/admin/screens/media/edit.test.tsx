@@ -89,6 +89,44 @@ describe('Media edit', () => {
     expect(await screen.findByText('Media file saved.')).toBeInTheDocument();
   });
 
+  it('offers Replace file with its tip, and nothing is sent until a file is chosen', async () => {
+    const { router } = open();
+    const input = await screen.findByLabelText('Replace file');
+    expect(input).toHaveAttribute('type', 'file');
+    expect(input.id).toBe('mfedit_uploadedFile');
+    expect(screen.getByText(/The new file keeps the same name and URL/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/media'); });
+    expect(state.calls.some((c) => c.method === 'PUT')).toBe(false);
+  });
+
+  it('replaces the content first, then saves the other changes, and returns to the folder', async () => {
+    const { router } = open();
+    await userEvent.upload(await screen.findByLabelText('Replace file'), new File([new Uint8Array(8)], 'new.jpg', { type: 'image/jpeg' }));
+    await userEvent.type(screen.getByLabelText('Description'), ' day');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/media'); });
+    expect(state.calls.filter((c) => c.method === 'PUT' || c.method === 'PATCH').map((c) => `${c.method} ${c.path}`))
+      .toEqual(['PUT /media/a/content', 'PATCH /media/a']);
+    const put = state.calls.find((c) => c.method === 'PUT');
+    expect(put?.body).toBe('multipart');
+    expect(put?.csrf).toBe('tok');
+    expect(await screen.findByText('Media file saved.')).toBeInTheDocument();
+  });
+
+  it('shows a refused replacement in place on the file field and changes nothing else', async () => {
+    state.refusals.set('PUT content', problem(400, 'media.replaceRefused', 'The file was not replaced. This file is larger than the 1 MB per-file limit.',
+      [{ field: 'file', message: 'The file was not replaced. This file is larger than the 1 MB per-file limit.' }]));
+    const { router } = open();
+    await userEvent.upload(await screen.findByLabelText('Replace file'), new File([new Uint8Array(8)], 'big.jpg', { type: 'image/jpeg' }));
+    await userEvent.type(screen.getByLabelText('Description'), ' day');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText(/larger than the 1 MB per-file limit/)).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Replace file')).toHaveClass('is-invalid');
+    expect(patches()).toHaveLength(0);
+    expect(router.state.location.pathname).toBe('/weblogs/alpha/media/a');
+  });
+
   it('saves with no call when nothing changed', async () => {
     const { router } = open();
     await userEvent.click(await screen.findByRole('button', { name: 'Save' }));

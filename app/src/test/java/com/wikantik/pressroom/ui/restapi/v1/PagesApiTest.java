@@ -110,6 +110,7 @@ class PagesApiTest {
 
     private PagesApi controllerFor(Weblogger weblogger) {
         PagesApi controller = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         controller.weblogger = weblogger;
         return controller;
     }
@@ -704,6 +705,7 @@ class PagesApiTest {
 
         PagesApi controller() {
             PagesApi controller = new PagesApi();
+            when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
             controller.weblogger = weblogger;
             return controller;
         }

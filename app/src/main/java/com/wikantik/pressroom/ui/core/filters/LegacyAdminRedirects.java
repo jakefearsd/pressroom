@@ -29,9 +29,20 @@ import java.util.function.UnaryOperator;
  * @param reactPath the React route under the app, {@code {name}} placeholders allowed
  * @param pathParams placeholder name to the request parameter that supplies it
  * @param carried request parameters copied to the query string, in this order, when present
+ * @param otherwise a placeholder name to the React route used when that placeholder's parameter is missing,
+ *                  where the default is the app home (an editor with no id is the "new" page)
+ * @param queryNames a carried request parameter to the query name it takes in the React route, where the two
+ *                   differ (the library's {@code directoryId} is {@code dir})
  */
 public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
-                                   List<String> carried) {
+                                   List<String> carried, Map<String, String> otherwise,
+                                   Map<String, String> queryNames) {
+
+    /** A row that renames nothing and has no alternative route. */
+    public LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
+                                List<String> carried) {
+        this(legacyPath, reactPath, pathParams, carried, Map.of(), Map.of());
+    }
 
     /** Where the React app lives, as a servlet path (spec A1). */
     public static final String APP = "/pressroom-ui/app";
@@ -54,7 +65,25 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             weblogScreen("members", "members"),
             new LegacyAdminRedirects("/pressroom-ui/authoring/submissions.rol", "/weblogs/{weblog}/inbox",
                     Map.of("weblog", "weblog"), List.of("page")),
-            weblogScreen("weblogRemove", "remove"));
+            weblogScreen("weblogRemove", "remove"),
+            // Wave 2: pages and media. The image chooser overlay has no page of its own in React (the editors
+            // open a modal), so its address opens the media library; its only callers were the JSP editors.
+            new LegacyAdminRedirects("/pressroom-ui/authoring/pages.rol", "/weblogs/{weblog}/pages",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/pageEdit.rol", "/weblogs/{weblog}/pages/{id}",
+                    Map.of("weblog", "weblog", "id", "id"), List.of(), Map.of("id", "/weblogs/{weblog}/pages/new"),
+                    Map.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/pagesTrash.rol", "/weblogs/{weblog}/pages/trash",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileView.rol", "/weblogs/{weblog}/media",
+                    Map.of("weblog", "weblog"), List.of("directoryId", "sortBy"), Map.of(),
+                    Map.of("directoryId", "dir", "sortBy", "sort")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileAdd.rol", "/weblogs/{weblog}/media/upload",
+                    Map.of("weblog", "weblog"), List.of("directoryId"), Map.of(), Map.of("directoryId", "dir")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileEdit.rol", "/weblogs/{weblog}/media/{id}",
+                    Map.of("weblog", "weblog", "id", "mediaFileId"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
+                    "/weblogs/{weblog}/media", Map.of("weblog", "weblog"), List.of()));
 
     /** A weblog-scoped screen with no query: {@code authoring/<action>.rol?weblog=h} to {@code /weblogs/h/<screen>}. */
     private static LegacyAdminRedirects weblogScreen(String action, String screen) {
@@ -86,23 +115,41 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
 
     private String resolve(UnaryOperator<String> param) {
         String route = reactPath;
+        // A missing parameter sends the request to its alternative route, or to the home when it has none.
         for (Map.Entry<String, String> placeholder : pathParams.entrySet()) {
-            String value = param.apply(placeholder.getValue());
-            if (value == null || value.isBlank()) {
-                return "/";
+            if (isBlank(param.apply(placeholder.getValue()))) {
+                String alternative = otherwise.get(placeholder.getKey());
+                if (alternative == null) {
+                    return "/";
+                }
+                route = alternative;
+                break;
             }
-            route = route.replace("{" + placeholder.getKey() + "}", encode(value));
+        }
+        for (Map.Entry<String, String> placeholder : pathParams.entrySet()) {
+            String token = "{" + placeholder.getKey() + "}";
+            if (route.contains(token)) {
+                String value = param.apply(placeholder.getValue());
+                if (isBlank(value)) {
+                    return "/";
+                }
+                route = route.replace(token, encode(value));
+            }
         }
         List<String> query = new ArrayList<>();
         Map<String, String> seen = new LinkedHashMap<>();
         for (String name : carried) {
             String value = param.apply(name);
             if (value != null && !value.isEmpty()) {
-                seen.put(name, value);
+                seen.put(queryNames.getOrDefault(name, name), value);
             }
         }
         seen.forEach((name, value) -> query.add(encode(name) + "=" + encode(value)));
         return query.isEmpty() ? route : route + "?" + String.join("&", query);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private static String encode(String value) {

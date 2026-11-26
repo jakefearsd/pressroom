@@ -11,14 +11,18 @@ export const meta = {
   version: '1.2.3', siteUrl: 'https://blog.example.com', features: { customThemes: true, groupBlogging: true }, limits: {}
 };
 const weblogs: Record<string, object> = {
-  alpha: { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'UTC', frontPage: 'p1' },
-  'site-space': { handle: 'site-space', name: 'Site', active: true, timeZone: 'UTC' }
+  alpha: { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'UTC', frontPage: 'p1', absoluteUrl: 'https://blog.example.com/alpha/' },
+  'site-space': { handle: 'site-space', name: 'Site', active: true, timeZone: 'UTC', absoluteUrl: 'https://blog.example.com/' }
 };
 
-export const page = (over: Record<string, unknown> = {}) => ({
-  id: 'p2', slug: 'about', title: 'About us', text: 'Hello **world**', status: 'PUBLISHED', showInNav: true, navOrder: 1,
-  contentHash: 'h1', updateTime: '2026-11-20T10:00:00Z', strand: false, parts: [], noindex: false, ...over
-});
+/** A page as the API answers it; its address is the blog's root and its slug unless a test says otherwise. */
+export const page = (over: Record<string, unknown> = {}) => {
+  const view = {
+    id: 'p2', slug: 'about', title: 'About us', text: 'Hello **world**', status: 'PUBLISHED', showInNav: true, navOrder: 1,
+    contentHash: 'h1', updateTime: '2026-11-20T10:00:00Z', strand: false, parts: [], noindex: false, frontDoor: false, ...over
+  };
+  return { absoluteUrl: `https://blog.example.com/alpha/${String(view.slug)}`, ...view };
+};
 
 export interface Recorded {
   method: string;
@@ -47,7 +51,7 @@ export function baseHandlers() {
     http.get(`${API}/weblogs/:handle/pages/:id/revisions`, () => HttpResponse.json([])),
     http.get(`${API}/weblogs/:handle/pages`, ({ request }) =>
       HttpResponse.json(new URL(request.url).searchParams.get('status') === 'TRASHED' ? [] : [
-        page({ id: 'p1', slug: 'home', title: 'Welcome', navOrder: 0, showInNav: false }),
+        page({ id: 'p1', slug: 'home', title: 'Welcome', navOrder: 0, showInNav: false, absoluteUrl: 'https://blog.example.com/alpha/' }),
         page(),
         page({ id: 'p3', slug: 'draft-one', title: 'Draft <b>one</b>', status: 'DRAFT', navOrder: 2, showInNav: false })
       ]))

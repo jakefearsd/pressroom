@@ -1137,23 +1137,8 @@ public class WeblogEntry implements Serializable, ShortcodeContext, SeoFields {
     /**
      * A no-op. TODO: fix formbean generation so this is not needed.
      */
-    // NM_CONFUSING pairs this with the unrelated MediaFileBean.setPermalink(
-    // String) purely on case. Both this setter and its case-differing
-    // sibling setPermalink(String) directly above are pre-existing no-ops
-    // kept only so legacy formbean generation has somewhere to land (see
-    // their own javadoc TODOs); MediaFileBean.setPermalink is a live,
-    // actively JSP-bound property (${mediaFile.permalink} in
-    // MediaFileImageChooser.jsp) on an entirely unrelated class. Renaming
-    // either is out of scope for a naming-lint fix: this one because its
-    // exact name is what legacy binding may still target, the other because
-    // it would break a live JSP form field.
-    @SuppressFBWarnings(
-            value = "NM_CONFUSING",
-            justification = "Pre-existing no-op kept only for legacy formbean-generation "
-                    + "compatibility (see its own javadoc TODO); the method it collides with on "
-                    + "case, MediaFileBean.setPermalink(String), is an unrelated, live JSP-bound "
-                    + "property (${mediaFile.permalink} in MediaFileImageChooser.jsp) that must "
-                    + "keep its exact name too.")
+    // A pre-existing no-op kept only so legacy formbean generation has somewhere to land; it and
+    // its case-differing sibling setPermalink(String) directly above carry TODOs in their javadoc.
     public void setPermaLink(String string) {}
     
     /**

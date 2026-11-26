@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -246,6 +247,45 @@ public class MediaApi extends MediaApiBase implements UISecurityEnforced {
     }
 
     /**
+     * Replaces a file's content, as the edit screen's Replace file does: the name, folder, description and
+     * tags stay, the bytes and content type change, and everything derived from the old pixels is rebuilt
+     * ({@code MediaFileManager.updateMediaFile}). The upload's own checks (uploads switched on, per-file size,
+     * the weblog's quota with the replaced file's bytes left out, forbidden types) run first, so a refusal
+     * names its reason and changes nothing.
+     */
+    @Operation(operationId = "mediaReplace", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true, content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(type = "object", requiredProperties = {"file"}),
+                    schemaProperties = {
+                        @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
+                                description = "The new content. The file keeps its name."))
+                    })))
+    @PutMapping(value = "/{id}/content", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MediaDtos.MediaView replace(HttpServletRequest request, @PathVariable("id") String id,
+            @Parameter(hidden = true) @RequestParam(value = "file", required = false) MultipartFile upload)
+            throws WebloggerException, java.io.IOException {
+        Weblog weblog = requireActionWeblog(request);
+        MediaFile file = requireMedia(request, id);
+        if (upload == null || upload.isEmpty()) {
+            throw ApiException.problemOnField("file", ProblemCode.MEDIA_FILE_REQUIRED);
+        }
+        String contentType = MediaUploads.effectiveContentType(upload.getContentType(), file.getName());
+        PressroomMessages messages = new PressroomMessages();
+        if (!weblogger.getFileContentManager().canReplace(weblog, file.getId(), file.getName(), contentType,
+                upload.getSize(), messages)) {
+            throw ApiException.problemOnField("file", ProblemCode.MEDIA_REPLACE_REFUSED,
+                    MediaUploads.refusal(file.getName(), messages).detail());
+        }
+        file.setLength(upload.getSize());
+        file.setContentType(contentType);
+        try (java.io.InputStream bytes = upload.getInputStream()) {
+            weblogger.getMediaFileManager().updateMediaFile(weblog, file, bytes);
+        }
+        weblogger.flush();
+        return MediaDtos.toView(file, url(weblog, file));
+    }
+
+    /**
      * Crops an image destructively, as the media editor does: the stored
      * original is re-encoded to the rectangle and every derivative rebuilt.
      * The file is looked up through the ownership check before anything else;
@@ -384,6 +424,12 @@ public class MediaApi extends MediaApiBase implements UISecurityEnforced {
         }
         MediaDirectories.setPrivate(weblogger, weblog, directory, body.isPrivate());
         return MediaDtos.toView(directory);
+    }
+
+    /** The React admin's site Pages and Media screens read and write through the API, as a session only. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
     }
 
     @Override

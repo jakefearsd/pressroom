@@ -48,6 +48,8 @@ function readMode(key: string): Mode {
 interface Props {
   handle: string;
   entryId: string | undefined;
+  /** A static page is written on the same surface; only its preview routes differ. */
+  kind?: 'entry' | 'page';
   contextPath: string;
   text: string;
   onTextChange: (text: string) => void;
@@ -270,7 +272,7 @@ export function EditorSurface(props: Props) {
                            onItalic={() => { commandsRef.current['italic']?.(); }}
                            onLink={() => { commandsRef.current['link']?.(); }}
                            onUpload={upload} />
-          <PreviewPane ref={preview} handle={props.handle} entryId={props.entryId} text={props.text}
+          <PreviewPane ref={preview} handle={props.handle} entryId={props.entryId} kind={props.kind ?? 'entry'} text={props.text}
                        visible={mode !== 'write'} scrollFraction={() => editor.current?.scrollFraction() ?? 0} />
         </div>
         <div className="editor-status" id="editorStatus">

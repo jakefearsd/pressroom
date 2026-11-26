@@ -390,7 +390,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         List<WeblogEntry> parts = Boolean.TRUE.equals(page.getStrand())
                 ? weblogger.getWeblogEntryManager().getStrandParts(page, false)
                 : List.of();
-        return PageDtos.toView(page, parts);
+        return PageDtos.toView(page, parts, weblogger.getUrlStrategy().getWeblogStaticPageURL(page.getWeblog(), page, true));
     }
 
     /**
@@ -530,6 +530,12 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         if (taken != null) {
             throw RuleProblems.problem(taken, true);
         }
+    }
+
+    /** The React admin's site Pages and Media screens read and write through the API, as a session only. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
     }
 
     @Override

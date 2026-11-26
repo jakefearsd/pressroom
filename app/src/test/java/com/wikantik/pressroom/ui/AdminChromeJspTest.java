@@ -63,9 +63,8 @@ class AdminChromeJspTest {
     /** AC4: every full-page admin layout carries the footer tile. */
     @Test
     void everyFullPageLayoutIncludesTheFooterTile() throws IOException {
-        // popuppage renders inside a modal/iframe, barepage is a transient
-        // script-only iframe document: neither is a page a reader lands on.
-        java.util.Set<String> chromeless = java.util.Set.of("tiles-popuppage.jsp", "tiles-barepage.jsp");
+        // No layout is chrome-free now: the modal and iframe layouts went with the media screens.
+        java.util.Set<String> chromeless = java.util.Set.of();
         String resolver = Files.readString(
                 Path.of("src/main/java/com/wikantik/pressroom/ui/controllers/PressroomViewResolver.java"),
                 StandardCharsets.UTF_8);
@@ -154,7 +153,7 @@ class AdminChromeJspTest {
      */
     @Test
     void theListScreensShareOneRowActionPattern() {
-        for (String screen : java.util.List.of("editor/Pages.jsp", "editor/Categories.jsp",
+        for (String screen : java.util.List.of("editor/Categories.jsp",
                 "admin/Businesses.jsp")) {
             String src = jsp(screen);
             assertTrue(src.contains("<td class=\"row-actions\">"), screen + " has no td.row-actions");

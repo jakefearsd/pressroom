@@ -54,6 +54,7 @@ class PagesApiSeoTest {
         when(weblogger.getWeblogPageManager()).thenReturn(pages);
         when(weblogger.getMediaFileManager()).thenReturn(media);
         PagesApi controller = new PagesApi();
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
 

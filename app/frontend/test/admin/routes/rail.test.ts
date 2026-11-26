@@ -127,7 +127,7 @@ describe('entryTarget', () => {
 
   it('links the migrated screens to React routes and every other entry to its .rol', () => {
     const migrated = RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path]);
-    expect(migrated).toEqual(expect.arrayContaining([['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']]));
+    expect(migrated).toEqual(expect.arrayContaining([['pages', '/weblogs/:handle/pages'], ['mediaFileView', '/weblogs/:handle/media'], ['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']]));
   });
 
   it('links the wave 3 screens (settings, theme, stylesheet, templates, members, inbox) to their React routes', () => {

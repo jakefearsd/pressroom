@@ -158,50 +158,6 @@ class EditorJspMarkupHygieneTest {
     }
 
     /**
-     * The copy/view affordances Task 18 added, pinned by their markup: each
-     * is a one-line addition that a later edit could drop without any test
-     * noticing, and every one of them exists because the thing an author
-     * actually wanted off the screen was unreachable text.
-     */
-    @Test
-    void theCopyAndViewAffordancesArePresent() throws Exception {
-        List<String> missing = new ArrayList<>();
-        record Expected(String jsp, String needle, String what) { }
-        List<Expected> expected = List.of(
-                new Expected("MediaFileAddSuccess.jsp", "data-clipboard-target=\"#clip_image_",
-                        "the just-uploaded URL must be copyable"),
-                new Expected("MediaFileEdit.jsp", "clip_shortcode",
-                        "the canonical [image] embed string must be shown and copyable"),
-                // The address moved onto the writing surface when the page
-                // editor took the entry editor's layout: the weblog's own
-                // root as a prefix span, the slug as the field beside it, and
-                // the copy control on a published page. Same affordance, two
-                // halves; the old single anchor (#page_permalink) also showed
-                // a "/page/<slug>" URL that a WeblogPage is not served at.
-                new Expected("PageEdit.jsp", "class=\"editor-slug-prefix\"",
-                        "a page must show its own URL, rooted at the weblog"),
-                new Expected("PageEdit.jsp", "data-clipboard-text=",
-                        "a published page's URL must be copyable"),
-                // The bare single segment a WeblogPage is served at -- NOT
-                // "/page/<slug>", which is the CUSTOM-template route. This
-                // needle pinned the wrong shape until task M1; see
-                // PageEditJspTest.thePagesListLinksAPageWhereTheEditorSaysItLives
-                // for why the two screens are compared against each other.
-                new Expected("Pages.jsp", "${fn:escapeXml(urls.page(actionWeblog, p))}",
-                        "a published page's slug must link to the live page, with the "
-                                + "author-controlled slug escaped in the href (a page slug is "
-                                + "restricted only against '/' and reserved names, not against "
-                                + "quote/angle-bracket characters)"));
-        for (Expected e : expected) {
-            String src = Files.readString(EDITOR_JSP_DIR.resolve(e.jsp()));
-            if (!src.contains(e.needle())) {
-                missing.add(e.jsp() + ": " + e.what() + " (looked for " + e.needle() + ")");
-            }
-        }
-        assertTrue(missing.isEmpty(), String.join("\n", missing));
-    }
-
-    /**
      * {@code navigator.clipboard} is undefined on a non-HTTPS origin -- every
      * plain-http deployment and every dev server -- so an unguarded call left
      * the copy control silently dead there, a TypeError in the console and

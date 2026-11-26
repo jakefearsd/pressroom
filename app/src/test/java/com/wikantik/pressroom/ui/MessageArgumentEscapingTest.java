@@ -112,12 +112,7 @@ class MessageArgumentEscapingTest {
             // stored-escaping as EntryRemoveController's above.
             "editor/EntriesController.java -> copy.getTitle()",
             // A formatted date, not text anyone typed.
-            "editor/EntryEditController.java -> DateUtil.fullDate(entry.getPubTime())",
-            // A URL the server built from a weblog and a media-file id --
-            // URLStrategy output, with no author text in it. Escaping it would
-            // turn the & joining its query parameters into &amp;.
-            "editor/MediaFileAddController.java -> weblogger.getUrlStrategy()"
-                    + ".getMediaFileURL(upload.getWeblog(), upload.getId(), true)");
+            "editor/EntryEditController.java -> DateUtil.fullDate(entry.getPubTime())");
 
     /**
      * Every message argument that is an accessor call is either escaped or
@@ -151,7 +146,7 @@ class MessageArgumentEscapingTest {
             }
         }
 
-        assertTrue(argumentsChecked >= 20,
+        assertTrue(argumentsChecked >= 15,
                 "Only " + argumentsChecked + " accessor-valued message arguments found -- "
                         + "the scan is not looking where it thinks it is.");
         assertTrue(violations.isEmpty(),

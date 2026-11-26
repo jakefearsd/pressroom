@@ -44,8 +44,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
     private static final String LOGIN = ".tiles-loginpage";
     private static final String INSTALL = ".tiles-installpage";
     private static final String ERROR = ".tiles-errorpage";
-    private static final String POPUP = ".tiles-popuppage";
-    private static final String BARE = ".tiles-barepage";
 
     private final Map<String, ViewDefinition> definitions = new HashMap<>();
     private int order;
@@ -238,19 +236,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                         "footer",   "/WEB-INF/jsps/tiles/footer.jsp"
                 ));
 
-        addDefinition(".tiles-popuppage",
-                "/WEB-INF/jsps/tiles/tiles-popuppage.jsp",
-                Map.of(
-                        "banner",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "messages", "/WEB-INF/jsps/tiles/messages.jsp",
-                        "styles",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "content",  "${content}"
-                ));
-
-        addDefinition(".tiles-barepage",
-                "/WEB-INF/jsps/tiles/tiles-barepage.jsp",
-                Map.of("content", "${content}"));
-
         // ---- error pages ----
 
         define(".denied").on(ERROR)
@@ -377,44 +362,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // ---- weblog editor pages ----
 
-        define(".MediaFileAdd").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
-                .register();
-
-        define(".MediaFileEdit").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileEdit.jsp")
-                .register();
-
-
-        define(".MediaFileImageChooser").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileImageChooser.jsp")
-                .register();
-
-        define(".MediaFileAddInclude").on(POPUP)
-                .head("/WEB-INF/jsps/tiles/head.jsp")
-                .content("/WEB-INF/jsps/editor/MediaFileAdd.jsp")
-                .register();
-
-        // Bare layout, not popuppage: this document exists only to call
-        // parent.onEditSuccess() and is destroyed by the parent's re-submit
-        // milliseconds later. Rendering it with the full admin head made the
-        // browser abort its webfont fetch mid-flight on every media rename --
-        // the GalleryIT "font ERR_ABORTED" flake.
-        define(".MediaFileEditSuccess").on(BARE)
-                .content("/WEB-INF/jsps/editor/MediaFileEditSuccess.jsp")
-                .register();
-
-        define(".MediaFileView").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileView.jsp")
-                .sidebar("/WEB-INF/jsps/editor/MediaFileSidebar.jsp")
-                .register();
-
-        define(".MediaFileAddSuccess").on(TABBED)
-                .content("/WEB-INF/jsps/editor/MediaFileAddSuccess.jsp")
-                .register();
-
         define(".EntryEdit").on(TABBED)
                 .content("/WEB-INF/jsps/editor/EntryEdit.jsp")
                 .register();
@@ -440,18 +387,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         // healthy-looking 200 with no form on the page.
 
         // ---- weblog admin pages ----
-
-        define(".Pages").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Pages.jsp")
-                .register();
-
-        define(".PagesTrash").on(TABBED)
-                .content("/WEB-INF/jsps/editor/PagesTrash.jsp")
-                .register();
-
-        define(".PageEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/PageEdit.jsp")
-                .register();
 
         // Reader-comment moderation: an authoring screen on the editor tabs, so the tabbed chrome. The minimal
         // tabbed shape: the content tile only, and the base layout's empty menu tile (the tabs come from the

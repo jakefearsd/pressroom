@@ -100,7 +100,7 @@ public class StoredTextRenderingTest {
 
         assertRendersAsText(render("tiles/bannerStatus.jsp", "navbar-brand", new HashMap<>()));
         for (String layout : new String[] {"tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp",
-                "tiles/tiles-loginpage.jsp", "tiles/tiles-popuppage.jsp", "tiles/tiles-simplepage.jsp",
+                "tiles/tiles-loginpage.jsp", "tiles/tiles-simplepage.jsp",
                 "tiles/tiles-errorpage.jsp"}) {
             Map<String, Object> beans = new HashMap<>();
             beans.put("pageTitle", "title");

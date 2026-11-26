@@ -275,6 +275,67 @@
         }
       }
     },
+    "/v1/weblogs/{handle}/media/{id}/content" : {
+      "put" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaReplace",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary",
+                    "description" : "The new content. The file keeps its name."
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/password" : {
       "put" : {
         "tags" : [ "Profile writes" ],
@@ -1313,6 +1374,26 @@
           "required" : false,
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "name" : "largerThan",
+          "in" : "query",
+          "description" : "Only files strictly larger than this many bytes, as the screen's Larger than search does (the screen converts KB and MB).",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "tags",
+          "in" : "query",
+          "description" : "Only files carrying any of these tags (repeat the parameter or separate with commas).",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }, {
           "name" : "offset",
@@ -6016,6 +6097,14 @@
             "items" : {
               "$ref" : "#/components/schemas/PartView"
             }
+          },
+          "absoluteUrl" : {
+            "type" : "string",
+            "description" : "The page's absolute web address as readers reach it (the blog's root for its front page, the site root for the front-door page); absent when it cannot be built."
+          },
+          "frontDoor" : {
+            "type" : "boolean",
+            "description" : "True for the site page that is served at the site root instead of at its slug: the front-door page, which only the site space has."
           }
         }
       },
@@ -6037,6 +6126,67 @@
           "position" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "MediaView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "altText" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "length" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "directory" : {
+            "type" : "string"
+          },
+          "focalX" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "focalY" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "blurhash" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the file is, as the edit form's Description."
+          },
+          "copyrightText" : {
+            "type" : "string",
+            "description" : "The copyright line, as the edit form's Copyright."
+          },
+          "tags" : {
+            "type" : "array",
+            "description" : "The file's tags, sorted; never null.",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -6585,67 +6735,6 @@
           }
         },
         "required" : [ "kind", "permission", "screenName", "userName" ]
-      },
-      "MediaView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "altText" : {
-            "type" : "string"
-          },
-          "contentType" : {
-            "type" : "string"
-          },
-          "length" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "width" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "height" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "directory" : {
-            "type" : "string"
-          },
-          "focalX" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "focalY" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "url" : {
-            "type" : "string"
-          },
-          "blurhash" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string",
-            "description" : "What the file is, as the edit form's Description."
-          },
-          "copyrightText" : {
-            "type" : "string",
-            "description" : "The copyright line, as the edit form's Copyright."
-          },
-          "tags" : {
-            "type" : "array",
-            "description" : "The file's tags, sorted; never null.",
-            "items" : {
-              "type" : "string"
-            }
-          }
-        }
       },
       "UploadResponse" : {
         "type" : "object",
@@ -8743,9 +8832,14 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "The most entries a weblog may show on one page (the site setting site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every request: a site admin can change it."
+          },
+          "pageTrashRetentionDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The same for a trashed page (the page trash has its own setting): a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request."
           }
         },
-        "required" : [ "features", "limits", "maxEntriesPerPage", "trashRetentionDays" ]
+        "required" : [ "features", "limits", "maxEntriesPerPage", "pageTrashRetentionDays", "trashRetentionDays" ]
       },
       "LocaleChoice" : {
         "type" : "object",
@@ -9320,7 +9414,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "user.ownPasswordUseProfile", "userWeblogs.weblogUnknown", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.replaceRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "user.ownPasswordUseProfile", "userWeblogs.weblogUnknown", "http.error" ]
           }
         },
         "required" : [ "code", "status", "title", "type" ]
@@ -9340,7 +9434,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "user.ownPasswordUseProfile", "userWeblogs.weblogUnknown", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.replaceRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "user.ownPasswordUseProfile", "userWeblogs.weblogUnknown", "http.error" ]
           }
         },
         "required" : [ "code" ]

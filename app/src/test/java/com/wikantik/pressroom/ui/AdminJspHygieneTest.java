@@ -239,19 +239,17 @@ class AdminJspHygieneTest {
     // ---------------------------------------------------------------- Task 14
 
     private static final List<String> TILES_LAYOUTS = List.of(
-            "tiles/tiles-barepage.jsp",
             "tiles/tiles-errorpage.jsp",
             "tiles/tiles-installpage.jsp",
             "tiles/tiles-loginpage.jsp",
             "tiles/tiles-mainmenupage.jsp",
-            "tiles/tiles-popuppage.jsp",
             "tiles/tiles-simplepage.jsp",
             "tiles/tiles-tabbedpage.jsp");
 
     /**
      * Without a document language a screen reader picks its own -- usually the
      * user's OS locale -- and reads English admin copy with, say, German
-     * phonemes. Eight layouts, so one missing declaration hides in seven
+     * phonemes. Six layouts, so one missing declaration hides in five
      * correct ones.
      */
     @Test
@@ -265,15 +263,11 @@ class AdminJspHygieneTest {
         assertTrue(missing.isEmpty(), "layouts with no <html lang>: " + missing);
     }
 
-    /** Every layout must name the tab; popuppage used to ship none at all. */
+    /** Every layout must name the tab. */
     @Test
     void everyChromeLayoutSetsATitle() {
         List<String> missing = new ArrayList<>();
         for (String layout : TILES_LAYOUTS) {
-            // barepage is deliberately chrome-free -- see its own comment.
-            if (layout.endsWith("barepage.jsp")) {
-                continue;
-            }
             if (!jsp(layout).contains("<title>")) {
                 missing.add(layout);
             }

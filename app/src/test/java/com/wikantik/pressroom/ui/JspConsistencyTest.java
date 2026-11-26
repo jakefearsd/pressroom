@@ -122,20 +122,10 @@ class JspConsistencyTest {
             assertFalse(src.contains("<input id=\"toggleButton\""), jsp + ": media action bar still inputs");
         }
 
-        // The disjunct this used to carry -- pages.contains("not empty pages") --
-        // is trivially true the moment ANY <c:if test="${not empty pages}">
-        // appears anywhere in the file, which makes the assertion pass whether
-        // or not the top primary is actually inside one. Assert the real
-        // structural claim instead: the addUrl anchor carrying btn-primary
-        // sits inside a "${not empty pages}" guard, matching Pages.jsp's
-        // actual shape byte-for-byte.
-        String pages = Files.readString(JSPS.resolve("editor/Pages.jsp"), StandardCharsets.UTF_8);
-        assertTrue(pages.contains("<c:if test=\"${not empty pages}\">\n    <a href=\"${addUrl}\" class=\"btn btn-primary btn-sm\">"),
-                "Pages hides the top primary when empty");
     }
 
     /**
-     * Task B3: every list screen (Entries, Submissions, MediaFileView) shows
+     * Task B3: every list screen (Entries, Submissions, Comments) shows
      * exactly one selection bar -- a {@code .selection-bar} that names, via
      * {@code data-selection-bar}, the id of the {@code <form>} whose
      * checkboxes it counts. The bar and its form must live in the same JSP
@@ -169,9 +159,9 @@ class JspConsistencyTest {
                         + formId + "\", which is not declared in this JSP");
             }
         }
-        assertTrue(barsFound >= 3,
-                "Found too few .selection-bar elements -- expected at least one each on "
-                        + "Entries.jsp, Submissions.jsp and MediaFileView.jsp.");
+        assertTrue(barsFound >= 2,
+                "Found too few .selection-bar elements -- expected at least one each on Entries.jsp "
+                        + "and Comments.jsp.");
 
         String entries = Files.readString(JSPS.resolve("editor/Entries.jsp"), StandardCharsets.UTF_8);
         assertFalse(entries.contains("entriesBulkActions"),
@@ -181,10 +171,6 @@ class JspConsistencyTest {
         String comments = Files.readString(JSPS.resolve("editor/Comments.jsp"), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(comments, "class=\"selection-bar\""),
                 "Comments.jsp must have exactly one .selection-bar");
-
-        String mediaFileView = Files.readString(JSPS.resolve("editor/MediaFileView.jsp"), StandardCharsets.UTF_8);
-        assertEquals(1, countOccurrences(mediaFileView, "class=\"selection-bar\""),
-                "MediaFileView.jsp must have exactly one .selection-bar");
     }
 
     /**
@@ -263,8 +249,8 @@ class JspConsistencyTest {
     }
 
     /**
-     * Task B6: the four sidebar tiles (EntriesSidebar, MediaFileSidebar,
-     * CategoriesSidebar; the main menu's and the templates' moved to React) speak the rail's
+     * Task B6: the sidebar tiles (EntriesSidebar, CategoriesSidebar; the main menu's, the media
+     * library's and the templates' moved to React) speak the rail's
      * own grammar instead of a Bootstrap card with h3/hr section markup: a
      * caps-label ({@code p.sidebar-label}) per logical block, each wrapped in
      * a {@code div.sidebar-group}, no {@code <h3>} and no {@code <hr>}
@@ -276,8 +262,7 @@ class JspConsistencyTest {
      *
      * <p>{@code buttonsUseThreeBucketsOnly} above only forbids btn-success
      * and a bare {@code class="btn"}; it does not count primaries per file,
-     * so MediaFileSidebar.jsp's Search button (a second {@code btn-primary}
-     * alongside MediaFileView.jsp's "Add a photo") needs no exemption there.
+     * so a sidebar's own Search button needs no exemption there.
      */
     @Test
     void sidebarsUseTheRailGrammar() throws IOException {
@@ -415,9 +400,6 @@ class JspConsistencyTest {
      */
     private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
             Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
-            Map.entry("editor/MediaFileViewController.java", List.of("editor/MediaFileSidebar.jsp")),
-            Map.entry("editor/MediaFileEditController.java", List.of("editor/MediaFileEdit.jsp")),
-            Map.entry("editor/PageEditController.java", List.of("editor/PageEdit.jsp")),
             Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
             Map.entry("core/ProfileController.java", List.of("core/Profile.jsp")),
             Map.entry("admin/UserEditController.java", List.of("admin/UserEdit.jsp")),
@@ -574,53 +556,6 @@ class JspConsistencyTest {
                 "boolean properties render as a .form-check with the label beside the box");
     }
 
-    // --- B9b: media add leads with the drop zone; the theme chooser is cards ---
-
-    /**
-     * Task B9b: the upload form asks for the files first. Description,
-     * copyright and tags used to sit above the drop zone -- three optional
-     * fields between an author and the only thing they came to the page to do,
-     * applied identically to every file in a batch. They are in a collapsed
-     * {@code <details>} below it now.
-     *
-     * <p>The folder {@code <select>} stays ABOVE the drop zone: it is not
-     * optional the way the three text fields are (it decides where the batch
-     * lands) and there is no undo for dropping thirty files into the wrong
-     * directory.
-     *
-     * <p>The three ids the drop-zone script and every media IT drive
-     * ({@code mediaDropZone}, {@code uploadedFiles}, {@code uploadButton}) are
-     * asserted here too, because reordering markup is exactly the edit that
-     * loses one by accident.
-     */
-    @Test
-    void mediaAddLeadsWithTheDropZone() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("editor/MediaFileAdd.jsp"), StandardCharsets.UTF_8));
-
-        int folder = markup.indexOf("id=\"mfadd_bean_directoryId\"");
-        int dropZone = markup.indexOf("id=\"mediaDropZone\"");
-        int details = markup.indexOf("<details class=\"editor-details\"");
-        int description = markup.indexOf("id=\"mfadd_bean_description\"");
-
-        assertTrue(folder >= 0 && dropZone >= 0 && details >= 0 && description >= 0,
-                "MediaFileAdd.jsp is missing one of folder/drop zone/details/description "
-                        + "-- the scan is not looking where it thinks it is");
-        assertTrue(folder < dropZone,
-                "the folder select must stay above the drop zone: it decides where the "
-                        + "batch lands and there is no undo");
-        assertTrue(dropZone < details,
-                "the drop zone must come before the optional Details drawer");
-        assertTrue(details < description,
-                "description/copyright/tags belong inside the Details drawer");
-
-        for (String id : List.of("mediaDropZone", "uploadedFiles", "uploadButton", "mediaChosenFiles")) {
-            assertTrue(markup.contains("id=\"" + id + "\""),
-                    "MediaFileAdd.jsp lost id=\"" + id + "\", which its own script "
-                            + "and every media IT drive");
-        }
-    }
-
     // --- B10: the weblog switcher in the top bar ---
 
     /**
@@ -669,50 +604,6 @@ class JspConsistencyTest {
         assertTrue(open >= 0, "the Main Menu link is not guarded by " + guard);
         assertTrue(markup.indexOf("</c:if>", open) > link,
                 "the guard closes before the Main Menu link");
-    }
-
-    /**
-     * B9's `<details>` disclosure on MediaFileAdd.jsp had two loose ends,
-     * folded in here per B12's deferred-minors decision. First, its summary
-     * used a bare {@code cursor:pointer} rule rather than the same chevron
-     * treatment {@code .editor-drawer} already gives its own disclosure
-     * toggles ({@code EntryEdit.jsp}'s SEO drawer) -- two disclosure widgets
-     * with two different looks reads as two components, not one idiom.
-     * Second, the details started collapsed on every render, including a
-     * re-render after a validation refusal that carries typed description,
-     * copyright or tags -- collapsing typed-but-unsubmitted text out of view
-     * is the same mistake the field-error work exists to prevent for
-     * top-level fields, just one level down.
-     */
-    @Test
-    void mediaFileAddDetailsMatchesTheDrawerChevronAndReopensWithContent() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("editor/MediaFileAdd.jsp"), StandardCharsets.UTF_8));
-
-        assertTrue(markup.contains(
-                "<details class=\"editor-details\" "
-                        + "${not empty bean.description or not empty bean.tagsAsString "
-                        + "or not empty bean.copyrightText ? 'open' : ''}>"),
-                "the details must reopen when a re-render carries description, tags or copyright");
-
-        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        int drawerBlockStart = css.indexOf(".editor-drawer {");
-        int drawerBlockEnd = css.indexOf("}", drawerBlockStart);
-        String drawerBlock = css.substring(drawerBlockStart, drawerBlockEnd);
-        int detailsBlockStart = css.indexOf(".editor-details > summary {");
-        int detailsBlockEnd = css.indexOf("}", detailsBlockStart);
-        String detailsBlock = css.substring(detailsBlockStart, detailsBlockEnd);
-
-        assertTrue(detailsBlock.contains("var(--accent)"),
-                ".editor-details > summary must wear .editor-drawer's accent color");
-        assertTrue(detailsBlock.contains("font-weight: 600"),
-                ".editor-details > summary must wear .editor-drawer's weight");
-        assertTrue(drawerBlock.contains("var(--accent)") && drawerBlock.contains("font-weight: 600"),
-                "sanity: .editor-drawer itself must still carry the properties being reused");
-
-        int chevronStart = css.indexOf(".editor-details > summary::");
-        assertTrue(chevronStart >= 0, ".editor-details > summary must have its own rotating chevron, "
-                + "the same shape as .editor-drawer::after / .editor-drawer:not(.collapsed)::after");
     }
 
     // --- B11's bug sweep, folded in from the class it was routed to ---

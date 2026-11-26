@@ -123,7 +123,8 @@ public class MetaApi {
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
                 siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits,
                 WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.RETENTION_PROPERTY),
-                WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries")));
+                WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries"),
+                WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.PAGE_RETENTION_PROPERTY)));
     }
 
     /**

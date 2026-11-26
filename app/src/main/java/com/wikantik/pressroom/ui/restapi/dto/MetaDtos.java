@@ -140,7 +140,12 @@ public final class MetaDtos {
                     + "site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every "
                     + "request: a site admin can change it.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            int maxEntriesPerPage) {
+            int maxEntriesPerPage,
+            @Schema(description = "The same for a trashed page (the page trash has its own setting): a negative "
+                    + "number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on "
+                    + "every request.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int pageTrashRetentionDays) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */

@@ -324,6 +324,8 @@ public enum ProblemCode {
     MEDIA_FILE_REQUIRED("media.fileRequired", ProblemType.INVALID_REQUEST, 0),
     /** A media import could not fetch or store the image; {@code detail} says why. Text from the import step. */
     MEDIA_IMPORT_REFUSED("media.importRefused", ProblemType.INVALID_REQUEST, 1),
+    /** A replacement file failed the upload checks (size, quota, type, uploads switched off); `{0}` says which. */
+    MEDIA_REPLACE_REFUSED("media.replaceRefused", ProblemType.INVALID_REQUEST, 1),
     /** No media file of the weblog has this id. */
     MEDIA_NOT_FOUND("media.notFound", ProblemType.NOT_FOUND, 0),
     /** A media file's new {@code name} is held by another file in the directory it will be in. */

@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -91,12 +92,12 @@ class ColophonIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- a published page on the blog that will be the front-page blog
-            openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-            $("#pageEditForm").should(exist);
+            openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
             $("#page_bean_slug").setValue(slug);
             $("#page_bean_title").setValue(title);
             $("#page_bean_status").selectOptionByValue("PUBLISHED");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
             String pageUrl = baseUrl() + "/" + handle + "/" + slug;
             assertEquals(200, statusOf(pageUrl), "the published page must resolve");
@@ -188,16 +189,13 @@ class ColophonIT extends PressroomIT {
             assertEquals(wasFront, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "site.frontpage.weblog.handle was not restored");
         }
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         if ($$("tr[data-page-slug='privacy']").isEmpty()) {
             return; // never created
         }
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='privacy'] button[data-confirm]").click();
-            Selenide.confirm();
-        });
-        $("#messages").should(exist);
+        $("tr[data-page-slug='privacy'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
         $$("tr[data-page-slug='privacy']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
         // Trashed, which still holds the slug: out of the trash too.
         deletePageForeverFromTrash(handle, "privacy");

@@ -44,6 +44,26 @@ describe('PagesList', () => {
     expect(document.getElementById('pagesOrderSave')).toHaveAttribute('hidden');
   });
 
+  it('wraps the list in a marker the browser route sweep waits for, in both states', async () => {
+    await open();
+    const row = (await screen.findByText('Welcome')).closest('tr') as HTMLElement;
+    expect(document.getElementById('pages-list-marker')).toContainElement(row);
+  });
+
+  it('keeps the marker around the invitation when there are no pages', async () => {
+    server.use(http.get(`${API}/weblogs/:handle/pages`, () => HttpResponse.json([])));
+    await open();
+    await screen.findByText('No pages yet.');
+    expect(document.getElementById('pages-list-marker')?.querySelector('.empty-state')).not.toBeNull();
+  });
+
+  it('never asks the API for the site space as a weblog (it answers "No such weblog")', async () => {
+    server.use(http.get(`${API}/weblogs/site-space`, () => problem(404, 'weblog.notFound', 'No such weblog.')));
+    await open('/weblogs/site-space/pages');
+    await screen.findByText('Welcome');
+    expect(screen.queryByText('No such weblog.')).toBeNull();
+  });
+
   it('says "Site pages" for the site space', async () => {
     await open('/weblogs/site-space/pages');
     await screen.findByText('Welcome');
