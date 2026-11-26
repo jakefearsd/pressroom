@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DateTime } from '../components/DateTime';
 import { EmptyState } from '../components/EmptyState';
 import { ProblemBanner } from '../components/ProblemBanner';
-import { Subtitle } from '../components/Subtitle';
+import { Markup, markupArg } from '../components/Markup';
 import { useApi } from '../context';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
@@ -78,7 +78,7 @@ export function Trash() {
   return (
     <>
       <PageTitle>{t('trash.title')}</PageTitle>
-      <Subtitle text={t('trash.subtitle', handle)} />
+      <p className="subtitle"><Markup text={t('trash.subtitle', markupArg(handle))} /></p>
       {retention === undefined ? null : (
         <p className="pagetip">
           {retention < 0 ? t('trash.retention.forever') : retention === 0 ? t('trash.retention.nextSweep') : t('trash.retention.days', retention)}

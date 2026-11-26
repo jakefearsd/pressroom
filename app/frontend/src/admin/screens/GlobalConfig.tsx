@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useAllWeblogs, useConfig, useConfigDefinitions, useSaveConfig, useSitePages, type ConfigPropertyDefinition } from '../api/siteQueries';
 import { ProblemBanner } from '../components/ProblemBanner';
-import { RichMessage } from '../components/RichMessage';
+import { Markup } from '../components/Markup';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
 import { useBoot } from '../context';
@@ -181,7 +181,7 @@ export function GlobalConfig() {
       <PageTitle>{t('configForm.title')}</PageTitle>
       <ProblemBanner messages={saved} error={definitions.error ?? config.error ?? save.error} />
       <p className="subtitle">{t('configForm.subtitle')}</p>
-      <p><RichMessage text={t('configForm.prompt')} /></p>
+      <Markup text={t('configForm.prompt')} />
       {definitions.data === undefined || config.data === undefined ? null : (
         <form onSubmit={submit} className="settings-grid form-stacked">
           <div>

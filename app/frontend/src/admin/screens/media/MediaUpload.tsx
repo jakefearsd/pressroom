@@ -1,9 +1,9 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { runBulk } from '../../api/bulk';
 import { useDirectories, useMediaActions, type MediaView } from '../../api/media';
 import { ApiError } from '../../api/problem';
 import { useUploader } from '../../api/upload';
+import { runBulk } from '../../lib/bulk';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { PageTitle } from '../../frame/PageTitle';
 import { useBoot } from '../../context';
@@ -206,7 +206,7 @@ export function MediaUpload() {
         failed.push(t('mediaFileAdd.errorUploading', file.name));
         update(index, { state: 'failed' });
       }
-    }, 2);
+    }, undefined, 2);
 
     const shared = { description: description.trim(), copyrightText: copyright.trim(), tags: splitTags(tags) };
     if (shared.description !== '' || shared.copyrightText !== '' || shared.tags.length > 0) {
@@ -216,7 +216,7 @@ export function MediaUpload() {
         ...(shared.tags.length === 0 ? {} : { tags: shared.tags })
       };
       const patched = await runBulk(landed, (file) => actions.update(file.id ?? '', body));
-      for (const miss of patched.filter((r) => r.error !== undefined)) {
+      for (const miss of patched) {
         failed.push(`${miss.item.name ?? ''}${miss.error instanceof ApiError ? `: ${miss.error.detail}` : ''}`);
       }
     }

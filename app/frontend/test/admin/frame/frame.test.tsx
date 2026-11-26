@@ -47,6 +47,14 @@ const groups = () => [...rail().querySelectorAll('.rail-group')].map((g) => ({
 }));
 
 describe('Frame', () => {
+  it('shows the one-shot message a screen handed over in router state {message}, above the screen', async () => {
+    const router = createMemoryRouter(appRoutes, { initialEntries: [{ pathname: '/', state: { message: 'Saved <it>.' } }] });
+    renderInApp(<RouterProvider router={router} />, { boot: editorBoot });
+    const banner = await screen.findByRole('status');
+    expect(banner).toHaveTextContent('Saved <it>.');
+    expect(banner.id).toBe('messages');
+  });
+
   it('shows the main menu page (no weblog) a rail with just the signed-in user, as the JSP does', async () => {
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     expect(await screen.findByRole('heading', { level: 1, name: 'Your weblogs' })).toHaveClass('pressroom-page-title');

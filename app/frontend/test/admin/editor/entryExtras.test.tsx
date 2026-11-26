@@ -1,13 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { RichMessage } from '../../../src/admin/editor/RichMessage';
 import { diffLines } from '../../../src/admin/editor/RevisionsCard';
 import { SEO_DESCRIPTION_MAX, SEO_DESCRIPTION_MIN, SEO_TITLE_MAX } from '../../../src/admin/editor/EntryRail';
 import { SHORTCODE_CARDS } from '../../../src/admin/editor/shortcodeCards';
 import { markdownLink } from '../../../src/admin/screens/EntryEditor';
-import { API, cm, lastRequest, open, openWithState, problem, resetState, server, state } from './harness';
+import { API, cm, lastRequest, open, problem, resetState, server, state } from './harness';
 
 const hard = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock('../../../src/admin/routes/hardNavigate', () => ({ hardNavigate: hard.navigate }));
@@ -233,23 +232,7 @@ describe('new entry from media (?mediaId=)', () => {
   });
 });
 
-describe('arriving from a duplicate', () => {
-  it('shows the duplicate message, naming the copy, when the route says so', async () => {
-    state.entry['title'] = 'Copy of Rome trip';
-    openWithState('/weblogs/alpha/entries/e1', { notice: 'duplicated' });
-    expect(await screen.findByText('Duplicated as the draft "Copy of Rome trip". You are now editing the copy.')).toBeInTheDocument();
-  });
-});
-
 describe('units', () => {
-  it('RichMessage renders the bundle markup as elements and refuses a script target', () => {
-    const { container } = render(<RichMessage text={'Done. <a href="https://x.test/p">View it</a> now <span>alpha</span> <a href="javascript:alert(1)">bad</a> <b>raw</b>'} />);
-    expect(container.querySelector('a')).toHaveAttribute('href', 'https://x.test/p');
-    expect(container.querySelectorAll('a')).toHaveLength(1);
-    expect(container.querySelector('span')).toHaveTextContent('alpha');
-    expect(container).toHaveTextContent('bad <b>raw</b>');
-  });
-
   it('markdownLink neutralises brackets, spaces and parentheses', () => {
     expect(markdownLink('a [b].pdf', 'https://x/a b (1).pdf')).toBe('[a b.pdf](https://x/a%20b%20%281%29.pdf)');
   });

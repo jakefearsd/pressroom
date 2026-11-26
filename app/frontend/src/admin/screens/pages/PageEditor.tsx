@@ -13,10 +13,11 @@ import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
 import { DraftBar } from '../../session/DraftBar';
 import { useDraftKeeper } from '../../session/useDraftKeeper';
+import { MediaChooser } from '../media/MediaChooser';
 import { PageBodyEditor } from './PageBodyEditor';
 import { RevisionsPanel } from './RevisionsPanel';
 import { StrandParts, type PartInfo } from './StrandParts';
-import { Subtitle } from './Subtitle';
+import { Markup, markupArg } from '../../components/Markup';
 import { isSiteSpace, pageUrl, weblogBase } from './urls';
 
 /** Everything the form edits; its JSON is the unsaved-text snapshot and the dirty check. */
@@ -88,7 +89,7 @@ export function PageEditor() {
   const queries = useQueryClient();
   const missing = pageQuery.error instanceof ApiError && pageQuery.error.status === 404;
   const page = pageQuery.data;
-  const subtitle = isSiteSpace(handle) ? t('weblogPagesForm.subtitle.site') : t('weblogPagesForm.subtitle', handle);
+  const subtitle = isSiteSpace(handle) ? t('weblogPagesForm.subtitle.site') : t('weblogPagesForm.subtitle', markupArg(handle));
 
   const onSaved = ({ page: saved, messages: said, errors: failed }: Saved) => {
     queries.setQueryData(['page', handle, saved.id], saved);
@@ -100,7 +101,7 @@ export function PageEditor() {
   return (
     <>
       <PageTitle>{id === undefined ? t('pageEdit.title.new') : t('pageEdit.title')}</PageTitle>
-      <Subtitle text={subtitle} />
+      <p className="subtitle"><Markup text={subtitle} /></p>
       <ProblemBanner messages={messages} errors={missing ? [t('pageEdit.notFound'), ...errors] : errors}
                      {...(missing ? {} : { error: pageQuery.error })} />
       {id === undefined || page !== undefined ? (
@@ -124,6 +125,7 @@ function PageForm({ handle, page, onSaved }: {
 
   const [form, setForm] = useState<FormState>(() => formOf(page));
   const [seoOpen, setSeoOpen] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const [confirmingTrash, setConfirmingTrash] = useState(false);
   const [copied, setCopied] = useState(false);
   const snapshot = JSON.stringify(form);
@@ -341,12 +343,15 @@ function PageForm({ handle, page, onSaved }: {
                   <div className="row mb-3" role="group" aria-labelledby="seo_ogImage_label">
                     <span className="col-sm-3 col-form-label" id="seo_ogImage_label">{t('weblogEdit.ogImage')}</span>
                     <div className="col-sm-9">
-                      {/* The image chooser belongs to the media screens; until it is shared, an image is kept or removed here. */}
                       {form.ogImageId === '' ? null : (
                         <div className="mb-2">
                           <OgImagePreview handle={handle} imageId={form.ogImageId} />
                         </div>
                       )}
+                      <button type="button" className="btn btn-secondary btn-sm" id="seo_ogImage_choose"
+                              onClick={() => { setChoosing(true); }}>
+                        {t('weblogEdit.chooseImage')}
+                      </button>
                       {form.ogImageId === '' ? null : (
                         <button type="button" {...field('ogImageId', 'btn btn-outline-danger btn-sm')}
                                 onClick={() => { set('ogImageId', ''); }}>
@@ -398,6 +403,11 @@ function PageForm({ handle, page, onSaved }: {
                        onConfirm={() => { trash.mutate(); }} onCancel={() => { setConfirmingTrash(false); }}>
           {(page.parts?.length ?? 0) > 0 ? <p>{t('pages.deleteStrandConfirm', page.parts?.length ?? 0)}</p> : null}
         </ConfirmDialog>
+      ) : null}
+      {choosing ? (
+        <MediaChooser handle={handle} imagesOnly
+                      onSelect={(media) => { set('ogImageId', media.id); setChoosing(false); }}
+                      onCancel={() => { setChoosing(false); }} />
       ) : null}
     </>
   );

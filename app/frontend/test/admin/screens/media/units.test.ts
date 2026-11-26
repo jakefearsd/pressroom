@@ -1,33 +1,9 @@
-import { runBulk } from '../../../../src/admin/api/bulk';
 import { uploadFile } from '../../../../src/admin/api/upload';
 import { cropRectInNaturalPixels, loadCropper, seedSelection } from '../../../../src/admin/screens/media/crop';
 import { formatSize, isCroppable, libraryPath, splitTags } from '../../../../src/admin/screens/media/shared';
 import { narrow } from '../../../../src/admin/screens/media/MediaLibrary';
 import { sample } from '../../fixtures';
 import { file } from './mediaServer';
-
-describe('runBulk', () => {
-  it('attempts every item, keeps order, records failures and reports progress', async () => {
-    const seen: number[] = [];
-    const results = await runBulk([1, 2, 3, 4, 5], (n) => (n % 2 === 0 ? Promise.reject(new Error(`no ${String(n)}`)) : Promise.resolve(n)), 2,
-      (done) => { seen.push(done); });
-    expect(results.map((r) => r.item)).toEqual([1, 2, 3, 4, 5]);
-    expect(results.map((r) => r.error !== undefined)).toEqual([false, true, false, true, false]);
-    expect(seen).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it('never runs more than the concurrency at once, and copes with nothing to do', async () => {
-    let live = 0;
-    let peak = 0;
-    await runBulk(Array.from({ length: 9 }, (_, i) => i), async () => {
-      peak = Math.max(peak, ++live);
-      await new Promise((r) => setTimeout(r, 2));
-      live--;
-    }, 4);
-    expect(peak).toBe(4);
-    expect(await runBulk([], () => Promise.resolve())).toEqual([]);
-  });
-});
 
 describe('uploadFile', () => {
   class FakeXhr {

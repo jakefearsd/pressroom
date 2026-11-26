@@ -7,6 +7,7 @@ import { useBoot } from '../context';
 import { plainText, useT } from '../i18n/messages';
 import { RAIL_ENTRIES, entryTarget } from '../routes/railTable';
 import { visibleGroups } from '../routes/visibility';
+import { useFlash } from '../session/flash';
 import { SessionExpiredBar } from '../session/SessionExpiredBar';
 import { Banner, type SwitcherOption } from './Banner';
 import { Footer } from './Footer';
@@ -34,6 +35,7 @@ export function Frame() {
   const boot = useBoot();
   const location = useLocation();
   const matches = useMatches();
+  const flash = useFlash();
   const last = matches[matches.length - 1];
   const scope = isFrameHandle(last?.handle) ? last.handle.scope : 'none';
   const handle = last?.params['handle'];
@@ -102,6 +104,7 @@ export function Frame() {
             <SessionExpiredBar />
             <div className="card">
               <div className={`card-body${scope === 'none' ? '' : ' pressroom-content-body'}`}>
+                <ProblemBanner messages={flash === undefined ? [] : [flash]} />
                 <Outlet />
                 <ProblemBanner error={failure} />
               </div>

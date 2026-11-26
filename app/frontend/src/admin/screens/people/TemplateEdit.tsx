@@ -9,7 +9,8 @@ import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
 import { DraftBar } from '../../session/DraftBar';
 import { useDraftKeeper } from '../../session/useDraftKeeper';
-import { RequireLevel, bannerError, useHandle, weblogAddress } from './shared';
+import { bannerError, useHandle, weblogAddress } from './shared';
+import { RequireLevel } from '../../lib/permission';
 
 const FIELD_IDS: Record<string, string> = {
   name: 'template_bean_name', link: 'template_bean_link', description: 'template_bean_description',

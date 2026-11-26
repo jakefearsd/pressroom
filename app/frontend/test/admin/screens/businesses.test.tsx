@@ -112,7 +112,7 @@ describe('Business edit', () => {
       return HttpResponse.json({ ...acme, id: 'b9' }, { status: 201 });
     }));
     const user = userEvent.setup();
-    renderRoutes(siteAdminRoutes, '/admin/businesses/new', { boot: adminBoot });
+    const { router } = renderRoutes(siteAdminRoutes, '/admin/businesses/new', { boot: adminBoot });
     expect(await screen.findByText('New business', { selector: 'p.subtitle' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeRequired();
     expect(screen.getByLabelText('Type')).toHaveValue('Organization');
@@ -123,8 +123,9 @@ describe('Business edit', () => {
     await user.type(screen.getByLabelText('Website'), 'https://new.example');
     await user.type(screen.getByLabelText('Profile links'), 'https://x.example{Enter}  https://y.example  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Business saved.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument();
+    // The frame shows the message; the screen only hands it over.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument();
+    expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',
       sameAs: ['https://x.example', 'https://y.example'] } }]);
@@ -136,7 +137,7 @@ describe('Business edit', () => {
       return HttpResponse.json(solo);
     }));
     const user = userEvent.setup();
-    renderRoutes(siteAdminRoutes, '/admin/businesses/b2', { boot: adminBoot });
+    const { router } = renderRoutes(siteAdminRoutes, '/admin/businesses/b2', { boot: adminBoot });
     expect(await screen.findByText('Edit business', { selector: 'p.subtitle' })).toBeInTheDocument();
     await waitFor(() => { expect(screen.getByLabelText('Name')).toHaveValue('Solo'); });
     expect(screen.getByLabelText('Profile links')).toHaveValue('https://a.example\nhttps://b.example');
@@ -144,7 +145,8 @@ describe('Business edit', () => {
     await user.clear(screen.getByLabelText('Website'));
     await user.clear(screen.getByLabelText('Profile links'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Business saved.');
+    await screen.findByRole('heading', { level: 1, name: 'Businesses' });
+    expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'PATCH', url: '/pressroom/api/v1/admin/businesses/b2', csrf: 'tok', body: {
       name: 'Solo', businessType: 'Organization', description: 'Does things',
       clear: ['websiteUrl', 'bookingUrl', 'telephone', 'email', 'logoUrl', 'areaServed', 'sameAs'] } }]);

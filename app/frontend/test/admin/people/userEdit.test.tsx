@@ -53,7 +53,7 @@ describe('New person', () => {
     expect(seen.find((s) => s.method === 'POST')?.body).toEqual({
       userName: 'newbie', screenName: 'Newbie', fullName: 'New Bie', emailAddress: 'n@example.com',
       locale: 'en_US', timeZone: expect.any(String) as string, administrator: false });
-    expect(router.state.location.state).toEqual({ flash: 'User created. A set-password link has been emailed.' });
+    expect(router.state.location.state).toEqual({ message: 'User created. A set-password link has been emailed.' });
   });
 
   it('sets a password now and makes a site admin when asked', async () => {
@@ -67,7 +67,7 @@ describe('New person', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/users'); });
     expect(seen.find((s) => s.method === 'POST')?.body).toMatchObject({ password: 'longenough1', administrator: true });
-    expect(router.state.location.state).toEqual({ flash: 'User "newbie" created' });
+    expect(router.state.location.state).toEqual({ message: 'User "newbie" created' });
   });
 
   it('puts a refused field on its control and the problem in place', async () => {
@@ -119,7 +119,7 @@ describe('Edit person', () => {
     expect(seen.find((s) => s.method === 'PATCH')?.body).toEqual({
       screenName: 'Countess', fullName: 'Ada Lovelace', emailAddress: 'ada@example.com', locale: 'en_US',
       timeZone: 'Europe/London', enabled: true, administrator: true });
-    expect(router.state.location.state).toEqual({ flash: 'User saved.' });
+    expect(router.state.location.state).toEqual({ message: 'User saved.' });
   });
 
   it('sends a typed password only when one is entered', async () => {

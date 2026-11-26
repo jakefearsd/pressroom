@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { flashState } from '../../session/flash';
 import { call } from '../../api/client';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PasswordField } from '../../components/PasswordFields';
@@ -138,7 +139,7 @@ function UserForm({ account, options }: { account?: UserView; options: Options }
       const flash = creating
         ? (form.passwordMode === 'link' ? t('userAdmin.userCreatedLinkSent') : t('createUser.add.success', form.userName))
         : t('userAdmin.userSaved');
-      void navigate('/admin/users', { state: { flash } });
+      void navigate('/admin/users', { state: flashState(flash) });
     }
   };
   const confirmedLink = async () => {

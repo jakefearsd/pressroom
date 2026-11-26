@@ -8,7 +8,8 @@ import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
 import { DraftBar } from '../../session/DraftBar';
 import { useDraftKeeper } from '../../session/useDraftKeeper';
-import { RequireLevel, bannerError, useHandle } from './shared';
+import { bannerError, useHandle } from './shared';
+import { RequireLevel } from '../../lib/permission';
 
 export function Stylesheet() {
   const handle = useHandle();

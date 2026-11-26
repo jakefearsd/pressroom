@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { runPool } from '../../api/pool';
 import { useMemberActions, useMembers, type MemberPermission, type MemberView } from '../../api/people';
 import { useMeta } from '../../api/queries';
+import { runBulk } from '../../lib/bulk';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { Markup, markupArg } from '../../components/Markup';
@@ -10,9 +10,8 @@ import { useFieldErrors } from '../../forms/useFieldErrors';
 import { PageTitle } from '../../frame/PageTitle';
 import { useBoot } from '../../context';
 import { useT } from '../../i18n/messages';
-import { RequireLevel, bannerError, failureLine, useHandle } from './shared';
-
-const BULK_CONCURRENCY = 4;
+import { bannerError, failureLine, useHandle } from './shared';
+import { RequireLevel } from '../../lib/permission';
 
 type Choice = MemberPermission | 'REMOVE';
 
@@ -90,7 +89,7 @@ function MembersBody({ handle }: { handle: string }) {
     const phases = [changes.filter((m) => picked[m.userName] === 'ADMIN'), changes.filter((m) => picked[m.userName] !== 'ADMIN')];
     const done = { removed: 0, changed: 0 };
     for (const phase of phases) {
-      const failed = await runPool(phase, BULK_CONCURRENCY, async (m) => {
+      const failed = await runBulk(phase, async (m) => {
         const to = picked[m.userName];
         if (to === 'REMOVE') {
           await actions.remove(m.userName);

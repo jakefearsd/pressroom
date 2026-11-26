@@ -12,10 +12,10 @@ import { CONTROL_IDS, OrganizeBox, PublishBox, SEO_FIELDS, SeoDrawer, type Sette
 import { buildWrite, emptyForm, formFromEntry, type EntryForm, type EntryView } from '../editor/entryForm';
 import { EditorSurface, type SaveState } from '../editor/EditorSurface';
 import type { EditorHandle } from '../editor/CodeMirrorField';
-import { MediaChooser, type ChosenMedia } from '../editor/MediaChooser';
+import { MediaChooser, type MediaChoice } from './media/MediaChooser';
 import { NewsletterCard } from '../editor/NewsletterCard';
 import { RevisionsCard, type RevisionDiff } from '../editor/RevisionsCard';
-import { RichMessage } from '../editor/RichMessage';
+import { Markup, markupArg } from '../components/Markup';
 import { useLatest } from '../editor/useLatest';
 import { entryKey, useCategories, useCommentCounts, useEntry, useRevisions, revisionsKey, useStrands } from '../editor/queries';
 import { useFieldErrors } from '../forms/useFieldErrors';
@@ -30,10 +30,9 @@ import { useDraftKeeper } from '../session/useDraftKeeper';
 
 type Notice =
   | { kind: 'saved'; status: string }
-  | { kind: 'duplicated' }
   | { kind: 'restored' | 'kept' | 'unkept' | 'newsletter' };
 
-/** What the route state may carry in: the entries list's Duplicate lands here with `notice: 'duplicated'`. */
+/** What the route state may carry in: a just-created entry's save notice (the list's Duplicate sends `{message}`, shown by the frame). */
 interface RouteState {
   notice?: Notice['kind'];
   status?: string;
@@ -149,7 +148,6 @@ function noticeText(notice: Notice, t: Translate, server: EntryView | undefined,
         case 'PENDING': return t('weblogEdit.submittedForReview');
         default: return t('weblogEdit.draftSaved');
       }
-    case 'duplicated': return t('weblogEdit.entryDuplicated', server?.title ?? '');
     case 'restored': return t('weblogEdit.revisionRestored');
     case 'kept': return t('weblogEdit.revisionKept');
     case 'unkept': return t('weblogEdit.revisionUnkept');
@@ -171,7 +169,7 @@ function SuccessNotice({ text }: { text: string }) {
   return (
     <div id="messages" className="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
       <button type="button" className="btn-close" aria-label={t('generic.close')} onClick={() => { setClosed(true); }} />
-      <ul><li><RichMessage text={text} /></li></ul>
+      <ul><li><Markup text={text} /></li></ul>
     </div>
   );
 }
@@ -214,7 +212,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
     if (state?.notice === 'saved') {
       return { kind: 'saved', status: state.status ?? 'DRAFT' };
     }
-    return state?.notice === 'duplicated' ? { kind: 'duplicated' } : null;
+    return null;
   });
   const [busy, setBusy] = useState(false);
   const [saveTick, setSaveTick] = useState(0);
@@ -362,7 +360,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   const onShortcutSave = useCallback(() => { void saveRef.current(live ? 'publish' : 'draft'); }, [live, saveRef]);
   const onShortcutPublish = useCallback(() => { void saveRef.current('publish'); }, [saveRef]);
 
-  const choose = (media: ChosenMedia) => {
+  const choose = (media: MediaChoice) => {
     const target = chooser;
     setChooser(null);
     if (target === 'featuredImage' || target === 'ogImage') {
@@ -413,7 +411,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   return (
     <>
       <PageTitle {...(title === '' ? {} : { tabTitle: `${title} — ${pageTitle}` })}>{pageTitle}</PageTitle>
-      <p className="subtitle"><RichMessage text={t(server === undefined ? 'weblogEdit.subtitle.newEntry' : 'weblogEdit.subtitle.editEntry', handle)} /></p>
+      <p className="subtitle"><Markup text={t(server === undefined ? 'weblogEdit.subtitle.newEntry' : 'weblogEdit.subtitle.editEntry', markupArg(handle))} /></p>
       {noticeBanner}
       <ProblemBanner error={error} />
       <div className="editor-grid">
@@ -492,7 +490,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
         </ConfirmDialog>
       ) : null}
       {chooser === null ? null : (
-        <MediaChooser handle={handle} imagesOnly={chooser !== 'insert'} onChoose={choose} onClose={() => { setChooser(null); }} />
+        <MediaChooser handle={handle} imagesOnly={chooser !== 'insert'} onSelect={choose} onCancel={() => { setChooser(null); }} />
       )}
     </>
   );

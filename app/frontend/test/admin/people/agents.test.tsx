@@ -38,7 +38,7 @@ describe('New agent', () => {
     await user.click(screen.getByRole('button', { name: 'Create agent' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/agents/newbot'); });
     expect(seen.find((s) => s.method === 'POST')?.body).toEqual({ userName: 'newbot', name: 'New Bot', notes: 'For news', siteAdmin: true });
-    expect(router.state.location.state).toEqual({ flash: 'Agent newbot created.' });
+    expect(router.state.location.state).toEqual({ message: 'Agent newbot created.' });
   });
 
   it('sends the optional email when given, and Cancel returns to the list', async () => {

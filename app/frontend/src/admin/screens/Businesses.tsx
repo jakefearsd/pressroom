@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 import { useBusinesses, useDeleteBusiness, type BusinessView } from '../api/siteQueries';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
@@ -7,17 +7,9 @@ import { ProblemBanner } from '../components/ProblemBanner';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
 
-/** The message a screen was sent here with (a saved form's confirmation), from the router state. */
-export function useFlash(): string | undefined {
-  const state: unknown = useLocation().state;
-  const flash = typeof state === 'object' && state !== null ? (state as Record<string, unknown>)['flash'] : undefined;
-  return typeof flash === 'string' ? flash : undefined;
-}
-
 /** Businesses.jsp: the site's business profiles, with edit and (when unused) delete. */
 export function Businesses() {
   const t = useT();
-  const flash = useFlash();
   const list = useBusinesses();
   const remove = useDeleteBusiness();
   const [asked, setAsked] = useState<BusinessView | null>(null);
@@ -46,7 +38,7 @@ export function Businesses() {
   return (
     <>
       <PageTitle>{t('businesses.title')}</PageTitle>
-      <ProblemBanner messages={[...(flash === undefined ? [] : [t(flash)]), ...(deleted === undefined ? [] : [deleted])]}
+      <ProblemBanner messages={deleted === undefined ? [] : [deleted]}
                      error={list.error ?? remove.error} />
       <p className="subtitle">{t('businesses.subtitle')}</p>
       <div id="businesses-list-marker">

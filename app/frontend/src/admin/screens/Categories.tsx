@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { FormDialog } from '../components/FormDialog';
 import { ProblemBanner } from '../components/ProblemBanner';
-import { Subtitle } from '../components/Subtitle';
+import { Markup, markupArg } from '../components/Markup';
 import { useApi } from '../context';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
@@ -50,7 +50,7 @@ export function Categories() {
   return (
     <>
       <PageTitle>{t('categoriesForm.rootTitle')}</PageTitle>
-      <Subtitle text={t('categoriesForm.subtitle', handle)} />
+      <p className="subtitle"><Markup text={t('categoriesForm.subtitle', markupArg(handle))} /></p>
       <ProblemBanner messages={messages} error={categories.error} />
       <p className="pagetip">{t('categoriesForm.rootPrompt')}</p>
       {list.length > 0 ? (

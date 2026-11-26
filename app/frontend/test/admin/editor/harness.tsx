@@ -4,8 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { appRoutes } from '../../../src/admin/router';
 import type { Bootstrap } from '../../../src/admin/bootstrap';
-import { createMemoryRouter, RouterProvider } from 'react-router';
-import { editorBoot, renderInApp, renderRoutes } from '../support';
+import { editorBoot, renderRoutes } from '../support';
 
 export const API = 'http://pressroom.test/pressroom/api/v1';
 
@@ -112,6 +111,19 @@ export const server = setupServer(
     record('POST', request, await request.json());
     return HttpResponse.json({ html: '<p>rendered new</p>' });
   }),
+  // The media chooser's two reads (specific routes before the by-id one).
+  http.get(`${API}/weblogs/:handle/media/directories`, () =>
+    HttpResponse.json([{ id: 'd1', name: 'default', isPrivate: false, fileCount: 2 }])),
+  http.get(`${API}/weblogs/:handle/media`, ({ request }) => {
+    const imagesOnly = new URL(request.url).searchParams.get('type') === 'image';
+    const files = [
+      { id: 'img1', name: 'a.jpg', contentType: 'image/jpeg', length: 10, url: 'https://x/m/img1', directory: 'd1' },
+      { id: 'doc1', name: 'guide.pdf', contentType: 'application/pdf', length: 99, url: 'https://x/m/doc1', directory: 'd1' },
+      { id: 'img2', name: 'b.jpg', contentType: 'image/jpeg', length: 11, url: 'https://x/b.jpg', directory: 'd1' }
+    ];
+    return HttpResponse.json({ items: imagesOnly ? files.filter((f) => f.contentType.startsWith('image/')) : files,
+      offset: 0, limit: 200, hasMore: false });
+  }),
   http.get(`${API}/weblogs/:handle/media/:id`, ({ params }) => HttpResponse.json(
     params['id'] === 'img1' ? { id: 'img1', name: 'a.jpg', contentType: 'image/jpeg', length: 10, url: 'https://x/m/img1' }
       : params['id'] === 'doc1' ? { id: 'doc1', name: 'guide.pdf', contentType: 'application/pdf', length: 99, url: 'https://x/m/doc1' }
@@ -123,12 +135,6 @@ export const adminBoot: Bootstrap = { ...editorBoot, user: { ...editorBoot.user,
 
 export function open(path: string, boot: Bootstrap = editorBoot) {
   return renderRoutes(appRoutes, path, { boot });
-}
-
-/** Opens a route that arrived with router state (what the entries list's Duplicate sends). */
-export function openWithState(path: string, routeState: object, boot: Bootstrap = editorBoot) {
-  const router = createMemoryRouter(appRoutes, { initialEntries: [{ pathname: path, state: routeState }] });
-  return { router, ...renderInApp(<RouterProvider router={router} />, { boot }) };
 }
 
 /** The CodeMirror view the editor mounted. */

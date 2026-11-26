@@ -1,5 +1,4 @@
 import { render } from '@testing-library/react';
-import { runPool } from '../../../src/admin/api/pool';
 import { ApiError } from '../../../src/admin/api/problem';
 import { Markup, markupArg } from '../../../src/admin/components/Markup';
 import { bannerError, failureLine, weblogAddress } from '../../../src/admin/screens/people/shared';
@@ -20,32 +19,14 @@ describe('Markup', () => {
     expect(html('<b>x<span>y</b>z')).toBe('<b>x<span>yz</span></b>');
   });
 
+  it('builds a link only for an http(s) or path target, and keeps the text of any other', () => {
+    expect(html('Done. <a href="https://x.test/p">View it</a> and <a href=\'/a/b\'>this</a>'))
+      .toBe('Done. <a href="https://x.test/p">View it</a> and <a href="/a/b">this</a>');
+    expect(html('<a href="javascript:alert(1)">bad</a> <a>none</a>')).toBe('bad none');
+  });
+
   it('keeps a user-typed argument from becoming a tag', () => {
     expect(html(`Hi ${markupArg('<b>x</b> & &lt;')}`)).toBe('Hi &lt;b&gt;x&lt;/b&gt; &amp; &amp;lt;');
-  });
-});
-
-describe('runPool', () => {
-  it('runs every item with bounded concurrency, reports progress and collects failures', async () => {
-    let live = 0;
-    let peak = 0;
-    const progress: number[] = [];
-    const failures = await runPool([1, 2, 3, 4, 5, 6, 7], 3, async (n) => {
-      live++;
-      peak = Math.max(peak, live);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      live--;
-      if (n === 4) {
-        throw new Error('no');
-      }
-    }, (done) => progress.push(done));
-    expect(peak).toBe(3);
-    expect(progress).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(failures.map((f) => f.item)).toEqual([4]);
-  });
-
-  it('does nothing for no items', async () => {
-    expect(await runPool([], 4, () => Promise.reject(new Error('never')))).toEqual([]);
   });
 });
 

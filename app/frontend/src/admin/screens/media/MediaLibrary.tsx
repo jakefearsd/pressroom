@@ -1,18 +1,19 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
-import { runBulk } from '../../api/bulk';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useDirectories, useMediaActions, useMediaList, type DirectoryView, type MediaView } from '../../api/media';
 import { ApiError } from '../../api/problem';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { ProblemBanner } from '../../components/ProblemBanner';
-import { RichText } from '../../components/RichText';
+import { Markup, markupArg } from '../../components/Markup';
+import { runBulk } from '../../lib/bulk';
 import { SelectionBar } from '../../components/SelectionBar';
 import { PageTitle } from '../../frame/PageTitle';
 import { useBoot } from '../../context';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { useT } from '../../i18n/messages';
-import { isImage, splitTags, thumbnailUrl, useCanManage } from './shared';
+import { useWeblogRights } from '../../lib/permission';
+import { isImage, splitTags, thumbnailUrl } from './shared';
 
 const SORTS = ['name', 'date_uploaded', 'type'] as const;
 const UNIT_BYTES: Record<string, number> = { bytes: 1, kb: 1024, mb: 1024 * 1024 };
@@ -92,9 +93,8 @@ export function MediaLibrary() {
   const boot = useBoot();
   const handle = useParams()['handle'] ?? '';
   const navigate = useNavigate();
-  const flash = (useLocation().state as { message?: string } | null)?.message;
   const [params, setParams] = useSearchParams();
-  const canManage = useCanManage(handle);
+  const canManage = useWeblogRights(handle).mayPublish;
   const dirs = useDirectories(handle);
   const actions = useMediaActions(handle);
 
@@ -114,7 +114,7 @@ export function MediaLibrary() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [moveTo, setMoveTo] = useState('');
   const [confirm, setConfirm] = useState<'delete' | 'folder' | null>(null);
-  const [messages, setMessages] = useState<string[]>(flash === undefined ? [] : [flash]);
+  const [messages, setMessages] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [problem, setProblem] = useState<unknown>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -151,7 +151,7 @@ export function MediaLibrary() {
   };
 
   const names = new Map(files.map((f) => [f.id ?? '', f.name ?? '']));
-  const failures = (results: { item: string; error?: unknown }[]) => results.filter((r) => r.error !== undefined).map((r) => {
+  const failures = (results: readonly { item: string; error?: unknown }[]) => results.map((r) => {
     const why = r.error instanceof ApiError ? r.error.detail : '';
     return `${names.get(r.item) ?? r.item}${why === '' ? '' : `: ${why}`}`;
   });
@@ -159,11 +159,11 @@ export function MediaLibrary() {
   const runOnSelected = async (work: (id: string) => Promise<unknown>, ok: string, bad: string) => {
     const ids = [...selected];
     setProgress({ done: 0, total: ids.length });
-    const results = await runBulk(ids, work, 4, (done, total) => { setProgress({ done, total }); });
+    const results = await runBulk(ids, work, (done) => { setProgress({ done, total: ids.length }); });
     setProgress(null);
     const failed = failures(results);
     await actions.refresh();
-    setSelected(new Set(results.filter((r) => r.error !== undefined).map((r) => r.item)));
+    setSelected(new Set(results.map((r) => r.item)));
     report(failed.length < ids.length ? [ok] : [], failed.length === 0 ? [] : [bad, ...failed]);
   };
 
@@ -329,19 +329,19 @@ export function MediaLibrary() {
         <>
           <p className="subtitle">{t('mediaFileView.searchTitle')}</p>
           <p className="pagetip">
-            {files.length > 0 ? <RichText text={t('mediaFileView.matchingResults', String(files.length))} /> : null}
+            {files.length > 0 ? <Markup text={t('mediaFileView.matchingResults', String(files.length))} /> : null}
             {' '}{t('mediaFileView.searchInfo')}
           </p>
           <ul>
-            {criteria.q.trim() === '' ? null : <li><RichText text={t('mediaFileView.filesNamed', criteria.q.trim())} /></li>}
-            {sizeOf(criteria) > 0 ? <li><RichText text={t('mediaFileView.filesOfSize', t('mediaFileView.gt'), String(sizeOf(criteria)), unitLabel(criteria.unit))} /></li> : null}
-            {criteria.type === '' ? null : <li><RichText text={t('mediaFileView.filesOfType', typeLabel(criteria.type))} /></li>}
-            {criteria.tags.trim() === '' ? null : <li><RichText text={t('mediaFileView.filesTagged', criteria.tags.trim())} /></li>}
+            {criteria.q.trim() === '' ? null : <li><Markup text={t('mediaFileView.filesNamed', markupArg(criteria.q.trim()))} /></li>}
+            {sizeOf(criteria) > 0 ? <li><Markup text={t('mediaFileView.filesOfSize', t('mediaFileView.gt'), String(sizeOf(criteria)), unitLabel(criteria.unit))} /></li> : null}
+            {criteria.type === '' ? null : <li><Markup text={t('mediaFileView.filesOfType', markupArg(typeLabel(criteria.type)))} /></li>}
+            {criteria.tags.trim() === '' ? null : <li><Markup text={t('mediaFileView.filesTagged', markupArg(criteria.tags.trim()))} /></li>}
           </ul>
         </>
       ) : current?.name === 'default' ? (
         <>
-          <p className="subtitle"><RichText text={t('mediaFileView.subtitle', handle)} /></p>
+          <p className="subtitle"><Markup text={t('mediaFileView.subtitle', markupArg(handle))} /></p>
           <p className="pagetip">{t('mediaFileView.rootPageTip')}</p>
         </>
       ) : (

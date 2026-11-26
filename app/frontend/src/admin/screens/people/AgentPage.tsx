@@ -13,7 +13,6 @@ import { agentControl } from './AgentCreate';
 import { useAgent, useAllWeblogs, useUserWeblogs, type AgentView } from './queries';
 import { TokenSection } from './tokens';
 import { useAction } from './useAction';
-import { useFlash } from './UserList';
 import { UserWeblogs } from './UserWeblogs';
 
 /** An agent's page (Agent.jsp): details, status, weblogs, tokens. */
@@ -37,10 +36,9 @@ function AgentDetails({ agent }: { agent: AgentView }) {
   const t = useT();
   const api = useApi();
   const queries = useQueryClient();
-  const flash = useFlash();
   const userName = agent.userName;
   const [form, setForm] = useState({ name: agent.name, notes: agent.notes ?? '', siteAdmin: agent.siteAdmin });
-  const [messages, setMessages] = useState<string[]>(flash);
+  const [messages, setMessages] = useState<string[]>([]);
   const [confirming, setConfirming] = useState<'enable' | 'disable' | null>(null);
   const memberships = useUserWeblogs(userName);
   const everyWeblog = useAllWeblogs(agent.siteAdmin);

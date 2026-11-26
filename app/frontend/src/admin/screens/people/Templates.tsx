@@ -9,7 +9,8 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
-import { RequireLevel, bannerError, useHandle } from './shared';
+import { bannerError, useHandle } from './shared';
+import { RequireLevel } from '../../lib/permission';
 
 /** ThemeTemplate.ComponentType's readable names, as the Action column printed them. */
 export const ACTION_NAMES: Readonly<Record<string, string>> = {

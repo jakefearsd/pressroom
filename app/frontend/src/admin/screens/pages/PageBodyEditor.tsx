@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { create, type EditorHandle } from '../../../editor.js';
+import { useState } from 'react';
+import { CodeMirrorField } from '../../editor/CodeMirrorField';
 import { useT } from '../../i18n/messages';
 import { PagePreview } from './PagePreview';
 
@@ -20,49 +20,14 @@ interface Props {
 type Pane = { state: 'idle' } | { state: 'loading' } | { state: 'failed' } | { state: 'ready'; preview: BodyPreview };
 
 /**
- * The page body: the CodeMirror editor of src/editor.js in a Write pane, and the server's
- * rendering in a Preview pane. A SMALL local wrapper on purpose (no toolbar, split mode or
- * word count): the entry editor's shared React component replaces it, with the same props
- * shape, when that lands.
+ * The page body: the entry editor's CodeMirrorField in a Write pane, and the server's
+ * rendering in a Preview pane. A small wrapper on purpose (no toolbar, split mode or word
+ * count: the page JSP has none); the editor itself is the shared CodeMirrorField.
  */
 export function PageBodyEditor({ value, onChange, render, onSave }: Props) {
   const t = useT();
-  const host = useRef<HTMLDivElement>(null);
-  const area = useRef<HTMLTextAreaElement>(null);
-  const handle = useRef<EditorHandle | null>(null);
-  const latest = useRef({ onChange, onSave });
   const [mode, setMode] = useState<'write' | 'preview'>('write');
   const [pane, setPane] = useState<Pane>({ state: 'idle' });
-
-  useEffect(() => {
-    latest.current = { onChange, onSave };
-  });
-
-  useEffect(() => {
-    if (area.current === null) {
-      return undefined;
-    }
-    area.current.value = value;
-    const editor = create({
-      textarea: area.current,
-      label: t('editor.textLabel'),
-      onChange: () => { latest.current.onChange(editor.getValue()); },
-      onSave: () => { latest.current.onSave?.(); }
-    });
-    handle.current = editor;
-    return () => {
-      editor.destroy();
-      handle.current = null;
-    };
-    // The editor is created once; later values arrive through the effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (handle.current !== null && handle.current.getValue() !== value) {
-      handle.current.setValue(value);
-    }
-  }, [value]);
 
   const show = (next: 'write' | 'preview') => {
     setMode(next);
@@ -88,8 +53,9 @@ export function PageBodyEditor({ value, onChange, render, onSave }: Props) {
         </div>
       </div>
       <div className="editor-panes">
-        <div className="editor-write" hidden={mode !== 'write'} ref={host}>
-          <textarea ref={area} id="edit_content" rows={18} aria-label={t('editor.textLabel')} defaultValue={value} />
+        <div hidden={mode !== 'write'}>
+          <CodeMirrorField value={value} onChange={onChange} label={t('editor.textLabel')} placeholder=""
+            shortcodes={[]} {...(onSave === undefined ? {} : { onSave })} />
         </div>
         {mode === 'preview' ? (
           <div className="editor-preview-pane" id="editorPreviewPane" aria-live="polite">

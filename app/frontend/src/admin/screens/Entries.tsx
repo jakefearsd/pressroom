@@ -12,7 +12,7 @@ import { Pager } from '../components/Pager';
 import { ProblemBanner } from '../components/ProblemBanner';
 import { SelectionBar } from '../components/SelectionBar';
 import { StatusPill } from '../components/StatusPill';
-import { Subtitle } from '../components/Subtitle';
+import { Markup, markupArg } from '../components/Markup';
 import { useApi, useBoot } from '../context';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
@@ -95,7 +95,7 @@ export function Entries() {
   return (
     <>
       <PageTitle>{t('weblogEntryQuery.title')}</PageTitle>
-      <Subtitle text={t('weblogEntryQuery.subtitle', handle)} />
+      <p className="subtitle"><Markup text={t('weblogEntryQuery.subtitle', markupArg(handle))} /></p>
       <p className="pagetip">{t('weblogEntryQuery.tip')}</p>
 
       <form className="form-stacked entries-filter mb-3" key={search} onSubmit={submitFilter}>

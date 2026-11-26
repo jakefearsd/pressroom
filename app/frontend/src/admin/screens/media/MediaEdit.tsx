@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useDirectories, useMediaActions, useMediaFile, type MediaPatch, type MediaView } from '../../api/media';
 import { ProblemBanner } from '../../components/ProblemBanner';
-import { RichText } from '../../components/RichText';
+import { Markup, markupArg } from '../../components/Markup';
 import { PageTitle } from '../../frame/PageTitle';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { useT } from '../../i18n/messages';
@@ -207,8 +207,8 @@ function EditForm({ handle, id, loaded }: { handle: string; id: string; loaded: 
         <div className="row mb-3">
           <span className="col-form-label col-sm-3">{t('mediaFileEdit.fileInfo')}</span>
           <div className="col-sm-9">
-            <RichText text={t('mediaFileEdit.fileTypeSize', loaded.contentType ?? '', String(loaded.length ?? 0))} />
-            {image ? <> <RichText text={t('mediaFileEdit.fileDimensions', String(loaded.width ?? 0), String(loaded.height ?? 0))} /></> : null}
+            <Markup text={t('mediaFileEdit.fileTypeSize', markupArg(loaded.contentType ?? ''), String(loaded.length ?? 0))} />
+            {image ? <> <Markup text={t('mediaFileEdit.fileDimensions', String(loaded.width ?? 0), String(loaded.height ?? 0))} /></> : null}
           </div>
         </div>
 

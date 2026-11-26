@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { flashState } from '../../session/flash';
 import { call } from '../../api/client';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useApi } from '../../context';
@@ -45,7 +46,7 @@ export function AgentCreate() {
               void create.run().then((outcome) => {
                 if (outcome.ok) {
                   void navigate(`/admin/agents/${encodeURIComponent(form.userName)}`,
-                    { state: { flash: t('agent.created', form.userName) } });
+                    { state: flashState(t('agent.created', form.userName)) });
                 }
               });
             }}>

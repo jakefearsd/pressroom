@@ -69,8 +69,9 @@ describe('the writing surface: toolbar', () => {
 
     await click('Insert');
     await userEvent.click(screen.getByRole('button', { name: 'Image…' }));
-    expect(document.getElementById('mediaFileEditor')).toHaveAttribute('src', expect.stringContaining('mediaFileImageChooser.rol?weblog=alpha'));
-    expect(document.getElementById('mediaFileEditor')?.getAttribute('src')).not.toContain('imagesOnly');
+    expect(await screen.findByRole('dialog', { name: 'Choose an image' })).toBeInTheDocument();
+    // Insert offers every file, not just images.
+    expect(await screen.findByLabelText('guide.pdf', { selector: '.mediaObject' })).toBeInTheDocument();
   });
 
   it('puts a chosen image in as an [image] shortcode and any other file as a Markdown link, then closes the chooser', async () => {
@@ -78,24 +79,24 @@ describe('the writing surface: toolbar', () => {
     open('/weblogs/alpha/entries/e1');
     await ready();
     await click('Insert media file');
-    act(() => { window.onSelectMediaFile?.('a.jpg', 'https://x/a.jpg', 'true', 'img1'); });
+    await userEvent.click(await screen.findByLabelText('a.jpg', { selector: '.mediaObject' }));
     expect(doc()).toBe('[image id="img1"]');
-    expect(document.getElementById('mediaFileEditor')).toBeNull();
-    expect(window.onSelectMediaFile).toBeUndefined();
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
     await click('Insert media file');
-    act(() => { window.onSelectMediaFile?.('my [guide].pdf', 'https://x/my guide (1).pdf', 'false', 'doc1'); });
-    expect(doc()).toBe('[image id="img1"][my guide.pdf](https://x/my%20guide%20%281%29.pdf)');
+    await userEvent.click(await screen.findByLabelText('guide.pdf', { selector: '.mediaObject' }));
+    expect(doc()).toBe('[image id="img1"][guide.pdf](https://x/m/doc1)');
     await click('Insert media file');
-    await userEvent.click(screen.getAllByRole('button', { name: 'Close' })[0] as HTMLElement);
-    expect(document.getElementById('mediaFileEditor')).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
   });
 
   it('closes the chooser on Escape', async () => {
     open('/weblogs/alpha/entries/e1');
     await ready();
     await click('Insert media file');
+    await screen.findByRole('dialog', { name: 'Choose an image' });
     await userEvent.keyboard('{Escape}');
-    expect(document.getElementById('mediaFileEditor')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
   });
 });
 

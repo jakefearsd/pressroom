@@ -53,28 +53,3 @@ export function useStrandCandidates(handle: string, enabled: boolean) {
     }))
   });
 }
-
-/**
- * Runs `work` over `items` with at most `limit` in flight (spec A6: bulk actions are per-item
- * calls). Resolves with the items that failed, each with its error; never rejects.
- */
-export async function runPool<T>(
-  items: readonly T[], limit: number, work: (item: T) => Promise<void>, onProgress?: (done: number) => void
-): Promise<{ item: T; error: unknown }[]> {
-  const failed: { item: T; error: unknown }[] = [];
-  let next = 0;
-  let done = 0;
-  const lane = async () => {
-    while (next < items.length) {
-      const item = items[next++] as T;
-      try {
-        await work(item);
-      } catch (error) {
-        failed.push({ item, error });
-      }
-      onProgress?.(++done);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
-  return failed;
-}

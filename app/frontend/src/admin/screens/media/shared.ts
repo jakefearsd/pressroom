@@ -1,4 +1,3 @@
-import { useMe } from '../../api/queries';
 import type { MediaView } from '../../api/media';
 
 /** The admin thumbnail, as AdminUrls.mediaThumbnail builds it. */
@@ -25,18 +24,6 @@ export function formatSize(bytes: number): string {
 /** The library's route, optionally on a folder. */
 export const libraryPath = (handle: string, directoryId?: string): string =>
   `/weblogs/${encodeURIComponent(handle)}/media${directoryId === undefined || directoryId === '' ? '' : `?dir=${encodeURIComponent(directoryId)}`}`;
-
-/**
- * Whether the signed-in user may change this weblog's media: a site admin, or a member with
- * POST or ADMIN. A contributor (EDIT_DRAFT) reads the library, as the image chooser lets them.
- */
-export function useCanManage(handle: string): boolean {
-  const me = useMe().data;
-  if (me === undefined) {
-    return false;
-  }
-  return me.globalAdmin || ['ADMIN', 'POST'].includes(me.weblogs.find((w) => w.handle === handle)?.permission ?? '');
-}
 
 /** Splits a tags field on spaces and commas, as the edit form's do. */
 export const splitTags = (value: string): string[] => value.split(/[\s,]+/).filter((tag) => tag !== '');

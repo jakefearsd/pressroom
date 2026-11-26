@@ -10,7 +10,7 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { useApi } from '../../context';
 import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
-import { Subtitle } from './Subtitle';
+import { Markup, markupArg } from '../../components/Markup';
 import { isSiteSpace } from './urls';
 
 /**
@@ -55,12 +55,12 @@ export function PagesTrash() {
   });
 
   const pages = trashQuery.data ?? [];
-  const subtitle = isSiteSpace(handle) ? t('pages.trash.subtitle.site') : t('pages.trash.subtitle', handle);
+  const subtitle = isSiteSpace(handle) ? t('pages.trash.subtitle.site') : t('pages.trash.subtitle', markupArg(handle));
 
   return (
     <>
       <PageTitle>{t('pages.trash.title')}</PageTitle>
-      <Subtitle text={subtitle} />
+      <p className="subtitle"><Markup text={subtitle} /></p>
       <ProblemBanner messages={messages} error={trashQuery.error ?? restore.error ?? forever.error} />
       <div className="list-actions">
         <Link to=".." relative="path" className="btn btn-outline-secondary btn-sm">{t('pages.trash.backToPages')}</Link>

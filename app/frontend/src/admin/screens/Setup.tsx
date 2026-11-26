@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAccountCount, useAllWeblogs, useConfig, useSaveSettings } from '../api/siteQueries';
 import { ProblemBanner } from '../components/ProblemBanner';
-import { RichMessage } from '../components/RichMessage';
+import { Markup } from '../components/Markup';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
 import { useBoot } from '../context';
@@ -62,7 +62,7 @@ export function Setup() {
               </h2>
             </div>
             <div className="card-body">
-              <p><RichMessage text={t('index.createUserHelp')} /></p>
+              <p><Markup text={t('index.createUserHelp')} /></p>
               <p>
                 {userCount === 0 ? (
                   <>{t('index.createUserBy')}{link('a_createUser', '/pressroom-ui/admin/createUser.rol', t('index.createUserPage'))}.</>
@@ -79,7 +79,7 @@ export function Setup() {
               </h2>
             </div>
             <div className="card-body">
-              <p><RichMessage text={t('index.createWeblogHelp')} /></p>
+              <p><Markup text={t('index.createWeblogHelp')} /></p>
               {userCount > 0 && blogCount === 0 ? (
                 <>{t('index.createWeblogBy')}{link('a_createBlog', '/pressroom-ui/createWeblog.rol', t('index.createWeblogPage'))}.</>
               ) : null}
@@ -91,7 +91,7 @@ export function Setup() {
               <h2 className="setup-section-title">{t('index.setFrontpage')}</h2>
             </div>
             <div className="card-body">
-              <p><RichMessage text={t('index.setFrontpageHelp')} /></p>
+              <p><Markup text={t('index.setFrontpageHelp')} /></p>
               {blogCount === 0 ? null : (
                 <form onSubmit={submit} className="form-stacked">
                   <div className="row mb-3">

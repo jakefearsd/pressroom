@@ -1,35 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { runPool } from '../../../src/admin/api/pages';
 import { PageBodyEditor } from '../../../src/admin/screens/pages/PageBodyEditor';
 import { PagePreview } from '../../../src/admin/screens/pages/PagePreview';
-import { BoldMarkup } from '../../../src/admin/screens/pages/Subtitle';
 import { pageUrl, weblogBase } from '../../../src/admin/screens/pages/urls';
 import { renderInApp } from '../support';
-
-describe('runPool', () => {
-  it('never runs more than the limit at once, and collects failures without stopping', async () => {
-    let inFlight = 0;
-    let peak = 0;
-    const seen: number[] = [];
-    const failed = await runPool([1, 2, 3, 4, 5, 6, 7], 3, async (n) => {
-      inFlight++;
-      peak = Math.max(peak, inFlight);
-      await new Promise((r) => setTimeout(r, 5));
-      inFlight--;
-      if (n % 3 === 0) {
-        throw new Error(`no ${String(n)}`);
-      }
-    }, (done) => { seen.push(done); });
-    expect(peak).toBe(3);
-    expect(failed.map((f) => f.item)).toEqual(expect.arrayContaining([3, 6]));
-    expect(failed).toHaveLength(2);
-    expect(seen).toEqual([1, 2, 3, 4, 5, 6, 7]);
-  });
-
-  it('does nothing for nothing', async () => {
-    expect(await runPool([], 4, () => Promise.reject(new Error('never')))).toEqual([]);
-  });
-});
 
 describe('page addresses', () => {
   it('uses the custom domain, else the site (root for the site space, handle for a blog)', () => {
@@ -42,15 +15,6 @@ describe('page addresses', () => {
     expect(pageUrl('https://s.test/a/', 'x y', false)).toBe('https://s.test/a/x%20y');
     expect(pageUrl('https://s.test/a/', 'home', true)).toBe('https://s.test/a/');
     expect(pageUrl(undefined, 'x', false)).toBeUndefined();
-  });
-});
-
-describe('BoldMarkup', () => {
-  it('bolds what the message marks and escapes everything, argument included', () => {
-    const { container } = render(<BoldMarkup text={'Pages for <b><i>x</i></b> and <b>y</b>.'} />);
-    expect(container.querySelectorAll('b')).toHaveLength(2);
-    expect(container.querySelector('i')).toBeNull();
-    expect(container).toHaveTextContent('Pages for <i>x</i> and y.');
   });
 });
 

@@ -1,6 +1,6 @@
 import { RAIL_ENTRIES, RAIL_GROUPS, type Feature, type Menu, type RailEntry, type Requirement, type WeblogLevel } from './railTable';
 
-const RANK: Record<WeblogLevel, number> = { edit_draft: 1, post: 2, admin: 3 };
+export const RANK: Record<WeblogLevel, number> = { edit_draft: 1, post: 2, admin: 3 };
 
 /** What decides a rail's contents; all of it is on /api (me, meta). */
 export interface VisibilityInput {

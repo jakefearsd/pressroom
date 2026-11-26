@@ -4,6 +4,7 @@ import { useBusiness, useSaveBusiness, type BusinessView, type BusinessWrite } f
 import { ProblemBanner } from '../components/ProblemBanner';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
+import { flashState } from '../session/flash';
 import { useT } from '../i18n/messages';
 
 /** BusinessRules.MAX_SAME_AS, as the JSP showed it in the help line. */
@@ -76,7 +77,7 @@ export function BusinessEdit() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     save.mutate(toWrite(form, editingId !== undefined), {
-      onSuccess: () => { void navigate('/admin/businesses', { state: { flash: 'businesses.saved' } }); }
+      onSuccess: () => { void navigate('/admin/businesses', { state: flashState(t('businesses.saved')) }); }
     });
   };
   const text = (field: keyof Form, label: string, type: string, maxLength: number) => (

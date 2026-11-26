@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { APP_DRAFT_PREFIX } from '../../../src/admin/session/drafts';
@@ -491,13 +491,11 @@ describe('the entry editor: images', () => {
     await waitFor(() => { expect(document.getElementById('seo_featuredImage_preview')).toHaveAttribute('src', 'https://x/m/img1?t=true'); });
 
     await userEvent.click(screen.getAllByRole('button', { name: 'Choose image' })[1] as HTMLElement);
-    const frame = document.getElementById('mediaFileEditor') as HTMLElement;
-    expect(frame).toHaveAttribute('src', expect.stringContaining('/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol?weblog=alpha&imagesOnly=true'));
-    // A file that is not an image is refused in place; the chooser stays open.
-    act(() => { window.onSelectMediaFile?.('guide.pdf', 'https://x/guide.pdf', 'false', 'doc1'); });
-    expect(document.getElementById('mediaChooserRefusal')).toHaveTextContent('Choose an image: this picker takes image files only.');
-    act(() => { window.onSelectMediaFile?.('b.jpg', 'https://x/b.jpg', 'true', 'img2'); });
-    expect(document.getElementById('mediaFileEditor')).toBeNull();
+    // The picker offers images only: the PDF is not listed.
+    expect(await screen.findByLabelText('b.jpg', { selector: '.mediaObject' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('guide.pdf', { selector: '.mediaObject' })).toBeNull();
+    await userEvent.click(screen.getByLabelText('b.jpg', { selector: '.mediaObject' }));
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
     expect(document.getElementById('seo_ogImage_preview')).toHaveAttribute('src', 'https://x/b.jpg?t=true');
     await click('Save draft');
     await screen.findByText('Draft saved');

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { runPool } from '../../api/pool';
 import { SUBMISSIONS_PAGE_SIZE, useSubmissionActions, useSubmissions, type SubmissionView } from '../../api/people';
+import { runBulk } from '../../lib/bulk';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateTime } from '../../components/DateTime';
 import { EmptyState } from '../../components/EmptyState';
@@ -10,9 +10,9 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { SelectionBar } from '../../components/SelectionBar';
 import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
-import { RequireLevel, bannerError, failureLine, useHandle } from './shared';
+import { bannerError, failureLine, useHandle } from './shared';
+import { RequireLevel } from '../../lib/permission';
 
-const BULK_CONCURRENCY = 4;
 const PREVIEW_LENGTH = 140;
 
 export function Inbox() {
@@ -67,7 +67,7 @@ function InboxBody({ handle }: { handle: string }) {
     setNotice([]);
     setProblems([]);
     setProgress({ done: 0, total: doomed.length });
-    const failures = await runPool(doomed, BULK_CONCURRENCY, (s) => actions.remove(s.id),
+    const failures = await runBulk(doomed, (s) => actions.remove(s.id),
       (done) => { setProgress({ done, total: doomed.length }); });
     await actions.refresh();
     setProgress(null);

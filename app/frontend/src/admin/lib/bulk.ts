@@ -11,12 +11,12 @@ export interface BulkFailure<T> {
 /**
  * Runs `worker` over every item, `concurrency` at a time, never stopping at a failure:
  * each failed item is collected with its error so the screen can say which and why in place.
- * `onProgress` gets the number finished (succeeded or failed) after each one.
+ * `onProgress`, when given, gets the number finished (succeeded or failed) after each one.
  */
 export async function runBulk<T>(
   items: readonly T[],
   worker: (item: T) => Promise<unknown>,
-  onProgress: (done: number) => void,
+  onProgress?: (done: number) => void,
   concurrency = BULK_CONCURRENCY
 ): Promise<BulkFailure<T>[]> {
   const failed: BulkFailure<T>[] = [];
@@ -30,7 +30,7 @@ export async function runBulk<T>(
       } catch (error) {
         failed.push({ item, error });
       }
-      onProgress(++done);
+      onProgress?.(++done);
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, lane));

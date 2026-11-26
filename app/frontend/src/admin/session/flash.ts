@@ -1,17 +1,21 @@
 import { useLocation } from 'react-router';
 
-/** Router state carrying a one-shot success message to the next screen (the JSPs' flash messages). */
+/**
+ * The ONE way a screen hands a one-shot success message to the next: router state `{message}`
+ * (the JSPs' flash attributes). The frame reads it with `useFlash` and shows it above the
+ * screen; a screen never renders it itself. The text is plain, already translated.
+ */
 export interface FlashState {
-  flash: string;
+  message: string;
 }
 
-export const flashState = (flash: string): FlashState => ({ flash });
+export const flashState = (message: string): FlashState => ({ message });
 
-/** The flash message the current location carries, if any. */
+/** The message the current location carries, if any. */
 export function useFlash(): string | undefined {
   const state: unknown = useLocation().state;
-  if (typeof state === 'object' && state !== null && 'flash' in state && typeof state.flash === 'string') {
-    return state.flash;
+  if (typeof state === 'object' && state !== null && 'message' in state && typeof state.message === 'string') {
+    return state.message;
   }
   return undefined;
 }

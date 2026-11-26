@@ -1,15 +1,9 @@
-import { Link, useLocation, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { EmptyState } from '../../components/EmptyState';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useT } from '../../i18n/messages';
 import { PageTitle } from '../../frame/PageTitle';
 import { useUsers, useUserWeblogs, type Kind, type UserView } from './queries';
-
-/** A message carried across a redirect (the JSP's flash attribute), shown once by the next screen. */
-export function useFlash(): string[] {
-  const state = useLocation().state as { flash?: string } | null;
-  return state?.flash === undefined ? [] : [state.flash];
-}
 
 function kindOf(raw: string | null): Kind {
   return raw === 'people' || raw === 'agents' ? raw : undefined;
@@ -30,7 +24,6 @@ function WeblogCount({ userName }: { userName: string }) {
 /** Admin -> Users: every account, All / People / Agents tabs and the server-side filter (Users list, UserAdmin.jsp). */
 export function UserList() {
   const t = useT();
-  const flash = useFlash();
   const [params, setParams] = useSearchParams();
   const kind = kindOf(params.get('kind'));
   const q = params.get('q') ?? '';
@@ -40,7 +33,7 @@ export function UserList() {
   return (
     <div id="userListPage">
       <PageTitle>{t('userAdmin.title.searchUser')}</PageTitle>
-      <ProblemBanner messages={flash} error={users.error} />
+      <ProblemBanner error={users.error} />
       <p className="subtitle">{t('userAdmin.subtitle.searchUser')}</p>
 
       <div className="d-flex flex-wrap gap-2 mb-3">

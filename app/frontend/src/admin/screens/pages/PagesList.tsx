@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
-import { usePages, runPool, type PageView } from '../../api/pages';
+import { Link, useParams } from 'react-router';
+import { usePages, type PageView } from '../../api/pages';
 import { call } from '../../api/client';
 import { useMeta, useWeblog } from '../../api/queries';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -11,10 +11,10 @@ import { StatusPill } from '../../components/StatusPill';
 import { useApi } from '../../context';
 import { PageTitle } from '../../frame/PageTitle';
 import { useT } from '../../i18n/messages';
-import { Subtitle } from './Subtitle';
+import { Markup, markupArg } from '../../components/Markup';
+import { runBulk } from '../../lib/bulk';
 import { isSiteSpace, pageUrl, weblogBase } from './urls';
 
-const CONCURRENCY = 4;
 
 interface Progress {
   done: number;
@@ -27,8 +27,6 @@ export function PagesList() {
   const api = useApi();
   const queries = useQueryClient();
   const handle = useParams()['handle'] ?? '';
-  const location = useLocation();
-  const flash = (location.state as { message?: string } | null)?.message;
   const pagesQuery = usePages(handle);
   const trashQuery = usePages(handle, 'TRASHED');
   const weblog = useWeblog(handle).data;
@@ -65,7 +63,7 @@ export function PagesList() {
     // Only pages whose position changed need a call: the order is the pages' own navOrder, 0..n-1.
     const changed = rows.flatMap((page, index) => (page.navOrder === index ? [] : [{ page, index }]));
     setProgress({ done: 0, total: changed.length });
-    const failed = await runPool(changed, CONCURRENCY, async ({ page, index }) => {
+    const failed = await runBulk(changed, async ({ page, index }) => {
       await call(api.PATCH('/v1/weblogs/{handle}/pages/{id}', {
         params: { path: { handle, id: page.id ?? '' } }, body: { navOrder: index }
       }));
@@ -99,14 +97,14 @@ export function PagesList() {
   });
 
   const addTo = 'new';
-  const subtitle = isSiteSpace(handle) ? t('weblogPagesForm.subtitle.site') : t('weblogPagesForm.subtitle', handle);
+  const subtitle = isSiteSpace(handle) ? t('weblogPagesForm.subtitle.site') : t('weblogPagesForm.subtitle', markupArg(handle));
   const frontPage = weblog?.frontPage;
 
   return (
     <>
       <PageTitle>{t('weblogPagesForm.title')}</PageTitle>
-      <Subtitle text={subtitle} />
-      <ProblemBanner messages={flash === undefined ? messages : [flash, ...messages]} errors={errors}
+      <p className="subtitle"><Markup text={subtitle} /></p>
+      <ProblemBanner messages={messages} errors={errors}
                      error={pagesQuery.error ?? trash.error} />
       <div className="list-actions">
         {pages.length > 0 ? (
