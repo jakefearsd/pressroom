@@ -34,7 +34,9 @@ const record = async (request: Request) => {
 describe('Businesses list', () => {
   it('lists each business with its type, its usage and edit and delete actions', async () => {
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 4000 })).toBeInTheDocument();
+    // Asserted inside waitFor: the heading can be replaced once while the list loads, and an element found a
+    // moment earlier is then detached by the time a plain assertion looks at it.
+    await waitFor(() => { expect(screen.getByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument(); }, { timeout: 4000 });
     await screen.findByText('Acme <Travel>');
     expect(screen.getByText(/A business is stored once/)).toHaveClass('subtitle');
     expect(document.querySelectorAll('#businesses-list-marker table.pressroomtable tr')).toHaveLength(3);
@@ -60,7 +62,7 @@ describe('Businesses list', () => {
       listed = [acme];
       return new HttpResponse(null, { status: 204 });
     }));
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
     await user.click(await screen.findByRole('button', { name: 'Delete: Solo' }));
     const dialog = screen.getByRole('dialog');
@@ -72,7 +74,7 @@ describe('Businesses list', () => {
   });
 
   it('does not delete when the confirmation is cancelled', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
     await user.click(await screen.findByRole('button', { name: 'Delete: Solo' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
@@ -83,7 +85,7 @@ describe('Businesses list', () => {
   it('shows a refused delete (in use) in place and keeps the row', async () => {
     server.use(http.delete(`${API}/admin/businesses/:id`, () => HttpResponse.json(
       { code: 'business.inUse', detail: 'Business "Acme" is used by 2 weblogs and cannot be deleted.' }, { status: 409 })));
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
     await user.click(await screen.findByRole('button', { name: 'Delete: Acme <Travel>' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
@@ -112,7 +114,7 @@ describe('Business edit', () => {
       listed = [acme];
       return HttpResponse.json({ ...acme, id: 'b9' }, { status: 201 });
     }));
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const { router } = renderRoutes(siteAdminRoutes, '/admin/businesses/new', { boot: adminBoot });
     expect(await screen.findByText('New business', { selector: 'p.subtitle' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeRequired();
@@ -125,7 +127,9 @@ describe('Business edit', () => {
     await user.type(screen.getByLabelText('Profile links'), 'https://x.example{Enter}  https://y.example  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     // The frame shows the message; the screen only hands it over.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 4000 })).toBeInTheDocument();
+    // Asserted inside waitFor: the heading can be replaced once while the list loads, and an element found a
+    // moment earlier is then detached by the time a plain assertion looks at it.
+    await waitFor(() => { expect(screen.getByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument(); }, { timeout: 4000 });
     expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',
@@ -137,7 +141,7 @@ describe('Business edit', () => {
       await record(request);
       return HttpResponse.json(solo);
     }));
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const { router } = renderRoutes(siteAdminRoutes, '/admin/businesses/b2', { boot: adminBoot });
     expect(await screen.findByText('Edit business', { selector: 'p.subtitle' })).toBeInTheDocument();
     await waitFor(() => { expect(screen.getByLabelText('Name')).toHaveValue('Solo'); });
@@ -157,7 +161,7 @@ describe('Business edit', () => {
     server.use(http.post(`${API}/admin/businesses`, () => HttpResponse.json({
       code: 'validation.failed', detail: 'Invalid.', errors: [{ field: 'websiteUrl', message: 'Website must be a public, full http or https address.' }]
     }, { status: 400 })));
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderRoutes(siteAdminRoutes, '/admin/businesses/new', { boot: adminBoot });
     await user.type(await screen.findByLabelText('Name'), 'X');
     await user.type(screen.getByLabelText('Website'), 'http://localhost');
