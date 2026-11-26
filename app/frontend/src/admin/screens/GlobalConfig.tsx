@@ -64,10 +64,7 @@ export function GlobalConfig() {
   const definitions = useConfigDefinitions();
   const config = useConfig();
   const weblogs = useAllWeblogs();
-  // No site space yet means no pages to ask for (a 404 the browser would report).
-  const hasSiteSpace = weblogs.data?.items.some((w) => w.handle === SITE_SPACE) === true;
-  const sitePages = useSitePages(hasSiteSpace);
-  const pages = { ...sitePages, data: hasSiteSpace ? sitePages.data : weblogs.data === undefined ? undefined : [] };
+  const pages = useSitePages();
   const save = useSaveConfig((total) => total === undefined ? t('configForm.revisionsNextSweepUnknown')
     : total > 0 ? t('configForm.revisionsNextSweep', String(total)) : undefined);
   const fields = useFieldErrors(save.error, controlFor);

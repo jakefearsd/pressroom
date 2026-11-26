@@ -40,8 +40,8 @@ const server = setupServer(
   http.get(`${API}/admin/config/definitions`, () => HttpResponse.json(groups)),
   http.get(`${API}/admin/config`, () => HttpResponse.json(entries())),
   http.get(`${API}/weblogs`, () => HttpResponse.json({ items: [{ handle: 'alpha', name: 'Alpha' },
-    ...(siteSpaceListed ? [{ handle: 'site-space', name: 'Site' }] : []), { handle: 'beta', name: 'Beta' }],
-    offset: 0, limit: 200, hasMore: false })),
+    { handle: 'site-space', name: 'Site' }, { handle: 'beta', name: 'Beta' }], offset: 0, limit: 200, hasMore: false })),
+  http.get(`${API}/me/weblogs`, () => HttpResponse.json({ weblogs: [], ...(siteSpaceListed ? { siteSpace: 'site-space' } : {}) })),
   http.get(`${API}/weblogs/site-space/pages`, () => (pagesReads++, sitePages) === 404
     ? HttpResponse.json({ code: 'weblog.notFound', detail: 'No such weblog.' }, { status: 404 }) : HttpResponse.json(sitePages)),
   http.get(`${API}/admin/revisions`, () => HttpResponse.json({ nextSweep }))
