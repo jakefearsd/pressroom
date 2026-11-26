@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { EditorView } from '@codemirror/view';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { appRoutes } from '../../../src/admin/router';
@@ -466,27 +467,90 @@ describe('PageEditor: revisions', () => {
   });
 });
 
-describe('PageEditor: preview', () => {
-  it('renders the page on the server and shows the sanitised HTML; a stored page previews by id', async () => {
+describe('PageEditor: the writing surface', () => {
+  const editorView = () => {
+    const dom = document.querySelector('.cm-content') as HTMLElement;
+    return EditorView.findFromDOM(dom.closest('.cm-editor') as HTMLElement) as EditorView;
+  };
+  const frameOf = () => {
+    const frame = document.querySelector('#editorPreviewPane iframe') as HTMLIFrameElement;
+    const post = vi.fn();
+    Object.defineProperty(frame.contentWindow, 'postMessage', { value: post, configurable: true });
+    const announce = () => {
+      act(() => { window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'pressroom-preview-ready' }, origin: window.location.origin, source: frame.contentWindow })); });
+    };
+    return { frame, post, announce };
+  };
+
+  it('is the entry editor\'s surface: toolbar, write, split and preview, words and the save state', async () => {
     withPage();
-    server.use(writing('post', '/weblogs/alpha/pages/p2/preview', () => HttpResponse.json({ html: '<h2>Hello</h2><p>world</p>', warnings: [] })));
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.getElementById('editorToolbar')).not.toBeNull();
+    expect(within(document.getElementById('editorMode') as HTMLElement).getAllByRole('radio').map((r) => r.textContent))
+      .toEqual(['Write', 'Split', 'Preview']);
+    expect(document.getElementById('editorStatusWords')).toHaveTextContent('words');
+    expect(document.getElementById('editorStatusSave')).toHaveTextContent('Saved');
+    expect(document.getElementById('editorPreviewPane')).toBeNull();
+  });
+
+  it('previews a stored page by id in the theme frame, the server rendering what is typed', async () => {
+    withPage();
+    window.localStorage.clear();
+    server.use(writing('post', '/weblogs/alpha/pages/p2/preview', () => HttpResponse.json({ html: '<h2>Hello</h2>', warnings: [] })));
     const { user } = await open('/weblogs/alpha/pages/p2');
     await screen.findByDisplayValue('About us');
     await user.click(screen.getByRole('radio', { name: 'Preview' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Hello' })).toBeInTheDocument();
+    const { frame, post, announce } = frameOf();
+    expect(frame).toHaveAttribute('src', 'http://pressroom.test/pressroom/pressroom-ui/authoring/preview/alpha/?shell=true');
+    announce();
+    await waitFor(() => { expect(post).toHaveBeenCalled(); });
     expect(writes).toEqual([{ method: 'POST', url: '/weblogs/alpha/pages/p2/preview', body: { text: 'Hello **world**' } }]);
-    expect(screen.getByRole('radio', { name: 'Preview' })).toHaveAttribute('aria-checked', 'true');
+    expect(post).toHaveBeenCalledWith({ type: 'pressroom-preview', html: '<h2>Hello</h2>', scroll: 0 }, window.location.origin);
     await user.click(screen.getByRole('radio', { name: 'Write' }));
     expect(document.getElementById('editorPreviewPane')).toBeNull();
   });
 
-  it('previews a new page without an id, and says when the render failed', async () => {
-    server.use(writing('post', '/weblogs/alpha/pages/preview', () => problem(500, 'internal', 'Boom.')));
+  it('previews a new page without an id', async () => {
+    window.localStorage.clear();
+    server.use(writing('post', '/weblogs/alpha/pages/preview', () => HttpResponse.json({ html: '<p>x</p>', warnings: [] })));
     const { user } = await open('/weblogs/alpha/pages/new');
     await screen.findByLabelText('Title');
-    await user.click(screen.getByRole('radio', { name: 'Preview' }));
-    expect(await screen.findByText('Preview could not be rendered.', {}, { timeout: 5000 })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Split' }));
+    const { post, announce } = frameOf();
+    announce();
+    await waitFor(() => { expect(post).toHaveBeenCalled(); });
     expect(writes[0]?.url).toBe('/weblogs/alpha/pages/preview');
+    await user.click(screen.getByRole('radio', { name: 'Write' }));
+  });
+
+  it('inserts a chosen image as an [image] shortcode through the media chooser', async () => {
+    withPage({ text: '' });
+    server.use(
+      http.get(`${API}/weblogs/:handle/media/directories`, () => HttpResponse.json([{ id: 'd1', name: 'default', fileCount: 1 }])),
+      http.get(`${API}/weblogs/:handle/media`, () => HttpResponse.json({ offset: 0, limit: 1, hasMore: false, items: [
+        { id: 'img1', name: 'a.jpg', contentType: 'image/jpeg', directory: 'd1', url: 'https://x/m/img1', altText: 'a' }] })));
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    await user.click(screen.getByRole('button', { name: 'Insert media file' }));
+    await user.click(await screen.findByLabelText('a.jpg', { selector: '.mediaObject' }));
+    await waitFor(() => { expect(editorView().state.doc.toString()).toBe('[image id="img1"]'); });
+    expect(screen.queryByRole('dialog', { name: 'Choose an image' })).toBeNull();
+  });
+
+  it('saves the page on Ctrl+S and on Ctrl+Enter inside the editor: a page has one save', async () => {
+    withPage();
+    server.use(writing('patch', '/weblogs/alpha/pages/p2', () => HttpResponse.json(page())));
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    await waitFor(() => { expect(document.querySelector('.cm-content')).toHaveTextContent('Hello **world**'); });
+    const content = document.querySelector('.cm-content') as HTMLElement;
+    content.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
+    await waitFor(() => { expect(writes).toHaveLength(1); });
+    expect(await screen.findByText('Page saved.')).toBeInTheDocument();
+    content.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+    await waitFor(() => { expect(writes).toHaveLength(2); });
   });
 });
 
