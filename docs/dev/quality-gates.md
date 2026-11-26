@@ -11,6 +11,14 @@ resolves through the index at the end of `CLAUDE.md`.
   (`jacoco.line.minimum` / `jacoco.branch.minimum`, plus a PACKAGE rule for
   `ui.rendering.*` and one for the security boundary). Floors only ever move
   up; "raise" means raise where there is slack, not all three.
+  **2026-11-26** (React-admin quality pass, `mvn -o -pl app verify` without
+  `cwebp`): LINE 0.9767, BRANCH 0.9321. Floors are now **0.9740 / 0.9290**;
+  the security-boundary rule is LINE 0.96 (sso 0.9725 binds) / BRANCH 0.90
+  (mcp 0.9073 binds); the rendering rule was left at 0.90 / 0.82. The React
+  admin's Vitest floors (`app/frontend/vitest.config.ts`) are lines 98.2 /
+  branches 91.3 / functions 95.8 / statements 98.0 (measured 98.5 / 91.5 /
+  96.1 / 98.2).
+  Earlier:
   **2026-11-14** (maintenance-pass coverage wave, `mvn clean install`
   without `cwebp`): LINE 0.9709, BRANCH 0.9240 (from 0.9639 / 0.9158 at
   the start of the wave). Floors are now **0.9680 / 0.9210**; the

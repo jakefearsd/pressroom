@@ -112,8 +112,8 @@ limitations under the License.
              LINE 0.9709, BRANCH 0.9240 on `mvn clean install` without cwebp.
              0.9680 leaves ~86 lines (29 631 total), 0.9210 leaves ~38
              branches (12 724 total). -->
-        <jacoco.line.minimum>0.9680</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.9210</jacoco.branch.minimum>
+        <jacoco.line.minimum>0.9740</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.9290</jacoco.branch.minimum>
         <jacoco.check.skip>false</jacoco.check.skip>
 
         <quality.check.skip>false</quality.check.skip>
@@ -447,7 +447,13 @@ limitations under the License.
                                          alone: auth L 0.9528 (unchanged, 127 lines)
                                          and mcp B 0.9054 bind, and neither has
                                          gained enough to move a floor that must sit
-                                         a couple of lines/branches under. -->
+                                         a couple of lines/branches under.
+                                         Raised 2026-11-26 after the React-admin quality
+                                         pass (mvn -o -pl app verify, no cwebp): L 0.93 to
+                                         0.96 (sso 0.9725 binds, 400 lines: ~5 lines of
+                                         headroom; auth now 1.0000, v1 0.9923), B 0.89 to
+                                         0.90 (mcp 0.9073 binds, ~2 branches; v1 0.9664,
+                                         auth 0.9797). -->
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>com.wikantik.pressroom.ui.core.security.sso</include>
@@ -460,12 +466,12 @@ limitations under the License.
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.93</minimum>
+                                            <minimum>0.96</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.89</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
