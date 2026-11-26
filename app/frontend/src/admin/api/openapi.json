@@ -1616,6 +1616,14 @@
             "type" : "string"
           }
         }, {
+          "name" : "sortBy",
+          "in" : "query",
+          "description" : "PUBLICATION_TIME or UPDATE_TIME: what the list is ordered by, newest first. Without one, the publication time.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "name" : "offset",
           "in" : "query",
           "required" : false,
@@ -5389,6 +5397,35 @@
         }
       }
     },
+    "/v1/me/weblogs" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "summary" : "The weblogs the caller can act on, with the facts the main menu shows for each.",
+        "operationId" : "meWeblogsGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MyWeblogsView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/traffic" : {
       "get" : {
         "tags" : [ "Site traffic" ],
@@ -5411,6 +5448,52 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/SiteTrafficView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/traffic/{handle}" : {
+      "get" : {
+        "tags" : [ "Site traffic" ],
+        "summary" : "One blog's traffic, including the site space's (site admins).",
+        "operationId" : "siteTrafficBlogGet",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "period",
+          "in" : "query",
+          "description" : "One of 24h, 7d, 30d (the default) or 90d.",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "30d"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TrafficView"
                 }
               }
             }
@@ -5506,6 +5589,37 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/DiscoveryStatusView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/config/definitions" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "configGetDefinitions",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ConfigGroup"
+                  }
                 }
               }
             }
@@ -6016,6 +6130,10 @@
           },
           "bookingUrl" : {
             "type" : "string"
+          },
+          "absoluteUrl" : {
+            "type" : "string",
+            "description" : "The weblog's absolute web address, as readers reach it (its custom domain when it has one); absent when it cannot be built."
           }
         }
       },
@@ -6820,6 +6938,16 @@
             "type" : "string",
             "format" : "date-time",
             "description" : "When the entry was sent as a newsletter; absent until it has been (see POST .../entries/{id}/send-newsletter)."
+          },
+          "trashedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the entry was moved to the trash; absent for an entry that is not in it. Trashed entries are listed only by GET .../entries?status=TRASHED."
+          },
+          "views30d" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Page views over the last 30 days, as the entries page's Views (30d) column. Only a list asked for it with fields=views30d carries it (it costs one analytics read per list), and only when analytics is configured and the count is known: an entry with no recorded views is a known 0 once the blog has a complete snapshot, and absent before that."
           }
         }
       },
@@ -7957,6 +8085,10 @@
           "period" : {
             "type" : "string"
           },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "The weblog's time zone (an id such as America/Denver): the zone asOf and each day bucket are read in."
+          },
           "current" : {
             "$ref" : "#/components/schemas/Summary"
           },
@@ -7991,6 +8123,14 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "0 when posts holds every recorded path; else the number of top paths it was cut at, and a path outside them is unknown, not zero."
+          },
+          "umamiUrl" : {
+            "type" : "string",
+            "description" : "Where \"Open in Umami\" goes: the analytics dashboard's page for this weblog. Absent when the weblog is not registered or no dashboard address is configured."
+          },
+          "registrationError" : {
+            "type" : "string",
+            "description" : "Why the weblog could not be registered with the analytics service, when that is why there are no numbers (state NO_DATA); absent otherwise."
           }
         }
       },
@@ -8506,9 +8646,14 @@
           "limits" : {
             "$ref" : "#/components/schemas/Limits",
             "description" : "Sizes the API holds every caller to."
+          },
+          "trashRetentionDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many days a trashed entry is kept before the nightly sweep deletes it for good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request: a site admin can change it."
           }
         },
-        "required" : [ "features", "limits" ]
+        "required" : [ "features", "limits", "trashRetentionDays" ]
       },
       "LocaleChoice" : {
         "type" : "object",
@@ -8600,6 +8745,74 @@
             "description" : "READ, POST or ADMIN: the token's role."
           }
         }
+      },
+      "MyWeblog" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string",
+            "description" : "The weblog's handle."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The weblog's name; an empty string when it has none."
+          },
+          "about" : {
+            "type" : "string",
+            "description" : "The weblog's about text, plain; absent when it has none."
+          },
+          "theme" : {
+            "type" : "string",
+            "description" : "The weblog's theme: a shared theme id, or custom."
+          },
+          "absoluteUrl" : {
+            "type" : "string",
+            "description" : "The weblog's absolute web address, as readers reach it."
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "ADMIN, POST or EDIT_DRAFT: the highest permission the account holds on it."
+          },
+          "actions" : {
+            "type" : "array",
+            "description" : "The permission actions the account's row holds, as stored: admin, post and edit_draft. A weblog's creator holds admin alone.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "canModerate" : {
+            "type" : "boolean",
+            "description" : "Whether the account may moderate this weblog's comments."
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The number of entries."
+          },
+          "pendingComments" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Comments awaiting approval; 0 for an account that may not moderate."
+          }
+        },
+        "required" : [ "actions", "canModerate", "entryCount", "handle", "name", "pendingComments", "permission" ]
+      },
+      "MyWeblogsView" : {
+        "type" : "object",
+        "properties" : {
+          "weblogs" : {
+            "type" : "array",
+            "description" : "The weblogs this caller can act on, sorted by handle: the one a pinned token is limited to, or every weblog the account belongs to.",
+            "items" : {
+              "$ref" : "#/components/schemas/MyWeblog"
+            }
+          },
+          "siteSpace" : {
+            "type" : "string",
+            "description" : "The handle of the site space, the hidden weblog that holds the site's own pages (created on a site admin's first read); present for a site admin with an unpinned token only."
+          }
+        },
+        "required" : [ "weblogs" ]
       },
       "UserPage" : {
         "type" : "object",
@@ -8698,6 +8911,10 @@
           },
           "period" : {
             "type" : "string"
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "The site space's time zone (an id such as America/Denver; UTC when it has none): the zone asOf is read in."
           },
           "totalViews" : {
             "type" : "integer",
@@ -8859,6 +9076,59 @@
             "format" : "int64"
           }
         }
+      },
+      "ConfigGroup" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The group's name."
+          },
+          "key" : {
+            "type" : "string",
+            "description" : "The message key of its heading."
+          },
+          "properties" : {
+            "type" : "array",
+            "description" : "Its properties, in display order.",
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigPropertyDefinition"
+            }
+          }
+        },
+        "required" : [ "key", "name", "properties" ]
+      },
+      "ConfigPropertyDefinition" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The property's name, as GET and PATCH /v1/admin/config use it."
+          },
+          "key" : {
+            "type" : "string",
+            "description" : "The message key of its label."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "string, text, boolean, integer or float; anything else is edited as a string."
+          },
+          "defaultValue" : {
+            "type" : "string",
+            "description" : "The value used while none is stored."
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Rows of the text box for a text property."
+          },
+          "cols" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Columns of the text box for a text property."
+          }
+        },
+        "required" : [ "cols", "key", "name", "rows", "type" ]
       },
       "BusinessPage" : {
         "type" : "object",

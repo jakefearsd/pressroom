@@ -81,6 +81,15 @@
                             <div class="rail-group-label"><spring:message code="${tab.key}"/></div>
                             <c:forEach items="${tab.items}" var="tabItem">
                                 <c:choose>
+                                    <%-- A screen the React admin has taken over links to its React route
+                                         (LegacyAdminRedirects is the one table; MenuHelper fills appPath). --%>
+                                    <c:when test="${not empty tabItem.appPath}">
+                                        <a class="rail-link${tabItem.selected ? ' rail-active' : ''}"
+                                           ${tabItem.selected ? 'aria-current="page"' : ''}
+                                           href="<c:url value="${tabItem.appPath}"/>">
+                                            <spring:message code="${tabItem.key}"/>
+                                        </a>
+                                    </c:when>
                                     <c:when test="${actionWeblog != null}">
                                         <a class="rail-link${tabItem.selected ? ' rail-active' : ''}"
                                            ${tabItem.selected ? 'aria-current="page"' : ''}

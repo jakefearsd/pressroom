@@ -37,7 +37,6 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.admin.UserWeblogsController;
-import com.wikantik.pressroom.ui.controllers.core.MainMenuController;
 import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
 import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
@@ -49,7 +48,6 @@ import com.wikantik.pressroom.ui.controllers.editor.MembersController;
 import com.wikantik.pressroom.ui.controllers.editor.PageEditController;
 import com.wikantik.pressroom.ui.controllers.editor.PagesController;
 import com.wikantik.pressroom.ui.controllers.editor.ThemeEditController;
-import com.wikantik.pressroom.ui.controllers.editor.TrafficController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogRemoveController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
@@ -57,7 +55,6 @@ import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogSettingsApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogsApi;
-import com.wikantik.pressroom.ui.view.WeblogPermissionView;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -87,9 +84,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 /**
  * The site space's access boundary (spec AC7, AC13, Review Focus 4): only a
- * global admin reaches it, only through the Pages, Media, Theme and Traffic
- * screens (Traffic by ruling R25: Global › Traffic links the site pages' row
- * there), and never through the automation API.
+ * global admin reaches it, only through the Pages, Media and Theme screens
+ * and, for its traffic numbers, one admin-only API route (ruling R25: Global ›
+ * Traffic links the site pages' row there), and never through the rest of the
+ * automation API.
  *
  * <p>Dispatched through a real {@code DispatcherServlet} built from the
  * production {@link WebMvcConfig}, so {@link PressroomHandlerInterceptor} runs
@@ -172,12 +170,6 @@ class SiteSpaceAccessTest {
             return new ThemeEditController();
         }
 
-        /** Ruling R25: the site pages' traffic, which Global › Traffic links to. */
-        @Bean
-        TrafficController trafficController() {
-            return new TrafficController();
-        }
-
         @Bean
         MediaFileViewController mediaFileViewController() {
             return new MediaFileViewController();
@@ -235,8 +227,19 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
-        MainMenuController mainMenuController() {
-            return new MainMenuController();
+        com.wikantik.pressroom.ui.restapi.v1.MetaApi metaApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.MetaApi();
+        }
+
+        /** Ruling R25: the site pages' traffic, which Global › Traffic links to, is an admin-only API route. */
+        @Bean
+        com.wikantik.pressroom.ui.restapi.v1.AdminTrafficApi adminTrafficApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.AdminTrafficApi();
+        }
+
+        @Bean
+        com.wikantik.pressroom.ui.restapi.v1.TrafficApi trafficApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.TrafficApi();
         }
 
         // --- the automation API
@@ -312,7 +315,7 @@ class SiteSpaceAccessTest {
         signIn(admin);
 
         for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
-                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol", "traffic.rol")) {
+                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(200, result.getResponse().getStatus(), screen + " is offered on the site space");
             Weblog acting = (Weblog) result.getRequest().getAttribute("actionWeblog");
@@ -355,8 +358,7 @@ class SiteSpaceAccessTest {
         siteSpace();
         signIn(author);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
-                "traffic.rol")) {
+        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(302, result.getResponse().getStatus(), screen);
             assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
@@ -426,57 +428,53 @@ class SiteSpaceAccessTest {
         assertFalse(body.contains(SITE), body);
     }
 
-    // ------------------------------------------------------------ the main menu
+    // ------------------------------------------------------------ the main menu and traffic
 
     @Test
-    void theMainMenuHandsAGlobalAdminTheSiteSpaceCreatingItIfAbsent() throws Exception {
+    void theMenuRowsHandAGlobalAdminTheSiteSpaceCreatingItIfAbsent() throws Exception {
         assertNull(TestUtils.weblogger().getWeblogManager().getSiteSpace());
-        signIn(admin);
+        signInWithToken(admin, ApiToken.Role.ADMIN);
 
-        MvcResult result = perform(get("/pressroom-ui/menu.rol"));
+        MvcResult result = perform(api(get("/api/v1/me/weblogs")));
 
         assertEquals(200, result.getResponse().getStatus());
-        Weblog site = (Weblog) model(result, "siteSpace");
-        assertNotNull(site, "a global admin's menu carries the Site section");
-        assertTrue(site.isSiteSpace());
+        String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertTrue(body.contains("\"siteSpace\":\"" + SITE + "\""), "a global admin's menu carries the Site section: " + body);
         assertNotNull(TestUtils.weblogger().getWeblogManager().getSiteSpace(), "and the site space now exists");
-        assertFalse(menuHandles(result).contains(SITE), "it is not one of the admin's blogs");
+        assertEquals(List.of(), menuHandles(body, SITE), "it is not one of the admin's blogs");
     }
 
     @Test
-    void theMainMenuShowsABlogAuthorNoSiteSectionAndCreatesNothing() throws Exception {
-        signIn(author);
+    void theMenuRowsShowABlogAuthorNoSiteSpaceAndCreateNothing() throws Exception {
+        signInWithToken(author, ApiToken.Role.ADMIN);
 
-        MvcResult result = perform(get("/pressroom-ui/menu.rol"));
+        MvcResult result = perform(api(get("/api/v1/me/weblogs")));
 
         assertEquals(200, result.getResponse().getStatus());
-        assertNull(model(result, "siteSpace"));
+        String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertFalse(body.contains("siteSpace"), body);
         assertNull(TestUtils.weblogger().getWeblogManager().getSiteSpace(),
                 "an author's visit creates no site space");
-        assertEquals(List.of("ssaauthorblog"), menuHandles(result));
+        assertTrue(body.contains("\"handle\":\"ssaauthorblog\""), body);
     }
 
-    /**
-     * The menu JSP renders the Site section from {@code siteSpace} alone, and
-     * links exactly the three screens the site space offers, each naming it
-     * by {@code siteSpace.handle} through {@code <c:url>}.
-     */
+    /** The weblog route withholds the site space as an unknown weblog; the admin route reads it, for an admin only. */
     @Test
-    void theMainMenuJspLinksTheThreeSiteScreensOnlyWhenHandedTheSiteSpace() throws IOException {
-        String jsp = Files.readString(Paths.get("src/main/webapp/WEB-INF/jsps/core/MainMenu.jsp"),
-                StandardCharsets.UTF_8);
-        Matcher section = Pattern.compile(
-                "<c:if test=\"\\$\\{not empty siteSpace}\">(.*?)</c:if>\\s*<%-- end site section --%>",
-                Pattern.DOTALL).matcher(jsp);
-        assertTrue(section.find(), "a Site section guarded by siteSpace");
-        String body = section.group(1);
+    void theSiteSpacesTrafficIsReadOnlyThroughTheAdminRouteByAGlobalAdmin() throws Exception {
+        siteSpace();
 
-        Matcher urls = Pattern.compile("<c:url value=\"/pressroom-ui/authoring/([^\"]+)\" var=\"[^\"]+\">\\s*"
-                + "<c:param name=\"weblog\" value=\"\\$\\{siteSpace.handle}\"\\s*/>").matcher(body);
-        List<String> linked = urls.results().map(m -> m.group(1)).toList();
-        assertEquals(List.of("pages.rol", "mediaFileView.rol", "themeEdit.rol"), linked);
-        assertFalse(jsp.substring(0, section.start()).contains("${siteSpace"),
-                "nothing above the section reads the site space");
+        signInWithToken(admin, ApiToken.Role.ADMIN);
+        MvcResult unknown = perform(api(get("/api/v1/weblogs/ssanosuchblog/traffic")));
+        MvcResult withheld = perform(api(get("/api/v1/weblogs/" + SITE + "/traffic")));
+        assertEquals(404, unknown.getResponse().getStatus());
+        assertEquals(404, withheld.getResponse().getStatus(), "never offered on the weblog route");
+        MvcResult read = perform(api(get("/api/v1/admin/traffic/" + SITE).param("period", "7d")));
+        assertEquals(200, read.getResponse().getStatus());
+        assertTrue(read.getResponse().getContentAsString(StandardCharsets.UTF_8).contains("\"period\":\"7d\""));
+
+        signInWithToken(author, ApiToken.Role.ADMIN);
+        assertEquals(403, perform(api(get("/api/v1/admin/traffic/" + SITE))).getResponse().getStatus(),
+                "a blog author is refused the admin route");
     }
 
     // ------------------------------------------------------------ helpers
@@ -512,12 +510,9 @@ class SiteSpaceAccessTest {
         }
     }
 
-    private static Object model(MvcResult result, String name) {
-        return result.getModelAndView().getModel().get(name);
-    }
-
-    private static List<String> menuHandles(MvcResult result) {
-        List<?> rows = (List<?>) model(result, "existingPermissions");
-        return rows.stream().map(r -> ((WeblogPermissionView) r).getWeblog().getHandle()).toList();
+    /** The handles in the menu rows' body other than {@code except}: none of the admin's own blogs is the site space. */
+    private static List<String> menuHandles(String body, String except) {
+        return java.util.regex.Pattern.compile("\"handle\":\"([^\"]+)\"").matcher(body).results()
+                .map(m -> m.group(1)).filter(h -> h.equals(except)).toList();
     }
 }

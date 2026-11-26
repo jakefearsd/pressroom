@@ -129,7 +129,7 @@ class CommentsIT extends PressroomIT {
     private static final String AUTHOR_BADGE = "Author";
 
     private static final String LOGIN = "/pressroom-ui/login.rol";
-    private static final String MENU = "/pressroom-ui/menu.rol";
+    private static final String MENU = "/pressroom-ui/app/";
     private static final String ACCOUNT = "/pressroom-ui/account.rol";
     private static final String MODERATION = "/pressroom-ui/authoring/comments.rol";
     private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";
@@ -950,7 +950,8 @@ class CommentsIT extends PressroomIT {
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("journal");
         clickAndAwaitNewPage($("button[type='submit']"));
-        $("#messages").should(exist);
+        // The save lands on the React home (no flash message there): the new weblog's row is the evidence.
+        $$("h2.mm_weblog_name .data").findBy(exactText(handle)).should(exist);
         setCommentsEnabled(handle, true);
         return handle;
     }
@@ -1017,7 +1018,9 @@ class CommentsIT extends PressroomIT {
         openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
         clickAndAwaitNewPage($("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
                 .should(visible));
-        $("#messages").should(exist);
+        // Back on the React home: the weblog's row is no longer listed.
+        $("h2.mm_weblog_name").should(exist);
+        $$("h2.mm_weblog_name .data").findBy(exactText(handle)).shouldNot(exist);
     }
 
     // ---------------------------------------------------------------- urls

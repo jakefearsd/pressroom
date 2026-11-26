@@ -110,7 +110,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         entry.setStatus(PubStatus.DRAFT);
         entry.setCreatorUserName("someone-else");
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
@@ -120,7 +120,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         mayPost = false;
         entry.setCreatorUserName(USER_NAME);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
@@ -156,10 +156,10 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         entry.setWebsite(other);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes),
                 "a foreign entryId must bounce, exactly like an unknown one");
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", newRedirectAttributes()));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
@@ -188,7 +188,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
         String view = controller.entryRemoveViaListRemove(request, model, "gone", redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         assertTrue(flashErrors(redirectAttributes).contains("weblogEntry.notFound"),
                 "Expected a not-found error, got: " + flashErrors(redirectAttributes));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
@@ -198,7 +198,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void removingWithNoIdBouncesToTheMenu() throws Exception {
         String view = controller.entryRemoveViaListRemove(request, model, null, redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
 
@@ -206,7 +206,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void removingViaTheListWithNoIdBouncesToTheMenu() throws Exception {
         String view = controller.entryRemoveViaListRemove(request, model, null, redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
 

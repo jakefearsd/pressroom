@@ -82,8 +82,8 @@ class SitePagesIT extends PressroomIT {
         boolean globalsChanged = false;
         Throwable primary = null;
         try {
-            // --- Site -> Pages from the main menu, then create and publish --
-            openPath("/pressroom-ui/menu.rol");
+            // --- Site -> Pages from the main menu (the React home), then create and publish --
+            openPath("/pressroom-ui/app/");
             $(".site-row").should(exist);
             clickAndAwaitNewPage($$(".site-row a.quiet-link").first());
             $("#pageRemoveForm").should(exist);

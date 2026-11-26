@@ -228,6 +228,7 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/me",                                      READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/meta",                                    READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/me/profile",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
+            row("GET    /v1/me/weblogs",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/meta/weblog-options",                     READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
 
             // --- The token resource: a password too. Not pin-exempt, and the
@@ -383,11 +384,13 @@ class ApiAuthorizationMatrixTest {
             // --- Site administration: a site admin with an ADMIN token
             row("GET    /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/traffic",                           ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/traffic/{handle}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users/{userName}/password-link",    ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/users/{userName}/weblogs",          ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/config/definitions",                ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/revisions",                         ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/revisions/sweep",                   ADMIN, SITE_ADMIN, NO_WEBLOG),
@@ -826,7 +829,7 @@ class ApiAuthorizationMatrixTest {
     @Test
     void metaAndProfileRowsEqualTheMeRow() {
         Row me = ROWS.stream().filter(r -> r.key().equals("GET /v1/me")).findFirst().orElseThrow();
-        for (String key : List.of("GET /v1/meta", "GET /v1/me/profile")) {
+        for (String key : List.of("GET /v1/meta", "GET /v1/me/profile", "GET /v1/me/weblogs")) {
             Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
             assertEquals(new Row(key, me.role(), me.global(), me.weblog(), me.flags()), row, key);
         }

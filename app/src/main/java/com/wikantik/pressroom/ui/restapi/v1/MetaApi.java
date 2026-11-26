@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Objects;
+import org.apache.commons.lang3.StringUtils;
+import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
@@ -32,6 +34,7 @@ import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.runnable.TrashPurgeTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
@@ -118,7 +121,8 @@ public class MetaApi {
         MetaDtos.Limits limits = new MetaDtos.Limits(ApiBodyLimitFilter.MAX_BODY_BYTES, Paging.MAX_LIMIT,
                 ColumnLimits.ENTRY_TEXT);
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
-                siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits));
+                siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits,
+                WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.RETENTION_PROPERTY)));
     }
 
     /**
@@ -154,6 +158,53 @@ public class MetaApi {
         return ResponseEntity.ok(new MetaDtos.ProfileView(user.getUserName(), user.getScreenName(),
                 user.getFullName(), user.getEmailAddress(), user.getLocale(), user.getTimeZone(),
                 user.getKind().name()));
+    }
+
+    /**
+     * The main menu's rows: each weblog the caller can act on with its about text, theme, address, the
+     * actions the caller's row holds, entry count and the comments waiting for it, plus -- for a site admin
+     * with an unpinned token -- the site space's handle (created on the first read, as the menu always did).
+     * One call instead of a settings read, an entries read and a comments read per weblog; the settings
+     * route is the weblog owner's, and the menu is every member's.
+     */
+    @WeblogScopeExempt
+    @Operation(operationId = "meWeblogsGet",
+            summary = "The weblogs the caller can act on, with the facts the main menu shows for each.")
+    @GetMapping("/me/weblogs")
+    public ResponseEntity<MetaDtos.MyWeblogsView> myWeblogs(HttpServletRequest request) throws WebloggerException {
+        User user = requireUser(request);
+        ApiPrincipal principal = Caller.current().principal();
+        String pinned = principal == null ? null : principal.scopeWeblog();
+        List<MetaDtos.MyWeblog> rows = new ArrayList<>();
+        for (WeblogPermission permission : weblogger.getUserManager().getWeblogPermissions(user)) {
+            String handle = permission.getObjectId();
+            if (pinned != null && !pinned.equals(handle)) {
+                continue;
+            }
+            Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
+            if (weblog != null) {
+                rows.add(myWeblog(weblog, permission));
+            }
+        }
+        rows.sort(Comparator.comparing(MetaDtos.MyWeblog::handle));
+        String siteSpace = null;
+        if (pinned == null && isGlobalAdmin(user)) {
+            siteSpace = weblogger.getWeblogManager().getOrCreateSiteSpace(user).getHandle();
+        }
+        return ResponseEntity.ok(new MetaDtos.MyWeblogsView(rows, siteSpace));
+    }
+
+    private MetaDtos.MyWeblog myWeblog(Weblog weblog, WeblogPermission permission) throws WebloggerException {
+        WeblogPermission moderate = new WeblogPermission();
+        moderate.setActionsAsList(List.of(WeblogPermission.POST));
+        boolean canModerate = permission.implies(moderate);
+        long pending = canModerate
+                ? weblogger.getCommentManager().countComments(weblog, ReaderComment.Status.PENDING) : 0;
+        return new MetaDtos.MyWeblog(weblog.getHandle(), Objects.toString(weblog.getName(), ""),
+                StringUtils.trimToNull(weblog.getAbout()), weblog.getEditorTheme(),
+                weblogger.getUrlStrategy().getWeblogURL(weblog, null, true), Memberships.strongestLevel(permission),
+                permission.getActionsAsList(), canModerate, weblogger.getWeblogEntryManager().getEntryCount(weblog),
+                pending);
     }
 
     private static User requireUser(HttpServletRequest request) {

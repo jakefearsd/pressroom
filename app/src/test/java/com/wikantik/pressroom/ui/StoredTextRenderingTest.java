@@ -119,15 +119,6 @@ public class StoredTextRenderingTest {
         assertRendersAsText(render("tiles/userStatus.jsp", "authenticatedUser.userName", beans));
     }
 
-    /** A weblog's "about" is a plain-text description: the settings form takes text and themes strip tags. */
-    @Test
-    void aWeblogsAboutTextIsTextOnTheMainMenu() throws IOException {
-        Map<String, Object> beans = new HashMap<>();
-        beans.put("perms", Map.of("weblog", Map.of("about", PAYLOAD)));
-
-        assertRendersAsText(render("core/MainMenu.jsp", "perms.weblog.about", beans));
-    }
-
     // ------------------------------------------------------------------
 
     private static Map<String, Object> untitledEntryBeans(String var) {

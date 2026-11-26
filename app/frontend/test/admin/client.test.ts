@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { createApiClient } from '../../src/admin/api/client';
+import { call, createApiClient } from '../../src/admin/api/client';
+import { ApiError } from '../../src/admin/api/problem';
 import type { Bootstrap } from '../../src/admin/bootstrap';
 import { sample } from './fixtures';
 
@@ -40,5 +41,29 @@ describe('createApiClient', () => {
     await client.GET('/v1/me');
 
     expect(calls).toEqual(['http://pressroom.test/pressroom/api/v1/me']);
+  });
+});
+
+describe('call and the 401 hook', () => {
+  it('returns data on success and throws a typed ApiError on a problem+json', async () => {
+    server.use(
+      http.get('http://pressroom.test/pressroom/api/v1/meta', () => HttpResponse.json({ version: '1' })),
+      http.get('http://pressroom.test/pressroom/api/v1/me', () => HttpResponse.json(
+        { code: 'auth.notAuthenticated', detail: 'Sign in.' }, { status: 401, headers: { 'content-type': 'application/problem+json' } }))
+    );
+    const onUnauthorized = vi.fn();
+    const client = createApiClient(boot, undefined, onUnauthorized);
+
+    await expect(call(client.GET('/v1/meta'))).resolves.toEqual({ version: '1' });
+    await expect(call(client.GET('/v1/me'))).rejects.toMatchObject({ status: 401, code: 'auth.notAuthenticated' });
+    await expect(call(client.GET('/v1/me'))).rejects.toBeInstanceOf(ApiError);
+    expect(onUnauthorized).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not call the hook for other statuses', async () => {
+    server.use(http.get('http://pressroom.test/pressroom/api/v1/me', () => HttpResponse.json({ code: 'auth.forbidden' }, { status: 403 })));
+    const onUnauthorized = vi.fn();
+    await expect(call(createApiClient(boot, undefined, onUnauthorized).GET('/v1/me'))).rejects.toMatchObject({ status: 403 });
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 });

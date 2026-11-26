@@ -270,8 +270,8 @@ class JspConsistencyTest {
     }
 
     /**
-     * Task B6: the five sidebar tiles (EntriesSidebar, MediaFileSidebar,
-     * CategoriesSidebar, TemplatesSidebar, MainMenuSidebar) speak the rail's
+     * Task B6: the four sidebar tiles (EntriesSidebar, MediaFileSidebar,
+     * CategoriesSidebar, TemplatesSidebar; the main menu's moved to React) speak the rail's
      * own grammar instead of a Bootstrap card with h3/hr section markup: a
      * caps-label ({@code p.sidebar-label}) per logical block, each wrapped in
      * a {@code div.sidebar-group}, no {@code <h3>} and no {@code <hr>}
@@ -291,8 +291,8 @@ class JspConsistencyTest {
         List<Path> sidebarJsps = jsps().stream()
                 .filter(p -> p.getFileName().toString().endsWith("Sidebar.jsp"))
                 .toList();
-        assertEquals(5, sidebarJsps.size(),
-                "Expected exactly the five sidebar tiles -- the scan is not looking where it thinks it is.");
+        assertEquals(4, sidebarJsps.size(),
+                "Expected exactly the four sidebar tiles -- the scan is not looking where it thinks it is.");
 
         for (Path jsp : sidebarJsps) {
             String src = Files.readString(jsp, StandardCharsets.UTF_8);
@@ -504,7 +504,7 @@ class JspConsistencyTest {
      * joined ids on {@code <body>}; {@code pressroom.js} reads them from nowhere
      * else. Miss one and every form on it silently loses the marker --
      * {@code .Profile} and {@code .CreateWeblog} are simplepage, the editor
-     * screens are tabbedpage, and {@code .MainMenu} is mainmenupage.
+     * screens are tabbedpage, and {@code .ProfileTokens} is mainmenupage.
      */
     @Test
     void layoutsRenderInvalidFieldIds() throws IOException {
@@ -671,60 +671,6 @@ class JspConsistencyTest {
         }
     }
 
-    // --- B9c: the main menu lists weblogs as quiet rows ---
-
-    /**
-     * Task B9c: the first screen an author lands on listed each weblog as a
-     * Bootstrap card carrying a raw absolute URL on its own line and a
-     * {@code .btn-group} of four equally-loud buttons -- a toolbar, on a
-     * screen whose job is to get you into one weblog. It is a quiet row now:
-     * the name links to the weblog (so the URL line has nothing left to say),
-     * the handle and entry count wear the mono data face, and the actions are
-     * one primary "New entry" beside plain {@code .quiet-link}s.
-     *
-     * <p>{@code h2.mm_weblog_name} (an h3 until the heading sweep put it one
-     * level under the page's h1) survives the restyle deliberately:
-     * {@code Routes.java} identifies {@code menu.rol} by that selector, so
-     * renaming it here without moving the marker in the same commit fails
-     * {@code RouteSweepIT}.
-     *
-     * <p>Two {@code btn btn-primary} occurrences, not one: the empty state
-     * above the loop ("you have no blog yet") has its own, and the two branches
-     * are mutually exclusive at render time even though both are in the source.
-     */
-    @Test
-    void mainMenuListsWeblogsAsQuietRows() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("core/MainMenu.jsp"), StandardCharsets.UTF_8));
-
-        assertTrue(markup.contains("class=\"weblog-row\""),
-                "each weblog must be a .weblog-row");
-        assertTrue(markup.contains("<h2 class=\"mm_weblog_name section-head\">"),
-                "h2.mm_weblog_name is Routes.java's marker for menu.rol -- keep it");
-        assertTrue(markup.contains("class=\"weblog-actions\""),
-                "the row's actions belong in a .weblog-actions strip");
-        assertTrue(markup.contains("class=\"quiet-link\""),
-                "everything but New entry is a quiet link, not a button");
-
-        assertFalse(markup.contains("btn-group"),
-                "the four-button toolbar is gone -- one primary plus quiet links");
-        assertFalse(markup.contains("yourWeblogBox"),
-                "the row is not a Bootstrap card any more");
-        assertFalse(markup.contains("btn btn-secondary"),
-                "a secondary button in the row is the toolbar coming back");
-
-        assertEquals(2, countOccurrences(markup, "btn btn-primary"),
-                "exactly two primaries in the source: the empty state's and the "
-                        + "row's New entry, which never render together");
-        assertEquals(1, countOccurrences(markup, "urls.weblogAbsolute(perms.weblog)"),
-                "the raw URL line is gone; the weblog name is the only link to it");
-
-        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        for (String rule : List.of(".weblog-row", ".weblog-actions")) {
-            assertTrue(css.contains(rule), "pressroom.css lacks " + rule);
-        }
-    }
-
     // --- B10: the weblog switcher in the top bar ---
 
     /**
@@ -755,7 +701,7 @@ class JspConsistencyTest {
     /**
      * The top bar's "Main Menu" link is for someone who can use it: anonymous
      * visitors (it leads to the login page, then the menu) and authors. A signed-in
-     * reader holds no global action and {@code menu.rol} refuses them, so on the
+     * reader holds no global action and the app home refuses them, so on the
      * login page and the site directory the link led to access-denied.
      * {@code BaseController.populateCommonModel} adds {@code userIsAuthor} (the
      * global {@code login} action); {@code BaseControllerTest} pins it.
@@ -765,9 +711,9 @@ class JspConsistencyTest {
         String markup = withoutJspComments(
                 Files.readString(JSPS.resolve("tiles/bannerStatus.jsp"), StandardCharsets.UTF_8));
 
-        int link = markup.indexOf("/pressroom-ui/menu.rol");
+        int link = markup.indexOf("/pressroom-ui/app/");
         assertTrue(link > 0, "bannerStatus.jsp no longer links the menu");
-        assertEquals(1, countOccurrences(markup, "/pressroom-ui/menu.rol"), "one Main Menu link");
+        assertEquals(1, countOccurrences(markup, "/pressroom-ui/app/"), "one Main Menu link");
         String guard = "<c:if test=\"${empty authenticatedUser or userIsAuthor}\">";
         int open = markup.lastIndexOf(guard, link);
         assertTrue(open >= 0, "the Main Menu link is not guarded by " + guard);
@@ -1332,20 +1278,7 @@ class JspConsistencyTest {
             "draftNewKey",
             // tiles/messages.jsp: controllers escape every user-typed argument
             // (MessageArgumentEscapingTest), and the messages are bundle text.
-            "msg", "error",
-            // The Traffic fragment (TrafficView): whole numbers (pathsCappedAt is an int), chart geometry in
-            // whole units, fixed class words ("up", "dn" or empty), a message key
-            // from TrafficView.noticeKey, and an entry title that is stored
-            // escaped (EntryFieldRules.escapeTitle), so it goes out bare.
-            "traffic.ageMinutes", "traffic.pathsCappedAt", "bar.x", "bar.y", "bar.width", "bar.height",
-            "bar.x + bar.width / 2", "traffic.chart.width", "traffic.chart.height",
-            "traffic.chart.height - 6", "traffic.chart.plotHeight",
-            "line.views", "line.visitors", "line.trendClass", "tile.trend",
-            "fn:substringAfter(traffic.noticeKey, 'traffic.state.')", "line.title",
-            // The Global Traffic page (SiteTrafficView): the same fixed class
-            // words and whole numbers; the top-post and per-blog titles are
-            // stored escaped (EntryFieldRules.escapeTitle), so they go out bare.
-            "line.changeClass", "line.topPostTitle", "top.title", "top.views", "top.visitors");
+            "msg", "error");
 
     /**
      * Printed raw and not yet fixed: {@code "path  expression"}, the path

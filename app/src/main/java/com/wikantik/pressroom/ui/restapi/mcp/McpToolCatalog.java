@@ -197,12 +197,19 @@ public final class McpToolCatalog {
                             "POST /v1/admin/weblogs/{handle}/actions/regenerate-renditions")));
 
     public static final List<Exclusion> EXCLUDED = List.of(
+            new Exclusion("GET /v1/me/weblogs", "The main menu's rows (about text, counts, pending comments): a "
+                    + "screen's convenience; the me tool already lists the weblogs an agent can act on."),
+            new Exclusion("GET /v1/admin/traffic/{handle}", "Reaches the site space's numbers for the admin "
+                    + "screen; the traffic tool reads any weblog an agent can act on."),
             new Exclusion("GET /v1/me/profile", "The person's own contact details; nothing an agent acts on, "
                     + "and whoami names the account."),
             new Exclusion("POST /v1/tokens", "Basic-auth only by design: a token holder can never mint a token."),
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),
             new Exclusion("GET /v1/ping", "Unauthenticated liveness check; nothing for an agent."),
+            new Exclusion("GET /v1/admin/config/definitions",
+                    "Operator screen: how the Global Config page draws its form (groups, labels, types); "
+                    + "an agent reads the values with site_settings."),
             new Exclusion("GET /v1/admin/revisions", "Operator maintenance: the admin screen and admin API only."),
             new Exclusion("POST /v1/admin/revisions/sweep",
                     "Operator maintenance: removes history site-wide; the admin screen and admin API only."),

@@ -776,7 +776,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     /**
      * Whether {@code user} may use the authoring UI at all: holds the global
      * {@code login} action. A reader (SSO sign-in) does not, so the top bar
-     * offers them no "Main Menu" link that {@code menu.rol} would refuse.
+     * offers them no "Main Menu" link that the app home would refuse.
      * A display path: a check that cannot run answers "not an author".
      */
     private boolean isAuthor(User user) {

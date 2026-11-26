@@ -166,7 +166,7 @@ class ReaderRefusalSweepTest {
         assertTrue(isTestFixture(ui + "core.ContactControllerTest$Probe"));
         assertTrue(isTestFixture("com.wikantik.pressroom.ui.restapi.ApiSecurityRefusalTest$Secured$Inner"));
         for (String controller : List.of("TestimonialsController", "LatestPostsController",
-                "core.ContestController", "admin.TestsController", "MainMenuController")) {
+                "core.ContestController", "admin.TestsController", "core.ProfileController")) {
             assertFalse(isTestFixture(ui + controller), controller + " would escape the sweep");
         }
     }
@@ -175,7 +175,7 @@ class ReaderRefusalSweepTest {
     void theSweepFoundTheControllersItShould() {
         Set<String> names = securedControllers().stream()
                 .map(c -> c.getClass().getSimpleName()).collect(toSet());
-        assertTrue(names.containsAll(Set.of("MainMenuController", "ProfileController",
+        assertTrue(names.containsAll(Set.of("ProfileController",
                 "EntryEditController", "UserAdminController", "MediaApi")), names.toString());
         Set<String> classNames = securedControllers().stream()
                 .map(c -> c.getClass().getName()).collect(toSet());

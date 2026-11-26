@@ -53,6 +53,7 @@ class WeblogSettingsApiThemeTest {
     @BeforeEach
     void setUp() throws Exception {
         when(weblogger.getWeblogManager()).thenReturn(weblogs);
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         when(weblogger.getBusinessManager()).thenReturn(mock(BusinessManager.class));
         when(weblogger.getThemeManager()).thenReturn(themes);
         List<SharedTheme> enabled = new ArrayList<>();

@@ -6,6 +6,16 @@ export interface Bootstrap {
   user: { userName: string; screenName: string; locale: string; globalPermission: 'admin' | 'editor' };
   uiLocale: string;
   messagesUrl: string;
+  /** The brand (name), the tab-title prefix (shortName) and the site space's handle, which the API never serves. */
+  site: { name: string; shortName: string; siteSpaceHandle: string };
+  /** The footer's facts; a fact the server does not know is absent. */
+  colophon: {
+    copyrightHolder?: string;
+    copyrightYear: string;
+    privacyUrl?: string;
+    shortRevision?: string;
+    releaseDate?: string;
+  };
 }
 
 export const BOOTSTRAP_ID = 'pressroom-bootstrap';
@@ -35,8 +45,12 @@ function isBootstrap(value: unknown): value is Bootstrap {
   if (!isRecord(value) || !allStrings(value, ['contextPath', 'version', 'uiLocale', 'messagesUrl'])) {
     return false;
   }
-  const { csrf, user } = value;
+  const { csrf, user, site, colophon } = value;
   return (
+    isRecord(site) && allStrings(site, ['name', 'shortName', 'siteSpaceHandle']) &&
+    isRecord(colophon) && typeof colophon['copyrightYear'] === 'string' &&
+    ['copyrightHolder', 'privacyUrl', 'shortRevision', 'releaseDate']
+      .every((key) => colophon[key] === undefined || typeof colophon[key] === 'string') &&
     isRecord(csrf) && allStrings(csrf, ['headerName', 'token']) &&
     isRecord(user) && allStrings(user, ['userName', 'screenName', 'locale']) &&
     (user['globalPermission'] === 'admin' || user['globalPermission'] === 'editor')

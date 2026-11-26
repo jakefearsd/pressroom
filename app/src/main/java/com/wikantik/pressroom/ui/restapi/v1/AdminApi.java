@@ -509,6 +509,28 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     }
 
     /**
+     * What the Global Config screen draws: the display groups of {@code runtimeConfigDefs.xml} in their declared
+     * order, each property with its message key, type and default. Definitions only; values come from
+     * {@code GET /config}.
+     */
+    @Operation(operationId = "configGetDefinitions")
+    @GetMapping("/config/definitions")
+    public List<AdminDtos.ConfigGroup> configDefinitions() {
+        List<AdminDtos.ConfigGroup> groups = new ArrayList<>();
+        for (ConfigDef configDef : WebloggerRuntimeConfig.getRuntimeConfigDefs().getConfigDefs()) {
+            for (DisplayGroup group : configDef.getDisplayGroups()) {
+                List<AdminDtos.ConfigPropertyDefinition> properties = new ArrayList<>();
+                for (PropertyDef def : group.getPropertyDefs()) {
+                    properties.add(new AdminDtos.ConfigPropertyDefinition(def.getName(), def.getKey(),
+                            def.getType(), def.getDefaultValue(), def.getRows(), def.getCols()));
+                }
+                groups.add(new AdminDtos.ConfigGroup(group.getName(), group.getKey(), properties));
+            }
+        }
+        return groups;
+    }
+
+    /**
      * Body is a flat name-to-new-value map, not a list of {@code
      * ConfigEntry} -- the {@code type} is declared by {@code
      * runtimeConfigDefs.xml}, not something a caller gets to assert, and a

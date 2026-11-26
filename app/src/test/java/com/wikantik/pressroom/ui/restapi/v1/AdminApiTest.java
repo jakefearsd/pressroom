@@ -666,6 +666,33 @@ class AdminApiTest {
         return weblogger;
     }
 
+    /**
+     * The React Global Config screen draws itself from these definitions, in the declared display order:
+     * groups (their message key), each with its properties' name, message key, type and default. They are
+     * the same definitions the JSP walked ({@code globalConfigDef.displayGroups}), never hard-coded in the app.
+     */
+    @Test
+    void configDefinitionsListEveryDisplayGroupInOrderWithItsPropertyDefinitions() throws Exception {
+        String body = mockMvc(controllerFor(mock(Weblogger.class)))
+                .perform(get("/v1/admin/config/definitions"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode groups = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals("siteSettings", groups.get(0).get("name").asString());
+        assertEquals("configForm.siteSettings", groups.get(0).get("key").asString());
+        tools.jackson.databind.JsonNode first = groups.get(0).get("properties").get(0);
+        assertEquals("site.name", first.get("name").asString());
+        assertEquals("configForm.siteName", first.get("key").asString());
+        assertEquals("string", first.get("type").asString());
+        assertEquals("Pressroom Site", first.get("defaultValue").asString());
+        int properties = 0;
+        for (tools.jackson.databind.JsonNode group : groups) {
+            properties += group.get("properties").size();
+        }
+        assertTrue(properties > 20, "every group's properties are listed: " + properties);
+    }
+
     @Test
     void listConfigReturnsEveryDeclaredPropertyWithItsCurrentOrDefaultValue() throws Exception {
         Weblogger weblogger = mockedConfigWeblogger();

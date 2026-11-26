@@ -144,7 +144,7 @@ public class ProfileController extends BaseController {
                     comments.expireWhereShown(existingUser);
                 }
                 addFlashMessage(redirectAttributes, "generic.changes.saved", request);
-                return "redirect:/pressroom-ui/menu.rol";
+                return "redirect:/pressroom-ui/app/";
             } catch (WebloggerException ex) {
                 log.error("ERROR in action", ex);
                 addError(model, "generic.error.check.logs", request);

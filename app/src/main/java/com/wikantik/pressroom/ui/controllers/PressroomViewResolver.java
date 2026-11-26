@@ -284,7 +284,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         // Profile is a signed-in screen with no weblog scope, so it has no tabs
         // to render -- but it is still admin chrome, and mainmenupage is the
         // layout for exactly that (the rail with the account context block and
-        // no tab groups, which is what MainMenu itself uses). On simplepage --
+        // no tab groups). On simplepage --
         // the install/login chrome -- it rendered as a bare card with no rail,
         // so a reader who opened it had nothing to navigate back by.
         define(".Profile").on(MAINMENU)
@@ -319,11 +319,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         define(".SiteDirectory").on(SIMPLE)
                 .content("/WEB-INF/jsps/core/SiteDirectory.jsp")
-                .register();
-
-        define(".MainMenu").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/MainMenu.jsp")
-                .sidebar("/WEB-INF/jsps/core/MainMenuSidebar.jsp")
                 .register();
 
         define(".CreateDatabase").on(INSTALL)
@@ -382,10 +377,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         define(".Maintenance").on(TABBED)
                 .content("/WEB-INF/jsps/admin/Maintenance.jsp")
-                .register();
-
-        define(".SiteTraffic").on(TABBED)
-                .content("/WEB-INF/jsps/admin/SiteTraffic.jsp")
                 .register();
 
         // ---- weblog editor pages ----
@@ -498,11 +489,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         // (the tabs come from the navMenu model attribute, not from a tile).
         define(".Submissions").on(TABBED)
                 .content("/WEB-INF/jsps/editor/Submissions.jsp")
-                .register();
-
-        // A blog's Traffic page: the same minimal tabbed shape as .Submissions.
-        define(".Traffic").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Traffic.jsp")
                 .register();
 
         // Reader-comment moderation: the same minimal tabbed shape as .Submissions.

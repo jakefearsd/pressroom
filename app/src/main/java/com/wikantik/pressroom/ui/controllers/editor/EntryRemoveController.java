@@ -82,7 +82,7 @@ public class EntryRemoveController extends BaseController {
         WeblogEntry entry = lookupChangeableEntry(removeId, request);
         if (entry == null) {
             addFlashError(redirectAttributes, "weblogEntry.notFound", request);
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         try {

@@ -73,6 +73,53 @@ public final class MetaDtos {
             String permission) {
     }
 
+    /**
+     * What the main menu shows: the weblogs the caller belongs to with the facts each row carries, and
+     * the site space's handle for a site admin.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record MyWeblogsView(
+            @Schema(description = "The weblogs this caller can act on, sorted by handle: the one a pinned token "
+                    + "is limited to, or every weblog the account belongs to.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<MyWeblog> weblogs,
+            @Schema(description = "The handle of the site space, the hidden weblog that holds the site's own "
+                    + "pages (created on a site admin's first read); present for a site admin with an unpinned "
+                    + "token only.")
+            String siteSpace) {
+    }
+
+    /** One row of the main menu. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record MyWeblog(
+            @Schema(description = "The weblog's handle.", requiredMode = Schema.RequiredMode.REQUIRED)
+            String handle,
+            @Schema(description = "The weblog's name; an empty string when it has none.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String name,
+            @Schema(description = "The weblog's about text, plain; absent when it has none.")
+            String about,
+            @Schema(description = "The weblog's theme: a shared theme id, or custom.")
+            String theme,
+            @Schema(description = "The weblog's absolute web address, as readers reach it.")
+            String absoluteUrl,
+            @Schema(description = "ADMIN, POST or EDIT_DRAFT: the highest permission the account holds on it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String permission,
+            @Schema(description = "The permission actions the account's row holds, as stored: admin, post and "
+                    + "edit_draft. A weblog's creator holds admin alone.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<String> actions,
+            @Schema(description = "Whether the account may moderate this weblog's comments.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean canModerate,
+            @Schema(description = "The number of entries.", requiredMode = Schema.RequiredMode.REQUIRED)
+            long entryCount,
+            @Schema(description = "Comments awaiting approval; 0 for an account that may not moderate.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            long pendingComments) {
+    }
+
     /** The site facts a client needs before it draws a screen; the same for every authenticated caller. */
     public record MetaView(
             @Schema(description = "The Pressroom version, as the footer shows it; null when unknown.")
@@ -83,7 +130,12 @@ public final class MetaDtos {
                     requiredMode = Schema.RequiredMode.REQUIRED)
             Features features,
             @Schema(description = "Sizes the API holds every caller to.", requiredMode = Schema.RequiredMode.REQUIRED)
-            Limits limits) {
+            Limits limits,
+            @Schema(description = "How many days a trashed entry is kept before the nightly sweep deletes it for "
+                    + "good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. "
+                    + "Read afresh on every request: a site admin can change it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int trashRetentionDays) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */

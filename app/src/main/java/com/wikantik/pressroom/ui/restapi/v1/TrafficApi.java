@@ -5,11 +5,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import com.wikantik.pressroom.business.analytics.BlogTraffic;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
-import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.dto.TrafficDtos;
@@ -39,13 +37,12 @@ public class TrafficApi extends BaseApiController implements UISecurityEnforced 
     public TrafficDtos.TrafficView get(HttpServletRequest request,
             @Parameter(description = "One of 24h, 7d, 30d (the default) or 90d.")
             @RequestParam(value = "period", defaultValue = "30d") String period) {
-        if (!TrafficView.PERIODS.contains(period)) {
+        if (!TrafficDtos.PERIODS.contains(period)) {
             throw ApiException.problemOnField("period", ProblemCode.TRAFFIC_PERIOD_UNKNOWN,
-                    String.join(", ", TrafficView.PERIODS));
+                    String.join(", ", TrafficDtos.PERIODS));
         }
         Weblog weblog = requireActionWeblog(request);
-        BlogTraffic traffic = weblogger.getAnalyticsManager().getBlogTraffic(weblog.getId(), period);
-        return TrafficDtos.toView(traffic, period);
+        return TrafficReads.read(weblogger, weblog, period);
     }
 
     @Override
