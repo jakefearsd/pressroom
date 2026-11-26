@@ -440,3 +440,29 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **New message keys go into all eight bundles** (English until translated);
   `AgentAccountMessagesTest` checks the `userList.`, `personForm.`, `userWeblogs.`, `apiTokens.` and
   `agent.` prefixes.
+
+## React app frame (`app/frontend/src/admin`)
+
+The React admin's frame reproduces the tiles chrome with the same markup and classes
+(`#adminRail`, `.rail-active`, `.draft-bar`, `h1.pressroom-page-title`), so the existing CSS
+styles it. Spec: `docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`.
+
+- **One route table for the rail**: `routes/railTable.ts` (groups and entries copied from
+  `editor-menu.xml` / `admin-menu.xml`; `rail.test.ts` parses the XML and fails on drift).
+  An entry is a legacy `.rol` link until it gets a `path`; adding the `path` is the whole
+  migration of the rail link. `routes/visibility.ts` applies the menu rules from `/v1/me`
+  (`globalAdmin`, membership level) and `/v1/meta` (`features`).
+- **Not on `/api`, so approximated**: the JSP menu also hides the site space's other items
+  (`weblog.isSiteSpace`), the footer's colophon facts (copyright holder, privacy URL,
+  revision, release date) and the site name come from server state the API does not carry;
+  the frame shows version only and the brand "Pressroom" until they are exposed.
+- **`t(key, ...args)`** (`i18n/`): no arguments returns the value verbatim, arguments run
+  MessageFormat (`{n}`, `''`, quotes, `choice`, `number`), exactly like the server's
+  `alwaysUseMessageFormat=false`. JSP-era values may carry HTML entities
+  (`tabbedmenu.weblog` is `Create &amp; edit`): decode with `plainText`.
+- **No Bootstrap JS in the shell**: dropdowns, collapses and modals are React state
+  (`show` classes), not `data-bs-*`.
+- **Drafts** live under `pressroom.appdraft.v1:` (not the JSP editors' `pressroom.draft.v1:`,
+  whose sweeper deletes keys of any other shape); sign-out clears both.
+- `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST`
+  (`eslint.config.js`, empty).
