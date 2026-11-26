@@ -1,332 +1,248 @@
 # Admin UI
 
-Developer notes moved out of `CLAUDE.md` (which is sent with every
-request) so they are read only when this area is being changed. Section
-names are unchanged, so an older "see CLAUDE.md, <section>" pointer
-resolves through the index at the end of `CLAUDE.md`.
+Developer notes moved out of `CLAUDE.md` (which is sent with every request) so they are read only when this
+area is being changed. Section names the older "see CLAUDE.md, <section>" pointers use are kept.
+
+The admin is a React app (`app/frontend/src/admin`) served by one JSP shell. Spec:
+`docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`. Every admin screen is React since the wave 5
+retirement; what is still server-rendered is listed under "What stays JSP, and why".
 
 ## Admin UI
-- **Maintenance is a Global Admin screen, not a per-weblog one**: the React screen at
-  `/pressroom-ui/app/admin/maintenance` (`screens/Maintenance.tsx`), listed in `admin-menu.xml`
-  (`globalPerms="admin"`), not `editor-menu.xml`. Its three per-weblog actions (flush cache, rebuild index,
-  regenerate renditions) pick a weblog in a `<select>`; Rebuild index is absent while `search.enabled` is off
-  (`/v1/meta` `features.searchEnabled`), and regeneration reports the count the API answers.
-- **Design system**: `docs/design/design-system.md` is the committed spec
-  ("Quiet Instrument"). Tokens live in `pressroom-ui/styles/pressroom-tokens.css`
-  (light under `:root`, dark under `@media (prefers-color-scheme: dark)`,
-  self-hosted IBM Plex `@font-face`), linked in `head.jsp` *after*
-  `bootstrap.min.css` and *before* `pressroom.css` (each layer overriding the
-  last). `DesignTokenTest` enforces that ordering, every hex literal tracing
-  to the spec's 21 values, and light/dark defining the same tokens.
-- **Never restyle by renaming a selector.** Every admin route's content tile
-  must keep emitting the CSS marker `Routes` pins for it in
-  `it-selenium/.../support/Routes.java`; `RouteSweepIT` asserts it on every
-  route, because full chrome (banner, nav, footer,
-  `<h2 class="pressroom-page-title">`) renders even with no content tile — the
-  `categoryEdit.rol` failure mode: a healthy 200 with no form. Update `Routes`
-  in the same commit as the CSS.
-- **The tiles system** is homegrown, not Apache Tiles: `ViewDefinition`
-  (layout JSP + attribute JSPs such as `content`, `menu`) is resolved by
-  `PressroomViewResolver`, which registers six base layouts in `init()`:
-  `.tiles-mainmenupage`, `.tiles-tabbedpage`, `.tiles-simplepage`,
-  `.tiles-loginpage`, `.tiles-installpage`, `.tiles-errorpage`. (`.tiles-popuppage` and
-  `.tiles-barepage` went with the media screens' iframes in the wave 2 cutover.)
-  `tiles-tabbedpage.jsp`/`tiles-mainmenupage.jsp` render `#adminRail`
-  (`navMenu` tool groups under caps-labels, `.rail-active` on the current
-  tab), smoke-tested on the Entries route by
-  `RouteSweepIT.adminRailIsPresentWithAnActiveSpineOnATabbedPage`.
-- **A confirmation prompt is `data-confirm`, never an inline
-  `onclick="return confirm('...')"` — the inline form FAILS OPEN.**
-  `fn:escapeXml` renders an apostrophe as `&#039;`, which the HTML parser
-  decodes to `'` *before* the JS compiles, so one apostrophe
-  (`o'brien@example.com`) breaks the handler and the click proceeds
-  unconfirmed; an attribute has no second parser, so `dataset.confirm` gets
-  the literal text. In `theme/scripts/pressroom.js`, `click` owns `data-confirm`
-  on a *control* (a `formaction` button, a link), `submit` owns it on the
-  *form* (catching Enter in a text field), and the click handler's ancestor
-  walk stops at the form or both prompt (shipped once on `UserEdit`).
-  `data-confirm` on a `<form>` prompts on submit (a form-level `data-confirm` prompts
-  unconditionally; the `data-confirm-when` condition went with the Members screen, its only user). `data-confirm` on `click` or `submit` is the
-  **only** confirm idiom: `JspConsistencyTest.oneConfirmIdiomAndOneModalShape`
-  bans `confirm(` and `onsubmit=` in every JSP, so an inline
-  `window.confirm()` fails the build.
-- **Buttons theme through Bootstrap's `--bs-btn-*` custom properties**
-  (`--bs-btn-hover-bg`, `--bs-btn-active-bg`, `--bs-btn-disabled-bg`, …),
-  never our own `:hover`/`:active` rules — Bootstrap's
-  `:active`/`.active`/`.show` chain reaches `(0,3,0)` specificity and beats a
-  classed override. Per-bucket (primary/secondary/destructive) variables cover
-  hover→active→disabled in one place.
-- **`.form-stacked`** on a `<form>` converts Bootstrap's
-  `row.mb-3 > label.col-sm-3 + div.col-sm-9` grid to labels-above block flow
-  without touching fields (the React settings screen keeps the class).
-- **`.empty-state`/`.empty-state-title`/`.empty-state-body`** are the
-  "invitations, not shrugs" signature (600/16px title, one `--ink-soft`
-  sentence, at most one primary action, icon-free) on Entries/Pages/
-  Submissions/MediaFileView (Categories moved to React in wave 1, where
-  `screens/Categories.tsx` renders it BESIDE the table, as a sibling, not
-  inside it, so the caps-label rule's first-child hook is not involved).
-  `Pages.jsp`/`Submissions.jsp` render it as a sibling of the
-  table in a `<c:otherwise>`; check the caller.
-- **Admin → Users is a list, not a search box** (2026-10-13): every account,
-  All / People / Agents tabs and a `q` filter the server applies
-  (`UserManager.getAccounts`, case-insensitive over username, names and email).
-  `ajax-user.js` went with the search box, and `UserDataServlet`
-  (`/pressroom-ui/authoring/userdata/*`) with it (2026-11): unused, it still
-  let any admin or editor list every account, disabled ones and email
-  prefixes included (`ServletRegistrationConfigTest.theAccountListingServletIsGone`). Every controller that lands on `.UserAdmin` builds the rows
-  through `AccountRows.showList`, or the page renders with none.
-- Enabling/disabling an account: the checkbox persists whatever happens, so
-  only disable-then-sign-in proves it — `UserAdminIT`.
-- **An admin cannot lock themselves out** (2026-11): on their own account the person
-  editor refuses unticking Administrator (`userAdmin.cantChangeOwnRole`) and unticking
-  Enabled (`userAdmin.error.cantDisableSelf`), checked in
-  `AdminApi.patchUser` (`AccountRules.selfLockoutProblems`) *before* anything on the form is applied (the
-  role check once ran after `saveUser`, so the other fields committed beside the
-  error). Only an enabled admin reaches this page, so refusing it for oneself is also
-  what keeps the last enabled admin.
-- **One status pill for every entry/page publication state.**
-  `WEB-INF/jsps/editor/StatusPill.jsp` is a `<jsp:include>`; callers set
-  `pillStatus` (a `PubStatus` name) and optionally `pillWhen` (a `Date`, for
-  `SCHEDULED` rows) as **request**-scoped attributes (`<jsp:include>` runs in
-  a fresh `JspContext` blind to page scope). It renders
-  `<span class="status-pill status-<lower>">` plus a trailing `.status-when`
-  when `pillWhen` is set. In a `c:forEach` (`Entries.jsp`, `Pages.jsp`) a row
-  that sets no `pillWhen` must `<c:remove>` it, or a `SCHEDULED` row's
-  timestamp leaks onto later rows. Five `PubStatus` variants plus `unsaved`
-  for the entry editor's publish rail, where a new entry has no `PubStatus`
-  yet (once `bg-info` badges). **The message code is composed in EL**
-  (`weblogEdit.${fn:toLowerCase(pillStatus)}`), so `MessageKeyTest` cannot see
-  it; only the file's header comment, naming all six literally, keeps them off
-  the orphan list (that arm matches WHOLE keys, `.` continuing a key:
-  `weblogEdit.unsaved.` with a trailing full stop is not
-  `weblogEdit.unsaved`).
-- **One selection bar for every list with bulk actions.** `.selection-bar`
-  (`data-selection-bar="<form id>"`, `hidden` by default) sits above the table
-  on Entries/MediaFileView (and the React inbox); the header checkbox carries
-  `data-select-all` and is excluded from the count. `pressroom.js`'s delegated
-  document-level `change` listener finds the bar whose `data-selection-bar`
-  matches the checkbox's `form.id`, counts
-  `input[type=checkbox]:checked:not([data-select-all])`, toggles `bar.hidden`,
-  and writes the count into `.selection-count` via the `selection.count`
-  message (`"{0} selected"`, arity 1, all eight bundles). Trash.jsp
-  deliberately has none: `TrashController` has no
-  `restoreSelected`/`deleteSelected` pair, only per-row and whole-trash
-  endpoints.
-- **`<rc:date>`** (`app/.../ui/tags/DateTag.java`, declared in
-  `WEB-INF/pressroomConfig.tld`) is the admin UI's one timestamp renderer,
-  replacing `fmt:formatDate` (server zone) and the translated
-  `weblogEntryQuery.date.toStringFormat` key (request-locale zone). **That key
-  is deleted from every bundle** (a FORMAT in eight translations could
-  disagree — `ja` had `yy/MM/dd HH:mm` vs the base `MM/dd/yy hh:mm a`) and
-  `JspConsistencyTest` fails if one declares it again. It emits
-  `<time datetime="<UTC ISO-8601 instant>" class="data">yyyy-MM-dd HH:mm</time>`:
-  `datetime` is absolute UTC; the text is the **weblog's** wall clock in
-  `Locale.ROOT` (tabular cells), as `EntryEditController` already parses
-  `bean.pubTimeLocal` against
-  `getActionWeblog(request).getTimeZoneInstance()`. Null renders nothing
-  (every `<c:if test="${x != null}">` keeps working).
-- **Field errors point at the field, not just a banner.** `BaseController`
-  adds `addFieldError(model, fieldId, key, request)` (and an `Object[] args`
-  overload) beside `addError`: plus the control's DOM id into model attribute
-  `invalidFields` (`BaseController.INVALID_FIELDS`, an ordered, deduped
-  `LinkedHashSet<String>`) and its space-joined `invalidFieldIds`
-  (`INVALID_FIELD_IDS`). All three admin layouts render
-  `<body data-invalid-fields="${fn:escapeXml(invalidFieldIds)}">` **only when
-  non-empty** (sticky, it would mark every later clean render refused).
-  `pressroom.js` reads `document.body.dataset.invalidFields` on
-  `DOMContentLoaded` and, for each id that resolves, adds `.is-invalid`, sets
-  `aria-invalid="true"`, and focuses the first — null-guarded (it also loads
-  on public pages), an unrendered id skipped silently; the CSS
-  (`.form-control.is-invalid` etc.) predates it, so no `DesignTokenTest`
-  change.
-- **Sidebars render on the rail's own grammar, not a Bootstrap card.**
-  `<aside class="sidebar">` replaces `.card`/`.card-body`; each block is a
-  `.sidebar-group` (`border-top`, padding) with a `.sidebar-label` heading in
-  the rail's caps-label role (12px/600/.08em/uppercase). Every sidebar form
-  gets `class="form-stacked"`.
-- **Global Config validates `site.privacy.page` at save** as a page
-  reference (`PageReference`): `slug` is a *published* site page, `handle/slug`
-  a published Page on that blog (`site-space/x` as a blog form resolves to
-  nothing). Checked by `SiteSettingsRules` (shared with `PATCH /api/v1/admin/config`)
-  only when the value changed.
-  Fail closed: an unknown or draft page, or a lookup that throws, adds a field
-  error, nothing is saved and the form re-renders what was typed. Because it
-  runs only on a change, a page unpublished later (or a deleted blog) never
-  blocks an unrelated save (Global Config never blocks), and a front-page
-  handle change no longer revalidates it. No per-request check, so that leaves
-  a dead link (the field label says so). V040 qualified an existing bare slug
-  with the front-page blog's handle so it kept pointing at the same page.
-- **The front-page select** (`site.frontpage.weblog.handle`'s field) offers
-  "Site directory" (empty), an optgroup of published site pages (value
-  `page:<slug>`, which the Global Config screen stores as `site.frontpage.page`
-  and blanks the handle) and the blogs (the site space is never offered; a
-  posted `site-space` is refused). A blog or the directory blanks the page. A
-  draft or missing page is refused (`configForm.error.frontpagePage.notFound`),
-  validated only when changed. With no published site page the select shows a
-  hint linking the site Pages screen. A change to the slug, the front door, the
-  privacy page or `site.absoluteurl` touches every weblog and the site space and
-  clears the site-wide cache (see `themes-and-templates.md`, render-cache
-  expiry).
-- **Site settings rules live in `ui.controllers`, not the controller** (spec
-  2026-11-20-jsp-rules-and-view-models-design, Task 1). `SiteSettingsRules`
-  judges values (type and range via `PropertyType.check`, strings trimmed, the
-  front door, the privacy page) and returns `RuleViolation`s; `SiteSettingsEffects.afterSave`
-  touches every weblog when a `RENDERED_PAGE_INPUTS` value changed and refreshes
-  discovery when a `site.discovery.*` value changed. The Global Config screen keeps
-  only the form's concerns (minutes field, unticked checkbox, the `page:<slug>`
-  encoding and a bare `page:`, "missing from the form", re-rendering typed values)
-  and shows each violation with `addError`, every argument `escapeHtml4`'d; it marks
-  no field, as before. Error order is unchanged: each property's own, in stored
-  order, then the front door's, then the privacy page's (`AdminConfigCharacterisationTest`).
-  One answer changed with the move: `site.frontpage.page` posted by hand without the
-  select used to be stored unchecked; a changed one is now judged like any other,
-  including the both-set rule: posted beside a non-empty `site.frontpage.weblog.handle`
-  it is refused with `configForm.error.frontpage.bothSet` (the select can never post
-  both). The labels the error messages quote are `escapeHtml4`'d, so the two that hold
-  U+2019 (`configForm.revisionsCoalesceMinutes`, `configForm.revisionsMaxAgeDays`) now
-  carry `&rsquo;` in the error string; it renders the same.
-- **The Site section (global admins only).** The main menu (the React home;
-  `GET /v1/me/weblogs` returns `siteSpace`, creating the hidden `site-space` weblog
-  on first read; absent for everyone else) shows a Site row with Pages, Media and Theme, the only
-  three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
-  is false by default and true on the Pages, PageEdit and media
-  controllers; the Theme screen is React and reaches the site space through its own
-  admin routes, `GET`/`PUT /v1/admin/site-theme` (session only, site admins only), because the
-  weblog routes withhold it. The site space's traffic (ruling R25: Global › Traffic links its
-  "Site pages" row there) is read through `GET /v1/admin/traffic/{handle}` (site admins only; the weblog
-  route never offers the site space); the rail does not offer it on the site space;
-  `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
-  weblog for any other request (and for a non-admin, an anonymous caller or any
-  API/MCP request), so a refusal looks exactly like an unknown handle (redirect
-  to access-denied; API 404). `MenuHelper` shows only those three tabs on the
-  site space, and `userWeblogs` grants refuse it, so it is never in a weblog
-  list. `SharedThemeRules.offered` gives the site space `journal`,
-  `portfolio`, `travel` and `frontpage` and never a custom theme; other weblogs
-  get everything but `frontpage` (unless already on it). The custom-theme
-  import applies `offered` too, so a posted `frontpage` import is refused
-  like a posted `frontpage` switch. Re-importing the current theme keeps a
-  customised stylesheet; when that check cannot run, the import is refused
-  (`generic.error.check.logs`), never run as though nothing was customised.
-  Covered by `SiteSpaceAccessTest`, `AdminSiteThemeApiTest` and `SitePagesIT`.
-- **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
-  `BaseController.populateCommonModel` resolves the caller's weblog
-  permissions to `List<Weblog>` and adds `userWeblogs` only then.
-  `switcherAction` is the current admin action when it is one of the reusable
-  ones (`entries`, `trash`, `submissions`, `comments`, `categories`, `pages`,
-  `mediaFileView`, `themeEdit`, `weblogConfig`, `members`), else `entries`, so
-  switching from Global Config lands on the entry list, not a 403. The
-  permission lookup is a log-and-return `catch` — a display path, the page
-  being built from `actionWeblog`, which the interceptor resolves separately.
-- **`URLUtilities.getQueryString` URL-encodes both key and value** (raw, `&`
-  started the next parameter, `#` dropped everything after it, `+` became a
-  space; `fn:escapeXml` on the `href` is no repair — its `&amp;` decodes back
-  to `&` before the request is built). **Every caller of
-  `getQueryString`/`getActionURL` passes RAW values** — pre-encoding
-  double-encodes (as `MultiWeblogURLStrategy`'s `cat`/`q` and
-  `PreviewURLStrategy`'s `theme` params once did). The one exception,
-  `getWeblogSearchPageURLTemplate`, keeps its `{searchTerms}` OpenSearch
-  placeholder braces unencoded.
-- **A JSP tag prefix with no declared taglib renders as literal text, not an
-  error** — `<str:truncateNicely>` shipped in three places with no `str`
-  taglib declared anywhere (the JSP twin of Velocity's leniency, see
-  Templates). `JspConsistencyTest` scans for undeclared-prefix tags.
-- **`JspConsistencyTest` pins all of the above as markup shape** — status
-  pills, `.selection-bar`/`.selection-count`, the confirm idiom,
-  `data-invalid-fields`, sidebar grammar, no inline `onclick` on the switcher,
-  undeclared tag prefixes, balanced `<div>`s, heading levels, the href rule
-  below. It covers **every** JSP — the `A_OWNED` exemption is deleted, not
-  replaced.
-- **Every `href` built from an expression is `fn:escapeXml`'d, a `<c:url>` (in
-  a var or inline), or a bare `urls.*` helper call — tree-wide.** The obvious
-  `grep 'href="${' | grep -v escapeXml | grep -v 'c:url\|urls\.'` is mostly
-  false positives and misses a `urls.*` call with a raw field appended
-  (`${urls.weblogAbsolute(w)}${p.slug}` on `Pages.jsp`; a slug is checked
-  against `/` and reserved names, never quotes), so the scan strips the three
-  permitted forms from the whole attribute value and fails on any `${` left;
-  it also sees the inline `<c:url .../>` spelling.
-- **Every printed EL expression in every JSP is escaped or named safe**
-  (`JspConsistencyTest.everyPrintedExpressionIsEscapedOrKnownSafe`): wrap it
-  in `fn:escapeXml`, or add it to `SAFE_EL` with what makes it safe. Its
-  shrink-only `KNOWN_RAW_EL` is empty (since 2026-10); do not refill it. A
-  `${[a, b]}` list is as safe as its elements. The scan cannot see a
-  scriptlet, so `<%= %>` prints nothing but `request.getContextPath()`
-  (`noJspPrintsAScriptletExpressionButTheContextPath`). An entry's title is
-  printed from the controller's plain label (`EntriesController.plainTitle`
-  / `plainTitles`, the `entryTitles` map, the editor's `tabTitle`) through
-  `fn:escapeXml` exactly once, never as `displayTitle` (an untitled entry's
-  is raw body text) and never as the stored title escaped again. A weblog's
-  "about" is plain text, escaped on the Main Menu.
-- **A message argument reaches the reader UNESCAPED, so escape it at the call
-  site.** `tiles/messages.jsp` renders `${msg}` bare and
-  `<c:out value="${error}" escapeXml="false"/>`, deliberately (several
-  messages carry a link or a `<strong>`), so the controller is the escaping
-  boundary. `StringEscapeUtils.escapeHtml4` wraps every user-typed argument;
-  `MessageArgumentEscapingTest` is the ratchet: **any** accessor passed as a
-  message argument must be escaped or named in its allowlist with the
-  mechanism that makes it safe. Blunt on purpose: inferring which accessors
-  return author input is what went wrong at `Weblog.getName()`
-  (`WeblogWrapper` escapes for themes) and `EntryBean.getTitle()` (the
-  *entity* is stored escaped). `Weblog.setName`'s `Utilities.removeHTML` is
-  not a boundary: its no-closing-bracket branch appends the rest verbatim, `<`
-  included, so an unterminated `<img src=x onerror=…` survives. Over-escaping
-  costs too (hence the allowlist): an entry title, already escaped at save by
-  `EntryFieldRules`, renders `&amp;lt;`. (The create-weblog controller that once passed `e.getMessage()` as a message key went with its JSP.)
 
-- **Businesses (Global Admin, `/pressroom-ui/app/admin/businesses`).** List, create/edit form
-  (`/new`, `/:id`) and delete behind the confirmation modal (refused with `business.inUse` while any weblog
-  uses it). `Routes` pins `#businesses-list-marker` and the create form's `#bean_name`. Blog owners
-  choose a business and place details in Settings, section `#settings-business`.
-  Saving a business touches `lastModified` of every weblog using it (see
-  Business profiles in content-features.md).
-- **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the footer falls back to "(c) year blog name"); the bean trims it, `WeblogSettingsRules` bounds it, `/api/v1` mirrors `tagline`.
-- **Footer (colophon)**: `tiles/footer.jsp` renders one `Colophon.of(weblogger, null, clock)` record (holder = `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link, `Pressroom 0.4.0 (abc1234)`, `released yyyy-MM-dd`, each a span, dots from CSS, each omitted when null). Keys are `footer.copyright.default|privacy|version|version.revision|released`; the Velocity footer reuses them and the three class names. The Velocity footer alone also carries `span.colophon-account`, the way into the admin screens from any blog (a blog on `/` replaces the site directory, which had the only such link): Sign in for a visitor, Main menu and Sign out for an author, Sign out for a reader, the frontpage top bar's keys and rules. It is safe in cached pages because page-cache keys carry `/user=<name>` (`ThemeColophonRenderingTest`). Colophon strings are raw: the JSP `fn:escapeXml`s each, and passes message arguments as nested `<spring:argument>` tags, because a string `arguments=` attribute is split on commas and a holder can contain one (the year goes through `escapeXml` too, so MessageFormat prints `2026`, not `2,026`). Every full-page layout includes the footer tile; `tiles-popuppage` (modal/iframe) and `tiles-barepage` (transient script iframe) deliberately do not, and the install/bootstrap pages carry it too: before bootstrap the JSP's Weblogger lookup is caught and `Colophon.of(null, ...)` reads version, revision and build time from the packaged `/pressroom-version.properties` (no copyright line, no privacy link) (`AdminChromeJspTest`, `PressroomViewResolverTest`).
+### Structure
 
-## Password fields
+- **The shell** is `WEB-INF/jsps/app/Shell.jsp`, served by `AppShellController` for any path under
+  `/pressroom-ui/app/` (so a React route needs no server mapping). It loads the stylesheets in this order:
+  Bootstrap, Bootstrap Icons, `pressroom-tokens.css`, `pressroom.css`, then `pressroom-editor.css` (the editor
+  surface's layout, which the JSP-era `head.jsp` loaded only on the editor screens; the shell is one page for all of
+  them, and `AppShellJspTest` pins the order), one JSON bootstrap block (`AppBootstrap`, escaped for a script
+  element in Java) and `pressroom-ui/app/admin.js?v=<version>`. No Bootstrap JS: dropdowns, collapses and modals are
+  React state.
+- **Source layout** (`app/frontend/src/admin`): `router.tsx` (the route table, `createBrowserRouter` under
+  `appBasename(contextPath)`, so no code assumes a context path), `routes/` (`railTable.ts`, `visibility.ts`,
+  `RequireAdmin`, `siteRoutes.tsx`), `frame/` (banner, rail, footer, flash and session-expiry bars), `screens/`
+  (one file or folder per screen; `people/`, `pages/`, `media/`, `traffic/` are groups), `components/` (shared
+  widgets), `editor/` (the writing surface), `api/` (the typed client and TanStack Query hooks; `schema.d.ts` is
+  generated from `openapi.json`), `lib/`, `forms/`, `i18n/`, `session/`.
+- **Routes** (all under `/pressroom-ui/app`): `/` (main menu), `/profile`, `/profile/tokens`, `/weblogs/new`,
+  `/weblogs/:handle/{entries,entries/new,entries/:id,trash,comments,categories,media,media/upload,media/:id,pages,
+  pages/new,pages/trash,pages/:id,settings,theme,remove,templates,templates/:id,stylesheet,members,inbox,traffic}`
+  and `/admin/{config,setup,businesses,businesses/new,businesses/:id,maintenance,traffic,users,users/new,
+  users/:userName,agents/new,agents/:userName,tokens}`. The site space is `weblogs/site-space/{pages,media,theme}`.
+  Scopes (`none`, `weblog`, `admin`) say what the frame loads and shows.
+- **One route table for the rail**: `routes/railTable.ts` holds the groups and entries (copied from
+  `editor-menu.xml` / `admin-menu.xml`; `rail.test.ts` parses the XML and fails on drift, so the XML stays while the
+  Velocity theme API `showAuthorMenu` / `MenuModel` still reads it). `routes/visibility.ts` applies the menu rules
+  from `/v1/me` (`globalAdmin`, membership level) and `/v1/meta` (`features`).
+- **Not on `/api`, so in the bootstrap block**: `site.name`, `site.shortName`, `site.siteSpaceHandle` (the API never
+  serves the site space; on that handle the frame fetches no weblog and the rail shows only Pages, Media files and
+  Theme), `sessionTimeoutSeconds` and `colophon` (what `footer.jsp` prints, from `Colophon.of`).
+- **`t(key, ...args)`** (`i18n/`): no arguments returns the value verbatim, arguments run MessageFormat, exactly
+  like the server's `alwaysUseMessageFormat=false`. Bundle values may carry HTML entities (`tabbedmenu.weblog` is
+  `Create &amp; edit`): decode with `plainText`. New message keys go into all eight bundles (English until
+  translated); a key composed at run time is listed whole in a header comment of its file (`MessageKeyTest`).
+- **Drafts** live under `pressroom.appdraft.v1:`; signing out clears them (`clearAllDrafts`, and the
+  `pressroom.js` logout handler for the pages that stay JSP).
+- `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST` (`eslint.config.js`, empty).
 
-Every admin password field has a show/hide button, and a confirm field shows a
-live "Passwords match / don't match" line (2026-11-25), so a person can see what
-a password manager filled in and whether a new password was typed the same twice.
+### Shared pieces (use these, do not re-derive)
 
-- **Opt in by markup**: `data-reveal` on the input (it needs an `id`), and on a
-  confirm field `data-match="<id of the new-password field>"`. The page includes
-  `<jsp:include page="/WEB-INF/jsps/tiles/passwordFields.jsp"/>`, the one place the
-  script (`theme/scripts/pressroom-password.js`) and its four `passwordField.*`
-  labels are written.
-- **On `<form:password>` write `data-reveal="true"`**: Spring's form tags drop an
-  empty dynamic attribute, so `data-reveal=""` never reaches the page.
-- **Wrap the input in `<div class="input-group">` in the JSP; the script never
-  moves it.** Moving it drops focus (the sign-in page's scripted focus, the reset
-  page's `autofocus`).
-- A revealed field goes back to `type="password"` on submit. It is a convenience:
-  the server's checks are unchanged.
-- Tests: `AdminJspHygieneTest` (every password field in the tree opts in; the
-  fragment; `data-match`), `app/frontend/test/password-fields.test.mjs`
-  (`passwordMatchState`), `PasswordFieldsIT`. The reset page cannot be reached with
-  a valid token from the browser suite, so its behaviour rests on the same script
-  proven on the profile page.
+- **`components/Markup`**: the one renderer of a bundle message that carries its own light markup (`b`, `i`,
+  `span`, `p`, and `a` with an http(s) or path `href`; everything else is text). No `dangerouslySetInnerHTML`; a
+  `<script>` in an argument stays text. Escaping is therefore the renderer's job, not the caller's.
+- **`session/flash`** (`useFlash`, `flashState`): a screen hands the next one a one-line message through router
+  state (`navigate(to, { state: flashState('...') })`); the receiving screen shows `useFlash()`.
+- **`lib/bulk`** (`runBulk`, `BULK_CONCURRENCY = 4`): a bulk action is one API call per item, four at a time,
+  never stopping at a failure; the failures come back with their errors so the screen says which and why in place.
+  `components/BulkProgress` and `components/SelectionBar` are its UI (the `.selection-bar` grammar: hidden until a
+  row is checked, the header checkbox excluded from the count).
+- **`lib/permission`** (`useWeblogRights`, `RequireLevel`) and **`routes/RequireAdmin`**: what the server's
+  `requiredWeblogPermissionActions` / `requiredGlobalPermissionActions` did for the JSP controllers. A screen needing
+  a weblog level wraps itself in `RequireLevel level handle`; a site-admin screen sits behind `RequireAdmin`. Both
+  render the not-found treatment (or nothing and fetch nothing) for anyone else, as the API answers 404 for what the
+  caller may not see. The server is still the authority; this is what the person is shown.
+- **`components/`**: `ConfirmDialog` and `FormDialog` (every confirmation; there is no `confirm()`), `ProblemBanner`
+  (an API problem in place, with `forms/useFieldErrors` marking the fields it names), `EmptyState`
+  (`.empty-state`: one sentence, at most one primary action), `StatusPill` (`.status-pill.status-<state>`, the one
+  pill for every entry and page state, plus the `unsaved` state of a new entry), `DateTime`, `Pager`,
+  `PasswordFields` (show/hide and the "match" line).
+- **`screens/media/MediaChooser`**: `<MediaChooser handle imagesOnly? onSelect(choice) onCancel />`,
+  `choice = {id, name, url, isImage, file}`; `imagesOnly` lists images outside private folders (what featured and
+  share images accept). It does not close itself; the host unmounts it in `onSelect` or `onCancel`.
+- **`editor/CodeMirrorField` + `editor/EditorSurface`**: the Markdown surface the entry and page editors share
+  (`kind="page"` picks the page preview routes): toolbar, write/split/preview with the weblog's theme in the frame,
+  media insert, shortcodes (`shortcodeCards.ts`), word count and reading time. A page has one save, so Ctrl+S and
+  Ctrl+Enter both save. `CodeMirrorField` wraps `src/editor.js`, which also builds the highlighter; there is no
+  separate editor bundle any more. **Test seams** the browser suite names (`it/support/Editor.java`):
+  `window.pressroomGetEntryText`, `window.pressroomSetEntryText` (`CodeMirrorField`) and
+  `window.pressroomUploadImages` (`EditorSurface`). They are production code; do not remove or rename them.
+- **`api/upload`**: one multipart XHR per file (fetch has no upload progress), two at a time, each with its own
+  progress bar and its own refusal.
 
-## Categories
-- **Ownership-check every id.** `BaseController.lookupEntry`/
-  `lookupTemplate`/`lookupCategory`/`lookupPage` are the by-id ownership
-  family: the permission interceptor only vouches for the *action* weblog, so
-  a global by-id lookup lets any editor rewrite any weblog's data. All four
-  treat a blank id as absent. Both `removeId` and `targetCategoryId` need it
-  — a foreign move target re-files entries into someone else's blog.
-  No controller compares owners by hand (2026-11): comment moderation,
-  the entry filter, form-submission deletes and the editors' image
-  previews go through `WeblogOwnership.comment`/`entry`/`formSubmission`/
-  `mediaFile` (a file's weblog is its directory's; the previews compared
-  `MediaFile.weblog` and could disagree). A lookup that throws reads as
-  absent: the id is skipped and counted out, never acted on, and the raw
-  id is never logged. `MediaFileBase`/`MediaUploads` still check by hand.
-- **The category dialogs are React (wave 1)**: add and edit are one `CategoryDialog` (POST or PATCH by whether it
-  holds a category), delete is `RemoveDialog` (a category in use needs a `moveTo` target; the category itself is not
-  offered). The old JSP-modal notes (control-NAME binding, `categoryAdd!save.rol`) went with the JSP.
-- The Blogger XML-RPC API and `weblog.bloggercatid` (a raw id with no
-  cascade; deleting its category left the weblog's settings unsaveable) are
-  gone (W2, `V023__drop_w2_fossils.sql`); `removeWeblogCategory` has nothing
-  to null out. `CategoryIT.deletingACategoryLeavesTheWeblogSaveable` still
-  covers the general shape.
+### Writing a screen
+
+- **The server says what the screen shows**: the weblog address is `WeblogView.absoluteUrl` (never site url +
+  handle), page addresses come from the page view, the front-door note from `frontDoor`. A gap the API cannot
+  fill is an ordinary API change (test, OpenAPI snapshot, matrix row, MCP decision or `Exclusion`,
+  `docs/api/README.md`), never a `.rol` call.
+- **Test first, in Vitest** (MSW + the real bundle; `test/admin/support.tsx`, and for the people screens the one
+  harness `test/admin/people/harness.tsx`): each action's success path, its refused path (problem in place), and
+  one test per role difference. Vitest runs jsdom at the app's own origin (`vitest.config.ts`).
+- **A session read of `/api` needs no CSRF header, a write does** (the client sets it). An unauthenticated call is
+  a 401 the session-expired bar handles; the signed-in session's warning bar (`#sessionExpiringBar`) appears two
+  minutes before the container's timeout and never for a session of three minutes or less.
+- **A token's secret lives in component state only** (`people/tokens.tsx`, `TokenReveal`); writes go through
+  `useAction`, not a TanStack mutation (whose result stays in the cache for minutes). Tests assert the secret is in
+  no storage and no cache after Done.
+- **Never restyle by renaming a selector.** Every route's content must keep emitting the CSS marker `Routes` pins
+  for it (`it-selenium/.../support/Routes.java`); `RouteSweepIT` asserts it on every route. Update both in one
+  commit.
+- **Design system**: `docs/design/design-system.md` ("Quiet Instrument"). Tokens live in
+  `pressroom-ui/styles/pressroom-tokens.css` (light under `:root`, dark under `prefers-color-scheme`, self-hosted
+  IBM Plex), loaded after Bootstrap and before `pressroom.css`; `DesignTokenTest` enforces the ordering, that every
+  hex literal traces to the spec's values, and that light and dark define the same tokens.
+  Buttons theme through Bootstrap's `--bs-btn-*` custom properties, never our own `:hover`/`:active` rules.
+  `.form-stacked` on a form puts labels above the fields. Sidebar blocks are `.sidebar-group` with a
+  `.sidebar-label`, not a Bootstrap card.
+
+### Cutover checklist (migrating a screen; wave 5 retired the server UI with it)
+
+1. **Read the old screen, its controller and view model first.** The React screen keeps the ids, classes and
+   message keys of the markup it replaces (ITs, CSS and `Routes` select on them). Logic the view model did
+   server-side is ported to a pure TS module with unit tests (`screens/traffic/model.ts`).
+2. **Test first in Vitest**, then the route (`router.tsx`, scope) and the rail entry's `path` in `railTable.ts`.
+3. **`LegacyAdminRedirects`**: add a row for each old GET route (legacy path, React route under
+   `/pressroom-ui/app`, `{placeholder}` to request-parameter map, carried query parameters; `old>new` renames one;
+   `otherwise` gives the route when a path parameter is missing) and a test per row in `LegacyAdminRedirectsTest`.
+   `LegacyAdminRedirectFilter` (order 74, after Spring Security) answers 302, so a signed-out bookmark signs in and
+   arrives at the new screen. **These rows stay for good: old bookmarks, emails and the legacy `.rol` links keep
+   working.** A route is redirected or handled by a controller, never both
+   (`noRedirectedRouteIsStillHandledByAController`).
+4. **Delete after grepping every reference** (JSPs, Java, `.vm` under `themes` and `WEB-INF/velocity`, tests, CSS
+   comments): the JSP, controller, view model, `PressroomViewResolver` definitions, `view-definitions.golden`
+   blocks, JSP-scanning tests, and the message keys `MessageKeyTest` reports.
+5. **Browser ITs at both context paths**: add the screen to `Routes.APP` (a marker only the screen emits), remove
+   the old `.rol` entries (`RouteCoverageTest` demands it), port the ITs that drove the old screen, extend
+   `LegacyAdminRedirectIT`, run `RouteSweepIT` and the touched classes at `/` and with
+   `-Dit.context.path=pressroom` (`docs/dev/browser-its.md`).
+
+### LegacyAdminRedirects
+
+`ui/core/filters/LegacyAdminRedirects` (the table), `LegacyAdminRedirectFilter` (the 302), `MenuHelper.appPath`
+(reads the same table). Covers every former admin `.rol` GET: menu, traffic, site traffic, weblog settings, theme,
+templates, stylesheet, members, submissions, remove, pages, media, entries, trash, comments, categories, global
+config, setup, businesses, maintenance, tokens, users, agents, profile. The redirect carries the query parameters
+the table names and drops the rest (the old `page` number is dropped: first page).
+
+### What stays JSP, and why
+
+Login, forgot/reset password, the installer and database pages (`InstallStart`, `CreateDatabase`,
+`UpgradeDatabase`, `Bootstrap`, `DatabaseError`: they run before the business tier exists, so there is no API to
+call), `GenericError`, `SiteDirectory` (public), the reader `Account` page (a signed-in reader holds no admin
+authority, so the admin API refuses them), the shell, and the tiles they render with: `.tiles-loginpage`,
+`.tiles-installpage`, `.tiles-errorpage`, `.tiles-simplepage` and the fragments `head`, `bannerStatus`,
+`bannerInstallation`, `messages`, `footer`, `empty`, `passwordFields`. `PressroomViewResolver` registers exactly
+those. `theme/scripts/pressroom.js` keeps the cookie helpers the sign-in page uses, the `data-confirm` handler the
+Account page uses, and the sign-out draft clear. The rules that apply to them are in `CLAUDE.md` (escaping,
+`data-confirm`, undeclared taglib prefixes) and in `JspConsistencyTest`, `AdminJspHygieneTest` and
+`MessageArgumentEscapingTest`, which scan the JSPs that remain.
+
+**Password fields** (sign-in, reset, installer; the React `PasswordFields` does the same for the admin): a field
+opts in by markup, `data-reveal` on the input (it needs an `id`; on `<form:password>` write
+`data-reveal="true"`, as Spring drops an empty dynamic attribute), a confirm field adds
+`data-match="<id of the new-password field>"`, and the page includes `tiles/passwordFields.jsp`, the one place
+`theme/scripts/pressroom-password.js` and its four `passwordField.*` labels are written. Wrap the input in
+`<div class="input-group">`; the script never moves it (moving it drops focus). A revealed field goes back to
+`type="password"` on submit. Tests: `AdminJspHygieneTest`, `frontend/test/password-fields.test.mjs`,
+`PasswordFieldsIT`.
+
+### Rules that outlived the JSPs
+
+- **Ownership-check every id.** The permission interceptor only vouches for the *action* weblog, so a global by-id
+  lookup lets any editor rewrite any weblog's data. Every by-id lookup goes through `WeblogOwnership` (`entry`,
+  `page`, `trashedPage`, `template`, `comment`, `formSubmission`, `mediaFile` (a file's weblog is its directory's),
+  `publicImage`) or `BaseController.lookup*`'s successors in the API's base classes; a blank id is absent, a lookup
+  that throws reads as absent, and the raw id is never logged. A foreign `moveTo` or `targetCategoryId` re-files
+  entries into someone else's blog, so it needs the check too.
+- **An admin cannot lock themselves out**: on their own account the person editor refuses unticking Administrator
+  (`userAdmin.cantChangeOwnRole`) and Enabled (`userAdmin.error.cantDisableSelf`), checked in `AdminApi.patchUser`
+  (`AccountRules.selfLockoutProblems`) before anything on the form is applied.
+- **Admin > Users is a list**: every account, All / People / Agents tabs and a `q` filter the server applies
+  (`UserManager.getAccounts`). `UserDataServlet` is gone (it let any editor list every account).
+- **Global Config validates `site.privacy.page`** as a page reference (`PageReference`): `slug` is a published site
+  page, `handle/slug` a published page on that blog. Checked by `SiteSettingsRules` (shared with
+  `PATCH /api/v1/admin/config`) only when the value changed; an unknown or draft page, or a lookup that throws,
+  refuses the save (fail closed). A page unpublished later never blocks an unrelated save. A change to the slug,
+  the front door, the privacy page or `site.absoluteurl` touches every weblog and the site space and clears the
+  site-wide cache (`themes-and-templates.md`).
+- **The front-page select** (`site.frontpage.weblog.handle`) offers the site directory (empty), an optgroup of
+  published site pages (`page:<slug>`, stored as `site.frontpage.page`, blanking the handle) and the blogs (never
+  the site space). With no published site page it shows a hint linking the site space's React Pages route. Setting
+  both is refused (`configForm.error.frontpage.bothSet`).
+- **Site settings rules live in `ui.controllers`**: `SiteSettingsRules` judges values (type and range via
+  `PropertyType.check`, the front door, the privacy page) and returns `RuleViolation`s; `SiteSettingsEffects.afterSave`
+  touches every weblog when a `RENDERED_PAGE_INPUTS` value changed. Error order is pinned by
+  `AdminConfigCharacterisationTest`.
+- **The Site section (global admins only).** `GET /v1/me/weblogs` returns `siteSpace`, creating the hidden
+  `site-space` weblog on first read (absent for everyone else); the main menu shows a Site row with Pages, Media and
+  Theme, the only three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()` is false by
+  default and true on `PagesApi` and the media API; `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
+  weblog for anything else, so a refusal looks exactly like an unknown handle (API 404). It offers the site space
+  only to a **global admin's interactive session** (form login, remember-me or reader SSO: `Caller.Kind.SESSION`),
+  reads and writes alike, never to a token, a password caller, an anonymous or an unrecognised caller.
+  `SharedThemeRules.offered` gives it `journal`, `portfolio`, `travel` and `frontpage`, never a custom theme. The
+  React Theme screen reaches it through `GET`/`PUT /v1/admin/site-theme` (session only), Global Config reads its
+  pages through `GET /v1/admin/site-pages` (admin-scoped, token-readable, read-only), its traffic through
+  `GET /v1/admin/traffic/{handle}`. Covered by `SiteSpaceAccessTest`, `AdminSiteThemeApiTest`, `SitePagesIT`.
+- **A message argument reaches the reader UNESCAPED on the JSPs that remain**: `tiles/messages.jsp` renders the
+  message bare, so the controller is the escaping boundary (`StringEscapeUtils.escapeHtml4` on every user-typed
+  argument; `MessageArgumentEscapingTest` is the ratchet). The React screens render messages through `Markup`,
+  which escapes.
+- **Businesses** (`/admin/businesses`): list, create/edit (`/new`, `/:id`) and delete behind a confirmation
+  (refused with `business.inUse` while any weblog uses it); `Routes` pins `#businesses-list-marker` and the create
+  form's `#bean_name`. Blog owners choose a business in Settings, section `#settings-business`. Saving a business
+  touches `lastModified` of every weblog using it (content-features.md).
+- **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the
+  footer falls back to "(c) year blog name"); `WeblogSettingsRules` bounds it; `/api/v1` mirrors `tagline`.
+- **Footer (colophon)**: `tiles/footer.jsp` (and the React frame) render one `Colophon.of(...)` record (holder =
+  `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link,
+  `Pressroom <version> (<revision>)`, `released <date>`, each a span, each omitted when null).
+- **Maintenance** is a Global Admin screen: its three per-weblog actions (flush cache, rebuild index, regenerate
+  renditions) pick a weblog; Rebuild index is absent while `search.enabled` is off (`/v1/meta`
+  `features.searchEnabled`).
+- **`URLUtilities.getQueryString` URL-encodes both key and value**; every caller passes RAW values (pre-encoding
+  double-encodes).
+- The Blogger XML-RPC API and `weblog.bloggercatid` are gone (`V023__drop_w2_fossils.sql`).
+
+### Per-wave notes
+
+- **Wave 1 (entries, editor, trash, comments, categories)**: `/weblogs/:handle/entries` filters `status category
+  tags text startDate endDate sortBy offset`; `entries/new?mediaId=` seeds an entry from media files; comments
+  take `?status=PENDING|PUBLISHED|HIDDEN`, `?entry=<id>`, `offset`, and `GET .../comments` returns `total` and takes
+  `topLevel=true`. Emptying the publish time sends `clear: ["pubTime"]`. The category dialogs are one
+  `CategoryDialog` (POST or PATCH) and `RemoveDialog` (a category in use needs a `moveTo`). `editor.mode.*` labels
+  are composed; the keys are listed in `EditorSurface.tsx`'s header.
+- **Wave 2 (pages and media)**: the strand "Add posts" control is a search over the entries `text` search (20
+  results); the page trash shows the retention from `meta.pageTrashRetentionDays`; uploads share description,
+  copyright and tags by PATCH afterwards; search sends `q`, `type`, `largerThan` (bytes), `tags`; Delete folder is
+  offered for an empty, non-default folder; Replace file (`PUT .../media/{id}/content`) is sent first on Save;
+  Crop loads the Cropper.js v2 webjar on demand (`crop.ts`).
+- **Wave 3 (settings, create, theme, templates, stylesheet, members, inbox, remove)**: `subscribeForm` is
+  `on`/`offNoList`/`offNotConfigured`, `customDomainOutsideCertZone` is the "no wildcard certificate" warning,
+  `GET /v1/meta` carries `maxEntriesPerPage`; create-weblog prefills from `GET /v1/me/profile`. The theme preview is
+  not an admin screen and stays (`/pressroom-ui/authoring/preview/{handle}?theme=`, `ServletRegistrationConfigTest`).
+  Template action labels are `ComponentType`'s names copied into `Templates.tsx` (`TemplateActionNamesDriftTest`).
+- **Wave 4 (people and site screens)**: `RequireAdmin` guards the admin routes; `UserView` carries `weblogCount` and
+  `lastActive`; the create form offers the emailed link only while `features.mailConfigured`; Profile hides the
+  password fields for a single-sign-on account (`ProfileView.sso`); Global Config saves only the keys that
+  changed; Setup counts users and weblogs over every page of the list routes; the ITs reach Global Config through
+  `PressroomIT.openGlobalConfig` and `clickAndAwaitSavedMessage` (a React save is an API call, so the barrier is the
+  success message, not a new page).
+- **Wave 5 (retirement)**: deleted the tabbed and main-menu layouts and their menu-model include, `userStatus`,
+  the editor JSPs (`EditorSurface`, `EditorScript`, `StatusPill`, `SessionExpiryBar`), the standalone editor bundle
+  and the admin-only scripts (`pressroom-draft.js`, `-guard-submit`, `-reorder`, `-strand-parts`), the weblog
+  switcher and menu plumbing in `BaseController`, and the JSP-only tests. The shell now loads
+  `pressroom-editor.css`.
 
 ## Agent accounts and API tokens
 
@@ -424,185 +340,3 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **New message keys go into all eight bundles** (English until translated);
   `AgentAccountMessagesTest` checks the `userList.`, `personForm.`, `userWeblogs.`, `apiTokens.` and
   `agent.` prefixes.
-
-## React app frame (`app/frontend/src/admin`)
-
-The React admin's frame reproduces the tiles chrome with the same markup and classes
-(`#adminRail`, `.rail-active`, `.draft-bar`, `h1.pressroom-page-title`), so the existing CSS
-styles it. Spec: `docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`.
-
-- **One route table for the rail**: `routes/railTable.ts` (groups and entries copied from
-  `editor-menu.xml` / `admin-menu.xml`; `rail.test.ts` parses the XML and fails on drift).
-  An entry is a legacy `.rol` link until it gets a `path`; adding the `path` is the whole
-  migration of the rail link. `routes/visibility.ts` applies the menu rules from `/v1/me`
-  (`globalAdmin`, membership level) and `/v1/meta` (`features`).
-- **Not on `/api`, so in the shell's bootstrap block** (`AppBootstrap`): `site.name` (the brand),
-  `site.shortName` (the tab title), `site.siteSpaceHandle` (the API never serves the site space, so the frame
-  cannot ask for it; on that handle the frame fetches no weblog and the rail shows only Pages, Media files and
-  Theme, `MenuHelper`'s rule) and `colophon` (copyright holder and year, privacy URL, short revision, release
-  date: what `footer.jsp` prints, from `Colophon.of`; a fact the Colophon lacks is left out, not written empty).
-  The rail's weblog link is `WeblogView.absoluteUrl`.
-- **`t(key, ...args)`** (`i18n/`): no arguments returns the value verbatim, arguments run
-  MessageFormat (`{n}`, `''`, quotes, `choice`, `number`), exactly like the server's
-  `alwaysUseMessageFormat=false`. JSP-era values may carry HTML entities
-  (`tabbedmenu.weblog` is `Create &amp; edit`): decode with `plainText`.
-- **No Bootstrap JS in the shell**: dropdowns, collapses and modals are React state
-  (`show` classes), not `data-bs-*`.
-- **Drafts** live under `pressroom.appdraft.v1:` (not the JSP editors' `pressroom.draft.v1:`,
-  whose sweeper deletes keys of any other shape); sign-out clears both.
-- `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST`
-  (`eslint.config.js`, empty).
-
-## Migrating a screen to React
-
-The cutover pattern every wave copies (spec A8). The first three screens (main menu, weblog traffic, site
-traffic) are the worked example: `LegacyAdminRedirects`, `LegacyAdminRedirectsTest`,
-`LegacyAdminRedirectIT`, `Routes.APP`, `screens/Home.tsx`, `screens/traffic/`.
-
-1. **Read the JSP, its controller and its view model first.** The React screen keeps the ids, classes and
-   message keys of the markup it replaces (ITs, CSS and `Routes` select on them). Logic the view model did
-   server-side (formatting, merging, chart geometry) is ported to a pure TS module with unit tests
-   (`screens/traffic/model.ts`); a gap the API cannot fill is an ordinary API change (test, OpenAPI snapshot,
-   matrix row, MCP decision or `Exclusion`, `docs/api/README.md`), never a `.rol` call.
-2. **Test first, in Vitest** (MSW + the real bundle): each action's success path, its refused path (problem
-   in place), and one test per role difference. Dynamic message keys are listed whole in a header comment
-   (`MessageKeyTest`).
-3. **The route table**: give the screen its route in `router.tsx` (scope `none`, `weblog` or `admin`) and its
-   entry a `path` in `routes/railTable.ts` (the rail then links it client-side and marks it active).
-4. **One table of legacy URLs**: add a row to `LegacyAdminRedirects.ROWS` (legacy path, React route under
-   `/pressroom-ui/app`, `{placeholder}` to request-parameter map, carried query parameters) and a test per row
-   in `LegacyAdminRedirectsTest`. `LegacyAdminRedirectFilter` (order 74, after Spring Security, so the old
-   URL keeps its authorisation and a signed-out bookmark signs in and arrives at the new screen) answers 302;
-   its URL patterns come from the table. `MenuHelper.appPath` reads the same table, so the JSP rail
-   (`tiles-tabbedpage.jsp`, `tiles-mainmenupage.jsp`: `MenuTabItem.appPath`) links the React route with no menu
-   XML edit. A route is redirected or handled by a controller, never both: the guard
-   (`noRedirectedRouteIsStillHandledByAController`) fails until the controller is deleted.
-5. **Delete, after grepping every reference** (JSPs, Java, `.vm`, tests, CSS comments): the JSP, controller,
-   view model, `PressroomViewResolver` definitions, `view-definitions.golden` blocks, JSP-scanning tests,
-   and the message keys `MessageKeyTest` reports (keys the React screen uses are not orphans). Controllers
-   that `redirect:` to a migrated screen point at the React route directly.
-6. **Browser ITs, at both context paths**: add the screen to `Routes.APP` (marker = an element only the
-   screen emits; the sweep waits for a client-rendered marker), remove the old `.rol` entries (the
-   `RouteCoverageTest` stale check demands it), port every IT that drove the JSP screen to the React one, and
-   extend `LegacyAdminRedirectIT`. Run `RouteSweepIT` and the touched classes with
-   `mvn -o verify -Pit -DskipUnitTests=true -Dit.test=...` at `/` and with `-Dit.context.path=pressroom`.
-7. **Hazards**: a session read of `/api` needs no CSRF header, a write does (the client sets it); the shell
-   is served for any path under `/pressroom-ui/app/`, so a React route needs no server mapping; an
-   unauthenticated SPA call is a 401 the session-expired bar handles.
-### Wave 1 screens (entries, editor, trash, comments, categories): cut over
-
-`Entries`, `EntryEditor`, `Trash`, `Comments` and `Categories` (`screens/`, `editor/`) replaced `Entries.jsp`,
-`EntryEdit.jsp`/`EntryEditor.jsp`, `Trash.jsp`, `Comments.jsp`, `Categories.jsp`, their sidebars, view models and
-nine controllers. Routes: `/weblogs/:handle/entries` (filters `status category tags text startDate endDate sortBy
-offset`), `.../entries/new` (`?mediaId=` seeds it from media files), `.../entries/:id`, `.../trash`,
-`.../comments` (`?status=PENDING|PUBLISHED|HIDDEN`, `?entry=<id>`, `offset`), `.../categories`. Every old GET `.rol`
-route (`entries`, `entryAdd`, `entryEdit`, `entryEdit!firstSave`, `entryAddWithMediaFile`, `trash`, `comments`,
-`categories`) is a `LegacyAdminRedirects` row; a `carried` entry written `old>new` renames a query parameter
-(`bean.status>status`). The old `page` number is dropped (first page).
-
-- **Flash**: a screen hands the next one a message with router state `{message}` (`session/flash.ts`); the editor's
-  Delete does so for the list ("Entry ... moved to Trash"), the list's Duplicate for the editor.
-- **Session expiry**: the bootstrap carries `sessionTimeoutSeconds` (the container's `maxInactiveInterval`);
-  `SessionExpiryBar` (`#sessionExpiringBar`) warns two minutes before it, restarting on input, and never for a
-  session of three minutes or less. The signed-out bar (`SessionExpiredBar`, `#sessionExpiryBar`) is the 401 half.
-  `SessionExpiryBar.jsp` stays until the template and stylesheet JSPs (its last users) go.
-- **Counts**: `GET .../comments` returns `total` (what matches, replies included) and takes `topLevel=true` (replies
-  left out of items and total); the editor's "N published, M awaiting" line asks `limit=1&topLevel=true` per status.
-- **Emptying the publish time**: the editor sends `clear: ["pubTime"]` (a draft goes back to having none; Publish
-  means now; Schedule with none is refused).
-- **Browser-suite seams** (production code the ITs name, `it/support/Editor.java`): `pressroomGetEntryText`,
-  `pressroomSetEntryText` (`CodeMirrorField`) and `pressroomUploadImages` (`EditorSurface`), the names the JSP
-  editors' script gave them. `it/support/AdminApp.java` names the screens' routes and controls for the ITs.
-- **`editor.mode.*`** labels are composed; the keys are listed in `EditorSurface.tsx`'s header for `MessageKeyTest`.
-- **Left for later passes**: `EditorSurface.jsp`/`EditorScript.jsp`/`StatusPill.jsp` (the page editor and Pages list
-  still include them), `SessionExpiryBar.jsp`, the menu XML `subactions` of the removed controllers.
-
-
-### Pages and media screens (`screens/pages`, `screens/media`, wave 2, cut over)
-
-Routes `/weblogs/:handle/pages` (+ `/new`, `/trash`, `/:id`) and `/weblogs/:handle/media`
-(+ `?dir=<directoryId>&sort=&q=&type=&size=&unit=&tags=`), `.../media/upload` (`?dir=` preselects the folder),
-`.../media/:id`. The legacy routes redirect (`LegacyAdminRedirects`: `pages.rol`, `pageEdit.rol` (an `id` or the
-new page), `pagesTrash.rol`, `mediaFileView.rol` (`directoryId` is `dir`, `sortBy` is `sort`), `mediaFileAdd.rol`,
-`mediaFileEdit.rol`, and the image chooser overlay, which has no page of its own and opens the library); the JSPs,
-controllers, beans and POST actions are gone. The table gained two optional parts for this: an alternative route when
-a path parameter is missing (`otherwise`); a query rename is written `old>new` in a carried entry.
-
-- **The page editor writes on the shared `EditorSurface`** (`kind="page"` picks the page preview routes): toolbar,
-  write/split/preview with the weblog's theme in the frame, media insert, shortcodes. A page has one save, so
-  Ctrl+S and Ctrl+Enter both save. Its address, and the front-door note, come from the page view
-  (`absoluteUrl`, `frontDoor`), never rebuilt from the site URL; the slug prefix is `WeblogView.absoluteUrl`.
-- **Strand "Add posts"** is a search box over the entries `text` search (20 results), not the first 200 posts; a
-  chosen part keeps its title when a later search replaces the choices.
-- **The page trash** shows the retention sentence and the "Deleted permanently" date from
-  `meta.pageTrashRetentionDays` (its own setting, not the entries') plus the page's `trashedAt`.
-- **Uploads are one multipart XHR per file** (`api/upload.ts`; fetch has no upload progress), two at a
-  time, each with its own progress bar and its own refusal. The shared description, copyright and tags are
-  PATCHed onto every created file afterwards. Bulk move/delete use `api/bulk.ts` (spec A6).
-- **Search**: `q`, `type`, `largerThan` (bytes; the form converts KB and MB) and `tags` (any of) all go to the API,
-  so a page of results holds the matches.
-- **Delete folder** is offered only for an empty, non-default folder (the API refuses the others:
-  `directory.notEmpty`, `directory.isDefault`); the JSP offered it only with no files listed too.
-- **Replace file** (`PUT .../media/{id}/content`, multipart) is sent first on Save, so a refusal (size, quota, type)
-  stops before any other change.
-- **Crop** loads the Cropper.js v2 webjar on demand (`crop.ts`, `loadCropper`); the maths (`cropRectInNaturalPixels`,
-  `seedSelection`) are pure and tested, the custom elements are typed in `cropper-elements.d.ts`.
-- **Entries from files**: "New entry with selected" and the post-upload step open
-  `/weblogs/:h/entries/new?mediaId=...` (one `mediaId` per file); the site space has no posts, so it offers neither.
-  The JSP's "file enclosure" choice is gone: the server never read it.
-- **`MediaChooser`** (`screens/media/MediaChooser.tsx`) is the reusable modal for the entry and page editors:
-  `<MediaChooser handle imagesOnly? onSelect(choice) onCancel />`, `choice = {id, name, url, isImage, file}`;
-  `imagesOnly` lists images outside private folders (what featured and share images accept). It does not close
-  itself; the host unmounts it in `onSelect` or `onCancel`.
-- Vitest runs jsdom at the app's own origin (`vitest.config.ts`), so the upload XHR is same-origin as in production.
-### Wave 3 screens, cut over (settings, create, theme, templates, stylesheet, members, inbox, remove)
-
-Routes `/weblogs/new`, `/weblogs/:handle/{settings,theme,templates,templates/:id,stylesheet,members,inbox,remove}`.
-Their legacy `.rol` GETs (`weblogConfig`, `createWeblog`, `themeEdit`, `templates`, `templateEdit`, `stylesheetEdit`,
-`members`, `submissions`, `weblogRemove`) are rows in `LegacyAdminRedirects` (`templateEdit` carries `bean.id`, the inbox
-its `page`); the controllers, JSPs, tiles definitions, POST actions and the `ThemeDataServlet` (the old create page's
-theme picker) are gone. The beans the API shares (`WeblogConfigBean`, `CreateWeblogBean`, `TemplateEditBean`) and
-`Memberships` stay under `ui/controllers`.
-
-- **The server says what the screen shows**: the weblog address is `WeblogView.absoluteUrl` (never site url + handle),
-  `subscribeForm` is `on`/`offNoList`/`offNotConfigured`, `customDomainOutsideCertZone` is the "saved, but no wildcard
-  certificate" warning, `GET /v1/meta` carries `maxEntriesPerPage` (the field's max and its "At most N" tip), and
-  create-weblog prefills email, locale and zone from `GET /v1/me/profile`.
-- **The site space is withheld from `/v1/weblogs/{handle}`**, so the Theme screen reads and switches it through
-  `GET`/`PUT /v1/admin/site-theme`, and Settings hides the front-page row on it (`boot.site.siteSpaceHandle`).
-- **The theme preview is not an admin screen** and stays: `/pressroom-ui/authoring/preview/{handle}?theme=` renders a weblog
-  page under the preview servlets (`ServletRegistrationConfigTest` pins it).
-- Template action labels are `ComponentType`'s readable names (Java literals, never message keys), copied into
-  `Templates.tsx`; `TemplateActionNamesDriftTest` pins the copy to the enum.
-
-### Wave 4 people screens (`screens/people/`)
-
-Routes: `/admin/users` (`?kind=&q=`), `/admin/users/new`, `/admin/users/:userName`,
-`/admin/agents/new`, `/admin/agents/:userName`, `/admin/tokens`, `/profile`, `/profile/tokens`
-(`routes.tsx`; the admin ones sit behind `RequireAdmin`, which renders nothing and fetches nothing
-for a non-admin, as do `/admin/traffic` and the site-group routes). Cut over (spec A8): the old
-`userAdmin`, `createUser`, `modifyUser`, `createAgent`, `agent`, `apiTokens`, `profile` and `profileTokens`
-`.rol` routes redirect (`LegacyAdminRedirects`), their controllers, JSPs and view models are deleted, and the
-rail and the `userStatus.jsp` account link point at the React routes.
-
-- **A token's secret lives in component state only** (`tokens.tsx`, `TokenReveal`), and writes
-  go through `useAction`, not a TanStack mutation (whose result stays in the mutation cache
-  for minutes). Tests assert the secret is in no storage and no cache after Done and after
-  navigating away.
-- The user edit page reads its account from `GET /v1/admin/users/{userName}` (404 `user.notFound` renders the
-  JSP's "No such user"). `UserView` carries `weblogCount` and `lastActive` (a person's last sign-in, an agent's
-  newest token use), so the list makes no call per row.
-- The create form offers the emailed link (the default) only while `/v1/meta` says `features.mailConfigured`;
-  otherwise a password is set now. It has the Enabled box (`enabled` on `POST /v1/admin/users`).
-- Profile hides the password fields for a single-sign-on account (`ProfileView.sso`) and, after a save,
-  lands on the app home with "Changes saved", as the JSP's redirect did.
-
-### Wave 4 site screens (`screens/GlobalConfig.tsx`, `Setup.tsx`, `Businesses.tsx`, `BusinessEdit.tsx`, `Maintenance.tsx`)
-
-Routes `/admin/config`, `/admin/setup`, `/admin/businesses` (+ `/new`, `/:id`) and `/admin/maintenance`, all behind
-`RequireAdmin` (`routes/siteRoutes.tsx`). Cut over: `globalConfig`, `setup`, `businesses`, `businesses!edit` and
-`maintenance` `.rol` redirect, their controllers, JSPs and view models are deleted. Global Config saves only the
-keys that changed (`PATCH /v1/admin/config`); Setup counts users and weblogs over every page of the list
-routes and links the React create-user and create-weblog screens; the Browser ITs reach Global Config through
-`PressroomIT.openGlobalConfig` and `clickAndAwaitSavedMessage` (a React save is an API call, so the barrier is
-the success message, not a new page).

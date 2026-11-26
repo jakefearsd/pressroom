@@ -1,6 +1,6 @@
 # Entries, trash and pages
 
-> Wave 1 of the React admin migration replaced the entries list, the entry editor and the trash with React screens (docs/dev/admin-ui.md, "Wave 1 screens"). The JSP, controller and form-bean details below describe the code that was deleted; the API, rules and hazards still apply.
+> Wave 1 of the React admin migration replaced the entries list, the entry editor and the trash with React screens (docs/dev/admin-ui.md, "Per-wave notes"). The JSP, controller and form-bean details below describe the code that was deleted; the API, rules and hazards still apply.
 
 Developer notes moved out of `CLAUDE.md` (which is sent with every
 request) so they are read only when this area is being changed. Section
@@ -610,7 +610,7 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   held by a site page of any status (`createWeblog.error.handleIsSitePage`).
   Only PUBLISHED pages are served; a draft slug is a 404. Routing:
   `routing.md`, "The site root". Rendering: `themes-and-templates.md`.
-  Access: `admin-ui.md`, "The Site section".
+  Access: `admin-ui.md`, "Rules that outlived the JSPs".
 - **Lazy resolution**: parsing sets only `pageSlug` (no DB access; the
   cache key); `getWeblogPageContent()` resolves it memoized, so a cache hit
   never resolves the page. An unknown or draft slug is a 404, never a

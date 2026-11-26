@@ -797,7 +797,7 @@ map assets without this macro fails the build.
 - **Custom domains.** `ControlPlaneHostFilter` 301s `/pressroom-ui/**` to the
   site host. A redirected script is cross-origin and every theme's CSP is
   `script-src 'self'`, so the filter exempts exactly
-  `/pressroom-ui/scripts/pressroom-content.js`. The editor bundle beside it is
+  `/pressroom-ui/scripts/pressroom-content.js`. Everything else under `/pressroom-ui` is
   still control plane.
 - **Theme fixes that came with it.** Portfolio's `body.pf a` (inherit, no
   underline) stays for the chrome. Content links (`body.pf .pf-entry-content
