@@ -466,3 +466,27 @@ styles it. Spec: `docs/superpowers/specs/2026-11-25-react-admin-migration-design
   whose sweeper deletes keys of any other shape); sign-out clears both.
 - `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST`
   (`eslint.config.js`, empty).
+
+### Media screens (`screens/media`, wave 2, not yet cut over)
+
+Routes `/weblogs/:handle/media` (+ `?dir=<directoryId>&sort=&q=&type=&size=&unit=&tags=`), `.../media/upload`
+(`?dir=` preselects the folder), `.../media/:id`. They replace `MediaFileView`, `MediaFileAdd(Success)`,
+`MediaFileEdit(Success)` and `MediaFileSidebar` (the sidebar groups render inline, there is no sidebar column).
+
+- **Uploads are one multipart XHR per file** (`api/upload.ts`; fetch has no upload progress), two at a
+  time, each with its own progress bar and its own refusal. The shared description, copyright and tags are
+  PATCHed onto every created file afterwards. Bulk move/delete use `api/bulk.ts` (spec A6).
+- **Search**: `q` and `type` go to the API; "larger than" and tags are applied client-side to what it returned
+  (`narrow`), because the API has no such filters.
+- **Delete folder** empties the folder file by file first, then deletes it: the API refuses a non-empty or
+  default folder (`directory.notEmpty`, `directory.isDefault`), where the JSP deleted both in one go.
+- **Crop** loads the Cropper.js v2 webjar on demand (`crop.ts`, `loadCropper`); the maths (`cropRectInNaturalPixels`,
+  `seedSelection`) are pure and tested, the custom elements are typed in `cropper-elements.d.ts`.
+- **Gaps against the JSP**: no *Replace file* (the API has no replace operation); no site-space check for
+  "New entry with selected" (WeblogView has no `siteSpace`); "New entry with selected" and the post-upload
+  entry step still POST a form (with `_csrf`) to `entryAddWithMediaFile.rol` until the entry editor migrates.
+- **`MediaChooser`** (`screens/media/MediaChooser.tsx`) is the reusable modal for the entry and page editors:
+  `<MediaChooser handle imagesOnly? onSelect(choice) onCancel />`, `choice = {id, name, url, isImage, file}`;
+  `imagesOnly` lists images outside private folders (what featured and share images accept). It does not close
+  itself; the host unmounts it in `onSelect` or `onCancel`.
+- Vitest runs jsdom at the app's own origin (`vitest.config.ts`), so the upload XHR is same-origin as in production.

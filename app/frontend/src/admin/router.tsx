@@ -3,6 +3,9 @@ import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
 import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
+import { MediaEdit } from './screens/media/MediaEdit';
+import { MediaLibrary } from './screens/media/MediaLibrary';
+import { MediaUpload } from './screens/media/MediaUpload';
 
 const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ handle: { scope } });
 
@@ -16,6 +19,9 @@ export const appRoutes: RouteObject[] = [{
   children: [
     { index: true, element: <Home />, ...scoped('none') },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media', element: <MediaLibrary />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media/upload', element: <MediaUpload />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media/:id', element: <MediaEdit />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
