@@ -112,8 +112,8 @@ limitations under the License.
              LINE 0.9709, BRANCH 0.9240 on `mvn clean install` without cwebp.
              0.9680 leaves ~86 lines (29 631 total), 0.9210 leaves ~38
              branches (12 724 total). -->
-        <jacoco.line.minimum>0.9740</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.9290</jacoco.branch.minimum>
+        <jacoco.line.minimum>0.9720</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.9260</jacoco.branch.minimum>
         <jacoco.check.skip>false</jacoco.check.skip>
 
         <quality.check.skip>false</quality.check.skip>

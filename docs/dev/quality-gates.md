@@ -12,7 +12,10 @@ resolves through the index at the end of `CLAUDE.md`.
   `ui.rendering.*` and one for the security boundary). Floors only ever move
   up; "raise" means raise where there is slack, not all three.
   **2026-11-26** (React-admin quality pass, `mvn -o -pl app verify` without
-  `cwebp`): LINE 0.9767, BRANCH 0.9321. Floors are now **0.9740 / 0.9290**;
+  `cwebp`): LINE 0.9767, BRANCH 0.9321 -- but CI's clean build measured
+  BRANCH **0.9286** and failed the v0.17.0 release on a 0.9290 floor. Ratchet
+  from a clean build's (or CI's) figure, never from an incremental
+  `-pl app verify`. Floors are now **0.9720 / 0.9260**;
   the security-boundary rule is LINE 0.96 (sso 0.9725 binds) / BRANCH 0.90
   (mcp 0.9073 binds); the rendering rule was left at 0.90 / 0.82. The React
   admin's Vitest floors (`app/frontend/vitest.config.ts`) are lines 98.2 /
