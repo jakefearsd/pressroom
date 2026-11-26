@@ -253,7 +253,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         bean.setId("gone");
         when(weblogger.getWeblogEntryManager().getWeblogEntry("gone")).thenReturn(null);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()),
                 "A missing entry must not render the editor against a null entry");
     }
@@ -384,7 +384,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     void openingAnEntryWithNoIdBouncesToTheMenu() {
         bean.setId(null);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()));
     }
 
@@ -394,7 +394,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1"))
                 .thenThrow(new WebloggerException("database down"));
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()),
                 "A lookup failure must be handled, not propagated as a 500");
     }
@@ -412,7 +412,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditExecute(request, model, bean, newRedirectAttributes());
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view,
+        assertEquals("redirect:/pressroom-ui/app/", view,
                 "an entryId from another weblog must bounce, exactly like an unknown one");
         assertNull(model.getAttribute("entry"));
         assertFalse("Stored title".equals(bean.getTitle()),
@@ -444,7 +444,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         foreign.setWebsite(other);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryEditFirstSave(request, model, bean, newRedirectAttributes()));
     }
 
@@ -478,7 +478,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         userMayPost = false;
         existingEntry(PubStatus.DRAFT).setCreatorUserName("someone-else");
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditSaveDraft(request, model, bean));
+        assertEquals("redirect:/pressroom-ui/app/", controller.entryEditSaveDraft(request, model, bean));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger.getWeblogEntryManager(), never()).restoreRevision(any(), any(), any());
     }
@@ -488,7 +488,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         userMayPost = false;
         existingEntry(PubStatus.PUBLISHED);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditSaveDraft(request, model, bean));
+        assertEquals("redirect:/pressroom-ui/app/", controller.entryEditSaveDraft(request, model, bean));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger.getWeblogEntryManager(), never()).restoreRevision(any(), any(), any());
     }
@@ -567,7 +567,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     void savingATrashedEntryFromAStaleTabIsRefused() throws Exception {
         existingEntry(PubStatus.TRASHED);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditPublish(request, model, bean));
+        assertEquals("redirect:/pressroom-ui/app/", controller.entryEditPublish(request, model, bean));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger.getWeblogEntryManager(), never()).restoreRevision(any(), any(), any());
     }
@@ -615,7 +615,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         foreign.setWebsite(other);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/app/",
                 controller.entryEditSaveDraft(request, model, bean));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger.getWeblogEntryManager(), never()).restoreRevision(any(), any(), any());

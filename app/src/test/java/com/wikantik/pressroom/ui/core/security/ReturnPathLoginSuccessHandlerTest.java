@@ -29,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * A password sign-in started from a page's Sign in link goes back to that
  * page: the login form posts the page's path as {@code return}. Anything that
- * is not a path under the context falls back to the old landing,
- * login-redirect, which picks the editor or the Main Menu.
+ * is not a path under the context falls back to the landing,
+ * the React admin's home.
  */
 class ReturnPathLoginSuccessHandlerTest {
 
@@ -62,16 +62,16 @@ class ReturnPathLoginSuccessHandlerTest {
     }
 
     @Test
-    void withNoReturnTheOldLandingStands() throws Exception {
-        assertEquals("/pressroom-ui/login-redirect.rol", redirectAfter(post("", null)));
-        assertEquals("/pressroom/pressroom-ui/login-redirect.rol", redirectAfter(post("/pressroom", null)));
+    void withNoReturnTheAppHomeIsTheLanding() throws Exception {
+        assertEquals("/pressroom-ui/app/", redirectAfter(post("", null)));
+        assertEquals("/pressroom/pressroom-ui/app/", redirectAfter(post("/pressroom", null)));
     }
 
     @Test
     void anythingButAPathUnderTheContextIsIgnored() throws Exception {
         for (String hostile : java.util.List.of("//evil.example/", "/\\evil.example/",
                 "https://evil.example/", "/elsewhere/x", "/a\r\nSet-Cookie: x=1", "")) {
-            assertEquals("/pressroom/pressroom-ui/login-redirect.rol",
+            assertEquals("/pressroom/pressroom-ui/app/",
                     redirectAfter(post("/pressroom", hostile)), "return " + hostile);
         }
     }

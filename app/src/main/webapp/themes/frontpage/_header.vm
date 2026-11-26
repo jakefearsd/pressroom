@@ -55,7 +55,7 @@
         ## under two accounts, and nothing else on the page tells them apart.
         #if($utils.authenticatedUser)<span class="fd-topbar-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
         #if($utils.isUserAuthor())
-        <a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a>
+        <a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a>
         #end
         <a href="$url.logout">$text.get("navigationBar.logout")</a>
         #end

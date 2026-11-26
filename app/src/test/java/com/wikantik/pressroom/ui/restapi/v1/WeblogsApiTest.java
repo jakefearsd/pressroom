@@ -66,6 +66,10 @@ class WeblogsApiTest {
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         when(weblogger.getBusinessManager()).thenReturn(mock(BusinessManager.class));
         when(weblogger.getWeblogPageManager()).thenReturn(mock(WeblogPageManager.class));
+        com.wikantik.pressroom.business.URLStrategy urls = mock(com.wikantik.pressroom.business.URLStrategy.class);
+        when(urls.getWeblogURL(any(Weblog.class), any(), org.mockito.ArgumentMatchers.eq(true)))
+                .thenAnswer(call -> "https://blog.example.com/" + ((Weblog) call.getArgument(0)).getHandle());
+        when(weblogger.getUrlStrategy()).thenReturn(urls);
         return weblogger;
     }
 
@@ -111,6 +115,20 @@ class WeblogsApiTest {
         weblog.setActive(Boolean.TRUE);
         weblog.setEntryDisplayCount(15);
         return weblog;
+    }
+
+    /** The settings read and the list carry the address readers reach the weblog at (the frame's weblog link). */
+    @Test
+    void theViewCarriesTheWeblogsAbsoluteUrl() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        when(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 0, 51)).thenReturn(List.of(weblog));
+
+        assertEquals("https://blog.example.com/myblog", json(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/{handle}", "myblog").requestAttr("actionWeblog", weblog)))
+                .get("absoluteUrl").asString());
+        assertEquals("https://blog.example.com/myblog", json(mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs"))).get("items").get(0).get("absoluteUrl").asString());
     }
 
     @Test
@@ -303,9 +321,9 @@ class WeblogsApiTest {
     void patchShareRowEnabledFalseAndViewDefaultsTrue() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).shareRowEnabled());
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).shareRowEnabled());
         weblog.setShareRowEnabled(null);
-        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).shareRowEnabled());
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).shareRowEnabled());
 
         var result = doPatch(weblogger, weblog, "{\"shareRowEnabled\":false}").andExpect(status().isOk());
         assertEquals(Boolean.FALSE, weblog.getShareRowEnabled());
@@ -319,7 +337,7 @@ class WeblogsApiTest {
     void entryOrderRoundTrips() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        assertEquals("NEWEST", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).entryOrder());
+        assertEquals("NEWEST", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).entryOrder());
 
         var result = doPatch(weblogger, weblog, "{\"entryOrder\":\"oldest\"}").andExpect(status().isOk());
         assertEquals("OLDEST", weblog.getEntryOrder());
@@ -348,7 +366,7 @@ class WeblogsApiTest {
     void pageWidthRoundTrips() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        assertEquals("WIDE", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).pageWidth());
+        assertEquals("WIDE", com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).pageWidth());
 
         var result = doPatch(weblogger, weblog, "{\"pageWidth\":\"standard\"}").andExpect(status().isOk());
         assertEquals("STANDARD", weblog.getPageWidth());
@@ -367,9 +385,9 @@ class WeblogsApiTest {
     @Test
     void viewIncludesShowMoreFromSite() throws Exception {
         Weblog weblog = aWeblog("myblog");
-        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).showMoreFromSite());
         weblog.setShowMoreFromSite(null);
-        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog, null).showMoreFromSite());
     }
 
     @Test
@@ -661,7 +679,7 @@ class WeblogsApiTest {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
         pageOf(weblogger, "p1", weblog, WeblogPage.PubStatus.PUBLISHED);
-        assertNull(AdminDtos.toView(weblog).frontPage());
+        assertNull(AdminDtos.toView(weblog, null).frontPage());
 
         var result = doPatch(weblogger, weblog, "{\"frontPage\":\"p1\"}").andExpect(status().isOk());
         assertEquals("p1", weblog.getFrontPageId());

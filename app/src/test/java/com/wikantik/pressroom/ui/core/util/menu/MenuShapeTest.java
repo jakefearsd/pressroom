@@ -32,7 +32,7 @@ class MenuShapeTest {
     void theGettersVelocityReadsStillExist() throws Exception {
         assertEquals(Set.of("getTabs", "getSurface"), publicNames(Menu.class));
         assertEquals(Set.of("getKey", "getAction", "isSelected", "getItems"), publicNames(MenuTab.class));
-        assertEquals(Set.of("getKey", "getAction", "isSelected"), publicNames(MenuTabItem.class));
+        assertEquals(Set.of("getKey", "getAction", "isSelected", "getAppPath"), publicNames(MenuTabItem.class));
     }
 
     @Test

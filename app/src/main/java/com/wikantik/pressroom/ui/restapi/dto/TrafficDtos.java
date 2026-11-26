@@ -3,10 +3,13 @@ package com.wikantik.pressroom.ui.restapi.dto;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport;
 import com.wikantik.pressroom.business.analytics.BlogTraffic;
@@ -19,7 +22,8 @@ import com.wikantik.pressroom.pojos.Weblog;
  * page's snapshot, read from the local tables only.
  *
  * <p>Three things differ from {@link BlogTraffic} on purpose. {@code lastError} is left out: it is
- * internal error text, and {@code STALE} says enough. A trend of {@link Double#NaN} (no longer period to
+ * internal error text, and {@code STALE} says enough. (One exception: {@code registrationError}, the
+ * reason a weblog could not be registered, which the Traffic page has always told the weblog's admin.) A trend of {@link Double#NaN} (no longer period to
  * compare with) is null, since JSON has no NaN. And the model's -1 sentinels (visitors the service
  * cannot count, the hour of a day bucket) are null rather than a number a client could add up.
  */
@@ -40,6 +44,9 @@ public final class TrafficDtos {
             @Schema(description = "When the snapshot was read; the numbers are as fresh as this.")
             Instant asOf,
             String period,
+            @Schema(description = "The weblog's time zone (an id such as America/Denver): the zone asOf and "
+                    + "each day bucket are read in.")
+            String timeZone,
             Summary current,
             @Schema(description = "The immediately preceding period of the same length.")
             Summary previous,
@@ -50,7 +57,13 @@ public final class TrafficDtos {
             Map<String, List<Row>> breakdowns,
             @Schema(description = "0 when posts holds every recorded path; else the number of top paths it "
                     + "was cut at, and a path outside them is unknown, not zero.")
-            int pathsCappedAt) {
+            int pathsCappedAt,
+            @Schema(description = "Where \"Open in Umami\" goes: the analytics dashboard's page for this weblog. "
+                    + "Absent when the weblog is not registered or no dashboard address is configured.")
+            String umamiUrl,
+            @Schema(description = "Why the weblog could not be registered with the analytics service, when that "
+                    + "is why there are no numbers (state NO_DATA); absent otherwise.")
+            String registrationError) {
     }
 
     /** The headline numbers; visitors are distinct per period and never summed across periods. */
@@ -82,15 +95,38 @@ public final class TrafficDtos {
     public record Row(String key, long value) {
     }
 
-    public static TrafficView toView(BlogTraffic traffic, String period) {
+    /** The periods a traffic read accepts; the first read of a longer one is the default's neighbour. */
+    public static final List<String> PERIODS = List.of("24h", "7d", "30d", "90d");
+
+    /**
+     * Where "Open in Umami" goes, or null when it should not be offered: the configured dashboard address
+     * (http or https only) plus the weblog's website id.
+     */
+    public static String umamiUrl(String dashboardUrl, String websiteId) {
+        if (dashboardUrl == null || websiteId == null || websiteId.isBlank()) {
+            return null;
+        }
+        String base = dashboardUrl.strip();
+        String lower = base.toLowerCase(Locale.ROOT);
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return null;
+        }
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/websites/" + URLEncoder.encode(websiteId, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    public static TrafficView toView(BlogTraffic traffic, String period, String timeZone, String umamiUrl,
+            String registrationError) {
         Map<String, List<Row>> breakdowns = new LinkedHashMap<>();
         traffic.breakdowns().forEach((tab, rows) ->
                 breakdowns.put(tab, rows.stream().map(r -> new Row(r.key(), r.value())).toList()));
-        return new TrafficView(traffic.state().name(), traffic.asOf(), period,
+        return new TrafficView(traffic.state().name(), traffic.asOf(), period, timeZone,
                 summary(traffic.current()), summary(traffic.previous()),
                 traffic.series().stream().map(TrafficDtos::point).toList(),
                 traffic.posts().stream().map(TrafficDtos::post).toList(),
-                breakdowns, traffic.pathsCappedAt());
+                breakdowns, traffic.pathsCappedAt(), umamiUrl, registrationError);
     }
 
     /**
@@ -106,6 +142,9 @@ public final class TrafficDtos {
             @Schema(description = "When the oldest snapshot was read; the numbers are as fresh as this.")
             Instant asOf,
             String period,
+            @Schema(description = "The site space's time zone (an id such as America/Denver; UTC when it has "
+                    + "none): the zone asOf is read in.")
+            String timeZone,
             @Schema(description = "Views summed across the blogs that have a snapshot.")
             long totalViews,
             @Schema(description = "Visits summed across the blogs that have a snapshot.")
@@ -150,9 +189,10 @@ public final class TrafficDtos {
      * as the page shows no body then. A blog without a snapshot has null numbers, never zeros; a
      * {@link Double#NaN} change (no views in the previous period) is null.
      */
-    public static SiteTrafficView toSiteView(SiteTraffic site, String period) {
+    public static SiteTrafficView toSiteView(SiteTraffic site, String period, String timeZone) {
         boolean listed = site.state() != TrafficState.NOT_CONFIGURED;
-        return new SiteTrafficView(site.state().name(), site.asOf(), period, site.totalViews(), site.totalVisits(),
+        return new SiteTrafficView(site.state().name(), site.asOf(), period, timeZone,
+                site.totalViews(), site.totalVisits(),
                 listed ? site.blogs().stream().map(TrafficDtos::blogRow).toList() : List.of(),
                 listed ? site.topPosts().stream().map(TrafficDtos::post).toList() : List.of(),
                 listed ? site.topSources().stream().map(k -> new Row(k.key(), k.value())).toList() : List.of());

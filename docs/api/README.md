@@ -901,6 +901,19 @@ UI, not through the API. The MCP tools do not offer it (a person's contact
 details are nothing an agent acts on; `whoami` names the account); `site_info`
 calls `GET /api/v1/meta`.
 
+```
+GET /api/v1/me/weblogs
+```
+
+The main menu's rows: `weblogs`, one per weblog the caller can act on (a pinned token sees only its
+own), sorted by handle, each with `handle`, `name`, `about` (when set), `theme`, `absoluteUrl`, the strongest
+`permission`, `actions` (the stored permission actions: `admin`, `post`, `edit_draft`; a weblog's creator holds
+`admin` alone), `canModerate`, `entryCount` and `pendingComments` (0 unless the caller may moderate); and, for
+a site admin with an unpinned token, `siteSpace`, the handle of the hidden weblog that holds the site's own
+pages (created on the first read). It needs only a valid caller. The MCP tools do not offer it (`whoami`
+lists the weblogs an agent can act on). A weblog read (`GET /api/v1/weblogs/{handle}`) and the list also
+carry `absoluteUrl`, the address readers reach the weblog at.
+
 ## Entries
 
 ```
@@ -2022,7 +2035,13 @@ What readers read on one weblog: the numbers its Traffic page shows, for
 deciding which posts to update or write next. Only a weblog admin may read
 them (the Traffic page's permission): a member who can post gets 403, a
 caller with no role on the weblog 404. The site space is not offered here
-and answers 404 like an unknown weblog. A `READ` token is enough.
+and answers 404 like an unknown weblog (a site admin reads it at `/admin/traffic/{handle}`).
+A `READ` token is enough.
+
+The answer also names the weblog's `timeZone` (the zone `asOf` and the day buckets are read in), an
+`umamiUrl` (where "Open in Umami" goes; absent when the weblog is not registered or no dashboard address is
+set) and, when there are no numbers because registering the weblog with the analytics service failed, the
+`registrationError` text.
 
 `period` is `24h`, `7d`, `30d` (the default) or `90d`. Anything else is a
 400 on `period` that names those four; the Traffic page shows 30d instead,
@@ -2077,7 +2096,11 @@ analytics service. So read `state` and `asOf` before the numbers:
 
 ```
 GET /api/v1/admin/traffic[?period=]
+GET /api/v1/admin/traffic/{handle}[?period=]
 ```
+
+The second form is one blog's traffic (the shape of [Traffic](#traffic)), including the site space's, which the
+weblog route never offers; it answers 404 for an unknown handle.
 
 What the server admin's Site Traffic page shows, as numbers: one row per
 blog, and the site's top posts and sources. It needs a site admin and an

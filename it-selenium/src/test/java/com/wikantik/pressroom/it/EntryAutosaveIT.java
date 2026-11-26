@@ -78,7 +78,7 @@ class EntryAutosaveIT extends PressroomIT {
         // call below it throws WebDriverException. This class is the only one in
         // the suite that reads or writes storage directly, so it is the only one
         // that has to say so.
-        openPath("/pressroom-ui/menu.rol");
+        openPath("/pressroom-ui/app/");
 
         // localStorage survives across tests that share a browser session
         // (and, more importantly, this suite runs its whole class in one

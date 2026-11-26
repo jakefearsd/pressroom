@@ -83,7 +83,7 @@ class OpenApiContractTest {
      * "Operation ids".
      */
     private static final Set<String> OPERATION_IDS = Set.of(
-            "pingGet", "meGet", "metaGet", "meProfileGet",
+            "pingGet", "meGet", "metaGet", "meProfileGet", "meWeblogsGet",
             "tokensIssue", "tokensList", "tokensRevoke",
             "weblogsList", "weblogsCreate", "weblogsGet", "weblogsUpdate",
             "entriesList", "entriesGet", "entriesGetByAnchor", "entriesListRevisions", "entriesGetRevision",
@@ -99,7 +99,7 @@ class OpenApiContractTest {
             "mediaListDirectories", "mediaCreateDirectory", "mediaDeleteDirectory", "mediaUpdateDirectory",
             "redirectsList", "redirectsCreate", "redirectsDelete",
             "auditsGetSeo", "auditsGetSeoEntry", "auditsGetMedia",
-            "trafficGet", "membersList", "siteTrafficGet",
+            "trafficGet", "membersList", "siteTrafficGet", "siteTrafficBlogGet",
             "businessesList", "businessesGet", "businessesCreate", "businessesUpdate", "businessesDelete",
             "weblogBusinessesList",
             "usersList", "usersCreate", "usersUpdate", "usersSendPasswordLink", "usersListWeblogs",

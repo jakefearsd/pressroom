@@ -113,7 +113,10 @@ public abstract class PressroomIT {
     protected static final String WEBLOG_HANDLE = "it_weblog";
 
     private static final String LOGIN_PATH = "/pressroom-ui/login.rol";
-    private static final String MENU_PATH = "/pressroom-ui/menu.rol";
+    /** The React admin's home (the main menu): where every sign-in lands. */
+    private static final String MENU_PATH = "/pressroom-ui/app/";
+    /** The menu rows, with the site space's handle for a site admin: reading it creates the site space. */
+    private static final String MENU_ROWS_PATH = "/api/v1/me/weblogs";
 
     /** Present on every page of an authenticated session and nowhere else - see bannerStatus.jsp. */
     private static final String LOGOUT_LINK = "a[href$='/pressroom-ui/logout.rol']";
@@ -125,8 +128,8 @@ public abstract class PressroomIT {
 
     /**
      * Gives the run the site space every installed site has, the way an installed site
-     * gets it: an administrator opens the main menu (MainMenuView creates it on a site
-     * admin's first visit). Once per suite JVM, before any test.
+     * gets it: an administrator's menu rows are read (GET /api/v1/me/weblogs creates it on a
+     * site admin's first read, as the main menu always did). Once per suite JVM, before any test.
      *
      * <p>{@code /} is the discovery page only while a site space exists; before that it
      * is the bare site directory. The seed fixture is SQL and creates none, and
@@ -135,8 +138,9 @@ public abstract class PressroomIT {
      * the menu. Run first, it failed: PublicSurfaceIT on the nightly runs of 2026-11-20
      * and 2026-11-22, and every time alone ({@code -Dit.test=PublicSurfaceIT}).
      *
-     * <p>Over HTTP, so no browser is involved: sign in, GET the menu, drop the session.
-     * The menu's Site section, which links to the site space, is the evidence it exists.
+     * <p>Over HTTP, so no browser is involved: sign in, read the menu rows with the session
+     * (an API read needs no CSRF token), drop the session. The rows' {@code siteSpace}
+     * handle is the evidence it exists.
      *
      * @throws IllegalStateException if the menu does not show the site space
      */
@@ -153,11 +157,11 @@ public abstract class PressroomIT {
             HttpResponse<String> menu = HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.NEVER)
                     .connectTimeout(Duration.ofSeconds(20)).build()
-                    .send(HttpRequest.newBuilder(URI.create(baseUrl() + MENU_PATH))
+                    .send(HttpRequest.newBuilder(URI.create(baseUrl() + MENU_ROWS_PATH))
                                     .timeout(Duration.ofSeconds(20))
                                     .header("Cookie", cookieHeader(session)).GET().build(),
                             HttpResponse.BodyHandlers.ofString());
-            if (menu.statusCode() != 200 || !menu.body().contains("weblog=site-space")) {
+            if (menu.statusCode() != 200 || !menu.body().contains("\"siteSpace\":\"site-space\"")) {
                 throw new IllegalStateException("The main menu (HTTP " + menu.statusCode()
                         + ") shows no site space, so / is not the discovery page");
             }
@@ -302,7 +306,7 @@ public abstract class PressroomIT {
      * Opens a path on the Pressroom under test and waits for the browser to finish, so the
      * health recorder has seen every request the page made before the test asserts anything.
      *
-     * @param path server-relative path below the Pressroom context, e.g. {@code /pressroom-ui/menu.rol}
+     * @param path server-relative path below the Pressroom context, e.g. {@code /pressroom-ui/app/}
      */
     protected void openPath(String path) {
         Selenide.open(baseUrl() + (path.startsWith("/") ? path : "/" + path));

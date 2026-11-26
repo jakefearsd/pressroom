@@ -80,16 +80,16 @@ class PressroomViewResolverTest {
                 ".EntryEdit should be registered");
         assertNotNull(resolver.resolveViewName(".Login", Locale.getDefault()),
                 ".Login should be registered");
-        assertNotNull(resolver.resolveViewName(".MainMenu", Locale.getDefault()),
-                ".MainMenu should be registered");
+        assertNotNull(resolver.resolveViewName(".Profile", Locale.getDefault()),
+                ".Profile should be registered");
         assertNotNull(resolver.resolveViewName(".denied", Locale.getDefault()),
                 ".denied should be registered");
         assertNotNull(resolver.resolveViewName(".tiles-tabbedpage", Locale.getDefault()),
                 ".tiles-tabbedpage should be registered");
         assertNotNull(resolver.resolveViewName(".Maintenance", Locale.getDefault()),
                 ".Maintenance should be registered");
-        assertNotNull(resolver.resolveViewName(".SiteTraffic", Locale.getDefault()),
-                ".SiteTraffic should be registered");
+        assertNotNull(resolver.resolveViewName(".ApiTokens", Locale.getDefault()),
+                ".ApiTokens should be registered");
         assertNotNull(resolver.resolveViewName(".MediaFileImageChooser", Locale.getDefault()),
                 ".MediaFileImageChooser should be registered");
     }
@@ -150,17 +150,6 @@ class PressroomViewResolverTest {
                 ".Submissions must inherit the tabbed layout's empty menu tile");
         assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
         assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_styles"));
-    }
-
-    @Test
-    void trafficRendersThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        MockHttpServletRequest request = renderAndCapture(".Traffic");
-
-        assertEquals("/WEB-INF/jsps/editor/Traffic.jsp", request.getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"));
-        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
     }
 
     @Test
@@ -240,7 +229,7 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Submissions", ".Traffic", ".SiteTraffic", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Submissions", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";

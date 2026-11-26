@@ -48,23 +48,6 @@ class AdminChromeJspTest {
     }
 
     /**
-     * The "N awaiting approval" chip was a stock Bootstrap {@code
-     * text-bg-warning} badge: saturated yellow with black text, untokened in
-     * dark mode, the one loud colour on the screen. It is the quiet pending
-     * status pill the lists use.
-     */
-    @Test
-    void mainMenuShowsPendingCommentsAsTheQuietStatusPill() {
-        String src = jsp("core/MainMenu.jsp");
-        assertFalse(src.contains("badge"), "core/MainMenu.jsp still renders a Bootstrap badge");
-        int at = src.indexOf("mainMenu.pendingComments");
-        assertTrue(at >= 0);
-        String before = src.substring(Math.max(0, at - 200), at);
-        assertTrue(before.contains("status-pill status-pending"),
-                "the pending count rides .status-pill.status-pending: " + before);
-    }
-
-    /**
      * A 40-character commit hash scrolled the footer sideways at phone width.
      * The seven-character cut now lives in {@code Colophon.shortRevision}
      * (one place for the JSP and Velocity footers), so the footer prints that.
@@ -307,7 +290,7 @@ class AdminChromeJspTest {
         for (String screen : java.util.List.of("core/CreateWeblog.jsp", "core/Profile.jsp")) {
             String src = jsp(screen);
             assertFalse(src.contains("onclick=\"window.location="), screen + " still navigates from an onclick");
-            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/pressroom-ui/menu.rol'/>\""),
+            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/pressroom-ui/app/'/>\""),
                     screen + "'s Cancel is not a link");
         }
     }

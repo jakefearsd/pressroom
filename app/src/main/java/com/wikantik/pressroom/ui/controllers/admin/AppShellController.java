@@ -8,7 +8,9 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 
 import com.wikantik.pressroom.business.Colophon;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.GlobalPermission;
+import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -43,6 +45,12 @@ public class AppShellController extends BaseController {
         return "app";
     }
 
+    /** A site setting as the tiles layouts print it; the product name when it is not set. */
+    private static String siteProperty(String name) {
+        String value = WebloggerRuntimeConfig.getProperty(name);
+        return value == null || value.isBlank() ? "Pressroom" : value;
+    }
+
     @GetMapping("/app.rol")
     public String shell(HttpServletRequest request, Model model) {
         User user = getAuthenticatedUser(request);
@@ -57,7 +65,10 @@ public class AppShellController extends BaseController {
                 csrf == null ? "" : csrf.getHeaderName(), csrf == null ? "" : csrf.getToken(),
                 user.getUserName(), user.getScreenName() == null ? "" : user.getScreenName(),
                 user.getLocale() == null ? "" : user.getLocale(),
-                isGlobalAdmin(user) ? "admin" : "editor", uiLocale, messagesUrl);
+                isGlobalAdmin(user) ? "admin" : "editor", uiLocale, messagesUrl,
+                new AppBootstrap.Site(siteProperty("site.name"), siteProperty("site.shortName"),
+                        Weblog.SITE_SPACE_HANDLE),
+                Colophon.of(weblogger, null, Clock.systemDefaultZone()));
         model.addAttribute("bootstrapJson", bootstrap.toJson());
         model.addAttribute("appVersion", version);
         return "app/Shell";

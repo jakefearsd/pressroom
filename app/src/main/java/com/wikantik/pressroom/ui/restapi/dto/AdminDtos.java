@@ -243,7 +243,10 @@ public final class AdminDtos {
                               String creatorUserName, String customDomain, String icon, String about,
                               String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
-                              String placeCountry, Double placeLat, Double placeLng, String bookingUrl) {
+                              String placeCountry, Double placeLat, Double placeLng, String bookingUrl,
+                              @Schema(description = "The weblog's absolute web address, as readers reach it "
+                                      + "(its custom domain when it has one); absent when it cannot be built.")
+                              String absoluteUrl) {
     }
 
     /** The body of POST /weblogs. handle, name and theme are required; the rest default to the user's own. */
@@ -390,7 +393,7 @@ public final class AdminDtos {
                 user.getFullName(), user.getLocale(), user.getTimeZone(), roles.contains(AccountRoles.EDITOR));
     }
 
-    public static WeblogView toView(Weblog weblog) {
+    public static WeblogView toView(Weblog weblog, String absoluteUrl) {
         return new WeblogView(weblog.getId(), weblog.getHandle(), weblog.getName(),
                 weblog.getTagline(), weblog.getCopyright(), weblog.getEmailAddress(), weblog.getLocale(),
                 weblog.getTimeZone(), weblog.getEntryDisplayCount(),
@@ -407,7 +410,7 @@ public final class AdminDtos {
                 weblog.getPlaceCountry(),
                 weblog.getPlaceLat() == null ? null : weblog.getPlaceLat().doubleValue(),
                 weblog.getPlaceLng() == null ? null : weblog.getPlaceLng().doubleValue(),
-                weblog.getBookingUrl());
+                weblog.getBookingUrl(), absoluteUrl);
     }
 
     /**

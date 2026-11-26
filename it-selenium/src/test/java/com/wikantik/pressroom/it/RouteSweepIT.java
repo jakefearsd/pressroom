@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.it;
 
+import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.WebDriverRunner;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -121,7 +122,15 @@ class RouteSweepIT extends PressroomIT {
                         + "its JSP threw; check the Tomcat log written to "
                         + "it-selenium/target/tomcat.log for the stack trace.");
 
+        // A server-rendered page has its marker when the navigation returns; a React screen
+        // (/pressroom-ui/app/...) draws it after the shell loads and its API reads answer, so wait
+        // for the marker, and only then count: a page that never draws it fails on the message below.
         ElementsCollection found = $$(route.marker());
+        try {
+            found.first().should(Condition.exist);
+        } catch (AssertionError neverAppeared) {
+            // fall through to the descriptive failure
+        }
         assertTrue(found.size() > 0,
                 route.url() + " returned HTTP " + status + " but nothing matched '"
                         + route.marker() + "', so the page rendered site chrome without its "

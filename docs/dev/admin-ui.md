@@ -195,13 +195,14 @@ resolves through the index at the end of `CLAUDE.md`.
   both). The labels the error messages quote are `escapeHtml4`'d, so the two that hold
   U+2019 (`configForm.revisionsCoalesceMinutes`, `configForm.revisionsMaxAgeDays`) now
   carry `&rsquo;` in the error string; it renders the same.
-- **The Site section (global admins only).** The main menu (`MainMenuController`
-  adds `siteSpace`, creating the hidden `site-space` weblog on first use; null
-  for everyone else) shows a Site row with Pages, Media and Theme, the only
+- **The Site section (global admins only).** The main menu (the React home;
+  `GET /v1/me/weblogs` returns `siteSpace`, creating the hidden `site-space` weblog
+  on first read; absent for everyone else) shows a Site row with Pages, Media and Theme, the only
   three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
   is false by default and true on the Pages, PageEdit, ThemeEdit and media
-  controllers, and on `TrafficController` (ruling R25: Global › Traffic links
-  its "Site pages" row there; the rail does not offer it on the site space);
+  controllers. The site space's traffic (ruling R25: Global › Traffic links its
+  "Site pages" row there) is read through `GET /v1/admin/traffic/{handle}` (site admins only; the weblog
+  route never offers the site space); the rail does not offer it on the site space;
   `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
   weblog for any other request (and for a non-admin, an anonymous caller or any
   API/MCP request), so a refusal looks exactly like an unknown handle (redirect
@@ -440,3 +441,68 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **New message keys go into all eight bundles** (English until translated);
   `AgentAccountMessagesTest` checks the `userList.`, `personForm.`, `userWeblogs.`, `apiTokens.` and
   `agent.` prefixes.
+
+## React app frame (`app/frontend/src/admin`)
+
+The React admin's frame reproduces the tiles chrome with the same markup and classes
+(`#adminRail`, `.rail-active`, `.draft-bar`, `h1.pressroom-page-title`), so the existing CSS
+styles it. Spec: `docs/superpowers/specs/2026-11-25-react-admin-migration-design.md`.
+
+- **One route table for the rail**: `routes/railTable.ts` (groups and entries copied from
+  `editor-menu.xml` / `admin-menu.xml`; `rail.test.ts` parses the XML and fails on drift).
+  An entry is a legacy `.rol` link until it gets a `path`; adding the `path` is the whole
+  migration of the rail link. `routes/visibility.ts` applies the menu rules from `/v1/me`
+  (`globalAdmin`, membership level) and `/v1/meta` (`features`).
+- **Not on `/api`, so in the shell's bootstrap block** (`AppBootstrap`): `site.name` (the brand),
+  `site.shortName` (the tab title), `site.siteSpaceHandle` (the API never serves the site space, so the frame
+  cannot ask for it; on that handle the frame fetches no weblog and the rail shows only Pages, Media files and
+  Theme, `MenuHelper`'s rule) and `colophon` (copyright holder and year, privacy URL, short revision, release
+  date: what `footer.jsp` prints, from `Colophon.of`; a fact the Colophon lacks is left out, not written empty).
+  The rail's weblog link is `WeblogView.absoluteUrl`.
+- **`t(key, ...args)`** (`i18n/`): no arguments returns the value verbatim, arguments run
+  MessageFormat (`{n}`, `''`, quotes, `choice`, `number`), exactly like the server's
+  `alwaysUseMessageFormat=false`. JSP-era values may carry HTML entities
+  (`tabbedmenu.weblog` is `Create &amp; edit`): decode with `plainText`.
+- **No Bootstrap JS in the shell**: dropdowns, collapses and modals are React state
+  (`show` classes), not `data-bs-*`.
+- **Drafts** live under `pressroom.appdraft.v1:` (not the JSP editors' `pressroom.draft.v1:`,
+  whose sweeper deletes keys of any other shape); sign-out clears both.
+- `dangerouslySetInnerHTML` is lint-forbidden outside `DANGEROUS_HTML_ALLOWLIST`
+  (`eslint.config.js`, empty).
+
+## Migrating a screen to React
+
+The cutover pattern every wave copies (spec A8). The first three screens (main menu, weblog traffic, site
+traffic) are the worked example: `LegacyAdminRedirects`, `LegacyAdminRedirectsTest`,
+`LegacyAdminRedirectIT`, `Routes.APP`, `screens/Home.tsx`, `screens/traffic/`.
+
+1. **Read the JSP, its controller and its view model first.** The React screen keeps the ids, classes and
+   message keys of the markup it replaces (ITs, CSS and `Routes` select on them). Logic the view model did
+   server-side (formatting, merging, chart geometry) is ported to a pure TS module with unit tests
+   (`screens/traffic/model.ts`); a gap the API cannot fill is an ordinary API change (test, OpenAPI snapshot,
+   matrix row, MCP decision or `Exclusion`, `docs/api/README.md`), never a `.rol` call.
+2. **Test first, in Vitest** (MSW + the real bundle): each action's success path, its refused path (problem
+   in place), and one test per role difference. Dynamic message keys are listed whole in a header comment
+   (`MessageKeyTest`).
+3. **The route table**: give the screen its route in `router.tsx` (scope `none`, `weblog` or `admin`) and its
+   entry a `path` in `routes/railTable.ts` (the rail then links it client-side and marks it active).
+4. **One table of legacy URLs**: add a row to `LegacyAdminRedirects.ROWS` (legacy path, React route under
+   `/pressroom-ui/app`, `{placeholder}` to request-parameter map, carried query parameters) and a test per row
+   in `LegacyAdminRedirectsTest`. `LegacyAdminRedirectFilter` (order 74, after Spring Security, so the old
+   URL keeps its authorisation and a signed-out bookmark signs in and arrives at the new screen) answers 302;
+   its URL patterns come from the table. `MenuHelper.appPath` reads the same table, so the JSP rail
+   (`tiles-tabbedpage.jsp`, `tiles-mainmenupage.jsp`: `MenuTabItem.appPath`) links the React route with no menu
+   XML edit. A route is redirected or handled by a controller, never both: the guard
+   (`noRedirectedRouteIsStillHandledByAController`) fails until the controller is deleted.
+5. **Delete, after grepping every reference** (JSPs, Java, `.vm`, tests, CSS comments): the JSP, controller,
+   view model, `PressroomViewResolver` definitions, `view-definitions.golden` blocks, JSP-scanning tests,
+   and the message keys `MessageKeyTest` reports (keys the React screen uses are not orphans). Controllers
+   that `redirect:` to a migrated screen point at the React route directly.
+6. **Browser ITs, at both context paths**: add the screen to `Routes.APP` (marker = an element only the
+   screen emits; the sweep waits for a client-rendered marker), remove the old `.rol` entries (the
+   `RouteCoverageTest` stale check demands it), port every IT that drove the JSP screen to the React one, and
+   extend `LegacyAdminRedirectIT`. Run `RouteSweepIT` and the touched classes with
+   `mvn -o verify -Pit -DskipUnitTests=true -Dit.test=...` at `/` and with `-Dit.context.path=pressroom`.
+7. **Hazards**: a session read of `/api` needs no CSRF header, a write does (the client sets it); the shell
+   is served for any path under `/pressroom-ui/app/`, so a React route needs no server mapping; an
+   unauthenticated SPA call is a 401 the session-expired bar handles.

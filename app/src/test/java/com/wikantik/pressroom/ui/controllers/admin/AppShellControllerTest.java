@@ -81,6 +81,19 @@ class AppShellControllerTest {
     }
 
     @Test
+    void theSiteNamesTheColophonFactsAndTheSiteSpaceRideAlong() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+
+        JsonNode boot = bootstrapFor(requestUnder("/pressroom", jake, "tok-1"));
+
+        assertEquals(com.wikantik.pressroom.pojos.Weblog.SITE_SPACE_HANDLE,
+                boot.get("site").get("siteSpaceHandle").asString());
+        assertFalse(boot.get("site").get("name").asString().isBlank());
+        assertFalse(boot.get("site").get("shortName").asString().isBlank());
+        assertTrue(boot.get("colophon").get("copyrightYear").asString().matches("\\d{4}"));
+    }
+
+    @Test
     void anAdminIsAnAdminAndTheRootContextHasNoPrefix() throws Exception {
         when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(true);
 

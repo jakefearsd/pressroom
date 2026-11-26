@@ -51,6 +51,7 @@ class WeblogBusinessesApiTest {
         when(weblogger.getBusinessManager()).thenReturn(businesses);
         when(weblogger.getWeblogManager()).thenReturn(mock(WeblogManager.class));
         when(weblogger.getWeblogPageManager()).thenReturn(mock(WeblogPageManager.class));
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         weblog = new Weblog();
         weblog.setId("myblog-id");
         weblog.setHandle("myblog");

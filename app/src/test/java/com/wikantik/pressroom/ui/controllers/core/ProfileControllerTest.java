@@ -121,7 +121,7 @@ class ProfileControllerTest {
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         verify(weblogger.userManager()).saveUser(user);
         verify(weblogger.weblogger()).flush();
         assertEquals("Jake Renamed", user.getScreenName());
@@ -197,7 +197,7 @@ class ProfileControllerTest {
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         assertTrue(new BCryptPasswordEncoder().matches(
                         "newpassword", user.getPassword().substring("{bcrypt}".length())),
                 "the new password should verify against the stored hash");
@@ -380,7 +380,7 @@ class ProfileControllerTest {
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/app/", view);
         assertEquals(List.of(), ControllerTestFixture.errors(model));
     }
 

@@ -27,10 +27,9 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.admin.MaintenanceController;
-import com.wikantik.pressroom.ui.controllers.admin.SiteTrafficController;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
-import com.wikantik.pressroom.ui.controllers.editor.TrafficController;
+import com.wikantik.pressroom.ui.restapi.v1.AdminTrafficApi;
 import com.wikantik.pressroom.ui.restapi.v1.BaseApiController;
 import com.wikantik.pressroom.ui.restapi.v1.TrafficApi;
 import org.junit.jupiter.api.AfterEach;
@@ -71,13 +70,6 @@ class AdminPagesNeverCallAnalyticsServiceTest {
 
     /** One admin request (or the save behind one). */
     enum Page {
-        BLOG_TRAFFIC {
-            @Override
-            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
-                assertEquals(".Traffic", t.wire(new TrafficController())
-                        .execute(request, new ExtendedModelMap(), "30d", "posts", "views"));
-            }
-        },
         /** The API's traffic route (spec 2026-11-08-agent-api-parity-design, T3): the snapshot only. */
         API_TRAFFIC {
             @Override
@@ -87,11 +79,14 @@ class AdminPagesNeverCallAnalyticsServiceTest {
                 assertEquals("30d", api.get(request, "30d").period());
             }
         },
+        /** The React Site Traffic screen's two reads: every blog, and one blog (the site space's route). */
         GLOBAL_TRAFFIC {
             @Override
-            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
-                assertEquals(".SiteTraffic", t.wire(new SiteTrafficController())
-                        .execute(request, new ExtendedModelMap(), "30d"));
+            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) throws Exception {
+                AdminTrafficApi api = new AdminTrafficApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
+                assertEquals("30d", api.get("30d").period());
+                assertEquals("30d", api.blog(t.blog.getHandle(), "30d").period());
             }
         },
         ENTRIES_WITH_VIEWS {

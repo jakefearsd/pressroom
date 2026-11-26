@@ -6,7 +6,9 @@ export const sample: Bootstrap = {
   csrf: { headerName: 'X-CSRF-TOKEN', token: 'tok' },
   user: { userName: 'jake', screenName: 'Jake </script><b>', locale: 'en', globalPermission: 'editor' },
   uiLocale: 'en',
-  messagesUrl: '/pressroom/pressroom-ui/app-messages.rol?locale=en&v=1.2.3'
+  messagesUrl: '/pressroom/pressroom-ui/app-messages.rol?locale=en&v=1.2.3',
+  site: { name: 'Pressroom', shortName: 'Pressroom', siteSpaceHandle: 'site-space' },
+  colophon: { copyrightYear: '2026' }
 };
 
 /** A document holding the bootstrap block the way the shell writes it. */

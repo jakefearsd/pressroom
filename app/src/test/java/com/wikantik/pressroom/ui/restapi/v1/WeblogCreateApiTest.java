@@ -46,6 +46,7 @@ class WeblogCreateApiTest {
         when(themes.getEnabledThemesList()).thenReturn(List.of(journal, frontpage));
         when(weblogger.getThemeManager()).thenReturn(themes);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
+        when(weblogger.getUrlStrategy()).thenReturn(mock(com.wikantik.pressroom.business.URLStrategy.class));
         when(weblogger.getUserManager()).thenReturn(mock(UserManager.class));
     }
 

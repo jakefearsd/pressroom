@@ -26,11 +26,17 @@ public class MenuTabItem {
 
     private final String key;
     private final String action;
+    private final String appPath;
     private boolean selected;
 
     MenuTabItem(String key, String action) {
+        this(key, action, null);
+    }
+
+    MenuTabItem(String key, String action, String appPath) {
         this.key = key;
         this.action = action;
+        this.appPath = appPath;
     }
 
     public String getKey() {
@@ -39,6 +45,14 @@ public class MenuTabItem {
 
     public String getAction() {
         return action;
+    }
+
+    /**
+     * The context-relative URL of the React route that replaced this screen, or null while the screen is still
+     * a JSP (the link is then built from {@link #getAction()}).
+     */
+    public String getAppPath() {
+        return appPath;
     }
 
     public boolean isSelected() {

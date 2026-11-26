@@ -3,10 +3,15 @@ package com.wikantik.pressroom.ui.restapi.v1;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.ZoneId;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.pojos.Weblog;
+import org.springframework.web.bind.annotation.PathVariable;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
-import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
@@ -32,16 +37,54 @@ import org.springframework.web.bind.annotation.RestController;
 @AdminScoped
 public class AdminTrafficApi extends BaseApiController implements UISecurityEnforced {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminTrafficApi.class);
+
     @Operation(operationId = "siteTrafficGet", summary = "Every blog's views and visits, and the site's top posts and sources.")
     @GetMapping("")
     public TrafficDtos.SiteTrafficView get(
             @Parameter(description = "One of 24h, 7d, 30d (the default) or 90d.")
             @RequestParam(value = "period", defaultValue = "30d") String period) {
-        if (!TrafficView.PERIODS.contains(period)) {
+        if (!TrafficDtos.PERIODS.contains(period)) {
             throw ApiException.problemOnField("period", ProblemCode.TRAFFIC_PERIOD_UNKNOWN,
-                    String.join(", ", TrafficView.PERIODS));
+                    String.join(", ", TrafficDtos.PERIODS));
         }
-        return TrafficDtos.toSiteView(weblogger.getAnalyticsManager().getSiteTraffic(period), period);
+        return TrafficDtos.toSiteView(weblogger.getAnalyticsManager().getSiteTraffic(period), period,
+                siteZone().getId());
+    }
+
+    /**
+     * One blog's traffic, the site space's included: the weblog route never offers the site space (the
+     * interceptor withholds it from every API handler), and the Site Traffic page links its "Site pages"
+     * row to the site space's numbers, so a site admin reads them here. Same answer as the weblog route.
+     */
+    @Operation(operationId = "siteTrafficBlogGet",
+            summary = "One blog's traffic, including the site space's (site admins).")
+    @GetMapping("/{handle}")
+    public TrafficDtos.TrafficView blog(@PathVariable("handle") String handle,
+            @Parameter(description = "One of 24h, 7d, 30d (the default) or 90d.")
+            @RequestParam(value = "period", defaultValue = "30d") String period) throws WebloggerException {
+        if (!TrafficDtos.PERIODS.contains(period)) {
+            throw ApiException.problemOnField("period", ProblemCode.TRAFFIC_PERIOD_UNKNOWN,
+                    String.join(", ", TrafficDtos.PERIODS));
+        }
+        Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle, null);
+        if (weblog == null) {
+            throw ApiException.problem(ProblemCode.WEBLOG_NOT_FOUND);
+        }
+        return TrafficReads.read(weblogger, weblog, period);
+    }
+
+    /** The site space's time zone, as the rest of the feature reads it; UTC when it has none. */
+    private ZoneId siteZone() {
+        try {
+            Weblog siteSpace = weblogger.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE);
+            if (siteSpace != null && siteSpace.getTimeZone() != null) {
+                return siteSpace.getTimeZoneInstance().toZoneId();
+            }
+        } catch (WebloggerException ex) {
+            log.warn("Could not read the site space's time zone; showing UTC", ex);
+        }
+        return ZoneId.of("UTC");
     }
 
     @Override

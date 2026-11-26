@@ -45,6 +45,7 @@ class AdminTrafficApiTest {
     private static final Instant AS_OF = Instant.parse("2026-11-08T10:15:00Z");
 
     private AnalyticsManager analytics;
+    private com.wikantik.pressroom.business.WeblogManager weblogManager;
     private MockMvc mvc;
 
     @BeforeEach
@@ -52,6 +53,8 @@ class AdminTrafficApiTest {
         Weblogger weblogger = mock(Weblogger.class);
         analytics = mock(AnalyticsManager.class);
         when(weblogger.getAnalyticsManager()).thenReturn(analytics);
+        weblogManager = mock(com.wikantik.pressroom.business.WeblogManager.class);
+        when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         AdminTrafficApi controller = new AdminTrafficApi();
         controller.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
@@ -147,6 +150,49 @@ class AdminTrafficApiTest {
         assertEquals(0, body.get("blogs").size());
         assertEquals(0, body.get("posts").size());
         assertEquals(0, body.get("sources").size());
+    }
+
+    /** asOf is read in the site space's zone (UTC when it has none), which the answer names. */
+    @Test
+    void carriesTheSiteSpacesTimeZoneElseUtc() throws Exception {
+        when(analytics.getSiteTraffic("30d")).thenReturn(site(TrafficState.OK, AS_OF, List.of()));
+        assertEquals("UTC", okJson(URL).get("timeZone").asString());
+
+        Weblog siteSpace = new Weblog();
+        siteSpace.setHandle(Weblog.SITE_SPACE_HANDLE);
+        siteSpace.setTimeZone("Europe/Berlin");
+        when(weblogManager.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(siteSpace);
+        assertEquals("Europe/Berlin", okJson(URL).get("timeZone").asString());
+
+        when(weblogManager.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE))
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("down"));
+        assertEquals("UTC", okJson(URL).get("timeZone").asString());
+    }
+
+    /** The site space is not offered on the weblog route, so a site admin reads its numbers here, like any blog's. */
+    @Test
+    void oneBlogsTrafficIncludingTheSiteSpacesIsReadByHandle() throws Exception {
+        Weblog siteSpace = new Weblog();
+        siteSpace.setId("site-id");
+        siteSpace.setHandle(Weblog.SITE_SPACE_HANDLE);
+        siteSpace.setTimeZone("Europe/Berlin");
+        when(weblogManager.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null)).thenReturn(siteSpace);
+        when(analytics.getBlogTraffic("site-id", "7d")).thenReturn(new BlogTraffic(TrafficState.NOT_CONFIGURED,
+                null, null, null, null, null, null, null));
+
+        JsonNode body = okJson(URL + "/" + Weblog.SITE_SPACE_HANDLE + "?period=7d");
+
+        assertEquals("NOT_CONFIGURED", body.get("state").asString());
+        assertEquals("7d", body.get("period").asString());
+        assertEquals("Europe/Berlin", body.get("timeZone").asString());
+    }
+
+    @Test
+    void anUnknownHandleOrPeriodIsRefusedOnTheByHandleRoute() throws Exception {
+        mvc.perform(get(URL + "/ghost")).andExpect(status().isNotFound());
+        mvc.perform(get(URL + "/ghost").param("period", "1y")).andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("period"));
+        verify(analytics, never()).getBlogTraffic(anyString(), anyString());
     }
 
     /** Each of the four periods is read as asked. */

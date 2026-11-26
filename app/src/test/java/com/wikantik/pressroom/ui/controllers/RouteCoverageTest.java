@@ -184,7 +184,7 @@ public class RouteCoverageTest {
      * because they accept both verbs, and a GET route is a GET route however
      * it was spelled.
      */
-    private Set<String> declaredGetRoutes() {
+    public static Set<String> declaredGetRoutes() {
         var scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Controller.class));
 

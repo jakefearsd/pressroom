@@ -188,7 +188,10 @@ class UserAdminIT extends PressroomIT {
         // account -- disabled or not -- as refused.
         clickAndAwaitNewPage($("#login"));
 
-        openPath("/pressroom-ui/menu.rol");
+        openPath("/pressroom-ui/app/");
+        // The React home and the login page both carry the top bar, so waiting for it says the page rendered
+        // before the logout link is asked for.
+        $("nav.pressroom-topbar").should(exist);
         BrowserHealth.current().settle();
         return $$("a[href$='/pressroom-ui/logout.rol']").isEmpty();
     }

@@ -372,7 +372,7 @@ class DiscoveryFrontPageRenderingTest {
             assertTrue(mast.find(), theme + ":\n" + signedIn);
             String inner = mast.group(1);
             assertTrue(inner.contains("<span class=\"fd-who\">"), theme + ": who is signed in:\n" + inner);
-            assertTrue(inner.contains("/pressroom-ui/menu.rol\">Main menu</a>"), theme + ":\n" + inner);
+            assertTrue(inner.contains("/pressroom-ui/app/\">Main menu</a>"), theme + ":\n" + inner);
             assertTrue(inner.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + inner);
             assertFalse(inner.contains("fd-sign-in"), theme + ": no Sign in, and no script:\n" + inner);
         }

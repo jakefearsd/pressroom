@@ -19,9 +19,7 @@ package com.wikantik.pressroom.ui.view;
 
 import java.util.List;
 
-import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
-import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.User;
@@ -35,10 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -54,8 +49,6 @@ class WeblogPermissionViewTest {
     private Weblogger weblogger;
     private WeblogManager weblogs;
     private UserManager users;
-    private WeblogEntryManager entries;
-    private com.wikantik.pressroom.business.CommentManager commentManager;
     private Weblog weblog;
     private User alice;
 
@@ -64,12 +57,8 @@ class WeblogPermissionViewTest {
         weblogger = mock(Weblogger.class);
         weblogs = mock(WeblogManager.class);
         users = mock(UserManager.class);
-        entries = mock(WeblogEntryManager.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogs);
         when(weblogger.getUserManager()).thenReturn(users);
-        when(weblogger.getWeblogEntryManager()).thenReturn(entries);
-        commentManager = mock(com.wikantik.pressroom.business.CommentManager.class);
-        when(weblogger.getCommentManager()).thenReturn(commentManager);
 
         weblog = new Weblog();
         weblog.setHandle("testblog");
@@ -103,110 +92,6 @@ class WeblogPermissionViewTest {
         assertNull(row.getWeblog());
         assertNull(row.getUser());
         verifyNoInteractions(weblogs, users);
-    }
-
-    @Test
-    void theEntryCountIsAskedOfTheEntryManagerOnceAndRemembered() throws Exception {
-        when(entries.getEntryCount(weblog)).thenReturn(7L);
-        WeblogPermissionView row =
-                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
-
-        assertEquals(7L, row.getEntryCount());
-        assertEquals(7L, row.getEntryCount());
-        verify(entries, times(1)).getEntryCount(weblog);
-    }
-
-    @Test
-    void thePendingCommentCountIsAskedOnceAndRemembered() throws Exception {
-        when(commentManager.countComments(weblog,
-                com.wikantik.pressroom.pojos.ReaderComment.Status.PENDING)).thenReturn(4L);
-        WeblogPermissionView row =
-                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
-
-        assertEquals(4L, row.getPendingCommentCount());
-        assertEquals(4L, row.getPendingCommentCount());
-        verify(commentManager, times(1)).countComments(weblog,
-                com.wikantik.pressroom.pojos.ReaderComment.Status.PENDING);
-    }
-
-    @Test
-    void aPendingCountThatCannotBeReadIsZero() throws Exception {
-        when(commentManager.countComments(any(), any())).thenThrow(new WebloggerException("down"));
-        WeblogPermissionView row =
-                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
-
-        assertEquals(0L, row.getPendingCommentCount());
-    }
-
-    /**
-     * I1: moderation needs the weblog POST permission, and a weblog's creator holds
-     * "admin" alone (the Members page grants single-action rows too), so the row
-     * answers by implication, as the interceptor's check does, never by looking for
-     * the literal "post" action in the row.
-     */
-    @Test
-    void canModerateFollowsTheImpliedPostPermissionNotTheLiteralAction() throws Exception {
-        assertTrue(rowWith(WeblogPermission.ADMIN).isCanModerate(), "an admin-only row is a creator's row");
-        assertTrue(rowWith(WeblogPermission.POST).isCanModerate());
-        assertTrue(rowWith(WeblogPermission.ADMIN, WeblogPermission.POST, WeblogPermission.EDIT_DRAFT)
-                .isCanModerate());
-        assertFalse(rowWith(WeblogPermission.EDIT_DRAFT).isCanModerate(), "a limited member cannot moderate");
-        assertFalse(WeblogPermissionView.of(new WeblogPermission(), weblogger).isCanModerate(),
-                "a row granting nothing implies nothing");
-    }
-
-    /**
-     * The badge's gate is the row's answer. A JSP cannot be rendered in a unit test,
-     * so this pins only that the page asks the row (the behaviour is above, and
-     * CommentsIT sees the badge for a weblog's creator).
-     */
-    @Test
-    void mainMenuGatesThePendingBadgeOnTheRowsModerationAnswer() throws Exception {
-        java.nio.file.Path jsp = java.nio.file.Path.of(System.getProperty("user.dir"))
-                .resolve("src/main/webapp/WEB-INF/jsps/core/MainMenu.jsp");
-        String source = java.nio.file.Files.readString(jsp);
-
-        assertTrue(source.contains("perms.canModerate and perms.pendingCommentCount > 0"),
-                "the badge shows only to a member who may moderate, and only above 0");
-        assertTrue(source.contains("mainMenu.pendingComments") && source.contains("comments.rol"),
-                "the badge names the count and links to the moderation page");
-        assertFalse(source.contains("hasAction(\"post\") and perms.pendingCommentCount"),
-                "the literal post action misses a creator's admin-only row");
-    }
-
-    private WeblogPermissionView rowWith(String... actions) throws Exception {
-        return WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of(actions)), weblogger);
-    }
-
-    @Test
-    void anEntryCountThatCannotBeReadIsZeroRatherThanAFailedPage() throws Exception {
-        when(entries.getEntryCount(any())).thenThrow(new WebloggerException("database down"));
-        WeblogPermissionView row =
-                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
-
-        assertEquals(0L, row.getEntryCount());
-    }
-
-    /**
-     * The JSPs iterate rows named {@code perms}/{@code perm}, so every property
-     * they read must be on the row or on the raw weblog/user it carries. The
-     * entry count is the one that moved: {@code Weblog.getEntryCount()} is gone
-     * (it queried the entry manager from inside the entity), and a JSP still
-     * reading {@code perms.weblog.entryCount} fails only at render time -- no
-     * unit test renders a JSP and {@code jspc-validate} does not resolve EL
-     * properties. Pinned here as a source scan, the way the editor JSP
-     * hygiene tests pin their pages.
-     */
-    @Test
-    void theMainMenuReadsTheEntryCountFromTheRowNotTheEntity() throws Exception {
-        java.nio.file.Path jsp = java.nio.file.Path.of(System.getProperty("user.dir"))
-                .resolve("src/main/webapp/WEB-INF/jsps/core/MainMenu.jsp");
-        String source = java.nio.file.Files.readString(jsp);
-
-        assertTrue(source.contains("${perms.entryCount}"),
-                "MainMenu.jsp must read the entry count from the WeblogPermissionView row");
-        assertFalse(source.contains("perms.weblog.entryCount"),
-                "Weblog.getEntryCount() no longer exists; ${perms.weblog.entryCount} would fail at render");
     }
 
     @Test

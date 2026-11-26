@@ -35,13 +35,12 @@ import org.springframework.security.web.savedrequest.RequestCache;
  * page whose Sign in link the visitor followed; a path under the context
  * (checked by {@link ReturnPaths#sanitize}, the rule the reader sign-in uses)
  * is where they go back to. Otherwise the old order stands: the request that
- * sent them to sign in, else login-redirect, which picks the editor or the
- * Main Menu.
+ * sent them to sign in, else the React admin's home.
  */
 public class ReturnPathLoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
-    /** The landing when there is neither a return path nor a saved request. */
-    static final String DEFAULT_TARGET = "/pressroom-ui/login-redirect.rol";
+    /** The landing when there is neither a return path nor a saved request: the React admin's home. */
+    static final String DEFAULT_TARGET = "/pressroom-ui/app/";
 
     /** The login form's field for the page to go back to. */
     static final String RETURN_PARAMETER = "return";

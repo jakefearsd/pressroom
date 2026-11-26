@@ -79,7 +79,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * same mid-test, so a sign-in never rides a provider session left by an earlier one.
  *
  * <p><b>"Signed in" is read from the server, not the page.</b> A reader's session is
- * refused {@code menu.rol} with a 403; an anonymous one is sent to log in with a 302.
+ * refused the app home with a 403; an anonymous one is sent to log in with a 302.
  * {@link #menuStatus} asks with the browser's own session cookie, which is what tells a
  * reader who is in from one who was bounced.
  *
@@ -93,7 +93,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Acceptance testing: every behaviour here was driven out by unit tests first, so a
  * failure means the assembled WAR does not behave as those said it would. The first run
- * found one: a promoted reader was sent back to log in from {@code menu.rol}, because
+ * found one: a promoted reader was sent back to log in from the app home, because
  * the UI interceptor resolved only {@code UserDetails} principals (docs/dev/sso.md,
  * "Hazards found while building it").
  */
@@ -104,7 +104,8 @@ class SsoSignInIT extends PressroomIT {
     private static final String START = "/pressroom-ui/sso/start";
     private static final String CALLBACK = "/pressroom-ui/sso/callback";
     private static final String LOGIN = "/pressroom-ui/login.rol";
-    private static final String MENU = "/pressroom-ui/menu.rol";
+    /** The React admin's home (the main menu): needs an editor, so a reader gets a 403. */
+    private static final String MENU = "/pressroom-ui/app/";
     private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
 
     /** Keycloak users in src/test/resources/keycloak/pressroom-it-realm.json. */
@@ -125,7 +126,7 @@ class SsoSignInIT extends PressroomIT {
 
     /** The pages criterion 23 names, by their {@link Routes} paths. */
     private static final List<String> AUTHOR_PATHS = List.of(
-            "/pressroom-ui/menu.rol",
+            "/pressroom-ui/app/",
             "/pressroom-ui/profile.rol",
             "/pressroom-ui/createWeblog.rol",
             "/pressroom-ui/authoring/entries.rol",
@@ -476,13 +477,13 @@ class SsoSignInIT extends PressroomIT {
         return cookie.getValue();
     }
 
-    /** {@code menu.rol} asked with {@code sessionId}: 403 for a reader, 302 to log in for nobody. */
+    /** The app home asked with {@code sessionId}: 403 for a reader, 302 to log in for nobody. */
     private HttpResponse<String> menuStatus(String sessionId) throws Exception {
         return get(MENU, sessionId);
     }
 
     /**
-     * {@code sessionId} authenticates nobody: {@code menu.rol} answers it as it answers an
+     * {@code sessionId} authenticates nobody: the app home answers it as it answers an
      * anonymous visitor, a 302 to the login page. The Location is part of it, because a
      * 302 to the access-denied page is how a signed-in account without the right is
      * refused, not how nobody is.
