@@ -135,7 +135,12 @@ public final class MetaDtos {
                     + "good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. "
                     + "Read afresh on every request: a site admin can change it.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            int trashRetentionDays) {
+            int trashRetentionDays,
+            @Schema(description = "The most entries a weblog may show on one page (the site setting "
+                    + "site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every "
+                    + "request: a site admin can change it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int maxEntriesPerPage) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */

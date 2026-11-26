@@ -6134,6 +6134,14 @@
           "absoluteUrl" : {
             "type" : "string",
             "description" : "The weblog's absolute web address, as readers reach it (its custom domain when it has one); absent when it cannot be built."
+          },
+          "subscribeForm" : {
+            "type" : "string",
+            "description" : "Whether readers get the subscribe form on this blog's pages: on, offNoList (no newsletter list is set) or offNotConfigured (a list is set but the site has no newsletter service, so no sign-up can be taken)."
+          },
+          "customDomainOutsideCertZone" : {
+            "type" : "boolean",
+            "description" : "True, and present only then, when the custom domain is outside the certificate zones the operator configured (vhost.cert.zones): the domain is saved, but it has no wildcard certificate here."
           }
         }
       },
@@ -8651,9 +8659,14 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "How many days a trashed entry is kept before the nightly sweep deletes it for good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request: a site admin can change it."
+          },
+          "maxEntriesPerPage" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The most entries a weblog may show on one page (the site setting site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every request: a site admin can change it."
           }
         },
-        "required" : [ "features", "limits", "trashRetentionDays" ]
+        "required" : [ "features", "limits", "maxEntriesPerPage", "trashRetentionDays" ]
       },
       "LocaleChoice" : {
         "type" : "object",
