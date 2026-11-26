@@ -52,6 +52,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -525,8 +526,13 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(new HeaderOnlyCsrfTokenRequestHandler())
                 .requireCsrfProtectionMatcher(SecurityConfig::isSessionWrite)
                 .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
-            .sessionManagement(session ->
-                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // No session fixation protection either: it also runs on a session-authenticated request (seen as
+            // a fresh sign-in, this chain stores no context) and changes the session id, so the first of the
+            // React admin's parallel API reads replaced the cookie the others carried and they answered 401.
+            // An API call signs nobody in; the UI chain's sign-in still changes the id.
+            .sessionManagement(session -> session
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    .sessionFixation(SessionManagementConfigurer.SessionFixationConfigurer::none))
             // Before CSRF, which asks who authenticated. Reads an existing
             // session only; never /api/mcp (bearer only).
             .addFilterAfter(new ApiSessionAuthFilter(

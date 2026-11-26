@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.TestInstance;
 
+import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
@@ -622,7 +623,8 @@ class VirtualHostIT extends PressroomIT {
         $("select[name='theme']").selectOptionByValue("journal");
         $("button[type='submit']").click();
 
-        $("#messages").should(exist);
+        // The save lands on the React home (no flash message there): the new weblog's row is the evidence.
+        $$("h2.mm_weblog_name .data").findBy(exactText(handle)).should(exist);
         return handle;
     }
 
@@ -631,7 +633,9 @@ class VirtualHostIT extends PressroomIT {
         openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
         $("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
                 .should(visible).click();
-        $("#messages").should(exist);
+        // Back on the React home: the weblog's row is no longer listed.
+        $("h2.mm_weblog_name").should(exist);
+        $$("h2.mm_weblog_name .data").findBy(exactText(handle)).shouldNot(exist);
         BrowserHealth.current().settle();
     }
 

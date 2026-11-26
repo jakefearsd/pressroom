@@ -174,11 +174,6 @@ public final class Routes {
             // not .card-body, where Bootstrap 5's card-title is normally used.
             new Route("/pressroom-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
 
-            // The React admin's shell. #pressroom-app is emitted by the bundle
-            // itself (App.tsx), so the marker proves admin.js loaded and read
-            // the bootstrap block, not just that the JSP rendered.
-            new Route("/pressroom-ui/app.rol", Role.EDITOR, "", "#pressroom-app"),
-
             new Route("/pressroom-ui/profile.rol", Role.EDITOR, "",
                     "form[action$='/pressroom-ui/profile!save.rol']"),
 
@@ -382,6 +377,10 @@ public final class Routes {
                             + "@RequestParam makes the request 400 rather than render a "
                             + "page. Covered by PasswordResetControllerTest."),
 
+            new SkippedRoute("/pressroom-ui/app.rol", Role.EDITOR,
+                    "The React admin's shell: every /pressroom-ui/app/** URL is forwarded to it, and those are "
+                            + "swept below (APP). Opened as app.rol itself its URL is outside the router's "
+                            + "basename, so the app draws its not-found screen: nothing of its own to assert."),
             new SkippedRoute("/pressroom-ui/app-messages.rol", Role.ANONYMOUS,
                     "A JSON endpoint (the React admin's message bundle), not a page; "
                             + "covered by AppMessagesControllerTest."),
