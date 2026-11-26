@@ -129,7 +129,7 @@ class SsoSignInIT extends PressroomIT {
             "/pressroom-ui/app/",
             "/pressroom-ui/app/profile",
             "/pressroom-ui/app/weblogs/new",
-            "/pressroom-ui/authoring/entries.rol",
+            "/pressroom-ui/app/weblogs/it_weblog/entries",
             "/pressroom-ui/app/admin/users");
 
     private static final int PAGE_SIZE = 200;

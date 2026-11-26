@@ -176,7 +176,7 @@ class ColophonIT extends PressroomIT {
                          String wasFront, String wasPrivacy) {
         if (globalsChanged) {
             openGlobalConfig();
-            $("input[name='" + PRIVACY_FIELD + "']").setValue(wasPrivacy);
+            replaceText($("input[name='" + PRIVACY_FIELD + "']"), wasPrivacy);
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(wasFront);
             clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "restoring the settings reported an error");

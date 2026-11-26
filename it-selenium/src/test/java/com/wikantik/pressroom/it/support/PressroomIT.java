@@ -352,6 +352,23 @@ public abstract class PressroomIT {
     }
 
     /**
+     * Sets a text field of a React admin screen. Selenide's {@code setValue("")} clears the DOM value without
+     * the input event a controlled React input listens to, so an emptied field would still read as unchanged
+     * and never be saved; an empty value is therefore typed out with select-all and backspace.
+     *
+     * @param field the text input
+     * @param value the new value, possibly empty
+     */
+    protected static void replaceText(SelenideElement field, String value) {
+        if (value.isEmpty()) {
+            field.sendKeys(org.openqa.selenium.Keys.chord(org.openqa.selenium.Keys.CONTROL, "a"),
+                    org.openqa.selenium.Keys.BACK_SPACE);
+        } else {
+            field.setValue(value);
+        }
+    }
+
+    /**
      * Creates a weblog through the React create-weblog screen (the one a browser test has) and returns once
      * the app home is showing the created flash. Every IT that needs a fresh weblog calls this one helper.
      *
@@ -813,7 +830,7 @@ public abstract class PressroomIT {
     protected String setSiteAbsoluteUrl(String value) {
         openGlobalConfig();
         String previous = $("input[name='site.absoluteurl']").should(exist).getValue();
-        $("input[name='site.absoluteurl']").setValue(value == null ? "" : value);
+        replaceText($("input[name='site.absoluteurl']"), value == null ? "" : value);
         clickAndAwaitSavedMessage($("#saveButton"));
         return previous;
     }
