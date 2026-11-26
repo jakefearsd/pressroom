@@ -90,6 +90,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -212,6 +219,14 @@
       "get" : {
         "tags" : [ "Redirects" ],
         "operationId" : "redirectsList",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -241,6 +256,14 @@
       "post" : {
         "tags" : [ "Redirects" ],
         "operationId" : "redirectsCreate",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -287,6 +310,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -317,6 +347,14 @@
       "post" : {
         "tags" : [ "Pages" ],
         "operationId" : "pagesCreate",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -369,6 +407,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -407,6 +452,13 @@
           }
         }, {
           "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -464,6 +516,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -500,6 +559,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -531,6 +597,13 @@
         "operationId" : "pagesDeleteForever",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -591,6 +664,13 @@
             "type" : "integer",
             "format" : "int32"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -618,6 +698,14 @@
       "post" : {
         "tags" : [ "Media writes" ],
         "operationId" : "mediaUpload",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "multipart/form-data" : {
@@ -689,6 +777,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -728,6 +823,14 @@
       "post" : {
         "tags" : [ "Media writes" ],
         "operationId" : "mediaImport",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -776,6 +879,14 @@
       "get" : {
         "tags" : [ "Media" ],
         "operationId" : "mediaListDirectories",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -805,6 +916,14 @@
       "post" : {
         "tags" : [ "Media writes" ],
         "operationId" : "mediaCreateDirectory",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -910,6 +1029,13 @@
               "type" : "string"
             }
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -947,6 +1073,13 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "requestBody" : {
@@ -996,6 +1129,13 @@
           }
         }, {
           "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -1055,6 +1195,13 @@
               "type" : "string"
             }
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1107,6 +1254,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1154,6 +1308,13 @@
               "type" : "string"
             }
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1185,6 +1346,13 @@
         "operationId" : "entriesPreview",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -1236,6 +1404,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "204" : {
@@ -1258,6 +1433,14 @@
       "post" : {
         "tags" : [ "Entry writes" ],
         "operationId" : "entriesPreviewNew",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1303,6 +1486,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1342,6 +1532,14 @@
       "get" : {
         "tags" : [ "Categories and tags" ],
         "operationId" : "categoriesList",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1371,6 +1569,14 @@
       "post" : {
         "tags" : [ "Category writes" ],
         "operationId" : "categoriesCreate",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1476,6 +1682,14 @@
       "post" : {
         "tags" : [ "Maintenance" ],
         "operationId" : "maintenanceRegenerateRenditions",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "202" : {
             "description" : "Started; the work finishes after the response.",
@@ -1504,6 +1718,14 @@
       "post" : {
         "tags" : [ "Maintenance" ],
         "operationId" : "maintenanceRebuildIndex",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "202" : {
             "description" : "Started; the work finishes after the response.",
@@ -1532,6 +1754,14 @@
       "post" : {
         "tags" : [ "Maintenance" ],
         "operationId" : "maintenanceFlushCache",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "202" : {
             "description" : "Started; the work finishes after the response.",
@@ -1774,6 +2004,14 @@
       "get" : {
         "tags" : [ "Weblog settings" ],
         "operationId" : "weblogsGet",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1800,6 +2038,14 @@
       "patch" : {
         "tags" : [ "Weblog settings" ],
         "operationId" : "weblogsUpdate",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1845,6 +2091,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1879,6 +2132,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "204" : {
@@ -1901,6 +2161,13 @@
         "operationId" : "pagesUpdate",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -1952,6 +2219,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1986,6 +2260,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "204" : {
@@ -2008,6 +2289,13 @@
         "operationId" : "mediaUpdate",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2070,6 +2358,13 @@
               "type" : "string"
             }
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2099,6 +2394,13 @@
         "operationId" : "entriesTrash",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2141,6 +2443,13 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "requestBody" : {
@@ -2188,6 +2497,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2222,6 +2538,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "204" : {
@@ -2244,6 +2567,13 @@
         "operationId" : "commentsUpdate",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2302,6 +2632,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "204" : {
@@ -2324,6 +2661,13 @@
         "operationId" : "categoriesUpdate",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2606,6 +2950,13 @@
             "type" : "string",
             "default" : "30d"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2635,6 +2986,14 @@
       "get" : {
         "tags" : [ "Categories and tags" ],
         "operationId" : "tagsList",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -2668,6 +3027,13 @@
         "operationId" : "pagesListRevisions",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2727,6 +3093,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2777,6 +3150,13 @@
             "format" : "int32",
             "default" : 50
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2808,6 +3188,13 @@
         "operationId" : "entriesListRevisions",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -2867,6 +3254,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -2913,6 +3307,13 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -2984,6 +3385,13 @@
             "format" : "int32",
             "default" : 50
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -3033,6 +3441,13 @@
             "type" : "integer",
             "format" : "int32",
             "default" : 50
+          }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -3088,6 +3503,13 @@
             "format" : "int32",
             "default" : 50
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -3124,6 +3546,13 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -3153,6 +3582,14 @@
       "get" : {
         "tags" : [ "Audits" ],
         "operationId" : "auditsGetMedia",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -3364,6 +3801,13 @@
         "operationId" : "redirectsDelete",
         "parameters" : [ {
           "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "handle",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -5826,7 +6270,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
           }
         },
         "required" : [ "code", "status", "title", "type" ]
@@ -5846,7 +6290,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
           }
         },
         "required" : [ "code" ]
