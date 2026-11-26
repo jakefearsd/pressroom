@@ -150,10 +150,11 @@ export function useConfig() {
 }
 
 /** The site space's pages (the front-door choices); none when there is no site space. */
-export function useSitePages() {
+export function useSitePages(enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'sitePages'],
+    enabled,
     retry: false,
     queryFn: async () => {
       try {

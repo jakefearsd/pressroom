@@ -30,6 +30,8 @@ const groups = [
 ];
 let values: Record<string, string>;
 let sitePages: object[] | 404;
+let siteSpaceListed = true;
+let pagesReads = 0;
 let patched: { body: Record<string, string>; csrf: string | null }[];
 let nextSweep: object;
 
@@ -37,9 +39,10 @@ const entries = () => groups.flatMap((g) => g.properties).map((p) => ({ name: p.
 const server = setupServer(
   http.get(`${API}/admin/config/definitions`, () => HttpResponse.json(groups)),
   http.get(`${API}/admin/config`, () => HttpResponse.json(entries())),
-  http.get(`${API}/weblogs`, () => HttpResponse.json({ items: [{ handle: 'alpha', name: 'Alpha' }, { handle: 'site-space', name: 'Site' },
-    { handle: 'beta', name: 'Beta' }], offset: 0, limit: 200, hasMore: false })),
-  http.get(`${API}/weblogs/site-space/pages`, () => sitePages === 404
+  http.get(`${API}/weblogs`, () => HttpResponse.json({ items: [{ handle: 'alpha', name: 'Alpha' },
+    ...(siteSpaceListed ? [{ handle: 'site-space', name: 'Site' }] : []), { handle: 'beta', name: 'Beta' }],
+    offset: 0, limit: 200, hasMore: false })),
+  http.get(`${API}/weblogs/site-space/pages`, () => (pagesReads++, sitePages) === 404
     ? HttpResponse.json({ code: 'weblog.notFound', detail: 'No such weblog.' }, { status: 404 }) : HttpResponse.json(sitePages)),
   http.get(`${API}/admin/revisions`, () => HttpResponse.json({ nextSweep }))
 );
@@ -52,6 +55,8 @@ beforeEach(() => {
     'site.discovery.ratio': '0.5', 'groupblogging.enabled': 'true', 'site.unknown': 'zzz', 'entry.revisions.retention': '10' };
   sitePages = [{ slug: 'welcome', title: 'Welcome <home>', status: 'PUBLISHED' }, { slug: 'draft', title: 'Draft', status: 'DRAFT' }];
   patched = [];
+  siteSpaceListed = true;
+  pagesReads = 0;
   nextSweep = { total: 0, incomplete: false };
 });
 
@@ -64,6 +69,9 @@ const accept = () => server.use(http.patch(`${API}/admin/config`, async ({ reque
 const openScreen = async () => {
   const view = renderRoutes(siteAdminRoutes, '/admin/config', { boot: adminBoot });
   await screen.findByLabelText('Site name (for the front page and feeds)');
+  // The site pages are asked for once the weblog list has shown a site space: let that read land too.
+  await waitFor(() => { expect(siteSpaceListed ? pagesReads : 1).toBeGreaterThan(0); });
+  await new Promise((resolve) => { setTimeout(resolve, 30); });
   return view;
 };
 const save = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Save' }));
@@ -136,9 +144,11 @@ describe('Global config', () => {
   });
 
   it('points to writing a site page when there are none, and when there is no site space', async () => {
-    sitePages = 404;
+    siteSpaceListed = false;
     await openScreen();
     expect(screen.getByText(/No published site pages yet\./)).toBeInTheDocument();
+    // No site space yet: asking for its pages would be a 404 the browser reports, so nothing is asked.
+    expect(pagesReads).toBe(0);
     expect(screen.getByRole('link', { name: 'Write one' })).toHaveAttribute('href',
       'http://pressroom.test/pressroom/pressroom-ui/authoring/pages.rol?weblog=site-space');
   });
