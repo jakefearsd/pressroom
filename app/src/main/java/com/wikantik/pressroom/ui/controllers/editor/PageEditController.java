@@ -48,6 +48,7 @@ import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.ui.controllers.PageRules;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
+import com.wikantik.pressroom.ui.view.EntryListView;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -681,7 +682,7 @@ public class PageEditController extends BaseController {
         model.addAttribute("strandParts", parts);
         model.addAttribute("strandShownIds", shownIds);
         model.addAttribute("strandCandidates", candidates);
-        model.addAttribute("entryTitles", EntriesController.plainTitles(titled));
+        model.addAttribute("entryTitles", EntryListView.plainTitles(titled));
     }
 
     /**

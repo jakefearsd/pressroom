@@ -79,7 +79,7 @@ public class MediaFileViewController extends MediaFileBase {
         return "mediaFileView.title";
     }
 
-    // Both verbs, like entryAddWithMediaFile.rol: browsing is a GET, but the
+    // Both verbs: browsing is a GET, but the
     // view page's own form (the sort-by onchange and the edit modal's
     // onEditSuccess() both call document.mediaFileViewForm.submit(), and the
     // form is method="post") posts back to this same URL. The Struts action

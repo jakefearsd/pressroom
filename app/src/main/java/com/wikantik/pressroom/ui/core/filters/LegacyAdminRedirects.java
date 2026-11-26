@@ -28,7 +28,9 @@ import java.util.function.UnaryOperator;
  * @param legacyPath the old route, servlet path with no context path
  * @param reactPath the React route under the app, {@code {name}} placeholders allowed
  * @param pathParams placeholder name to the request parameter that supplies it
- * @param carried request parameters copied to the query string, in this order, when present
+ * @param carried request parameters copied to the query string, in this order, when present; an entry
+ *        written {@code old>new} is read as {@code old} and written as {@code new}, for a screen whose
+ *        query names changed (several olds may feed one new, the last one present wins)
  */
 public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
                                    List<String> carried) {
@@ -42,7 +44,29 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/authoring/traffic.rol", "/weblogs/{weblog}/traffic",
                     Map.of("weblog", "weblog"), List.of("period", "tab", "sort")),
             new LegacyAdminRedirects("/pressroom-ui/admin/siteTraffic.rol", "/admin/traffic", Map.of(),
-                    List.of("period")));
+                    List.of("period")),
+            // Wave 1 (entries, entry editor, trash, comments, categories). The old bean.* names become the
+            // React screens' plain ones; the old page number is dropped (it needs arithmetic: first page).
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entries.rol", "/weblogs/{weblog}/entries",
+                    Map.of("weblog", "weblog"),
+                    List.of("bean.status>status", "bean.categoryName>category", "bean.tagsAsString>tags",
+                            "bean.text>text", "bean.startDateString>startDate", "bean.endDateString>endDate",
+                            "bean.sortBy>sortBy")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryAdd.rol", "/weblogs/{weblog}/entries/new",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryEdit.rol", "/weblogs/{weblog}/entries/{id}",
+                    Map.of("weblog", "weblog", "id", "bean.id"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryEdit!firstSave.rol",
+                    "/weblogs/{weblog}/entries/{id}", Map.of("weblog", "weblog", "id", "bean.id"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                    "/weblogs/{weblog}/entries/new", Map.of("weblog", "weblog"),
+                    List.of("selectedImages>mediaId", "selectedImage>mediaId")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/trash.rol", "/weblogs/{weblog}/trash",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/comments.rol", "/weblogs/{weblog}/comments",
+                    Map.of("weblog", "weblog"), List.of("status", "entry")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/categories.rol", "/weblogs/{weblog}/categories",
+                    Map.of("weblog", "weblog"), List.of()));
 
     /** Every legacy path in the table, for the filter's URL patterns. */
     public static List<String> legacyPaths() {
@@ -77,10 +101,13 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
         }
         List<String> query = new ArrayList<>();
         Map<String, String> seen = new LinkedHashMap<>();
-        for (String name : carried) {
-            String value = param.apply(name);
+        for (String spec : carried) {
+            int arrow = spec.indexOf('>');
+            String from = arrow < 0 ? spec : spec.substring(0, arrow);
+            String to = arrow < 0 ? spec : spec.substring(arrow + 1);
+            String value = param.apply(from);
             if (value != null && !value.isEmpty()) {
-                seen.put(name, value);
+                seen.put(to, value);
             }
         }
         seen.forEach((name, value) -> query.add(encode(name) + "=" + encode(value)));

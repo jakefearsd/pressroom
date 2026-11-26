@@ -205,39 +205,4 @@ class EditorJspMarkupHygieneTest {
         assertTrue(missing.isEmpty(), String.join("\n", missing));
     }
 
-    /**
-     * {@code navigator.clipboard} is undefined on a non-HTTPS origin -- every
-     * plain-http deployment and every dev server -- so an unguarded call left
-     * the copy control silently dead there, a TypeError in the console and
-     * nothing on screen.
-     */
-    @Test
-    void theClipboardApiCallIsGuarded() throws Exception {
-        String src = Files.readString(EDITOR_JSP_DIR.resolve("EntryEdit.jsp"));
-        assertTrue(src.contains("if (navigator.clipboard)"),
-                "EntryEdit.jsp calls navigator.clipboard without a feature check");
-    }
-
-    /**
-     * Status was carried by the row tint alone -- {@code .draftentry},
-     * {@code .pendingentry}, {@code .scheduledentry} -- which is colour-only
-     * information a screen reader never receives and a colour-blind reader
-     * cannot separate. The row tints are gone (task B1: one shared
-     * {@code StatusPill.jsp} include renders status as text everywhere), but
-     * the status-carries-text property and the GET filter chips are both one
-     * block of markup that a later edit could drop without any other test
-     * noticing.
-     */
-    @Test
-    void theEntriesListStatesStatusInTextAndOffersItAsAFilter() throws Exception {
-        String src = Files.readString(EDITOR_JSP_DIR.resolve("Entries.jsp"));
-        List<String> missing = new ArrayList<>();
-        if (!src.contains("/WEB-INF/jsps/editor/StatusPill.jsp")) {
-            missing.add("Entries.jsp: no status-pill include (colour-only rows)");
-        }
-        if (!src.contains("entries-status-chips")) {
-            missing.add("Entries.jsp: no status filter chips");
-        }
-        assertTrue(missing.isEmpty(), String.join("\n", missing));
-    }
 }

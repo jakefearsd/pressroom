@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.time.Duration;
 
 import com.codeborne.selenide.SelenideElement;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,8 +54,6 @@ import static com.codeborne.selenide.Selenide.switchTo;
  */
 class MarkdownPreviewIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-
     /** The mode control's Preview radio, and the frame it reveals. */
     private static final String PREVIEW_BUTTON = Editor.MODE_PREVIEW;
     private static final String PREVIEW_FRAME = Editor.PREVIEW_FRAME;
@@ -86,8 +85,8 @@ class MarkdownPreviewIT extends PressroomIT {
      * click land on a page whose handlers are bound.
      */
     private void openEditorInWriteMode() {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
         $(Editor.ROOT).should(exist);
         $(Editor.MODE_WRITE).click();
         $(Editor.ROOT).shouldBe(visible);
@@ -98,7 +97,7 @@ class MarkdownPreviewIT extends PressroomIT {
         String suffix = Long.toString(System.nanoTime(), 36);
 
         openEditorInWriteMode();
-        $("[name='bean.title']").setValue("IT Preview " + suffix);
+        AdminApp.titleField().setValue("IT Preview " + suffix);
         Editor.setText("## Heading " + suffix + "\n\nA **bold** word.\n");
 
         $(PREVIEW_BUTTON).should(visible).click();

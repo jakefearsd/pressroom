@@ -17,7 +17,8 @@
  */
 package com.wikantik.pressroom.it;
 
-import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminApp;
+import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,12 +31,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.$$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,18 +62,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AuthoringJourneyIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-
-    /** Rendered on the edit page only once the entry is actually published — see EntryEdit.jsp. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    /** Rendered on the edit page only once the entry is actually published. */
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     /**
      * The publish rail's status pill: Draft / Published / Pending / Scheduled,
-     * plus Unsaved before the first save. Rendered by the one shared
-     * StatusPill.jsp component (task B1) since task M1 replaced the rail's
-     * Bootstrap badges with it.
+     * plus Unsaved before the first save (the shared StatusPill component).
      */
-    private static final String STATUS_PILL = ".editor-statusrow .status-pill";
+    private static final String STATUS_PILL = AdminApp.STATUS_PILL;
 
     private HttpClient http;
 
@@ -93,9 +89,9 @@ class AuthoringJourneyIT extends PressroomIT {
         String body = "Body of the journey entry " + suffix + ".";
 
         // --- write and publish -------------------------------------------------
-        openPath(ENTRY_ADD);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
         writeEntry(title, body);
-        clickPublish("entryAdd");
+        clickPublish();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
@@ -111,9 +107,9 @@ class AuthoringJourneyIT extends PressroomIT {
 
         // --- edit ---------------------------------------------------------------
         String editedTitle = title + " (edited)";
-        openEditorFor(title);
-        $("[name='bean.title']").setValue(editedTitle);
-        clickPublish("entryEdit");
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(editedTitle);
+        clickPublish();
 
         $(PERMALINK).should(exist);
         assertEquals(permalink, $(PERMALINK).getAttribute("href"),
@@ -123,9 +119,9 @@ class AuthoringJourneyIT extends PressroomIT {
         readAnonymously(permalink, editedTitle, body);
 
         // --- delete -------------------------------------------------------------
-        String entryId = $("input[name='bean.id']").getValue();
-        assertTrue(entryId != null && !entryId.isBlank(), "the edit form must carry the entry id");
-        deleteEntry(entryId);
+        String entryId = AdminApp.savedEntryId();
+        assertTrue(entryId != null && !entryId.isBlank(), "the editor must be open on the saved entry");
+        deleteEntry(editedTitle);
 
         assertEquals(404, statusOf(permalink),
                 "a deleted entry must stop resolving for readers, not linger in the cache or "
@@ -138,14 +134,14 @@ class AuthoringJourneyIT extends PressroomIT {
         String title = "IT Draft " + suffix;
         String body = "This draft must never reach a reader " + suffix + ".";
 
-        openPath(ENTRY_ADD);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
         writeEntry(title, body);
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
+        AdminApp.saveDraftButton().click();
 
         // A draft has no permalink link on the edit page, but the URL it *would*
         // occupy is predictable from the title, and that is exactly what a reader
         // could guess.
-        String entryId = $("input[name='bean.id']").getValue();
+        String entryId = AdminApp.savedEntryId();
         assertTrue(entryId != null && !entryId.isBlank(),
                 "saving a draft must persist it and return its id");
 
@@ -183,9 +179,9 @@ class AuthoringJourneyIT extends PressroomIT {
         String suffix = uniqueSuffix();
         String title = "IT CtrlEnter " + suffix;
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(title);
         Editor.type("Published from the keyboard " + suffix + ".");
 
         $(Editor.CONTENT).sendKeys(Keys.chord(Keys.CONTROL, Keys.ENTER));
@@ -210,20 +206,17 @@ class AuthoringJourneyIT extends PressroomIT {
         String suffix = uniqueSuffix();
         String title = "IT CtrlS " + suffix;
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(title);
         Editor.type("Saved from the keyboard " + suffix + ".");
 
         $(Editor.CONTENT).sendKeys(Keys.chord(Keys.CONTROL, "s"));
 
-        // One save landed: the add form became the edit form, carrying an id.
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
-        String entryId = $("input[name='bean.id']").getValue();
+        // One save landed: the new-entry route became the saved entry's, carrying an id.
+        String entryId = AdminApp.savedEntryId();
         assertTrue(entryId != null && !entryId.isBlank(),
                 "Ctrl+S must save the draft and return its id");
-        assertTrue(WebDriverRunner.url().contains("entryEdit"),
-                "one save must land on the edit action; got " + WebDriverRunner.url());
 
         // And it is still a DRAFT. A second handler firing the publish button
         // would show Published here, with a permalink beside it.
@@ -237,35 +230,21 @@ class AuthoringJourneyIT extends PressroomIT {
      * Fills the entry form.
      *
      * <p>The body goes in through {@code pressroomSetEntryText}, the page's own
-     * seam, rather than by typing into the editor's surface. The editor keeps
-     * its value in its own model and only writes back to the underlying
-     * {@code bean.text} textarea on submit, so driving the visible element
-     * directly would post an empty body -- the entry would save and the
-     * assertions on the public page would then fail for a reason that has
-     * nothing to do with Pressroom.
+     * seam, rather than by typing into the editor's surface.
      */
     private void writeEntry(String title, String body) {
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-
-        Editor.setText(body);
+        AdminApp.write(title, body);
     }
 
-    /** Submits via the publish button, whose formaction differs between add and edit. */
-    private void clickPublish(String action) {
-        // Waits for the answer: on an entry that is already published the
-        // permalink the callers wait on is on the page the click came from.
-        clickAndAwaitNewPage($("button[formaction$='" + action + "!publish.rol']"));
-    }
-
-    /** Opens the editor for an entry from the entry list. */
-    private void openEditorFor(String title) {
-        if ($("#entry").exists()) {
-            return;
-        }
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
-        $$("a").findBy(com.codeborne.selenide.Condition.text(title)).click();
-        $("#entry").should(exist);
+    /**
+     * Presses the rail's primary button and waits for the save to land. On an entry that is already
+     * published the permalink the callers wait on is already on the page, so the wait is on the success
+     * banner, which the click clears and the answer brings back.
+     */
+    private void clickPublish() {
+        AdminApp.publishButton().click();
+        AdminApp.awaitSavedBanner();
+        BrowserHealth.current().settle();
     }
 
     /**
@@ -289,25 +268,12 @@ class AuthoringJourneyIT extends PressroomIT {
                         + "Fetched " + permalink + " and got:\n" + truncate(page));
     }
 
-    /** Posts the delete form the way the entry list's modal does. */
-    private void deleteEntry(String entryId) {
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
-        // form.submit() starts the navigation in a task of its own, so the script
-        // returns before the POST exists; the caller's 404 check must not overtake it.
-        awaitNewPageAfter(() -> executeJavaScript(
-                "var f = document.createElement('form');"
-                        + "f.method = 'post';"
-                        + "f.action = arguments[0];"
-                        + "function add(n, v) { var i = document.createElement('input');"
-                        + "  i.type = 'hidden'; i.name = n; i.value = v; f.appendChild(i); }"
-                        + "add('removeId', arguments[1]);"
-                        + "add('weblog', arguments[2]);"
-                        + "var t = document.querySelector(\"input[name='_csrf']\");"
-                        + "if (t) { add('_csrf', t.value); }"
-                        + "document.body.appendChild(f); f.submit();",
-                baseUrl() + "/pressroom-ui/authoring/entryRemoveViaList!remove.rol",
-                entryId,
-                WEBLOG_HANDLE));
+    /** Deletes the entry through the entry list's row button and its confirmation dialog. */
+    private void deleteEntry(String title) {
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        AdminApp.row(title).$("button.entry-delete-btn").shouldBe(visible).click();
+        AdminApp.confirmDialog();
+        AdminApp.row(title).should(disappear);
     }
 
     private String pathOf(String absoluteUrl) {

@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.WebDriverRunner;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -32,7 +33,8 @@ import static com.codeborne.selenide.Condition.value;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static com.codeborne.selenide.Selenide.executeAsyncJavaScript;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,7 +63,7 @@ class MultiUserJourneyIT extends PressroomIT {
     private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     /** Rendered on the edit page only once the entry is actually published. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     private static final String PASSWORD = "it-user-password";
 
@@ -112,17 +114,18 @@ class MultiUserJourneyIT extends PressroomIT {
         // --- Bob cannot reach Alice's entry --------------------------------
         // Through his own weblog's editor, with her id: the controller resolves
         // ids globally, so only an ownership check stands between these two.
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + bobBlog
-                + "&bean.id=" + aliceEntryId);
+        // The API answers 404 for an entry the weblog does not own, and the app goes home.
+        BrowserHealth.current().expectRefusal("/entries/" + aliceEntryId);
+        openPath(AdminApp.entry(bobBlog, aliceEntryId));
         BrowserHealth.current().settle();
         String leaked = $$("#entry").isEmpty() ? "" : Editor.getText();
         assertFalse(leaked != null && leaked.contains("Rewritten by Alice"),
                 "Bob opened Alice's entry in his own editor; it holds: " + leaked);
 
-        // And he cannot delete it either. The refusal is a 4xx, which is the
-        // correct answer here and not a broken page.
-        BrowserHealth.current().expectRefusal("entryRemoveViaList!remove.rol");
-        deleteEntry(bobBlog, aliceEntryId);
+        // And he cannot delete it either: the same call the list's delete makes, with her id on his weblog,
+        // from his own session (so with its CSRF token). The refusal is a 404, the correct answer here.
+        assertEquals(404, deleteViaApi(bobBlog, aliceEntryId),
+                "Bob's session deleted, or learned the existence of, Alice's entry");
         logout();
 
         signInAs(alice, PASSWORD);
@@ -130,12 +133,11 @@ class MultiUserJourneyIT extends PressroomIT {
                 "Bob's delete removed Alice's entry");
 
         // --- Alice deletes her own post, which must work -------------------
-        deleteEntry(aliceBlog, aliceEntryId);
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + aliceBlog);
-        // The row's own checkbox, not the page text: the delete's flash
-        // message quotes the entry title, so scanning the source for the
-        // title finds the confirmation that it is gone.
-        $("input[name='selectedEntries'][value='" + aliceEntryId + "']").should(disappear);
+        deleteEntry(aliceBlog, "Alice first post " + suffix);
+        openPath(AdminApp.entries(aliceBlog));
+        // The row itself, not the page text: the delete's flash message quotes the entry title, so
+        // scanning the source for the title finds the confirmation that it is gone.
+        AdminApp.row("Alice first post " + suffix).should(disappear);
         logout();
 
         // --- Bob's post is untouched by all of that ------------------------
@@ -152,7 +154,7 @@ class MultiUserJourneyIT extends PressroomIT {
      * only then. This is the one end-to-end proof neither half is enough on
      * its own: a one-weblog session must render no switcher at all, and
      * picking a weblog out of the switcher's menu must land on the SAME rail
-     * screen ({@code entries.rol}) for the newly chosen weblog rather than,
+     * screen (the entries list) for the newly chosen weblog rather than,
      * say, the main menu.
      */
     @Test
@@ -170,23 +172,23 @@ class MultiUserJourneyIT extends PressroomIT {
         createWeblog(blogA, "Carol's Blog A " + suffix);
 
         // --- one weblog: no switcher at all ---------------------------------
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + blogA);
+        openPath(AdminApp.entries(blogA));
         BrowserHealth.current().settle();
         $("#weblogSwitcher").shouldNot(exist);
 
         // --- a second weblog makes the switcher appear ----------------------
         createWeblog(blogB, "Carol's Blog B " + suffix);
 
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + blogA);
+        openPath(AdminApp.entries(blogA));
         BrowserHealth.current().settle();
         $("#weblogSwitcher").should(exist).click();
-        clickAndAwaitNewPage($(".weblog-switcher .dropdown-item[href*='weblog=" + blogB + "']").should(visible));
+        $(".weblog-switcher .dropdown-item[href$='/weblogs/" + blogB + "/entries']").should(visible).click();
 
+        // The switch is a client-side navigation: wait on the route, then on the list.
+        $("#entries-list-marker").should(exist);
         String url = WebDriverRunner.url();
-        assertTrue(url.contains("entries.rol"),
-                "choosing another weblog from the switcher must keep the same rail screen: " + url);
-        assertTrue(url.contains("weblog=" + blogB),
-                "choosing Blog B from the switcher did not land on its entries list: " + url);
+        assertTrue(url.endsWith("/weblogs/" + blogB + "/entries"),
+                "choosing Blog B from the switcher must land on its entries list, the screen it was on: " + url);
 
         logout();
     }
@@ -242,33 +244,31 @@ class MultiUserJourneyIT extends PressroomIT {
 
         // Reaching the new weblog's own entry list is the first evidence the
         // weblog exists AND that its creator has permission on it.
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + handle);
-        $("#entries-list-marker, table.pressroomtable").should(exist);
+        openPath(AdminApp.entries(handle));
+        $("#entries-list-marker").should(exist);
         BrowserHealth.current().settle();
     }
 
     /** Publishes an entry on the given weblog and returns its id. */
     private String publishEntry(String weblogHandle, String title, String body) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + weblogHandle);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        openPath(AdminApp.newEntry(weblogHandle));
+        AdminApp.write(title, body);
+        AdminApp.publishButton().click();
 
-        // Wait on the write landing, not the page moving: the permalink block
-        // renders only once the entry is actually published.
+        // Wait on the write landing: the permalink block renders only once the entry is actually published.
         $(PERMALINK).should(exist);
-        String id = $("input[name='bean.id']").getValue();
-        assertNotNull(id, "the editor must expose the published entry's id");
+        String id = AdminApp.savedEntryId();
+        assertNotNull(id, "the editor must be open on the published entry");
         return id;
     }
 
     private void editEntryBody(String weblogHandle, String entryId, String body) {
         openEditor(weblogHandle, entryId);
         Editor.setText(body);
-        // Not a wait on #entry: the editor the click came from has one too.
-        clickAndAwaitNewPage($("button[formaction$='entryEdit!saveDraft.rol']"));
-        $("#entry").should(exist);
+        AdminApp.saveDraftButton().click();
+        // The click clears the banner and the save's answer brings it back.
+        AdminApp.awaitSavedBanner();
+        BrowserHealth.current().settle();
     }
 
     /** The body currently stored for an entry, as its own editor reports it. */
@@ -279,25 +279,39 @@ class MultiUserJourneyIT extends PressroomIT {
     }
 
     private void openEditor(String weblogHandle, String entryId) {
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + weblogHandle
-                + "&bean.id=" + entryId);
-        $("#entry").should(exist);
-        Editor.root();
+        openPath(AdminApp.entry(weblogHandle, entryId));
+        AdminApp.awaitEditor();
     }
 
     /**
-     * Deletes through the entry list's own confirmation modal, which is how a
+     * Deletes through the entry list's own confirmation dialog, which is how a
      * user actually does it.
      */
-    private void deleteEntry(String weblogHandle, String entryId) {
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + weblogHandle);
+    private void deleteEntry(String weblogHandle, String title) {
+        openPath(AdminApp.entries(weblogHandle));
         BrowserHealth.current().settle();
-        executeJavaScript("showDeleteModal(arguments[0], 'x');", entryId);
-        $("#delete-entry-modal").shouldBe(visible);
-        // Wait for the POST's answer to replace this page. Bob's caller signs out
-        // next, and a POST still unsent at that point lands on a dead session: it
-        // is refused for its CSRF token instead of by the ownership check, and its
-        // 403 overwrites Alice's freshly installed session cookie.
-        clickAndAwaitNewPage($("#delete-entry-modal button[type='submit']"));
+        AdminApp.row(title).$("button.entry-delete-btn").shouldBe(visible).click();
+        AdminApp.confirmDialog();
+        $("#messages").should(exist);
+    }
+
+    /**
+     * The status of the call the entry list's delete makes, with an id the weblog does not own, from the
+     * signed-in page: the API's refusal of a foreign id, unreachable through the list (which shows only
+     * this weblog's rows).
+     */
+    private int deleteViaApi(String weblogHandle, String entryId) {
+        openPath(AdminApp.entries(weblogHandle));
+        BrowserHealth.current().expectRefusal("/weblogs/" + weblogHandle + "/entries/" + entryId);
+        Object status = executeAsyncJavaScript(
+                "var done = arguments[arguments.length - 1];"
+                        + "var boot = JSON.parse(document.getElementById('pressroom-bootstrap').textContent);"
+                        + "var headers = {};"
+                        + "headers[boot.csrf.headerName] = boot.csrf.token;"
+                        + "fetch(boot.contextPath + '/api/v1/weblogs/' + arguments[0] + '/entries/' + arguments[1],"
+                        + "  { method: 'DELETE', headers: headers, credentials: 'same-origin' })"
+                        + "  .then(function (r) { done(r.status); });",
+                weblogHandle, entryId);
+        return ((Number) status).intValue();
     }
 }

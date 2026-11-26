@@ -32,8 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for the search/filter bean behind the media list page,
- * {@link MediaFileSearchBean}. {@link EntriesBean}, the Entries-list twin of
- * this bean, has its own top-level {@link EntriesBeanTest}.
+ * {@link MediaFileSearchBean}.
  *
  * <p>This is a pure translation layer from form fields to query criteria, with
  * no business tier behind it — which makes it cheap to test exhaustively

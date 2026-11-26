@@ -35,9 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Category changes: create, rename or describe, delete. Blog-wide structure
  * rather than a single draft -- {@code UISecurityEnforced} declares {@code
- * WeblogPermission.POST}, the same level {@code CategoryEditController}/
- * {@code CategoryRemoveController} require for the JSP admin UI (see
- * {@code ControllerMetadataTest}). {@code PressroomHandlerInterceptor}
+ * WeblogPermission.POST}, the level the categories screen needs. {@code PressroomHandlerInterceptor}
  * enforces it; this controller adds no permission checking of its own.
  * Reading the categories and tags is a contributor's too, as the entry
  * editor shows them, so those reads live in {@link CategoriesReadApi}.

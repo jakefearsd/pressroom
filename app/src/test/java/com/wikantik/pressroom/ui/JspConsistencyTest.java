@@ -172,22 +172,13 @@ class JspConsistencyTest {
                         + formId + "\", which is not declared in this JSP");
             }
         }
-        assertTrue(barsFound >= 3,
+        assertTrue(barsFound >= 2,
                 "Found too few .selection-bar elements -- expected at least one each on "
-                        + "Entries.jsp, Submissions.jsp and MediaFileView.jsp.");
-
-        String entries = Files.readString(JSPS.resolve("editor/Entries.jsp"), StandardCharsets.UTF_8);
-        assertFalse(entries.contains("entriesBulkActions"),
-                "Entries.jsp still has the old #entriesBulkActions div -- its buttons "
-                        + "must move into the .selection-bar");
+                        + "Submissions.jsp and MediaFileView.jsp.");
 
         String submissions = Files.readString(JSPS.resolve("editor/Submissions.jsp"), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(submissions, "class=\"selection-bar\""),
                 "Submissions.jsp must have exactly one .selection-bar");
-
-        String comments = Files.readString(JSPS.resolve("editor/Comments.jsp"), StandardCharsets.UTF_8);
-        assertEquals(1, countOccurrences(comments, "class=\"selection-bar\""),
-                "Comments.jsp must have exactly one .selection-bar");
 
         String mediaFileView = Files.readString(JSPS.resolve("editor/MediaFileView.jsp"), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(mediaFileView, "class=\"selection-bar\""),
@@ -291,8 +282,8 @@ class JspConsistencyTest {
         List<Path> sidebarJsps = jsps().stream()
                 .filter(p -> p.getFileName().toString().endsWith("Sidebar.jsp"))
                 .toList();
-        assertEquals(4, sidebarJsps.size(),
-                "Expected exactly the four sidebar tiles -- the scan is not looking where it thinks it is.");
+        assertEquals(2, sidebarJsps.size(),
+                "Expected exactly the two sidebar tiles -- the scan is not looking where it thinks it is.");
 
         for (Path jsp : sidebarJsps) {
             String src = Files.readString(jsp, StandardCharsets.UTF_8);
@@ -422,11 +413,9 @@ class JspConsistencyTest {
      */
     private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
             Map.entry("editor/WeblogConfigController.java", List.of("editor/WeblogConfig.jsp")),
-            Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
             Map.entry("editor/MediaFileViewController.java", List.of("editor/MediaFileSidebar.jsp")),
             Map.entry("editor/MediaFileEditController.java", List.of("editor/MediaFileEdit.jsp")),
             Map.entry("editor/PageEditController.java", List.of("editor/PageEdit.jsp")),
-            Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
             Map.entry("editor/TemplatesController.java", List.of("editor/TemplatesSidebar.jsp")),
             Map.entry("editor/MembersController.java", List.of("editor/Members.jsp")),
             Map.entry("core/CreateWeblogController.java", List.of("core/CreateWeblog.jsp")),

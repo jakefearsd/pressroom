@@ -176,7 +176,7 @@ class ReaderRefusalSweepTest {
         Set<String> names = securedControllers().stream()
                 .map(c -> c.getClass().getSimpleName()).collect(toSet());
         assertTrue(names.containsAll(Set.of("ProfileController",
-                "EntryEditController", "UserAdminController", "MediaApi")), names.toString());
+                "EntryActionsApi", "UserAdminController", "MediaApi")), names.toString());
         Set<String> classNames = securedControllers().stream()
                 .map(c -> c.getClass().getName()).collect(toSet());
         assertTrue(classNames.containsAll(READER_PAGES.keySet()),

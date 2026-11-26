@@ -120,7 +120,7 @@ public class MailCommentNotifier implements CommentNotifier {
         String base = StringUtils.defaultString(
                 WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"));
         return StringUtils.stripEnd(base, "/")
-                + "/pressroom-ui/authoring/comments.rol?weblog=" + weblog.getHandle();
+                + "/pressroom-ui/app/weblogs/" + weblog.getHandle() + "/comments";
     }
 
     /** The runnable's body: runs off the request thread, so it releases the session. */

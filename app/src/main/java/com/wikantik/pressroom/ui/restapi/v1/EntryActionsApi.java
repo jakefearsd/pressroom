@@ -33,9 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Two things done to an existing entry that take {@code POST} on the weblog, as the JSP screens that do them
- * do: the entries list's duplicate action ({@code EntriesController}) and the editor's "Send as newsletter"
- * ({@code EntryEditController}, whose own guard is {@code POST} on top of the editor's {@code EDIT_DRAFT}: mailing
+ * Two things done to an existing entry that take {@code POST} on the weblog, as the screens that do them
+ * do: the entries list's duplicate action and the editor's "Send as newsletter"
+ * (whose own guard is {@code POST} on top of the editor's {@code EDIT_DRAFT}: mailing
  * every subscriber is a bigger blast radius than editing a draft). {@code UISecurityEnforced} declares a permission
  * per controller, so, like {@link EntriesTrashApi}, these are a controller of their own beside {@link
  * EntriesWriteApi}'s {@code EDIT_DRAFT} writes. Each does exactly what its screen does, through the code both

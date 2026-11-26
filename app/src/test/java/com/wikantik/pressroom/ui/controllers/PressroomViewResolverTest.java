@@ -76,8 +76,8 @@ class PressroomViewResolverTest {
         resolver.init();
 
         // Spot-check several well-known view names from tiles.xml
-        assertNotNull(resolver.resolveViewName(".EntryEdit", Locale.getDefault()),
-                ".EntryEdit should be registered");
+        assertNotNull(resolver.resolveViewName(".PageEdit", Locale.getDefault()),
+                ".PageEdit should be registered");
         assertNotNull(resolver.resolveViewName(".Login", Locale.getDefault()),
                 ".Login should be registered");
         assertNotNull(resolver.resolveViewName(".Profile", Locale.getDefault()),
@@ -150,17 +150,6 @@ class PressroomViewResolverTest {
                 ".Submissions must inherit the tabbed layout's empty menu tile");
         assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
         assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_styles"));
-    }
-
-    @Test
-    void commentsRendersThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        MockHttpServletRequest request = renderAndCapture(".Comments");
-
-        assertEquals("/WEB-INF/jsps/editor/Comments.jsp", request.getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"));
-        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
     }
 
     /**

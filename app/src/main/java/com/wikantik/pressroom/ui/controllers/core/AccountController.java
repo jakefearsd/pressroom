@@ -36,7 +36,7 @@ import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
+import com.wikantik.pressroom.ui.view.EntryListView;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import org.slf4j.Logger;
@@ -281,8 +281,8 @@ public class AccountController extends BaseController {
                     .filter(c -> !CommentRules.isTombstone(c))
                     .toList();
             model.addAttribute("comments", comments);
-            // Each comment's entry, labelled once through fn:escapeXml (EntriesController.plainTitle).
-            model.addAttribute("entryTitles", EntriesController.plainTitles(comments.stream()
+            // Each comment's entry, labelled once through fn:escapeXml (EntryListView.plainTitles).
+            model.addAttribute("entryTitles", EntryListView.plainTitles(comments.stream()
                     .map(ReaderComment::getEntry).filter(Objects::nonNull).toList()));
             model.addAttribute("deleteRefusal", deletionRefusal(account));
         } catch (WebloggerException ex) {

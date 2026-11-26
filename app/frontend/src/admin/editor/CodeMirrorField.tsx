@@ -87,7 +87,14 @@ export function CodeMirrorField(props: CodeMirrorFieldProps) {
       onChange: () => { latest.current.onChange(created.getValue()); }
     });
     editor.current = created as EditorHandle;
+    // The browser suite's seam (it/support/Editor.java), the names the JSP editors' page script gave: the one
+    // place a test reads or replaces the text without naming the editor's DOM.
+    const seam = window as unknown as Record<string, unknown>;
+    seam['pressroomGetEntryText'] = () => created.getValue();
+    seam['pressroomSetEntryText'] = (text: string) => { created.setValue(text); };
     return () => {
+      delete seam['pressroomGetEntryText'];
+      delete seam['pressroomSetEntryText'];
       created.destroy();
       textarea.remove();
       editor.current = null;

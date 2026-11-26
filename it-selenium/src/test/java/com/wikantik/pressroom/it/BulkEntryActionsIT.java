@@ -17,7 +17,8 @@
  */
 package com.wikantik.pressroom.it;
 
-import com.wikantik.pressroom.it.support.Editor;
+import com.codeborne.selenide.Selectors;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,23 +27,16 @@ import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Bulk actions on the entry list, in a real browser.
  *
- * <p>These are the parts the controller tests cannot reach: the selection
- * actually reaches the server (the checkboxes are inside the form that carries
- * the CSRF token), the right endpoint is chosen by which button was pressed
- * rather than by the form's declared action, and the delete confirmation is a
+ * <p>These are the parts the unit tests cannot reach: the selection actually
+ * reaches the API (one call per entry, with the session's CSRF token), the
+ * right action runs for the button pressed, and the delete confirmation is a
  * modal that does not block the page the way {@code window.confirm} would.
  */
 class BulkEntryActionsIT extends PressroomIT {
-
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRIES = "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
-
-    private static final String PERMALINK = "#entry_bean_permalink";
 
     @BeforeEach
     void logIn() {
@@ -52,62 +46,51 @@ class BulkEntryActionsIT extends PressroomIT {
     @Test
     void publishingASelectedDraftMakesItPublic() {
         String suffix = Long.toString(System.nanoTime(), 36);
-        String draftId = saveDraft("IT Bulk publish " + suffix, "Body " + suffix);
+        String title = "IT Bulk publish " + suffix;
+        String draftId = saveDraft(title, "Body " + suffix);
 
-        openPath(ENTRIES);
-        select(draftId);
-        // The bar only shows once a row is checked -- select() above is what
-        // makes it visible.
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        select(title);
+        // The bar only shows once a row is checked -- select() above is what makes it visible.
         $(".selection-bar[data-selection-bar='entriesBulkForm']").shouldBe(visible);
-        $(".selection-bar button[formaction$='entries!bulkPublish.rol']").click();
+        $(".selection-bar").$(Selectors.byText("Publish")).click();
 
-        // The list is the write's own report: a published entry loses the
-        // draft row styling and gains a link to its permalink.
+        // The list reports the write, and the entry now carries its published status.
         $("#messages").should(exist);
-        openEditorFor(draftId);
-        $(PERMALINK).should(exist);
+        openPath(AdminApp.entry(WEBLOG_HANDLE, draftId));
+        AdminApp.awaitEditor();
+        $(AdminApp.PERMALINK).should(exist);
     }
 
     @Test
     void deletingASelectedEntryAsksFirstAndThenRemovesIt() {
         String suffix = Long.toString(System.nanoTime(), 36);
-        String draftId = saveDraft("IT Bulk delete " + suffix, "Body " + suffix);
+        String title = "IT Bulk delete " + suffix;
+        saveDraft(title, "Body " + suffix);
 
-        openPath(ENTRIES);
-        select(draftId);
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        select(title);
         $("#bulkDeleteButton").click();
 
         // A modal, not a native dialog: the page stays responsive.
-        $("#bulk-delete-modal").shouldBe(visible);
-        $("#bulkDeleteConfirm").click();
+        AdminApp.dialog().shouldBe(visible);
+        AdminApp.confirmDialog();
 
         $("#messages").should(exist);
         // The row is gone, which is the only evidence that matters.
-        $("input[name='selectedEntries'][value='" + draftId + "']").should(disappear);
+        AdminApp.row(title).should(disappear);
     }
 
     /** Saves a draft through the editor and returns its id. */
     private String saveDraft(String title, String body) {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
-
-        // Wait on the save landing rather than on the page moving: the id
-        // field is only populated once the entry exists.
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
-        String id = $("input[name='bean.id']").getValue();
-        assertNotNull(id, "the editor must expose the saved entry's id");
-        return id;
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write(title, body);
+        AdminApp.saveDraftButton().click();
+        // The first save replaces /entries/new with the new entry's route.
+        return AdminApp.savedEntryId();
     }
 
-    private void select(String entryId) {
-        $("input[name='selectedEntries'][value='" + entryId + "']").should(exist).click();
-    }
-
-    private void openEditorFor(String entryId) {
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
-        $("#entry").should(exist);
+    private void select(String title) {
+        AdminApp.row(title).should(exist).$("input.entry-select").click();
     }
 }

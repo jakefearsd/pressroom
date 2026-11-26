@@ -16,6 +16,25 @@ const setDoc = (text: string) => act(async () => {
 });
 const ready = () => screen.findByDisplayValue('Rome trip');
 
+describe('the writing surface: the browser suite\'s text seam', () => {
+  type Seam = { pressroomGetEntryText?: () => string; pressroomSetEntryText?: (text: string) => void };
+  const seam = () => window as unknown as Seam;
+
+  it('lets the browser tests read and replace the text, as the JSP editors\' page script did', async () => {
+    const { unmount } = open('/weblogs/alpha/entries/e1');
+    await ready();
+    expect(seam().pressroomGetEntryText?.()).toBe('Hello **Rome**');
+    await act(async () => { seam().pressroomSetEntryText?.('Replaced from a test'); });
+    expect(doc()).toBe('Replaced from a test');
+    await click('Save draft');
+    await screen.findByText('Draft saved');
+    expect((lastRequest('PATCH')?.body as { text: string }).text).toBe('Replaced from a test');
+    unmount();
+    expect(seam().pressroomGetEntryText).toBeUndefined();
+    expect(seam().pressroomSetEntryText).toBeUndefined();
+  });
+});
+
 describe('the writing surface: toolbar', () => {
   it.each([
     ['Bold', '', '**bold text**'],

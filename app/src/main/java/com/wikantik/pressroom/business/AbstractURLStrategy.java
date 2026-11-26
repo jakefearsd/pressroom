@@ -116,8 +116,13 @@ public abstract class AbstractURLStrategy implements URLStrategy {
     }
     
     
+    /** One path segment of a React admin route: percent-encoded, so an id cannot add or end a segment. */
+    private static String segment(String value) {
+        return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
     /**
-     * Get a url to add a new weblog entry.
+     * Get a url to add a new weblog entry (the React admin's editor route).
      */
     @Override
     public String getEntryAddURL(String weblogHandle, boolean absolute) {
@@ -130,16 +135,13 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/pressroom-ui/authoring/entryAdd.rol");
-        
-        Map<String, String> params = Map.of("weblog", weblogHandle);
-        
-        return url.append(URLUtilities.getQueryString(params)).toString();
+        return url.append("/pressroom-ui/app/weblogs/").append(segment(weblogHandle))
+                .append("/entries/new").toString();
     }
     
     
     /**
-     * Get a url to edit a specific weblog entry.
+     * Get a url to edit a specific weblog entry (the React admin's editor route).
      */
     @Override
     public String getEntryEditURL(String weblogHandle, String entryId, boolean absolute) {
@@ -152,11 +154,8 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/pressroom-ui/authoring/entryEdit.rol");
-        
-        Map<String, String> params = Map.of("weblog", weblogHandle, "bean.id", entryId);
-        
-        return url.append(URLUtilities.getQueryString(params)).toString();
+        return url.append("/pressroom-ui/app/weblogs/").append(segment(weblogHandle))
+                .append("/entries/").append(segment(entryId)).toString();
     }
     
     

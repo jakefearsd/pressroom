@@ -31,6 +31,20 @@ describe('Comments', () => {
   useMockApi();
   beforeEach(() => { requests.length = 0; server.use(meHandler('POST'), list()); });
 
+  it('emits its list marker with comments and without (the browser route sweep waits for it)', async () => {
+    show();
+    await screen.findByText('Rita Reader');
+    expect(document.querySelectorAll('#comments-list-marker')).toHaveLength(1);
+    expect(document.querySelector('#comments-list-marker table')).not.toBeNull();
+  });
+
+  it('emits its list marker on an empty list too', async () => {
+    server.use(list([]));
+    show();
+    await screen.findByText('No comments here.');
+    expect(document.querySelectorAll('#comments-list-marker')).toHaveLength(1);
+  });
+
   it('opens on the Awaiting approval tab and tells the three tabs apart', async () => {
     show();
     const nav = await screen.findByRole('navigation', { name: 'Comments' });

@@ -64,7 +64,6 @@ class MessageArgumentCommaTest {
         Map<String, String> sites = Map.of(
                 "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
                 "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[fn:escapeXml(actionWeblog.name)]}\"",
-                "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
                 "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"",
                 "editor/TemplateEdit.jsp", "arguments=\"${[fn:escapeXml(bean.name), actionWeblog.handle]}\"");
         List<String> missing = new ArrayList<>();

@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.it;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,19 +36,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Duplicating a post from the entry list, in a real browser.
  *
  * <p>The unit tests cover what a copy carries and that a foreign id is
- * refused. This covers the parts that only exist in the browser: the list row
- * posts with a CSRF token (Spring Security rejects it outright without one, so
- * a missing {@code sec:csrfInput} would 403 rather than fail quietly), and the
- * redirect lands the author in the editor on the copy rather than the original
- * -- the failure that would have them unknowingly editing the published post.
+ * refused. This covers the parts that only exist in the browser: the list's
+ * duplicate call goes through the API with the session's CSRF token (it is
+ * refused outright without one), and the author lands in the editor on the
+ * copy rather than the original -- the failure that would have them
+ * unknowingly editing the published post.
  */
 class DuplicateEntryIT extends PressroomIT {
-
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRIES = "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
-
-    /** Rendered on the edit page only once the entry is actually published. */
-    private static final String PERMALINK = "#entry_bean_permalink";
 
     @BeforeEach
     void logIn() {
@@ -62,51 +57,36 @@ class DuplicateEntryIT extends PressroomIT {
 
         String originalId = publishEntry(title, body);
 
-        openPath(ENTRIES);
-        duplicateRowFor(originalId);
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        AdminApp.row(title).$("button[aria-label^='Duplicate']").shouldBe(visible).click();
 
         // --- we are in the editor, on the copy ------------------------------
-        $("#entry").should(exist);
-        String copyId = $("input[name='bean.id']").getValue();
+        AdminApp.awaitEditor();
+        AdminApp.titleField().shouldHave(value("Copy of " + title));
+        String copyId = AdminApp.savedEntryId();
         assertNotNull(copyId, "the editor must be open on a saved entry");
         assertNotEquals(originalId, copyId,
                 "the redirect landed on the original, so the author would edit the published post");
 
-        $("[name='bean.title']").shouldHave(value("Copy of " + title));
         String copyText = Editor.getText();
         assertTrue(copyText != null && copyText.contains(body),
                 "the copy did not carry the original's text; it holds: " + copyText);
 
         // A draft has no permalink block on the edit page -- that is the
         // page's own signal that this copy is not published.
-        assertTrue($$(PERMALINK).isEmpty() || !$(PERMALINK).is(visible),
+        assertTrue($$(AdminApp.PERMALINK).isEmpty() || !$(AdminApp.PERMALINK).is(visible),
                 "the copy is published; a duplicate must start life as a draft");
+        AdminApp.awaitStatus("Draft");
     }
 
     /** Publishes an entry and returns its id. */
     private String publishEntry(String title, String body) {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write(title, body);
+        AdminApp.publishButton().click();
 
-        // Wait on the write landing, not on the page moving: the permalink
-        // block only renders once the entry is actually published.
-        $(PERMALINK).should(exist);
-        String id = $("input[name='bean.id']").getValue();
-        assertNotNull(id, "the editor must expose the saved entry's id");
-        return id;
-    }
-
-    /**
-     * Presses the duplicate button of the list row for this entry id.
-     *
-     * <p>The button carries the id as its own name/value rather than a hidden
-     * field, because the whole table is one form (the bulk actions need it that
-     * way) and only the clicked submit button's value is sent.
-     */
-    private void duplicateRowFor(String entryId) {
-        $("button[name='duplicateId'][value='" + entryId + "']").should(visible).click();
+        // Wait on the write landing: the permalink block only renders once the entry is published.
+        $(AdminApp.PERMALINK).should(exist);
+        return AdminApp.savedEntryId();
     }
 }

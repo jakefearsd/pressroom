@@ -50,8 +50,6 @@ class PageEditJspTest {
 
     private static final Path PAGE_EDIT =
             Paths.get("src/main/webapp/WEB-INF/jsps/editor/PageEdit.jsp");
-    private static final Path ENTRY_EDITOR =
-            Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEditor.jsp");
     private static final Path EDITOR_SURFACE =
             Paths.get("src/main/webapp/WEB-INF/jsps/editor/EditorSurface.jsp");
     private static final Path EDITOR_SCRIPT =
@@ -234,7 +232,7 @@ class PageEditJspTest {
     void bothEditorsIncludeTheOneEditorSurface() throws IOException {
         assertTrue(Files.isRegularFile(EDITOR_SURFACE),
                 "the editor surface must live in one file: " + EDITOR_SURFACE);
-        for (Path jsp : new Path[] { ENTRY_EDITOR, PAGE_EDIT }) {
+        for (Path jsp : new Path[] { PAGE_EDIT }) {
             assertTrue(read(jsp).contains("page=\"/WEB-INF/jsps/editor/EditorSurface.jsp\""),
                     jsp.getFileName() + " must jsp:include the shared editor surface "
                             + "rather than carrying its own copy of the toolbar, mode "
@@ -246,7 +244,7 @@ class PageEditJspTest {
     void bothEditorsIncludeTheOneEditorScript() throws IOException {
         assertTrue(Files.isRegularFile(EDITOR_SCRIPT),
                 "the editor's script must live in one file: " + EDITOR_SCRIPT);
-        for (Path jsp : new Path[] { ENTRY_EDITOR, PAGE_EDIT }) {
+        for (Path jsp : new Path[] { PAGE_EDIT }) {
             assertTrue(read(jsp).contains("page=\"/WEB-INF/jsps/editor/EditorScript.jsp\""),
                     jsp.getFileName() + " must jsp:include the shared editor script");
         }
@@ -266,9 +264,6 @@ class PageEditJspTest {
      */
     @Test
     void theEditorFieldValueIsEscapedExactlyOnce() throws IOException {
-        assertTrue(read(ENTRY_EDITOR).contains(
-                        "var=\"editorFieldValue\" scope=\"request\" value=\"${fn:escapeXml(bean.text)}\""),
-                "EntryEditor.jsp must hand the surface an escaped bean.text");
         assertTrue(read(PAGE_EDIT).contains(
                         "var=\"editorFieldValue\" scope=\"request\" value=\"${fn:escapeXml(bean.content)}\""),
                 "PageEdit.jsp must hand the surface an escaped bean.content");
@@ -297,8 +292,6 @@ class PageEditJspTest {
 
         assertTrue(read(PAGE_EDIT).contains("pageEdit!preview.rol"),
                 "PageEdit.jsp must point the surface at the page preview endpoint");
-        assertTrue(read(ENTRY_EDITOR).contains("entryEdit!preview.rol"),
-                "EntryEditor.jsp must point the surface at the entry preview endpoint");
     }
 
     /**
@@ -312,9 +305,6 @@ class PageEditJspTest {
      */
     @Test
     void bothScreensSetTheirOwnPrimaryActionKeyForTheGuide() throws IOException {
-        assertTrue(read(ENTRY_EDITOR).contains(
-                        "var=\"editorPrimaryActionKey\" scope=\"request\" value=\"weblogEdit.post\""),
-                "EntryEditor.jsp must tell the shared guide its primary action is Post");
         assertTrue(read(PAGE_EDIT).contains(
                         "var=\"editorPrimaryActionKey\" scope=\"request\" value=\"generic.save\""),
                 "PageEdit.jsp must tell the shared guide its primary action is Save, "

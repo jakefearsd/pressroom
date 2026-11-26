@@ -270,23 +270,6 @@ public final class Routes {
      */
     private static final List<Route> WEBLOG_ONLY = List.of(
 
-            // Anchored on the category table itself. It used to be anchored on a
-            // wrapper form posting to categories!move.rol -- a control nothing
-            // could submit, which is a poor thing to prove a page rendered by.
-            new Route("/pressroom-ui/authoring/categories.rol", Role.EDITOR, WEBLOG,
-                    "table#category-table"),
-
-            // The entry table is empty with no entries seeded; the delete-confirm
-            // modal is emitted unconditionally.
-            new Route("/pressroom-ui/authoring/entries.rol", Role.EDITOR, WEBLOG, "#delete-entry-modal"),
-
-            new Route("/pressroom-ui/authoring/entryAdd.rol", Role.EDITOR, WEBLOG, "#entry"),
-
-            // Trash is empty with nothing seeded to trash, but the wrapper div
-            // around the list region (table or empty-state invitation) is
-            // emitted unconditionally, same reasoning as entries.rol above.
-            new Route("/pressroom-ui/authoring/trash.rol", Role.EDITOR, WEBLOG, "#trash-list-marker"),
-
             new Route("/pressroom-ui/authoring/mediaFileAdd.rol", Role.EDITOR, WEBLOG,
                     "form[action$='/pressroom-ui/authoring/mediaFileAdd!save.rol']"),
 
@@ -318,10 +301,6 @@ public final class Routes {
             // pages.rol/entries.rol.
             new Route("/pressroom-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
                     "#submissionsDeleteForm"),
-
-            // The moderation form is emitted unconditionally, empty list or not.
-            new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
-                    "#commentsModerationForm"),
 
             new Route("/pressroom-ui/authoring/templates.rol", Role.EDITOR, WEBLOG,
                     "form[action$='/pressroom-ui/authoring/templates!remove.rol']"),
@@ -387,13 +366,6 @@ public final class Routes {
 
             // --- need a seeded entity id ---
 
-            new SkippedRoute("/pressroom-ui/authoring/entryEdit.rol", Role.EDITOR,
-                    "Needs bean.id of a WeblogEntry; without one the controller "
-                            + "redirects to the app home. No entries are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/entryEdit!firstSave.rol", Role.EDITOR,
-                    "Post-save landing page for entryEdit; same missing entry id."),
-            new SkippedRoute("/pressroom-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
-                    "Needs selectedImage(s) holding MediaFile ids; no media files are seeded."),
             new SkippedRoute("/pressroom-ui/authoring/mediaFileEdit.rol", Role.EDITOR,
                     "Needs mediaFileId; no media files are seeded."),
             new SkippedRoute("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Role.EDITOR,
@@ -476,7 +448,25 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/traffic", Role.EDITOR, "", "#trafficPage"),
 
             // Global Traffic: every blog's numbers from the local cache; the marker is the page's root div.
-            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage")
+            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage"),
+
+            // Wave 1: the entry screens (they were entries.rol, entryAdd.rol, trash.rol, comments.rol and
+            // categories.rol; entryEdit.rol and entryAddWithMediaFile.rol redirect into the editor).
+            // The entry table renders only with entries, so the marker is the list's own wrapper, which is
+            // emitted for an empty list too.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/entries", Role.EDITOR, "", "#entries-list-marker"),
+
+            // The editor for a new entry: its form, whatever the weblog holds.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/entries/new", Role.EDITOR, "", "form#entry"),
+
+            // The entry trash: the wrapper around the list region (table or empty-state invitation).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/trash", Role.EDITOR, "", "#trash-list-marker"),
+
+            // The moderation list: its wrapper, emitted for an empty tab as for a full one.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/comments", Role.EDITOR, "", "#comments-list-marker"),
+
+            // The category table itself (seed-it-data.sql seeds a category, so it renders).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/categories", Role.EDITOR, "", "table#category-table")
     );
 
     // ------------------------------------------------------------ known broken

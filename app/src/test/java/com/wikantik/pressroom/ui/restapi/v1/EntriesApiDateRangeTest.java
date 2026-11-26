@@ -10,7 +10,6 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesBean;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -74,19 +73,6 @@ class EntriesApiDateRangeTest {
         assertEquals(Date.from(LocalDate.of(2026, 3, 1).atStartOfDay(zone).toInstant()), wesc.getStartDate());
         assertEquals(Date.from(LocalDate.of(2026, 3, 31).atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant()),
                 wesc.getEndDate());
-    }
-
-    @Test
-    void theBoundsAreExactlyWhatTheJspListFiltersOn() throws Exception {
-        EntriesBean bean = new EntriesBean();
-        bean.setStartDateString("2026-03-01");
-        bean.setEndDateString("2026-03-31");
-
-        WeblogEntrySearchCriteria wesc = criteriaFor(request()
-                .param("startDate", "2026-03-01").param("endDate", "2026-03-31"));
-
-        assertEquals(bean.getStartDate(), wesc.getStartDate());
-        assertEquals(bean.getEndDate(), wesc.getEndDate());
     }
 
     @Test

@@ -154,7 +154,7 @@ class AdminChromeJspTest {
      */
     @Test
     void theListScreensShareOneRowActionPattern() {
-        for (String screen : java.util.List.of("editor/Pages.jsp", "editor/Categories.jsp",
+        for (String screen : java.util.List.of("editor/Pages.jsp",
                 "admin/Businesses.jsp")) {
             String src = jsp(screen);
             assertTrue(src.contains("<td class=\"row-actions\">"), screen + " has no td.row-actions");
@@ -162,8 +162,6 @@ class AdminChromeJspTest {
             assertFalse(src.contains("text-danger"), screen + " still has a red text-link action");
             assertTrue(src.contains("class=\"list-actions\""), screen + "'s New action is not in the card's strip");
         }
-        assertFalse(jsp("editor/CategoriesSidebar.jsp").contains("addCategoryButton"),
-                "Add category moved into the card; the sidebar must not carry a second one");
     }
 
     /** "Delete this business?" did not say which; the prompt names it. */
@@ -171,23 +169,6 @@ class AdminChromeJspTest {
     void deletingABusinessNamesIt() {
         assertTrue(jsp("admin/Businesses.jsp").contains(
                 "<spring:message code=\"businesses.delete.confirm\" arguments=\"${[b.name]}\""));
-    }
-
-    /**
-     * A message inside a JS string literal must be JS-escaped: one apostrophe
-     * in a translation is a SyntaxError that takes category add, edit and
-     * delete down with the whole script block.
-     */
-    @Test
-    void categoriesEscapeEveryMessageInAJsString() {
-        String src = jsp("editor/Categories.jsp");
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("'<spring:message [^>]*/>'").matcher(src);
-        int seen = 0;
-        while (m.find()) {
-            seen++;
-            assertTrue(m.group().contains("javaScriptEscape=\"true\""), "not JS-escaped: " + m.group());
-        }
-        assertTrue(seen > 0, "the scan found no JS-string messages at all");
     }
 
     /**

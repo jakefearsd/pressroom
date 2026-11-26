@@ -79,6 +79,58 @@ class LegacyAdminRedirectsTest {
                 "/pressroom/pressroom-ui/app/admin/traffic?period=90d");
     }
 
+    @Test
+    void entriesCarriesTheFilterUnderTheReactNames() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entries.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/entries");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entries.rol",
+                Map.of("weblog", "it_weblog", "bean.status", "DRAFT", "bean.categoryName", "Trips",
+                        "bean.tagsAsString", "a b", "bean.text", "rome", "bean.startDateString", "2026-01-01",
+                        "bean.endDateString", "2026-02-01", "bean.sortBy", "PUBLICATION_TIME", "bean.page", "3"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/entries?status=DRAFT&category=Trips&tags=a%20b"
+                        + "&text=rome&startDate=2026-01-01&endDate=2026-02-01&sortBy=PUBLICATION_TIME");
+    }
+
+    @Test
+    void newEntryGoesToTheNewEntryRoute() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryAdd.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/entries/new");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryAdd.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/");
+    }
+
+    @Test
+    void editEntryCarriesTheIdAndIsHomeWithoutOne() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryEdit.rol", Map.of("weblog", "w", "bean.id", "e 1"),
+                "/pressroom-ui/app/weblogs/w/entries/e%201");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryEdit!firstSave.rol",
+                Map.of("weblog", "w", "bean.id", "e1"), "/pressroom/pressroom-ui/app/weblogs/w/entries/e1");
+        assertRedirect("", "/pressroom-ui/authoring/entryEdit.rol", Map.of("weblog", "w"), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void newEntryFromMediaCarriesTheChosenFilesAsMediaIds() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                Map.of("weblog", "w", "selectedImages", "m1"), "/pressroom-ui/app/weblogs/w/entries/new?mediaId=m1");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                Map.of("weblog", "w", "selectedImage", "m 2"),
+                "/pressroom/pressroom-ui/app/weblogs/w/entries/new?mediaId=m%202");
+        assertRedirect("", "/pressroom-ui/authoring/entryAddWithMediaFile.rol", Map.of("weblog", "w"),
+                "/pressroom-ui/app/weblogs/w/entries/new");
+    }
+
+    @Test
+    void trashCommentsAndCategoriesCarryTheHandle() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/trash.rol", Map.of("weblog", "w"),
+                "/pressroom-ui/app/weblogs/w/trash");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/categories.rol", Map.of("weblog", "w"),
+                "/pressroom/pressroom-ui/app/weblogs/w/categories");
+        assertRedirect("", "/pressroom-ui/authoring/comments.rol",
+                Map.of("weblog", "w", "status", "HIDDEN", "entry", "e1", "page", "2"),
+                "/pressroom-ui/app/weblogs/w/comments?status=HIDDEN&entry=e1");
+        assertRedirect("", "/pressroom-ui/authoring/comments.rol", Map.of(), "/pressroom-ui/app/");
+    }
+
     // ---- the filter
 
     @Test

@@ -66,14 +66,16 @@ export function Comments() {
         ))}
       </nav>
       {status === 'HIDDEN' ? null : <p className="form-text">{t('comments.hideVsDelete')}</p>}
-      {list.error !== null ? <ProblemBanner error={list.error} /> : null}
-      {list.data === undefined ? null : (
-        <>
-          <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
-          <CommentRows key={params.toString()} handle={handle} status={status} comments={list.data.items} />
-          <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
-        </>
-      )}
+      <div id="comments-list-marker">
+        {list.error !== null ? <ProblemBanner error={list.error} /> : null}
+        {list.data === undefined ? null : (
+          <>
+            <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
+            <CommentRows key={params.toString()} handle={handle} status={status} comments={list.data.items} />
+            <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
+          </>
+        )}
+      </div>
     </>
   );
 }

@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,6 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Condition.value;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
@@ -65,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ScheduledEntryIT extends PressroomIT {
 
     /** Rendered on the edit page only once the entry has been saved. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     /** The wire format {@code bean.pubTimeLocal}'s {@code datetime-local} input carries. */
     private static final DateTimeFormatter ENTRY_PUB_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
@@ -126,21 +126,23 @@ class ScheduledEntryIT extends PressroomIT {
      * assertion below a race.
      */
     private void scheduleEntry(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText("Body of " + title);
+        openPath(AdminApp.newEntry(handle));
+        AdminApp.write(title, "Body of " + title);
 
-        executeJavaScript("document.getElementsByName('bean.pubTimeLocal')[0].value = arguments[0];",
+        // The datetime-local box is React's: set it the way the browser's own input does, through the native
+        // setter and an input event, so the editor's state follows.
+        executeJavaScript("var box = document.getElementById('entry_bean_pubTimeLocal');"
+                        + "Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, arguments[0]);"
+                        + "box.dispatchEvent(new Event('input', {bubbles: true}));",
                 LocalDate.now().plusYears(1).atStartOfDay().format(ENTRY_PUB_TIME));
 
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
 
         // Not the permalink control: the editor renders that only for a
         // published entry, which is itself part of the contract here. The saved
         // id is what says the entry exists at all.
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
-        $("input[name='bean.status']").shouldHave(value("SCHEDULED"));
+        AdminApp.savedEntryId();
+        AdminApp.awaitStatus("Scheduled");
         $("#messages").should(exist).shouldHave(text("scheduled"));
     }
 
@@ -161,11 +163,9 @@ class ScheduledEntryIT extends PressroomIT {
 
     /** Publishes one entry immediately and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText("Body of " + title);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        openPath(AdminApp.newEntry(handle));
+        AdminApp.write(title, "Body of " + title);
+        AdminApp.publishButton().click();
 
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");

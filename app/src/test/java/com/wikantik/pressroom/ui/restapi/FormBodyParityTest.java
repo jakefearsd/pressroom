@@ -16,7 +16,6 @@ import com.wikantik.pressroom.ui.controllers.admin.AgentBean;
 import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
 import com.wikantik.pressroom.ui.controllers.core.ProfileBean;
 import com.wikantik.pressroom.ui.controllers.admin.CreateUserBean;
-import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
 import com.wikantik.pressroom.ui.controllers.editor.TemplateEditBean;
@@ -43,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * </ul>
  * A bean property is a public getter ({@code getX}/{@code isX}) with a
  * matching public one-argument setter: what a form binds. Read-only helpers
- * ({@code EntryBean.isDraft}) are not form fields.
+ * ({@code PageBean} flags such as isDraft) are not form fields.
  */
 class FormBodyParityTest {
 
@@ -58,14 +57,6 @@ class FormBodyParityTest {
 
     static Stream<Parity> parities() {
         return Stream.of(
-                new Parity("EntryBean -> entry", EntryBean.class, EditableFieldManifest.entry(),
-                        Map.of("tagsAsString", "tags",
-                                "categoryId", "category",
-                                "pubTimeLocal", "pubTime",
-                                "eventStartLocal", "eventStart",
-                                "eventEndLocal", "eventEnd",
-                                "strandPageId", "strand"),
-                        Map.of("id", "The entry's id is the update route's path variable; create assigns one.")),
                 new Parity("WeblogConfigBean -> weblogSettings", WeblogConfigBean.class,
                         EditableFieldManifest.weblogSettings(),
                         Map.of("frontPageId", "frontPage"),

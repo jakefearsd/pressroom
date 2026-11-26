@@ -37,9 +37,6 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.admin.UserWeblogsController;
-import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
-import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileAddController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileEditController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileImageChooserController;
@@ -192,21 +189,6 @@ class SiteSpaceAccessTest {
 
         // --- blog screens it does not
         @Bean
-        EntriesController entriesController() {
-            return new EntriesController();
-        }
-
-        @Bean
-        CommentsModerationController commentsModerationController(CommentService comments) {
-            return new CommentsModerationController(comments);
-        }
-
-        @Bean
-        CategoriesController categoriesController() {
-            return new CategoriesController();
-        }
-
-        @Bean
         WeblogConfigController weblogConfigController() {
             return new WeblogConfigController();
         }
@@ -332,9 +314,6 @@ class SiteSpaceAccessTest {
         signIn(admin);
 
         for (Function<String, MockHttpServletRequestBuilder> screen : List.<Function<String, MockHttpServletRequestBuilder>>of(
-                h -> get(AUTHORING + "entries.rol").param("weblog", h),
-                h -> get(AUTHORING + "comments.rol").param("weblog", h),
-                h -> get(AUTHORING + "categories.rol").param("weblog", h),
                 h -> get(AUTHORING + "weblogConfig.rol").param("weblog", h),
                 h -> get(AUTHORING + "members.rol").param("weblog", h),
                 h -> get(AUTHORING + "weblogRemove.rol").param("weblog", h),

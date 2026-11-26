@@ -419,30 +419,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .content("/WEB-INF/jsps/editor/MediaFileAddSuccess.jsp")
                 .register();
 
-        define(".EntryEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/EntryEdit.jsp")
-                .register();
-
-        define(".Entries").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Entries.jsp")
-                .sidebar("/WEB-INF/jsps/editor/EntriesSidebar.jsp")
-                .register();
-
-        define(".Trash").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Trash.jsp")
-                .register();
-
-        define(".Categories").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Categories.jsp")
-                .sidebar("/WEB-INF/jsps/editor/CategoriesSidebar.jsp")
-                .register();
-
-        // .CategoryEdit and .CategoryRemove used to live here. Their content tiles
-        // pointed at empty.jsp because CategoryEdit.jsp and CategoryRemove.jsp were
-        // deleted in 8da2fc0b2 when the forms moved into #category-edit-modal on
-        // Categories.jsp. The definitions survived, so the routes returned a
-        // healthy-looking 200 with no form on the page.
-
         // ---- weblog admin pages ----
 
         define(".WeblogConfig").on(TABBED)
@@ -484,16 +460,11 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // Inquiries is an authoring screen reached from the editor tabs, so it
         // wears the same tabbed chrome the rest of them do. The attribute map
-        // is .Trash's -- the minimal tabbed shape: explicit head, the content
+        // is the minimal tabbed shape: explicit head, the content
         // tile, no page-specific styles, and the base layout's empty menu tile
         // (the tabs come from the navMenu model attribute, not from a tile).
         define(".Submissions").on(TABBED)
                 .content("/WEB-INF/jsps/editor/Submissions.jsp")
-                .register();
-
-        // Reader-comment moderation: the same minimal tabbed shape as .Submissions.
-        define(".Comments").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Comments.jsp")
                 .register();
 
         define(".Members").on(TABBED)

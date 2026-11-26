@@ -45,62 +45,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EditorAutosaveWiringTest {
 
-    private static final Path ENTRY_EDIT =
-            Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEdit.jsp");
-    private static final Path ENTRY_EDITOR =
-            Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEditor.jsp");
     private static final Path PAGE_EDIT =
             Paths.get("src/main/webapp/WEB-INF/jsps/editor/PageEdit.jsp");
 
     private static String read(Path jsp) throws IOException {
         return Files.readString(jsp, StandardCharsets.UTF_8);
-    }
-
-    @Test
-    void theEntryEditorLoadsTheDraftScript() throws IOException {
-        assertTrue(read(ENTRY_EDIT).contains("/theme/scripts/pressroom-draft.js"),
-                "EntryEdit.jsp must load pressroom-draft.js; without it the editor "
-                        + "looks entirely normal and never recovers anything");
-    }
-
-    @Test
-    void theEntryEditorRendersTheRecoveryBarTheModuleLooksFor() throws IOException {
-        String jsp = read(ENTRY_EDIT);
-        assertTrue(jsp.contains("id=\"draftRecoveryBar\""),
-                "EntryEdit.jsp must render the recovery bar");
-        for (String required : new String[] {
-                "draft-bar-text", "draft-bar-restore", "draft-bar-discard",
-                "data-template=", "data-restored=" }) {
-            assertTrue(jsp.contains(required),
-                    "pressroom-draft.js querySelector()s '" + required
-                            + "' and silently declines to offer anything without it");
-        }
-    }
-
-    @Test
-    void theRecoveryBarsButtonsCannotSubmitTheForm() throws IOException {
-        // The bar sits inside #entry, where a <button> with no type defaults
-        // to submit -- clicking Discard would post the entry.
-        String bar = read(ENTRY_EDIT);
-        int start = bar.indexOf("id=\"draftRecoveryBar\"");
-        assertTrue(start > 0, "EntryEdit.jsp must render the recovery bar");
-        String markup = bar.substring(start, bar.indexOf("</div>", start));
-        assertTrue(markup.contains("type=\"button\" class=\"draft-bar-restore\""),
-                "Restore must be type=\"button\"; inside #entry it would submit otherwise");
-        assertTrue(markup.contains("type=\"button\" class=\"draft-bar-discard\""),
-                "Discard must be type=\"button\"; inside #entry it would submit otherwise");
-    }
-
-    @Test
-    void theEntryEditorsDraftKeyIsScopedToTheWeblogTheActionAndTheEntry() throws IOException {
-        String jsp = read(ENTRY_EDIT);
-        assertTrue(jsp.contains("pressroom.draft.v1:"),
-                "the storage key must carry the versioned prefix pressroom-draft.js sweeps on");
-        assertTrue(jsp.contains("${pageContext.request.contextPath}")
-                        && jsp.contains("${actionWeblog.handle}")
-                        && jsp.contains("${actionName}"),
-                "a key missing the context path, handle or action lets two editors "
-                        + "share one snapshot and hand an author someone else's text");
     }
 
     /**
@@ -111,7 +60,7 @@ class EditorAutosaveWiringTest {
      */
     @Test
     void everyDraftKeyIsScopedToTheSignedInUser() throws IOException {
-        for (Path jsp : new Path[] {ENTRY_EDIT, PAGE_EDIT}) {
+        for (Path jsp : new Path[] {PAGE_EDIT}) {
             Matcher keys = Pattern.compile("var=\"(draftKey|draftNewKey)\"[^>]*value=\"([^\"]*)\"")
                     .matcher(read(jsp));
             int found = 0;
@@ -124,48 +73,6 @@ class EditorAutosaveWiringTest {
             }
             assertTrue(found == 2, jsp.getFileName() + " must set both draftKey and draftNewKey, found " + found);
         }
-    }
-
-    @Test
-    void theDraftKeysAreSetInRequestScopeSoTheIncludedEditorCanSeeThem() throws IOException {
-        // EntryEditor.jsp arrives via jsp:include and reads ${draftKey}. A
-        // page-scoped <c:set> resolves to the empty string there, which
-        // produces a valid-looking key that every editor in the install shares.
-        String jsp = read(ENTRY_EDIT);
-        assertTrue(jsp.contains("var=\"draftKey\" scope=\"request\""),
-                "draftKey must be set in request scope");
-        assertTrue(jsp.contains("var=\"draftNewKey\" scope=\"request\""),
-                "draftNewKey must be set in request scope");
-    }
-
-    @Test
-    void theEntryEditorInstallsTheModuleWithBothEditorSeams() throws IOException {
-        String jsp = read(ENTRY_EDITOR);
-        assertTrue(jsp.contains("pressroomDraft.install("),
-                "EntryEditor.jsp must install the module");
-        assertTrue(jsp.contains("getText: pressroomGetEntryText"),
-                "the module reads the editor through pressroomGetEntryText");
-        assertTrue(jsp.contains("setText: pressroomSetEntryText"),
-                "Restore writes back through pressroomSetEntryText");
-    }
-
-    @Test
-    void theLeaveWarningIsBoundOnceRatherThanPerKeystroke() throws IOException {
-        // The original registered $(window).on("beforeunload", ...) and
-        // $("#entry").on('submit', ...) INSIDE the editor's change callback,
-        // so a thousand-word entry left a thousand submit handlers on the form
-        // it was about to post.
-        String jsp = codeOnly(read(ENTRY_EDITOR));
-        assertTrue(jsp.contains("beforeunload"), "the leave-warning must still exist");
-
-        String body = firstEditorChangeCallbackBody(jsp);
-        assertFalse(body.contains("beforeunload"),
-                "beforeunload must be bound once, outside the change callback -- "
-                        + "the callback body is:\n" + body);
-        assertFalse(body.contains("'submit'"),
-                "a submit handler bound inside the change callback accumulates one "
-                        + "per keystroke on the form about to be posted -- "
-                        + "the callback body is:\n" + body);
     }
 
     @Test
@@ -235,7 +142,7 @@ class EditorAutosaveWiringTest {
         // An un-namespaced unbind removes EVERY beforeunload handler on the
         // page, so a later feature that binds one would be silently disarmed
         // on submit.
-        for (Path jsp : new Path[] { ENTRY_EDITOR, PAGE_EDIT }) {
+        for (Path jsp : new Path[] { PAGE_EDIT }) {
             String code = codeOnly(read(jsp));
             assertTrue(code.contains("beforeunload.pressroomLeaveWarning"),
                     jsp + " must namespace its leave-warning binding");
@@ -255,7 +162,7 @@ class EditorAutosaveWiringTest {
         Matcher prefix = Pattern.compile("var PREFIX = '([^']+)'").matcher(module);
         assertTrue(prefix.find(), "pressroom-draft.js must declare a PREFIX");
 
-        for (Path jsp : new Path[] { ENTRY_EDIT, PAGE_EDIT }) {
+        for (Path jsp : new Path[] { PAGE_EDIT }) {
             assertTrue(read(jsp).contains(prefix.group(1)),
                     jsp + " builds a storage key that does not start with the module's "
                             + "own PREFIX (" + prefix.group(1) + "), so sweep() will never "
@@ -271,8 +178,6 @@ class EditorAutosaveWiringTest {
         // same content to compare independently of the first. The two editors
         // name that textarea differently, which is exactly why the module
         // cannot hardcode it.
-        assertTrue(read(ENTRY_EDITOR).contains("'bean.text'"),
-                "EntryEditor.jsp must exclude its own bean.text textarea");
         assertTrue(read(PAGE_EDIT).contains("'bean.content'"),
                 "PageEdit.jsp's textarea is bean.content, not bean.text");
     }
@@ -285,9 +190,6 @@ class EditorAutosaveWiringTest {
         // "unsaved changes" bar over a save that just succeeded -- and keeps
         // raising it on every later visit, eventually offering days-old text
         // over something newer.
-        assertTrue(codeOnly(read(ENTRY_EDITOR)).contains("'bean.status'"),
-                "EntryEditor.jsp must exclude bean.status from the snapshot");
-
         // Pages: it is a visible <select> the author sets, and PageBean.copyTo
         // writes it straight through. Excluding it would drop a real choice.
         assertFalse(codeOnly(read(PAGE_EDIT)).contains("'bean.status'"),
@@ -296,7 +198,7 @@ class EditorAutosaveWiringTest {
 
     @Test
     void theRecoveryBarIsAnnouncedToScreenReaders() throws IOException {
-        for (Path jsp : new Path[] { ENTRY_EDIT, PAGE_EDIT }) {
+        for (Path jsp : new Path[] { PAGE_EDIT }) {
             String jspText = read(jsp);
             int start = jspText.indexOf("id=\"draftRecoveryBar\"");
             assertTrue(start > 0, jsp + " must render the recovery bar");

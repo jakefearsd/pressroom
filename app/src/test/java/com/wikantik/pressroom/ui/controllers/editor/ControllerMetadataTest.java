@@ -42,23 +42,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ControllerMetadataTest {
 
     @Test
-    void entryEditingRequiresOnlyDraftPermissionSoContributorsCanWrite() {
-        // EDIT_DRAFT rather than POST: a contributor must be able to write and
-        // submit for review. The publish path checks POST separately.
-        assertEquals(List.of(WeblogPermission.EDIT_DRAFT),
-                new EntryEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.EDIT_DRAFT),
-                new EntryRemoveController().requiredWeblogPermissionActions());
-    }
-
-    @Test
-    void categoryAndMediaManagementRequirePostPermission() {
-        // Categories and media are blog-wide structure, not a single draft, so
-        // they sit above the contributor level.
-        assertEquals(List.of(WeblogPermission.POST),
-                new CategoryEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new CategoryRemoveController().requiredWeblogPermissionActions());
+    void mediaManagementRequiresPostPermission() {
+        // Media is blog-wide structure, not a single draft, so
+        // it sits above the contributor level.
         assertEquals(List.of(WeblogPermission.POST),
                 new MediaFileAddController().requiredWeblogPermissionActions());
         assertEquals(List.of(WeblogPermission.POST),
@@ -118,7 +104,6 @@ class ControllerMetadataTest {
         // The action name is matched against the menu definition to decide
         // which tab is shown as current.
         assertEquals("members", new MembersController().getActionName());
-        assertEquals("categoryRemove", new CategoryRemoveController().getActionName());
         assertEquals("weblogConfig", new WeblogConfigController().getActionName());
         assertEquals("templateEdit", new TemplateEditController().getActionName());
         assertEquals("stylesheetEdit", new StylesheetEditController().getActionName());
@@ -130,8 +115,6 @@ class ControllerMetadataTest {
     @Test
     void controllersThatOwnAPageDeclareItsTitleKey() {
         assertEquals("memberPermissions.title", new MembersController().getPageTitle());
-        assertEquals("categoryDeleteOK.title", new CategoryRemoveController().getPageTitle());
-        assertEquals("weblogEdit.deleteEntry", new EntryRemoveController().getPageTitle());
         assertEquals("websiteSettings.title", new WeblogConfigController().getPageTitle());
         assertEquals("pagesForm.title", new TemplateEditController().getPageTitle());
         assertEquals("stylesheetEdit.title", new StylesheetEditController().getPageTitle());
@@ -142,10 +125,6 @@ class ControllerMetadataTest {
 
     private static List<BaseController> allControllers() {
         return List.of(
-                new CategoryEditController(),
-                new CategoryRemoveController(),
-                new EntryEditController(),
-                new EntryRemoveController(),
                 new MediaFileAddController(),
                 new MediaFileEditController(),
                 new MediaFileViewController(),

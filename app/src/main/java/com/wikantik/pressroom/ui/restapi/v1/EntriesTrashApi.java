@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * An entry in the trash: bring it back, or delete it forever. These take
- * {@code POST} on the weblog, as the JSP Trash page ({@code TrashController})
+ * {@code POST} on the weblog, as the Trash screen
  * does, while every other entry write ({@link EntriesWriteApi}) takes {@code
  * EDIT_DRAFT}, as the entry editor does, and holds a contributor to the
  * editor's rules in the handler (spec 2026-11-21 owner decisions, Task 3).
@@ -50,8 +50,8 @@ public class EntriesTrashApi extends BaseApiController implements UISecurityEnfo
      * <p>Restoring an entry that is not currently trashed is refused with
      * 409: {@code restoreWeblogEntry} has no status guard of its own, and
      * calling it on a live PUBLISHED entry would silently unpublish it to
-     * DRAFT -- exactly the side-door resurrection/demotion hazard {@code
-     * TrashController.trashedEntry} exists to close off on the JSP side.
+     * DRAFT -- exactly the side-door resurrection/demotion hazard
+     * the not-in-trash check exists to close off.
      */
     @Operation(operationId = "entriesRestore")
     @PostMapping("/{id}/restore")
@@ -73,7 +73,7 @@ public class EntriesTrashApi extends BaseApiController implements UISecurityEnfo
 
     /**
      * Permanently deletes an already-trashed entry. Only reachable from the
-     * trash, the same way the JSP {@code trash!delete.rol} row action is --
+     * trash, the same way the Trash screen's row action is --
      * deleting forever is a second, deliberate step after trashing, never a
      * shortcut around it, so a live entry's id here is a 409 rather than an
      * undocumented hard-delete endpoint.

@@ -211,9 +211,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // A weblog must always keep at least one category, because
         // saveWeblogEntry() below falls back to "the first category found"
         // whenever an entry arrives without one -- which is what happens when
-        // the editor's category <select> has nothing to offer. Categories.jsp
-        // already hides Delete on the last row, but that only stops the UI; a
-        // direct POST to categoryRemove!remove.rol took the last category out
+        // the editor's category <select> has nothing to offer. The
+        // categories screen already hides Delete on the last row, but that only stops the UI; a
+        // direct DELETE of the last category took the last category out
         // from under that fallback and every subsequent entry save died on
         // NoSuchElementException, with no way back through the UI since adding
         // a category is a different screen than the one that now fails.
