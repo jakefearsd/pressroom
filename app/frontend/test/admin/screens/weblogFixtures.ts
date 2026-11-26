@@ -17,7 +17,8 @@ export const alpha = {
   commentNotify: false, showMoreFromSite: true, shareRowEnabled: false, entryOrder: 'OLDEST', pageWidth: 'STANDARD',
   frontPage: 'p1', theme: 'journal', customDomain: 'blog.alpha.example', icon: '/i.png', about: 'About text',
   newsletterListUuid: '', businessId: 'b1', placeType: 'LodgingBusiness', placeLocality: 'Lisbon', placeRegion: 'LX',
-  placeCountry: 'PT', placeLat: 38.72, placeLng: -9.14, bookingUrl: 'https://book.example/'
+  placeCountry: 'PT', placeLat: 38.72, placeLng: -9.14, bookingUrl: 'https://book.example/',
+  absoluteUrl: 'https://blog.alpha.example/', subscribeForm: 'offNoList'
 };
 
 export const themeChoices = [
@@ -31,7 +32,7 @@ export const me = (permission = 'ADMIN', globalAdmin = false) => ({
 });
 
 export const meta = (features: Record<string, boolean> = {}) => ({
-  version: '1.2.3', siteUrl: 'https://blog.example.com', limits: {},
+  version: '1.2.3', siteUrl: 'https://blog.example.com', limits: {}, maxEntriesPerPage: 30,
   features: { customThemes: true, groupBlogging: true, userWeblogCreation: true, ...features }
 });
 

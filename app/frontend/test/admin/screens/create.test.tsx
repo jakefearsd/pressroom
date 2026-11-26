@@ -11,10 +11,12 @@ let seen: Seen[];
 let features: Record<string, boolean>;
 let who: object;
 let refuse: ReturnType<typeof problem> | null;
+let profile: Record<string, string>;
 const server = setupServer(
   http.get(`${API}/me`, () => HttpResponse.json(who)),
   http.get(`${API}/meta`, () => HttpResponse.json(meta(features))),
   http.get(`${API}/meta/weblog-options`, () => HttpResponse.json(options)),
+  http.get(`${API}/me/profile`, () => HttpResponse.json(profile)),
   http.get(`${API}/weblogs/:handle`, () => HttpResponse.json({ handle: 'x', name: 'X' })),
   http.post(`${API}/weblogs`, async ({ request }) => {
     await record(seen, request);
@@ -29,6 +31,7 @@ beforeEach(() => {
   features = {};
   who = { ...me(), weblogs: [] };
   refuse = null;
+  profile = { userName: 'jake', kind: 'PERSON', emailAddress: 'jake@example.com', locale: 'en_US', timeZone: 'Europe/Berlin' };
 });
 
 const open = async () => {
@@ -61,6 +64,7 @@ describe('CreateWeblog', () => {
     const { router } = await open();
     await user.type(screen.getByLabelText('Name'), ' New one ');
     await user.type(screen.getByLabelText('Handle'), 'newone');
+    await user.clear(screen.getByLabelText('Email address'));
     await user.type(screen.getByLabelText('Email address'), 'me@example.com');
     await user.selectOptions(screen.getByLabelText('Locale'), 'de_DE');
     await user.selectOptions(screen.getByLabelText('Time zone'), 'UTC');
@@ -72,14 +76,37 @@ describe('CreateWeblog', () => {
     expect(await screen.findByText('Weblog "newone" created.')).toBeInTheDocument();
   });
 
-  it('leaves email and time zone to the API defaults when blank', async () => {
+  it('prefills email, locale and time zone from the signed-in account, as the JSP did, and posts them', async () => {
+    profile = { ...profile, emailAddress: 'jake@example.com', locale: 'de_DE', timeZone: 'UTC' };
+    const user = userEvent.setup();
+    const { router } = await open();
+    await waitFor(() => { expect(screen.getByLabelText('Email address')).toHaveValue('jake@example.com'); });
+    expect(screen.getByLabelText('Locale')).toHaveValue('de_DE');
+    expect(screen.getByLabelText('Time zone')).toHaveValue('UTC');
+    await user.type(screen.getByLabelText('Name'), 'N');
+    await user.type(screen.getByLabelText('Handle'), 'h');
+    await user.click(screen.getByRole('button', { name: 'Create a weblog' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
+    expect(seen[0]?.body).toEqual({ handle: 'h', name: 'N', theme: 'journal', emailAddress: 'jake@example.com',
+      locale: 'de_DE', timeZone: 'UTC' });
+  });
+
+  it('matches a bare account locale (en) to the first offered locale, and ignores a zone the form does not offer', async () => {
+    profile = { ...profile, locale: 'de', timeZone: 'Mars/Olympus' };
+    await open();
+    await waitFor(() => { expect(screen.getByLabelText('Locale')).toHaveValue('de_DE'); });
+    expect(screen.getByLabelText('Time zone')).toHaveValue('');
+  });
+
+  it('leaves email and time zone to the API defaults when the account has none', async () => {
+    profile = { userName: 'jake', kind: 'PERSON' };
     const user = userEvent.setup();
     const { router } = await open();
     await user.type(screen.getByLabelText('Name'), 'N');
     await user.type(screen.getByLabelText('Handle'), 'h');
     await user.click(screen.getByRole('button', { name: 'Create a weblog' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
-    expect(seen[0]?.body).toEqual({ handle: 'h', name: 'N', theme: 'journal', locale: 'en_US' });
+    expect(seen[0]?.body).toEqual({ handle: 'h', name: 'N', theme: 'journal' });
   });
 
   it('asks for the name and the handle before sending anything, on the fields', async () => {
