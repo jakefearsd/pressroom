@@ -59,7 +59,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class SitePagesIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String SLUG = "it-front";
     private static final String HEADING = "Front door heading";
@@ -73,7 +72,7 @@ class SitePagesIT extends PressroomIT {
     void aSitePageIsTheFrontDoorUntilItIsUnpublished() throws Exception {
         loginAsAdmin();
 
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         String wasFront = $("select[name='" + FRONTPAGE_FIELD + "']").should(exist).getSelectedOptionValue();
         if (wasFront == null) {
             wasFront = "";
@@ -98,11 +97,10 @@ class SitePagesIT extends PressroomIT {
             $("#messages").should(exist);
 
             // --- choose it as the front door ---------------------------------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue("page:" + SLUG);
             globalsChanged = true;
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "choosing the front door reported an error: "
                     + ($$("#errors").isEmpty() ? "" : $("#errors").getText()));
 
@@ -166,7 +164,7 @@ class SitePagesIT extends PressroomIT {
     /** Restores the front-door choice, then deletes the page: identity cleanup. */
     private void cleanUp(boolean globalsChanged, String wasFront) {
         if (globalsChanged) {
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             String restore = wasFront;
             // A page that was the front door before this run may be a draft now,
             // and so absent from the select; fall back to the directory.
@@ -174,10 +172,9 @@ class SitePagesIT extends PressroomIT {
                 restore = "";
             }
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(restore);
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "restoring the front door reported an error");
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             assertEquals(restore, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "the front door was not restored");
         }

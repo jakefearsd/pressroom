@@ -98,7 +98,7 @@ class AnalyticsInjectionIT extends PressroomIT {
      *
      * <p>Maintenance moved off the blog-author tabs and into Global Admin
      * (W2 Task 7): the page is reached at {@code /pressroom-ui/admin/
-     * maintenance.rol} with no {@code weblog=} parameter, and the weblog to
+     * maintenance} (the React admin) with no {@code weblog=} parameter, and the weblog to
      * operate on is chosen from a {@code <select>} on the page instead. This
      * still needs a weblog to exist so the picker has an option to select
      * (and so the page is not just proving an empty dropdown), even though
@@ -109,8 +109,8 @@ class AnalyticsInjectionIT extends PressroomIT {
         loginAsAdmin();
         createWeblog();
 
-        openPath("/pressroom-ui/admin/maintenance.rol");
-        $("button[formaction$='maintenance!flushCache.rol']").should(exist);
+        openPath("/pressroom-ui/app/admin/maintenance");
+        $$("button").findBy(text("Flush cache")).should(exist);
         $$("button").findBy(text("Reset")).shouldNot(exist);
         assertFalse($("body").getText().toLowerCase().contains("reset hit"),
                 "no control should offer to reset hit counts -- that feature is gone");

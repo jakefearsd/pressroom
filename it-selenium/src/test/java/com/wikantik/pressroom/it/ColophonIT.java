@@ -55,7 +55,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class ColophonIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String PRIVACY_FIELD = "site.privacy.page";
 
@@ -77,7 +76,7 @@ class ColophonIT extends PressroomIT {
         String slug = "privacy";
         String title = "Privacy " + nonce;
 
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         String wasFront = $("select[name='" + FRONTPAGE_FIELD + "']").should(exist).getSelectedOptionValue();
         String wasPrivacy = $("input[name='" + PRIVACY_FIELD + "']").getValue();
         if (wasFront == null) {
@@ -102,17 +101,16 @@ class ColophonIT extends PressroomIT {
             assertEquals(200, statusOf(pageUrl), "the published page must resolve");
 
             // --- the setting, through the real Global Config page ----------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(handle);
             $("input[name='" + PRIVACY_FIELD + "']").setValue(handle + "/" + slug);
             globalsChanged = true;
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "saving the privacy page reported an error: "
                     + ($$("#errors").isEmpty() ? "" : $("#errors").getText()));
 
             // --- an admin page ---------------------------------------------
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $(".colophon .colophon-version").should(visible);
             String adminVersion = $(".colophon .colophon-version").getText().trim();
             assertTrue(adminVersion.startsWith("Pressroom ") && adminVersion.length() > "Pressroom ".length(),
@@ -176,13 +174,12 @@ class ColophonIT extends PressroomIT {
     private void cleanUp(String handle, String title, boolean globalsChanged,
                          String wasFront, String wasPrivacy) {
         if (globalsChanged) {
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             $("input[name='" + PRIVACY_FIELD + "']").setValue(wasPrivacy);
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(wasFront);
-            clickAndAwaitNewPage($("#saveButton"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#saveButton"));
             assertTrue($$("#errors").isEmpty(), "restoring the settings reported an error");
-            openPath(GLOBAL_CONFIG_PATH);
+            openGlobalConfig();
             assertEquals(wasPrivacy, $("input[name='" + PRIVACY_FIELD + "']").getValue(),
                     "site.privacy.page was not restored");
             assertEquals(wasFront, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),

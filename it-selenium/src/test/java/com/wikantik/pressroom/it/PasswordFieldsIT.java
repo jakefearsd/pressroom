@@ -165,7 +165,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void userEditorRevealsTheNewPassword() {
         loginAsAdmin();
-        openPath("/pressroom-ui/admin/createUser.rol");
+        openPath("/pressroom-ui/app/admin/users/new");
         $("#bean_password").setValue("for-someone-else");
         revealFor("bean_password").click();
         $("#bean_password").shouldHave(attribute("type", "text"), value("for-someone-else"));
@@ -174,7 +174,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void profileRevealsAllThreeFields() {
         loginAsAdmin();
-        openPath("/pressroom-ui/profile.rol");
+        openPath("/pressroom-ui/app/profile");
         for (String id : new String[] {"currentPassword", "passwordText", "passwordConfirm"}) {
             revealFor(id).click();
             $("#" + id).shouldHave(attribute("type", "text"));
@@ -188,7 +188,7 @@ class PasswordFieldsIT extends PressroomIT {
     @Test
     void profileSaysWhetherTheNewPasswordsMatch() {
         loginAsAdmin();
-        openPath("/pressroom-ui/profile.rol");
+        openPath("/pressroom-ui/app/profile");
         $$(".password-match").shouldHave(size(1));
         SelenideElement line = $("#passwordConfirm-match");
         line.shouldHave(attribute("aria-live", "polite"), exactText(""));

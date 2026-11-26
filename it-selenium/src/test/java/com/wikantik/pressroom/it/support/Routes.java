@@ -164,26 +164,6 @@ public final class Routes {
             // What / shows while no weblog is the front page; public.
             new Route("/pressroom-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
 
-            // SetupController.isUserRequired() is false, but SecurityConfig's
-            // authorization rule for /pressroom-ui/setup* still requires the
-            // "admin" authority, so this route is reachable only because the
-            // sweep is logged in as the seeded admin, not because it is public.
-            // Every link on Setup.jsp is conditional on user/blog counts; the
-            // three card headings are not. The marker is an app-owned class
-            // (not card-title) because Setup.jsp's headings sit in .card-header,
-            // not .card-body, where Bootstrap 5's card-title is normally used.
-            new Route("/pressroom-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
-
-            new Route("/pressroom-ui/profile.rol", Role.EDITOR, "",
-                    "form[action$='/pressroom-ui/profile!save.rol']"),
-
-            // Profile -> API tokens (spec 2026-10-13): the live tokens and the form.
-            new Route("/pressroom-ui/profileTokens.rol", Role.EDITOR, "", "#profileTokensPage"),
-
-            // The one-time reveal. Opened directly it has no flash secret, so it
-            // renders its "already shown" state -- still its own content tile.
-            new Route("/pressroom-ui/profileTokens!reveal.rol", Role.EDITOR, "", "#tokenRevealPage"),
-
             // The reader's account page. AccountController needs only the global
             // "comment" action, which readers hold -- but Role has no READER and
             // the sweep signs in as the seeded admin, who holds "comment" too, so
@@ -196,56 +176,6 @@ public final class Routes {
             // skips the "you already have a blog" bail-out.
             new Route("/pressroom-ui/createWeblog.rol", Role.EDITOR, "",
                     "form[action$='/pressroom-ui/createWeblog!save.rol']"),
-
-            // The settings rail (task B9a): the <form> IS the .settings-grid,
-            // so the rail is the marker that proves the page rendered its own
-            // content rather than the form action, which the old
-            // no-rail layout also had.
-            new Route("/pressroom-ui/admin/globalConfig.rol", Role.ADMIN, "",
-                    ".settings-rail"),
-
-            new Route("/pressroom-ui/admin/userAdmin.rol", Role.ADMIN, "",
-                    "#userListPage"),
-
-            // Businesses: the list's own wrapper, and the edit form, which a
-            // blank id opens empty (the new-business case), so neither needs seeding.
-            new Route("/pressroom-ui/admin/businesses.rol", Role.ADMIN, "",
-                    "#businesses-list-marker"),
-
-            // Admin -> API tokens (spec 2026-10-13): every live token on the site.
-            new Route("/pressroom-ui/admin/apiTokens.rol", Role.ADMIN, "", "#apiTokensPage"),
-
-            new Route("/pressroom-ui/admin/businesses!edit.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/businesses!save.rol']"),
-
-            // Maintenance moved off the blog-author tabs and into Global
-            // Admin: the three actions (flush cache, rebuild search index,
-            // regenerate media renditions) are operator work, not authoring
-            // work. MaintenanceController.isWeblogRequired() is false -- the
-            // target weblog is chosen from a <select> on the page instead of
-            // the weblog= action-context parameter -- so this reaches the
-            // page with no parameters at all, like globalConfig.rol/
-            // userAdmin.rol above. Maintenance.jsp's outer form posts back to
-            // maintenance.rol itself; the individual buttons override it with
-            // formaction.
-            new Route("/pressroom-ui/admin/maintenance.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/maintenance.rol']"),
-
-            // UserEdit.jsp posts to a runtime-chosen ${saveAction}, so the form
-            // action is not a stable selector; the username input is.
-            // Anchored on the username input by NAME. It used to anchor on
-            // id="bean_userName", which sat on the SCREEN NAME field -- so the
-            // marker was proving the wrong control existed.
-            new Route("/pressroom-ui/admin/createUser.rol", Role.ADMIN, "",
-                    "input[name='bean.userName']"),
-
-            // New agent (spec 2026-10-13): the create form.
-            new Route("/pressroom-ui/admin/createAgent.rol", Role.ADMIN, "",
-                    "form[action$='/pressroom-ui/admin/createAgent!save.rol']"),
-
-            // An agent's page, for the agent seed-it-data.sql creates -- the one
-            // route in this list that needs a query: a page needs its agent.
-            new Route("/pressroom-ui/admin/agent.rol", Role.ADMIN, "userName=it_agent", "#agentPage"),
 
             // SeoController's sitemap index. Not HTML: Chrome's built-in XML
             // viewer keeps the source document's elements in the DOM (inside
@@ -408,14 +338,6 @@ public final class Routes {
                             + "the .Templates view with an error. No custom templates are "
                             + "seeded. TemplateIT drives it with a template it creates, and "
                             + "checks the result reaches the public page URL."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser.rol", Role.ADMIN,
-                    "Needs bean.id or bean.userName; without one it renders .UserAdmin "
-                            + "with a not-found error rather than the edit form. "
-                            + "UserAdminIT drives it with a fixture it creates, through "
-                            + "the admin search form."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser!firstSave.rol", Role.ADMIN,
-                    "Delegates to modifyUser; same missing user id."),
-
             // --- no page of their own ---
 
             new SkippedRoute("/pressroom-ui/home.rol", Role.ANONYMOUS,
@@ -427,10 +349,6 @@ public final class Routes {
                             + "entry= naming a published entry, and none is seeded, so "
                             + "without one it answers 404. CommentsControllerTest pins "
                             + "its contract."),
-            new SkippedRoute("/pressroom-ui/admin/createUser!cancel.rol", Role.ADMIN,
-                    "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
-            new SkippedRoute("/pressroom-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
-                    "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
             new SkippedRoute("/pressroom-ui/login-redirect.rol", Role.EDITOR,
                     "A redirect: a signed-in user lands on the React admin's home, a "
                             + "visitor on the login page (SsoSignInIT and AuthoringJourneyIT "
@@ -476,7 +394,26 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/traffic", Role.EDITOR, "", "#trafficPage"),
 
             // Global Traffic: every blog's numbers from the local cache; the marker is the page's root div.
-            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage")
+            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage"),
+
+            // Wave 4, site admin. Global Config's settings rail; Setup's three section headings; the
+            // Businesses list wrapper and its create form; Maintenance's weblog picker.
+            new Route("/pressroom-ui/app/admin/config", Role.ADMIN, "", ".settings-rail"),
+            new Route("/pressroom-ui/app/admin/setup", Role.ADMIN, "", "h2.setup-section-title"),
+            new Route("/pressroom-ui/app/admin/businesses", Role.ADMIN, "", "#businesses-list-marker"),
+            new Route("/pressroom-ui/app/admin/businesses/new", Role.ADMIN, "", "#bean_name"),
+            new Route("/pressroom-ui/app/admin/maintenance", Role.ADMIN, "", "#maintenanceWeblog"),
+
+            // Wave 4, people: the user list, the create form (anchored on the username input by name), the
+            // agent create form, an agent's page for the agent seed-it-data.sql creates, every live token on
+            // the site, and the signed-in account's own profile and tokens.
+            new Route("/pressroom-ui/app/admin/users", Role.ADMIN, "", "#userListPage"),
+            new Route("/pressroom-ui/app/admin/users/new", Role.ADMIN, "", "input[name='bean.userName']"),
+            new Route("/pressroom-ui/app/admin/agents/new", Role.ADMIN, "", "#agentCreateForm"),
+            new Route("/pressroom-ui/app/admin/agents/it_agent", Role.ADMIN, "", "#agentPage"),
+            new Route("/pressroom-ui/app/admin/tokens", Role.ADMIN, "", "#apiTokensPage"),
+            new Route("/pressroom-ui/app/profile", Role.EDITOR, "", "input#userName[readonly]"),
+            new Route("/pressroom-ui/app/profile/tokens", Role.EDITOR, "", "#profileTokensPage")
     );
 
     // ------------------------------------------------------------ known broken

@@ -338,6 +338,42 @@ public abstract class PressroomIT {
     }
 
     /**
+     * Clicks a save button on a React admin screen and returns once the screen has shown its success
+     * message. A React save is an API call, not a navigation, so {@link #clickAndAwaitNewPage} would wait for
+     * a page that never comes; the barrier here is the message itself, which the screen renders only after the
+     * API answered. Use it only where {@code #messages} was absent before the click (a freshly opened screen).
+     *
+     * @param target the save button
+     */
+    protected static void clickAndAwaitSavedMessage(SelenideElement target) {
+        target.click();
+        $("#messages").should(exist);
+        BrowserHealth.current().settle();
+    }
+
+    /**
+     * Presses the confirming button of the React admin's confirmation modal (its last button: Cancel comes
+     * first) and returns once the modal is gone. The modal replaces the JSPs' native {@code data-confirm}
+     * dialogs, so there is no {@code Selenide.confirm()}; whatever the confirmed action does next is the
+     * caller's barrier to wait for.
+     */
+    protected static void confirmReactDialog() {
+        $("div[role='dialog'] .modal-footer button:last-of-type").click();
+        $("div[role='dialog']").should(com.codeborne.selenide.Condition.disappear);
+    }
+
+    /**
+     * Opens the React Global Config screen and waits until it is fully populated: its form renders once the
+     * definitions and the stored values have loaded, and the front-door choices (site pages, weblogs) arrive
+     * in two further reads, so a value read before the page settles can be the empty first choice.
+     */
+    protected void openGlobalConfig() {
+        openPath(GLOBAL_CONFIG_PATH);
+        $(".settings-rail").should(exist);
+        BrowserHealth.current().settle();
+    }
+
+    /**
      * Runs {@code action} -- a click followed by {@code Selenide.confirm()}, a script that
      * submits a form -- and returns once the page it started from has been replaced.
      *
@@ -663,7 +699,7 @@ public abstract class PressroomIT {
     }
 
     /** The site-wide settings page, where global runtime properties are edited. */
-    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
+    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/app/admin/config";
 
     /**
      * Sets a global runtime property from the admin settings page and returns
@@ -714,7 +750,7 @@ public abstract class PressroomIT {
      * @return each property's value on arrival
      */
     protected Map<String, Boolean> setGlobalFlags(Map<String, Boolean> flags) {
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
 
         Map<String, Boolean> previous = new LinkedHashMap<>();
         flags.forEach((name, value) -> {
@@ -725,14 +761,12 @@ public abstract class PressroomIT {
             }
         });
 
-        $("#saveButton").click();
-        $("#messages").should(exist);
-        BrowserHealth.current().settle();
+        clickAndAwaitSavedMessage($("#saveButton"));
 
         // Read them back. An unticked checkbox posts nothing at all, so a form
         // that binds a value wrongly still redirects and still reports success
         // -- only re-reading the page proves the settings took.
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         flags.forEach((name, value) -> {
             if (value) {
                 $("input[name='" + name + "']").shouldBe(checked);
@@ -758,11 +792,10 @@ public abstract class PressroomIT {
      * @return the value it had on arrival
      */
     protected String setSiteAbsoluteUrl(String value) {
-        openPath(GLOBAL_CONFIG_PATH);
+        openGlobalConfig();
         String previous = $("input[name='site.absoluteurl']").should(exist).getValue();
         $("input[name='site.absoluteurl']").setValue(value == null ? "" : value);
-        clickAndAwaitNewPage($("#saveButton"));
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#saveButton"));
         return previous;
     }
 

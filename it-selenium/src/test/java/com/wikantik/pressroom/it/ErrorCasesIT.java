@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class ErrorCasesIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String CREATE_USER = "/pressroom-ui/app/admin/users/new";
     private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     // ------------------------------------------------------------ not found
@@ -130,10 +130,12 @@ class ErrorCasesIT extends PressroomIT {
         $("input[name='bean.fullName']").setValue("Impostor");
         $("input[name='bean.password']").setValue("some-password");
         $("input[name='bean.emailAddress']").setValue("impostor@example.com");
-        // Not click-then-settle: that read the form we had typed into, passed on it, and
-        // signed out under the still-unsent POST, which then reached a dead session --
-        // the 403 on createUser!save.rol (docs/dev/build-and-ci.md).
-        clickAndAwaitNewPage($("#save_button"));
+        // The React form saves through the API: the refusal is the answer the screen shows in place, so
+        // wait for it (an error banner), not for a navigation that never comes.
+        BrowserHealth.current().expectRefusal("/api/v1/admin/users");
+        $("#save_button").click();
+        $("#errors").should(exist);
+        BrowserHealth.current().settle();
 
         assertFalse($$("#messages").size() > 0,
                 "creating a second account with an existing username reported success");
@@ -173,7 +175,7 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void adminScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
-                "/pressroom-ui/admin/globalConfig.rol",
+                "/pressroom-ui/app/admin/config",
                 "/pressroom-ui/admin/createUser.rol",
                 "/pressroom-ui/admin/userAdmin.rol"}) {
             int status = statusOf(baseUrl() + path);

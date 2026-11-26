@@ -106,7 +106,7 @@ class SsoSignInIT extends PressroomIT {
     private static final String LOGIN = "/pressroom-ui/login.rol";
     /** The React admin's home (the main menu): needs an editor, so a reader gets a 403. */
     private static final String MENU = "/pressroom-ui/app/";
-    private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
+    private static final String USER_ADMIN = "/pressroom-ui/app/admin/users";
 
     /** Keycloak users in src/test/resources/keycloak/pressroom-it-realm.json. */
     private static final String READER = "reader-it";
@@ -127,10 +127,10 @@ class SsoSignInIT extends PressroomIT {
     /** The pages criterion 23 names, by their {@link Routes} paths. */
     private static final List<String> AUTHOR_PATHS = List.of(
             "/pressroom-ui/app/",
-            "/pressroom-ui/profile.rol",
+            "/pressroom-ui/app/profile",
             "/pressroom-ui/createWeblog.rol",
             "/pressroom-ui/authoring/entries.rol",
-            "/pressroom-ui/admin/userAdmin.rol");
+            "/pressroom-ui/app/admin/users");
 
     private static final int PAGE_SIZE = 200;
 
@@ -552,7 +552,7 @@ class SsoSignInIT extends PressroomIT {
     /** Finds an account in Admin → Users by name and opens its page, as an admin gets there. */
     private void openUserEdit(String userName) {
         openPath(USER_ADMIN + "?q=" + userName);
-        clickAndAwaitNewPage($("a[data-username='" + userName + "']"));
+        $("a[data-username='" + userName + "']").click();
         $("input[name='bean.userName']").should(visible).shouldHave(value(userName));
     }
 
@@ -571,8 +571,7 @@ class SsoSignInIT extends PressroomIT {
         if ($(checkbox).should(exist).isSelected() != on) {
             $(checkbox).click();
         }
-        clickAndAwaitNewPage($("#save_button"));
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#save_button"));
 
         openUserEdit(userName);
         if (on) {
