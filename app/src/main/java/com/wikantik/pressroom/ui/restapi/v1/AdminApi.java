@@ -39,7 +39,6 @@ import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
-import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkService;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -305,6 +304,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
         String screenNameBefore = user.getScreenName();
 
+        // Your own password changes only through PUT /v1/me/password, which asks for the current one: a signed-in
+        // session alone must not be enough to take the account over for good.
+        if (self && StringUtils.isNotEmpty(body.password())) {
+            throw ApiException.problem(ProblemCode.USER_OWN_PASSWORD_USE_PROFILE);
+        }
         // What the person screen refuses before applying anything: an admin locking themselves out.
         if (self) {
             boolean droppingOwnAdmin = Boolean.FALSE.equals(body.administrator()) && holdsAdmin(mgr, user);
@@ -322,7 +326,10 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (passwordChanged) {
             user.resetPassword(body.password());
         }
-        // A new password or a disabled account ends the user's other sessions, unless it is the actor's own.
+        // For another account, a new password or a disable drops its cached login session now
+        // (PressroomLoginSessionManager.invalidate). That is only a cache drop: a changed password ends its other
+        // sessions through the password stamp (CredentialStampFilter), but a disabled account's existing sessions
+        // are refused by the enabled checks downstream (the API's session filter, the UI's user lookup).
         if (!self && (passwordChanged || !Boolean.TRUE.equals(user.getEnabled()))) {
             PressroomLoginSessionManager.getInstance().invalidate(user.getUserName());
         }
@@ -334,10 +341,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         String roleEvent = body.administrator() == null ? null
                 : AccountRoles.sync(mgr, user, "admin", body.administrator(), holdsAdmin(mgr, user));
         weblogger.flush();
-        if (passwordChanged && self) {
-            // The account's other sessions end on their next request (CredentialStampFilter); this one stays.
-            CredentialStampFilter.restamp(request, user);
-        }
         boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
         if (enabledBefore != enabledNow) {
             AdminLog.record(enabledNow ? "account.enabled" : "account.disabled", actor,

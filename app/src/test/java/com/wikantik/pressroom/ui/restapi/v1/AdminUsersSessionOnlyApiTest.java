@@ -357,13 +357,17 @@ class AdminUsersSessionOnlyApiTest {
     }
 
     @Test
-    void aSessionChangingItsOwnPasswordKeepsItsSession() throws Exception {
+    void anAdminCannotSetTheirOwnPasswordHereBecauseTheProfileRouteAsksForTheCurrentOne() throws Exception {
         stored(actor);
         holdsAdmin(actor, true);
         asSession();
 
-        assertEquals(200, status(send(patch("/v1/admin/users/boss"), "{\"password\":\"long enough password\"}")));
-        assertNotNull(actor.getPassword());
+        refused(send(patch("/v1/admin/users/boss"), "{\"password\":\"long enough password\",\"fullName\":\"X\"}"),
+                409, "user.ownPasswordUseProfile");
+
+        assertEquals(null, actor.getPassword());
+        verify(users, never()).saveUser(any());
+        verify(weblogger, never()).flush();
     }
 
     // --- create
