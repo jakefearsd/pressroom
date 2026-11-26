@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.ui.view;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -78,6 +80,19 @@ public final class EntryListQuery {
         } catch (IllegalArgumentException unknown) {
             return null;
         }
+    }
+
+    /**
+     * The first instant of {@code day} in the server's default time zone: the lower bound of a date-range
+     * filter. The JSP list and the API both take their bounds from here, so a range means one thing.
+     */
+    public static Date startOfDay(LocalDate day) {
+        return Date.from(day.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    /** The last millisecond of {@code day} in the server's default time zone: the upper bound of a date range. */
+    public static Date endOfDay(LocalDate day) {
+        return Date.from(day.atTime(23, 59, 59, 999_000_000).atZone(ZoneId.systemDefault()).toInstant());
     }
 
     /** Whether asking for {@code status} reaches the trash: only {@code TRASHED}, by name. */

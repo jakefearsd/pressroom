@@ -7,6 +7,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -56,6 +60,9 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      */
     private static final int MAX_LIMIT = Paging.MAX_LIMIT;
 
+    private static final String DATE_DESCRIPTION = "A day as yyyy-MM-dd, in the server's time zone (the entries "
+            + "page's filter). ";
+
     @Operation(operationId = "entriesList")
     @GetMapping("")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryPage.class)))
@@ -66,6 +73,10 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             @RequestParam(value = "tags", required = false) List<String> tags,
             @RequestParam(value = "text", required = false) String text,
             @RequestParam(value = "locale", required = false) String locale,
+            @Parameter(description = DATE_DESCRIPTION + "Entries from the start of this day.")
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @Parameter(description = DATE_DESCRIPTION + "Entries up to the end of this day.")
+            @RequestParam(value = "endDate", required = false) String endDate,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit,
             @Parameter(description = EntryFields.DESCRIPTION)
@@ -81,6 +92,9 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         // contributor, and the contract says client-supplied garbage is a
         // 400, not a stack trace.
         Paging.requireRange(limit, offset);
+        // Both dates are checked before the first query, so a bad one never costs a read.
+        Date from = filterDate("startDate", startDate, false);
+        Date to = filterDate("endDate", endDate, true);
         EntryFields shown = EntryFields.of(fields);
 
         Weblog weblog = requireActionWeblog(request);
@@ -90,13 +104,29 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         // treats one as no filter. A blank one is no filter on both.
         EntryListQuery.EntryListPage found = EntryListQuery.run(weblogger.getWeblogEntryManager(), weblog,
                 new EntryListQuery.Filters(status == null || status.isBlank() ? null
-                        : EntryDtos.parseFilterStatus(status), category, tags, text, locale, null, null, null),
+                        : EntryDtos.parseFilterStatus(status), category, tags, text, locale, from, to, null),
                 offset, boundedLimit);
 
         List<EntryDtos.EntryView> items = found.items().stream()
                 .map(entry -> EntryDtos.toView(entry, permalink(entry)))
                 .toList();
         return shown.project(new EntryDtos.EntryPage(items, found.offset(), found.limit(), found.hasMore()));
+    }
+
+    /**
+     * A date-range bound: blank is none, anything but {@code yyyy-MM-dd} is a 400 on {@code field}. The JSP
+     * list ignores a malformed date (a stale bookmark still lists), which an API caller should be told.
+     */
+    private static Date filterDate(String field, String raw, boolean endOfDay) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate day = LocalDate.parse(raw.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+            return endOfDay ? EntryListQuery.endOfDay(day) : EntryListQuery.startOfDay(day);
+        } catch (DateTimeParseException e) {
+            throw ApiException.problemOnField(field, ProblemCode.PARAMETER_INVALID_VALUE, e, field);
+        }
     }
 
     @Operation(operationId = "entriesGet")
