@@ -89,7 +89,7 @@ class FrontDoorIT extends PressroomIT {
         BrowserHealth.current().settle();
 
         // --- choose it in the blog settings ----------------------------------
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
         $("#weblog_bean_frontPageId").should(visible).selectOption(pageTitle);
         clickAndAwaitNewPage($("button[type='submit'].btn-primary").should(visible));
         $("#messages").should(exist);
@@ -117,7 +117,7 @@ class FrontDoorIT extends PressroomIT {
     }
 
     private void createWeblog(String handle) {
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Front " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

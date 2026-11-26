@@ -64,7 +64,7 @@ class MediaJspEscapingTest {
     private static final Set<String> SAFE = Set.of(
             // The servlet container's own context path.
             "pageContext.request.contextPath",
-            // CreateWeblogController refuses a handle outside
+            // WeblogCreationRules refuses a handle outside
             // username.allowedChars (default A-Za-z0-9).
             "actionWeblog.handle",
             // Server-generated UUIDs: entity ids, or a directory id the

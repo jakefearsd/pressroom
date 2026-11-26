@@ -50,12 +50,8 @@ resolves through the index at the end of `CLAUDE.md`.
   on a *control* (a `formaction` button, a link), `submit` owns it on the
   *form* (catching Enter in a text field), and the click handler's ancestor
   walk stops at the form or both prompt (shipped once on `UserEdit`).
-  **`data-confirm` on a `<form>` is the one legitimate case** —
-  `Members.jsp`'s removal confirm depends on radios across the whole table,
-  beyond any single control. `data-confirm-when` names a CSS selector; the
-  submit handler prompts only when `form.querySelector(selector)` matches
-  (`!when || matches`, so without it a form-level `data-confirm` prompts
-  unconditionally). `data-confirm`(`-when`) on `click` or `submit` is the
+  `data-confirm` on a `<form>` prompts on submit (a form-level `data-confirm` prompts
+  unconditionally; the `data-confirm-when` condition went with the Members screen, its only user). `data-confirm` on `click` or `submit` is the
   **only** confirm idiom: `JspConsistencyTest.oneConfirmIdiomAndOneModalShape`
   bans `confirm(` and `onsubmit=` in every JSP, so an inline
   `window.confirm()` fails the build.

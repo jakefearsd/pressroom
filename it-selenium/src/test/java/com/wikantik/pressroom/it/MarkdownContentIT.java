@@ -208,7 +208,7 @@ class MarkdownContentIT extends PressroomIT {
 
     /** Creates a weblog owned by the seeded admin on the named theme. */
     private String createWeblog(String handle, String themeId) {
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Markdown Content " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

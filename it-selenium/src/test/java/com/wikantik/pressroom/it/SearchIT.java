@@ -341,7 +341,7 @@ class SearchIT extends PressroomIT {
     private String createWeblog(String name) {
         loginAsAdmin();
         String handle = "box" + nonce();
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue(name);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

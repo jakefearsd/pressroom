@@ -82,7 +82,7 @@ class BusinessProfileIT extends PressroomIT {
             $$("table.pressroomtable td").findBy(text(businessName)).should(exist);
 
             // --- the blog owner selects it and describes the place --------
-            openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+            openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
             $("#settings-business").should(exist);
             $("#weblog_bean_businessId").selectOption(businessName);
             $("#weblog_bean_placeType").selectOptionByValue("LodgingBusiness");
@@ -143,7 +143,7 @@ class BusinessProfileIT extends PressroomIT {
 
     /** Unsets the blog's business, then deletes the business: identity cleanup. */
     private void cleanUp(String handle, boolean businessCreated) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
         $("#weblog_bean_businessId").selectOptionByValue("");
         saveSettings();
         if (!businessCreated) {
@@ -171,7 +171,7 @@ class BusinessProfileIT extends PressroomIT {
     private String createWeblog() {
         String handle = "bizit" + Long.toString(System.nanoTime(), 36);
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Business " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

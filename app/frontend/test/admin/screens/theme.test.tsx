@@ -58,7 +58,7 @@ describe('ThemeEdit', () => {
     expect(document.querySelector('.subtitle span')).toHaveTextContent('alpha');
     expect(screen.getByRole('radio', { name: /Journal/ })).toBeChecked();
     expect(document.querySelector('.theme-card-thumb')).toHaveAttribute('src', 'http://pressroom.test/pressroom/themes/journal/preview.png');
-    expect(screen.getByRole('link', { name: 'View your weblog' })).toHaveAttribute('href', 'https://blog.example.com/alpha');
+    expect(screen.getByRole('link', { name: 'View your weblog' })).toHaveAttribute('href', 'https://blog.alpha.example/');
     expect(screen.queryByRole('button', { name: 'Use this theme' })).toBeNull();
     expect(document.getElementById('sharedChooser')).toHaveClass('chooser-selected');
   });

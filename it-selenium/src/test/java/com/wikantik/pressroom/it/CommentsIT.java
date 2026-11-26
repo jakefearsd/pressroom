@@ -944,7 +944,7 @@ class CommentsIT extends PressroomIT {
     /** Creates a weblog owned by the seeded admin, on the journal theme, with comments on. */
     private String createWeblogWithComments(String prefix) {
         String handle = prefix + nonce();
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Comments IT " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -979,7 +979,7 @@ class CommentsIT extends PressroomIT {
     }
 
     private void openWeblogSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
         $("input[name='bean.name']").should(visible);
     }
 
@@ -1015,7 +1015,7 @@ class CommentsIT extends PressroomIT {
 
     /** Permanently deletes a weblog through the real confirm-and-remove flow. */
     private void removeWeblog(String handle) {
-        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/remove";
         clickAndAwaitNewPage($("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
                 .should(visible));
         // Back on the React home: the weblog's row is no longer listed.

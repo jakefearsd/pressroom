@@ -157,7 +157,7 @@ describe('send as newsletter', () => {
     await ready();
     expect(document.getElementById('newsletterNoList')).toHaveTextContent('Set a newsletter list UUID in Weblog Settings first.');
     expect(screen.getByRole('link', { name: 'Open weblog settings' }))
-      .toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/authoring/weblogConfig.rol?weblog=alpha');
+      .toHaveAttribute('href', '/weblogs/alpha/settings');
   });
 
   it('is not offered for an unpublished entry', async () => {

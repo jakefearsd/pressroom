@@ -63,10 +63,8 @@ class MessageArgumentCommaTest {
     void freeTextArgumentsArePassedAsAList() throws IOException {
         Map<String, String> sites = Map.of(
                 "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
-                "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[fn:escapeXml(actionWeblog.name)]}\"",
                 "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
-                "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"",
-                "editor/TemplateEdit.jsp", "arguments=\"${[fn:escapeXml(bean.name), actionWeblog.handle]}\"");
+                "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"");
         List<String> missing = new ArrayList<>();
         for (Map.Entry<String, String> site : sites.entrySet()) {
             String src = Files.readString(JSPS.resolve(site.getKey()), StandardCharsets.UTF_8);

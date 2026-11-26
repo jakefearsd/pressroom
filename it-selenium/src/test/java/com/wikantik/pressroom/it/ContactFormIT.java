@@ -110,7 +110,7 @@ class ContactFormIT extends PressroomIT {
 
         // --- the Inquiries admin screen ---------------------------------------
         loginAsAdmin();
-        openPath("/pressroom-ui/authoring/submissions.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/inbox";
         $("table.pressroomtable").shouldHave(text(name));
         $("table.pressroomtable").shouldHave(text(message));
 
@@ -144,7 +144,7 @@ class ContactFormIT extends PressroomIT {
         assertEquals(204, postJson(CONTACT_ENDPOINT, honeypotJson),
                 "a honeypot-filled submission must answer exactly like success");
 
-        openPath("/pressroom-ui/authoring/submissions.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/inbox";
         $$(".submission-select").shouldHave(CollectionCondition.size(0));
         $(".empty-state").shouldHave(text("No inquiries yet."));
         BrowserHealth.current().assertNoBrokenResources();
@@ -157,7 +157,7 @@ class ContactFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "contactit" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("CFIT Weblog " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

@@ -494,19 +494,11 @@ limitations under the License.
                  jquery-ui 1.14.x used to ship alongside this for its
                  datepicker widget (Entries.jsp's sidebar date filters, Task
                  B4) and its bundled jquery-patch.js, but head.jsp never
-                 loaded that patch file: jquery-validation 1.21.0 already
-                 runs against jQuery 4 without it, proven by the browser ITs
-                 (BrowserHealth fails a page that logs a console error or
-                 throws). jquery-ui is gone now: the datepicker was replaced
-                 by a native <input type="date">, and jquery-patch.js was
-                 never in the loaded set it would have needed to matter. -->
+                 loaded that patch file. jquery-ui is gone now: the datepicker was
+                 replaced by a native <input type="date">, and jquery-patch.js was
+                 never in the loaded set it would have needed to matter. jquery-validation
+                 went with the last JSP form that used it (Create weblog). -->
             <version>4.1.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>jquery-validation</artifactId>
-            <version>1.21.0</version>
         </dependency>
 
         <!-- Public-surface lightbox, referenced from #showGalleryAssets in

@@ -108,10 +108,6 @@ class MessageArgumentEscapingTest {
             // would change, but the API took any name before 0.16.0, so a
             // stored one can hold markup. A valid name is a fixed point of
             // escapeHtml4, so escaping it costs nothing.)
-            // A theme's display name is read from its own theme.xml on disk:
-            // deployer-authored file content, never request input.
-            "editor/ThemeEditController.java -> t.getName()",
-            "editor/ThemeEditController.java -> newTheme.getName()",
             // The duplicate's title is the ORIGINAL's, run through the same
             // stored-escaping as EntryRemoveController's above.
             "editor/EntriesController.java -> copy.getTitle()",
@@ -121,11 +117,7 @@ class MessageArgumentEscapingTest {
             // URLStrategy output, with no author text in it. Escaping it would
             // turn the & joining its query parameters into &amp;.
             "editor/MediaFileAddController.java -> weblogger.getUrlStrategy()"
-                    + ".getMediaFileURL(upload.getWeblog(), upload.getId(), true)",
-            // CreateWeblogController.myValidate refuses any handle that is not
-            // identical to itself filtered through username.allowedChars
-            // (default A-Za-z0-9) before this line can be reached.
-            "core/CreateWeblogController.java -> bean.getHandle()");
+                    + ".getMediaFileURL(upload.getWeblog(), upload.getId(), true)");
 
     /**
      * Every message argument that is an accessor call is either escaped or

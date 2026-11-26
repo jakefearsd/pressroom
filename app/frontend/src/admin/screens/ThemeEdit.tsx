@@ -10,7 +10,6 @@ import { useApi, useBoot } from '../context';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
 import { useCanAdminister } from '../routes/access';
-import { useMeta } from '../api/queries';
 
 type WeblogThemes = components['schemas']['WeblogThemes'];
 type Type = 'shared' | 'custom';
@@ -38,7 +37,6 @@ function ThemeForm({ handle, data }: { handle: string; data: WeblogThemes }) {
   const { contextPath } = useBoot();
   const queries = useQueryClient();
   const weblog = useWeblog(handle);
-  const meta = useMeta();
   const originalType: Type = data.custom ? 'custom' : 'shared';
   const originalThemeId = data.custom ? '' : (data.current ?? '');
   const cards = data.themes;
@@ -99,9 +97,9 @@ function ThemeForm({ handle, data }: { handle: string; data: WeblogThemes }) {
     apply.mutate();
   };
 
-  const siteUrl = meta.data?.siteUrl ?? contextPath;
-  const blogUrl = `${siteUrl}/${handle}`;
-  const viewBlog = (
+  // The address readers reach the weblog at is the server's to say (custom domain, virtual host, site url).
+  const blogUrl = weblog.data?.absoluteUrl;
+  const viewBlog = blogUrl === undefined ? null : (
     <p><a href={blogUrl} target="_blank" rel="noopener noreferrer">{t('themeEditor.viewYourBlog')}</a></p>
   );
   const busy = apply.isPending;

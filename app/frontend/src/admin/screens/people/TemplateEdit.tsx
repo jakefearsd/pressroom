@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTemplate, useUpdateTemplate, type TemplateView, type TemplateWrite } from '../../api/people';
-import { useMeta, useWeblog } from '../../api/queries';
+import { useWeblog } from '../../api/queries';
 import { Markup, markupArg } from '../../components/Markup';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useFieldErrors } from '../../forms/useFieldErrors';
@@ -41,7 +41,6 @@ function TemplateForm({ handle, template }: { handle: string; template: Template
   const t = useT();
   const update = useUpdateTemplate(handle, template.id);
   const weblog = useWeblog(handle);
-  const meta = useMeta();
   const custom = template.action === 'CUSTOM';
   const required = template.required;
 
@@ -59,7 +58,7 @@ function TemplateForm({ handle, template }: { handle: string; template: Template
   const fields = useFieldErrors(update.error, (field) => FIELD_IDS[field] ?? field);
 
   const advancedOpen = advanced || fields.invalid('contentType');
-  const address = weblogAddress(handle, weblog.data?.customDomain, meta.data?.siteUrl);
+  const address = weblogAddress(weblog.data?.absoluteUrl);
   const savedLink = template.link ?? '';
 
   const save = (event: FormEvent) => {

@@ -29,7 +29,6 @@ import jakarta.servlet.ServletRegistration;
 
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
-import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.AppShellForwardFilter;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
@@ -127,16 +126,6 @@ class ServletRegistrationConfigTest {
                 "/pressroom-ui/authoring/previewresource/*", 9);
     }
 
-    @Test
-    void theAjaxServletCarriesItsWebXmlPatternAndTheDefaultLoadOrder() throws Exception {
-        // No <load-on-startup> element in web.xml for it -- left at
-        // ServletRegistrationBean's own constructor default, -1 (verified via
-        // javap against spring-boot-4.1.0.jar: the no-arg and (T, String...)
-        // constructors both set loadOnStartup = -1).
-        assertServlet(config.themeDataServletRegistration(config.themeDataServlet(weblogger)), ThemeDataServlet.class,
-                "/pressroom-ui/authoring/themedata/*", -1);
-    }
-
     /**
      * The account-listing servlet ({@code /pressroom-ui/authoring/userdata/*})
      * lost its last page consumer with the Users search box, yet any admin or
@@ -150,6 +139,20 @@ class ServletRegistrationConfigTest {
                         .map(m -> m.getName().toLowerCase(java.util.Locale.ROOT))
                         .noneMatch(name -> name.contains("userdata")),
                 "no bean method may build or register the userdata servlet");
+    }
+
+    /**
+     * The theme-data servlet ({@code /pressroom-ui/authoring/themedata/*}) served the old Create weblog
+     * page's theme picker; the React screen takes the same facts from {@code GET /v1/meta/weblog-options}.
+     * The theme <em>preview</em> servlets stay (they render a weblog page, not an admin screen).
+     */
+    @Test
+    void theThemeDataServletIsGoneWithTheCreateWeblogPageButThePreviewStays() {
+        java.util.List<String> methods = java.util.Arrays.stream(ServletRegistrationConfig.class.getDeclaredMethods())
+                .map(m -> m.getName().toLowerCase(java.util.Locale.ROOT)).toList();
+        assertTrue(methods.stream().noneMatch(name -> name.contains("themedata")),
+                "no bean method may build or register the themedata servlet");
+        assertTrue(methods.contains("previewservletregistration"), "the theme preview servlet is kept");
     }
 
     /**
@@ -168,7 +171,6 @@ class ServletRegistrationConfigTest {
         patterns.addAll(config.searchServletRegistration(config.searchServlet(weblogger)).getUrlMappings());
         patterns.addAll(config.previewServletRegistration(config.previewServlet(weblogger)).getUrlMappings());
         patterns.addAll(config.previewResourceServletRegistration(config.previewResourceServlet(weblogger)).getUrlMappings());
-        patterns.addAll(config.themeDataServletRegistration(config.themeDataServlet(weblogger)).getUrlMappings());
         return patterns;
     }
 

@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MultiUserJourneyIT extends PressroomIT {
 
     private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
-    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/app/weblogs/new";
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";

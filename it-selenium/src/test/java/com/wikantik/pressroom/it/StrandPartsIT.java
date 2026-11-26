@@ -118,7 +118,7 @@ class StrandPartsIT extends PressroomIT {
     /** A weblog of this test's own on {@code journal}, owned by the admin. */
     private String createWeblog() {
         String handle = "strandit" + nonce();
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Strands " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

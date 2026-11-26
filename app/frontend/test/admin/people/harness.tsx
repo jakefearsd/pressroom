@@ -31,7 +31,8 @@ export function resetWorld(): void {
   world.permission = 'ADMIN';
   world.globalAdmin = false;
   world.features = { customThemes: true, groupBlogging: true };
-  world.weblog = { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'Europe/Berlin', theme: 'custom' };
+  world.weblog = { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'Europe/Berlin', theme: 'custom',
+    absoluteUrl: 'https://elsewhere.example/blogs/alpha/' };
 }
 
 /** The server every people-screen test shares: me, meta and the weblog, plus whatever the test adds. */

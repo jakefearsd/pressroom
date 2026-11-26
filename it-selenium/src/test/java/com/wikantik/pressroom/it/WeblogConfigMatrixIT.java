@@ -257,7 +257,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     }
 
     private void openSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
         $("input[name='bean.name']").should(visible);
     }
 
@@ -276,7 +276,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "wcfg" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Weblog Config " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

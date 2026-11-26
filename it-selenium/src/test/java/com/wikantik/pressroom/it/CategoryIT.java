@@ -162,7 +162,7 @@ class CategoryIT extends PressroomIT {
         addCategory(extra, "Second category");
         deleteCategory(extra, null);
 
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE) + "/settings";
         $("button[type='submit'].btn-primary").should(visible).click();
 
         // A Selenide condition, not a snapshot assertion: it waits for the save
