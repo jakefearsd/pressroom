@@ -474,6 +474,38 @@ public enum ProblemCode {
     CUSTOM_DOMAIN_IN_USE("customDomain.inUse", ProblemType.CONFLICT, 0),
     /** Whether {@code customDomain} is taken could not be checked; retry. */
     CUSTOM_DOMAIN_UNCHECKABLE("customDomain.uncheckable", ProblemType.INVALID_REQUEST, 0),
+    /** A session-only route (SA-18) called by anything but an interactive signed-in session. */
+    AUTH_SESSION_ONLY("auth.sessionOnly", ProblemType.FORBIDDEN, 0),
+    /** No template has this id in the weblog. */
+    TEMPLATE_NOT_FOUND("template.notFound", ProblemType.NOT_FOUND, 0),
+    /** Another template of the weblog already has this name or link ({0}). */
+    TEMPLATE_NAME_IN_USE("template.nameInUse", ProblemType.CONFLICT, 1),
+    /** A template a custom theme requires cannot be removed. */
+    TEMPLATE_REQUIRED("template.required", ProblemType.CONFLICT, 0),
+    /** {@code action} is not one the weblog may add now ({0}: the ones it may). */
+    TEMPLATE_ACTION_UNAVAILABLE("template.actionUnavailable", ProblemType.INVALID_REQUEST, 1),
+    /** The weblog holds no stylesheet of its own, or its theme has none. */
+    STYLESHEET_NOT_FOUND("stylesheet.notFound", ProblemType.NOT_FOUND, 0),
+    /** The action applies only to a weblog on a shared theme. */
+    STYLESHEET_CUSTOM_THEME("stylesheet.customTheme", ProblemType.CONFLICT, 0),
+    /** Custom themes are switched off, or the weblog is the site space. */
+    THEME_CUSTOMISATION_DISABLED("theme.customisationDisabled", ProblemType.FORBIDDEN, 0),
+    /** The user holds no membership on the weblog. */
+    MEMBER_NOT_FOUND("member.notFound", ProblemType.NOT_FOUND, 0),
+    /** {@code userName} names no enabled account. */
+    MEMBER_USER_UNKNOWN("member.userUnknown", ProblemType.INVALID_REQUEST, 0),
+    /** {@code userName} is a reader account. */
+    MEMBER_READER_ACCOUNT("member.readerAccount", ProblemType.INVALID_REQUEST, 0),
+    /** {@code permission} is not a level. */
+    MEMBER_LEVEL_INVALID("member.levelInvalid", ProblemType.INVALID_REQUEST, 0),
+    /** Group blogging is off: nobody new may be granted a role. */
+    MEMBER_GROUP_BLOGGING_OFF("member.groupBloggingOff", ProblemType.CONFLICT, 0),
+    /** A member asked to lower or remove their own role. */
+    MEMBER_SELF_CHANGE("member.selfChange", ProblemType.CONFLICT, 0),
+    /** The change would leave the weblog with no admin. */
+    MEMBER_LAST_ADMIN("member.lastAdmin", ProblemType.CONFLICT, 0),
+    /** No contact-form message has this id in the weblog. */
+    SUBMISSION_NOT_FOUND("submission.notFound", ProblemType.NOT_FOUND, 0),
     /**
      * RFC 9457's {@code about:blank}, which MCP answers for an error reply
      * that brought no problem body of its own: the status is the reply's and

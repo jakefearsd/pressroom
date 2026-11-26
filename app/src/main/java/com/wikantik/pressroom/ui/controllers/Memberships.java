@@ -71,6 +71,19 @@ public final class Memberships {
     }
 
     /**
+     * The stored action for a level as the API names it ({@code ADMIN}, {@code POST}, {@code EDIT_DRAFT}),
+     * or null for anything else: the inverse of {@link #strongestLevel}.
+     */
+    public static String actionFor(String apiLevel) {
+        return switch (apiLevel == null ? "" : apiLevel) {
+            case "ADMIN" -> WeblogPermission.ADMIN;
+            case "POST" -> WeblogPermission.POST;
+            case "EDIT_DRAFT" -> WeblogPermission.EDIT_DRAFT;
+            default -> null;
+        };
+    }
+
+    /**
      * The message key refusing {@code value} as a member's level, or null:
      * one of {@link #LEVELS}, or {@link #REMOVE} where the caller allows a
      * removal (the Members page's table). Never an action list, and no value
@@ -146,5 +159,34 @@ public final class Memberships {
     /** The admin-log details naming a membership: {@code account=<name> weblog=<handle>}. */
     public static String details(User account, Weblog weblog) {
         return "account=" + account.getUserName() + " weblog=" + weblog.getHandle();
+    }
+
+    /**
+     * Grants {@code target} {@code level} on {@code weblog} and records it. The caller has judged the
+     * request ({@link #levelProblem}, {@link #mayHold}, {@link #groupBloggingOff}) and flushes. Granting to
+     * a member who already holds a role adds the action to that row, never a second row.
+     */
+    public static void grant(UserManager users, Weblog weblog, User actor, User target, String level)
+            throws WebloggerException {
+        users.grantWeblogPermission(weblog, target, List.of(level));
+        AdminLog.record("membership.granted", actor, details(target, weblog) + " level=" + level);
+    }
+
+    /**
+     * Gives {@code target}'s membership of {@code weblog} the single level {@code level} (the old row's
+     * actions are revoked first) and records it. The caller flushes.
+     */
+    public static void change(UserManager users, Weblog weblog, User actor, User target, String level)
+            throws WebloggerException {
+        users.revokeWeblogPermission(weblog, target, WeblogPermission.ALL_ACTIONS);
+        users.grantWeblogPermission(weblog, target, List.of(level));
+        AdminLog.record("membership.changed", actor, details(target, weblog) + " level=" + level);
+    }
+
+    /** Removes {@code target}'s membership of {@code weblog} and records it. The caller flushes. */
+    public static void remove(UserManager users, Weblog weblog, User actor, User target)
+            throws WebloggerException {
+        users.revokeWeblogPermission(weblog, target, WeblogPermission.ALL_ACTIONS);
+        AdminLog.record("membership.removed", actor, details(target, weblog));
     }
 }

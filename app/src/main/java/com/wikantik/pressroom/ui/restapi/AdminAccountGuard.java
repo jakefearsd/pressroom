@@ -37,7 +37,7 @@ public final class AdminAccountGuard {
 
     /** Whether {@code caller} is the admin UI's own login: the only kind these guards let through. */
     private static boolean isSession(Caller caller) {
-        return caller.kind() == Caller.Kind.SESSION;
+        return caller.isSession();
     }
 
     public static void requireNotAdmin(Caller caller, UserManager users, User user) throws WebloggerException {

@@ -6,7 +6,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** Views of a weblog's members for the automation API (read only; changes are made in the admin UI). */
+/** A weblog's members: the read for tokens, and the session-only writes (SA-18). */
 public final class MemberDtos {
 
     private MemberDtos() {
@@ -41,6 +41,22 @@ public final class MemberDtos {
             @Schema(description = "The strongest action the membership grants: ADMIN (manage the weblog and its "
                     + "members), POST (publish) or EDIT_DRAFT (write drafts, submitted for review).",
                     allowableValues = {"ADMIN", "POST", "EDIT_DRAFT"}, requiredMode = Schema.RequiredMode.REQUIRED)
+            String permission) {
+    }
+
+    /** Grants an existing account a role on the weblog, at once (no invitation). */
+    public record MemberGrant(
+            @Schema(description = "The user name of an existing, enabled account that is not a reader. Required.")
+            String userName,
+            @Schema(description = "ADMIN, POST or EDIT_DRAFT. Required.",
+                    allowableValues = {"ADMIN", "POST", "EDIT_DRAFT"})
+            String permission) {
+    }
+
+    /** Changes a member's level. */
+    public record MemberChange(
+            @Schema(description = "ADMIN, POST or EDIT_DRAFT. Required.",
+                    allowableValues = {"ADMIN", "POST", "EDIT_DRAFT"})
             String permission) {
     }
 }

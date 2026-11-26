@@ -82,13 +82,16 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
     }
 
     private static boolean check(HttpServletRequest request, Object handler) {
-        ApiPrincipal principal = currentPrincipal();
+        Caller caller = Caller.current();
+        ApiPrincipal principal = caller.principal();
+        if (principal != null && principal.scopeWeblog() != null) {
+            checkWeblogScope(request, handler, principal.scopeWeblog());
+        }
+        // After the pin (an unseen weblog is 404 first) and for every caller kind, not only tokens: a
+        // session-only route fails closed for anything that is not a session (SA-18 rule 1).
+        SessionOnlyGuard.check(caller, handler);
         if (principal == null) {
             return true;
-        }
-
-        if (principal.scopeWeblog() != null) {
-            checkWeblogScope(request, handler, principal.scopeWeblog());
         }
 
         ApiToken.Role role = principal.scopeRole();
@@ -132,10 +135,6 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
     private static boolean namesAWeblog(HttpServletRequest request) {
         return request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) instanceof Map<?, ?> vars
                 && vars.containsKey("handle");
-    }
-
-    private static ApiPrincipal currentPrincipal() {
-        return Caller.current().principal();
     }
 
     /**

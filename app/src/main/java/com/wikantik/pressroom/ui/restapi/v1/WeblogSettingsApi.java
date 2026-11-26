@@ -1,6 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -13,14 +14,18 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.ui.controllers.SharedThemeRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
+import com.wikantik.pressroom.ui.controllers.WeblogRemoval;
 import com.wikantik.pressroom.ui.controllers.WeblogSettingsRules;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
+import com.wikantik.pressroom.ui.restapi.auth.SessionOnly;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.util.cache.CacheManager;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -93,6 +98,20 @@ public class WeblogSettingsApi extends BaseApiController implements UISecurityEn
         // WeblogPageCache expires only against weblog.lastModified; invalidate bumps it.
         CacheManager.invalidate(weblog);
         return AdminDtos.toView(weblog);
+    }
+
+    /**
+     * Deletes the weblog with everything on it: irreversible, there is no trash. Session-only (SA-18); the
+     * permission is the Remove Weblog page's, the weblog's {@code ADMIN}. Confirming is the client's. The
+     * site space is never reachable (the API withholds it).
+     */
+    @Operation(operationId = "weblogsDelete", summary = "Delete the weblog and everything on it (session only).")
+    @ApiResponse(responseCode = "204", description = "Done; no body.")
+    @SessionOnly
+    @DeleteMapping("/{handle}")
+    public ResponseEntity<Void> delete(HttpServletRequest request) throws WebloggerException {
+        WeblogRemoval.remove(weblogger, requireActionWeblog(request));
+        return ResponseEntity.noContent().build();
     }
 
     /** The API names the bean's {@code frontPageId} {@code frontPage}. */

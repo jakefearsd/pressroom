@@ -104,7 +104,12 @@ class OpenApiContractTest {
             "weblogBusinessesList",
             "usersList", "usersCreate", "usersUpdate", "revisionsGetStats", "revisionsSweep", "configList",
             "configUpdate",
-            "maintenanceFlushCache", "maintenanceRebuildIndex", "maintenanceRegenerateRenditions");
+            "maintenanceFlushCache", "maintenanceRebuildIndex", "maintenanceRegenerateRenditions",
+            "metaWeblogOptionsGet", "weblogThemesList", "weblogThemesConvertToCustom",
+            "membersGrant", "membersChange", "membersRemove",
+            "templatesList", "templatesGet", "templatesCreate", "templatesUpdate", "templatesDelete",
+            "stylesheetGet", "stylesheetSave", "stylesheetCopyFromShared", "stylesheetRevert", "stylesheetDelete",
+            "submissionsList", "submissionsDelete", "weblogsDelete");
 
     /**
      * Request bodies the API defines as an open map of names to values, by

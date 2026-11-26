@@ -10,6 +10,7 @@ import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.ui.restapi.dto.BusinessDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
+import com.wikantik.pressroom.ui.restapi.dto.TemplateDtos;
 
 /**
  * What each editing screen offers, in API vocabulary, and which API body
@@ -39,7 +40,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page(), business());
+        return List.of(entry(), weblogSettings(), page(), business(), template());
     }
 
     static Resource entry() {
@@ -88,6 +89,13 @@ final class EditableFieldManifest {
                 "name", "businessType", "websiteUrl", "bookingUrl", "telephone", "email", "logoUrl", "sameAs",
                 "areaServed", "description"),
                 new TreeMap<>(Map.of("clear", CLEAR)));
+    }
+
+    /** The Template Edit form (session-only routes, SA-18; wave 3). */
+    static Resource template() {
+        return new Resource("template", TemplateDtos.TemplateWrite.class, sorted(
+                "name", "description", "link", "navbar", "hidden", "contents", "contentType"),
+                new TreeMap<>());
     }
 
     private static Set<String> sorted(String... names) {
