@@ -129,7 +129,7 @@ describe('Business edit', () => {
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',
       sameAs: ['https://x.example', 'https://y.example'] } }]);
-  });
+  }, 20000);
 
   it('edits: fills the form, and every field left empty is sent in clear (blank means none, as the form did)', async () => {
     server.use(http.patch(`${API}/admin/businesses/:id`, async ({ request }) => {

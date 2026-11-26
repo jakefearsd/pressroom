@@ -9,8 +9,10 @@ const COMMENTS = [
     created: '2026-03-01T09:30:00Z', authorUserName: 'reader1', authorDisplayName: 'Rita Reader', authorIsOwner: false },
   { id: 'c2', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'Published one',
     created: '2026-03-02T09:30:00Z', authorUserName: 'owner', authorDisplayName: 'The Owner', authorIsOwner: true },
-  { id: 'c3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'With a reply', reply: 'Thanks!',
+  { id: 'c3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'With a reply', reply: 'r3',
     created: '2026-03-03T09:30:00Z', authorUserName: 'reader3', authorDisplayName: 'Third', authorIsOwner: false },
+  { id: 'r3', entryId: 'e2', entryTitle: 'Other', status: 'PUBLISHED', body: 'Thanks!', replyTo: 'c3',
+    created: '2026-03-03T10:30:00Z', authorUserName: 'owner', authorDisplayName: 'The Owner', authorIsOwner: true },
   { id: 'c4', entryId: 'e2', entryTitle: 'Other', status: 'HIDDEN', body: '',
     created: '2026-03-04T09:30:00Z', authorUserName: 'reader4', authorDisplayName: 'Fourth', authorIsOwner: false }
 ];

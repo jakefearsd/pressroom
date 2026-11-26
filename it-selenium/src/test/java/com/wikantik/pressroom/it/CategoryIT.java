@@ -123,6 +123,8 @@ class CategoryIT extends PressroomIT {
 
         loginAsAdmin();
         addCategory(doomed, "About to go");
+        // Only a category in use asks where its entries go, so give it one.
+        publishEntryInCategory("IT Category self " + suffix, "Body " + suffix, doomed);
 
         openPath(CATEGORIES);
         openDeleteModalFor(doomed);
@@ -136,7 +138,7 @@ class CategoryIT extends PressroomIT {
         // while the show transition is still running, and this test reaches the
         // dismiss button within milliseconds of opening the modal -- a timing a
         // real user never hits. deleteCategory reloads the page anyway.
-        deleteCategory(doomed, null);
+        deleteCategory(doomed, "General");
         logout();
     }
 
@@ -282,7 +284,7 @@ class CategoryIT extends PressroomIT {
     private String moveTargetNames() {
         String names = executeJavaScript(
                 "return Array.from(document.querySelectorAll("
-                        + "\"#delete-category-modal select[name='targetCategoryId'] option\"))"
+                        + "\"[role='dialog'] select[name='targetCategoryId'] option\"))"
                         + ".map(o => o.textContent.trim()).join(',');");
         return names == null ? "" : names;
     }

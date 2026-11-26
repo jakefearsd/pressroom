@@ -53,7 +53,7 @@ class BulkEntryActionsIT extends PressroomIT {
         select(title);
         // The bar only shows once a row is checked -- select() above is what makes it visible.
         $(".selection-bar[data-selection-bar='entriesBulkForm']").shouldBe(visible);
-        $(".selection-bar").$(Selectors.byText("Publish")).click();
+        $(".selection-bar").$(Selectors.byText("Publish selected")).click();
 
         // The list reports the write, and the entry now carries its published status.
         $("#messages").should(exist);
