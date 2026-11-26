@@ -8,6 +8,8 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.pojos.MediaFileTag;
+import com.wikantik.pressroom.ui.controllers.MediaMetadata;
 import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
@@ -27,6 +29,8 @@ public final class MediaDtos {
     /** What {@code clear} may name on a media file, and how each is cleared. */
     public static final ClearPolicy<MediaFile> MEDIA_CLEAR = ClearPolicy.<MediaFile>builder()
             .field("altText", f -> f.setAltText(null))
+            .field("description", f -> f.setDescription(null))
+            .field("copyrightText", f -> f.setCopyrightText(null))
             .field("focalX", f -> f.setFocalX(null))
             .field("focalY", f -> f.setFocalY(null))
             .pair("focalX", "focalY")
@@ -57,7 +61,10 @@ public final class MediaDtos {
     public record MediaView(
             String id, String name, String altText, String contentType, long length,
             int width, int height, String directory, Double focalX, Double focalY,
-            String url, String blurhash) {
+            String url, String blurhash,
+            @Schema(description = "What the file is, as the edit form's Description.") String description,
+            @Schema(description = "The copyright line, as the edit form's Copyright.") String copyrightText,
+            @Schema(description = "The file's tags, sorted; never null.") List<String> tags) {
     }
 
     /** The body of POST /media/imports: an image to fetch from a public URL. */
@@ -110,12 +117,26 @@ public final class MediaDtos {
             String directoryId,
             @Schema(description = "The file's name; not blank.")
             String name,
-            @Schema(description = "Fields to remove: altText, focalX with focalY.")
+            @Schema(description = "What the file is; at most 255 characters. Remove with clear.")
+            String description,
+            @Schema(description = "The copyright line; at most 1023 characters. Remove with clear.")
+            String copyrightText,
+            @Schema(description = "Replaces the file's whole tag set; each tag at most 30 characters. Tags split "
+                    + "on spaces and commas as the edit form's do; an empty list removes them all.")
+            List<String> tags,
+            @Schema(description = "Fields to remove: altText, description, copyrightText, focalX with focalY.")
             List<String> clear) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record DirectoryView(String id, String name, String description, boolean isPrivate, int fileCount) {
+    }
+
+    /** The body of a directory patch: the one thing the Media Files screen changes about a folder. */
+    public record DirectoryPatch(
+            @Schema(description = "Whether the directory is private: hidden from every public surface, visible "
+                    + "to the weblog's members. Required.")
+            Boolean isPrivate) {
     }
 
     /**
@@ -191,7 +212,10 @@ public final class MediaDtos {
                 file.getFocalX(),
                 file.getFocalY(),
                 url,
-                file.getBlurhash());
+                file.getBlurhash(),
+                file.getDescription(),
+                file.getCopyrightText(),
+                file.getTags().stream().map(MediaFileTag::getName).sorted().toList());
     }
 
     public static DirectoryView toView(MediaFileDirectory directory) {
@@ -239,6 +263,13 @@ public final class MediaDtos {
         }
     }
 
+    /** Each tag as the form will store it (split on spaces and commas), judged against the tag column. */
+    private static void checkTags(List<String> tags) {
+        for (String tag : MediaMetadata.tagNames(String.join(" ", tags))) {
+            ColumnLimits.requireMaxLength("tags", tag, ColumnLimits.MEDIA_TAG_NAME);
+        }
+    }
+
     private static void requireFraction(String field, Double value) {
         if (value != null && !(value >= 0.0 && value <= 1.0)) {
             throw ApiException.problemOnField(field, ProblemCode.FOCAL_OUT_OF_RANGE, field);
@@ -278,6 +309,17 @@ public final class MediaDtos {
             errors.check("altText", () -> ColumnLimits.requireMaxLength("altText", patch.altText(),
                     ColumnLimits.MEDIA_ALT_TEXT));
         }
+        if (patch.description() != null) {
+            errors.check("description", () -> ColumnLimits.requireMaxLength("description", patch.description(),
+                    ColumnLimits.MEDIA_DESCRIPTION));
+        }
+        if (patch.copyrightText() != null) {
+            errors.check("copyrightText", () -> ColumnLimits.requireMaxLength("copyrightText",
+                    patch.copyrightText(), ColumnLimits.MEDIA_COPYRIGHT));
+        }
+        if (patch.tags() != null) {
+            errors.check("tags", () -> checkTags(patch.tags()));
+        }
         String name = patch.name() == null ? null : patch.name().trim();
         if (name != null) {
             RuleProblems.add(errors, MediaRules.fileNameShapeProblem(name));
@@ -294,6 +336,12 @@ public final class MediaDtos {
         }
         if (patch.altText() != null) {
             file.setAltText(patch.altText());
+        }
+        if (patch.description() != null) {
+            file.setDescription(patch.description());
+        }
+        if (patch.copyrightText() != null) {
+            file.setCopyrightText(patch.copyrightText());
         }
         if (patch.focalX() != null) {
             file.setFocalX(patch.focalX());

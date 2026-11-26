@@ -28,6 +28,7 @@ import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.RuleProblems;
+import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
 import org.springframework.http.ResponseEntity;
@@ -110,6 +111,40 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     public PageDtos.PageView get(HttpServletRequest request, @PathVariable("id") String id)
             throws WebloggerException {
         return view(requirePage(request, id));
+    }
+
+    /**
+     * Previews an existing page's unsaved text, as {@code PageEditController#pageEditPreview} does: rendered
+     * through {@code EntryRenderer.pageContent} (shortcodes, Markdown, sanitizer) on a scratch page carrying
+     * the stored page's slug, so nothing is saved. A trashed page is a 404, as for a read. With {@code edits}
+     * in place of {@code text}, it renders what an update with those edits would store.
+     */
+    @Operation(operationId = "pagesPreview")
+    @PostMapping("/{id}/preview")
+    public EntryDtos.PreviewView previewExisting(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @RequestBody EntryDtos.PreviewRequest body) throws WebloggerException {
+        WeblogPage page = requirePage(request, id);
+        FieldErrors errors = new FieldErrors();
+        String text = EntryEdits.resolve(errors, body.text(), body.edits(), page.getContent());
+        errors.throwIfAny();
+        return renderPreview(page.getWeblog(), page.getSlug(), text);
+    }
+
+    /** Previews text for a page that does not exist yet; {@code edits} need a stored text, so here they are a 400. */
+    @Operation(operationId = "pagesPreviewNew")
+    @PostMapping("/preview")
+    public EntryDtos.PreviewView previewNew(
+            HttpServletRequest request, @RequestBody EntryDtos.PreviewRequest body) throws WebloggerException {
+        if (EntryEdits.sent(body.edits())) {
+            throw ApiException.problemOnField("edits", ProblemCode.EDITS_PREVIEW_NEEDS_ID);
+        }
+        return renderPreview(requireActionWeblog(request), null, body.text());
+    }
+
+    private EntryDtos.PreviewView renderPreview(Weblog weblog, String slug, String text) {
+        String html = weblogger.getEntryRenderer().pageContent(PageRules.previewScratch(weblog, slug, text));
+        return new EntryDtos.PreviewView(html, new ArrayList<>(PreviewLint.warnings(html)));
     }
 
     @Operation(operationId = "pagesCreate")

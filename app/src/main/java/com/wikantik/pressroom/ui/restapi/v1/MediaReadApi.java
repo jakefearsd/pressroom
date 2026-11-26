@@ -4,17 +4,19 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
-import com.wikantik.pressroom.pojos.MediaFileFilter;
+import com.wikantik.pressroom.pojos.MediaFileType;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.MediaListing;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
+import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,7 +74,15 @@ public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
             @RequestParam(value = "directoryId", required = false) String directoryId,
             @Parameter(description = "Deprecated: the old name of directoryId.")
             @RequestParam(value = "dir", required = false) String dir,
-            @Parameter(description = "Skip this many files of the name-sorted list. Default 0.")
+            @Parameter(description = "Only files whose name starts with this text, as the Media Files screen's "
+                    + "search does; across the weblog, or within directoryId when both are given.")
+            @RequestParam(value = "q", required = false) String q,
+            @Parameter(description = "Only files of this type: image, video, audio or other (the screen's Others).")
+            @RequestParam(value = "type", required = false) String type,
+            @Parameter(description = "Order by name (the default, ignoring case), date_uploaded (newest first) "
+                    + "or type (content type), then name.")
+            @RequestParam(value = "sort", required = false) String sort,
+            @Parameter(description = "Skip this many files of the sorted list. Default 0.")
             @RequestParam(value = "offset", required = false) Integer offset,
             @Parameter(description = "At most this many files (capped at 200). Without it, every file.")
             @RequestParam(value = "limit", required = false) Integer limit) throws WebloggerException {
@@ -81,16 +91,17 @@ public class MediaReadApi extends MediaApiBase implements UISecurityEnforced {
         Paging.requireRange(limit == null ? 1 : limit, from);
         String wanted = eitherName("directoryId", directoryId, "dir", dir);
 
-        List<MediaFile> files;
-        if (StringUtils.isNotBlank(wanted)) {
-            files = new ArrayList<>(requireDirectory(request, wanted).getMediaFiles());
-        } else {
-            // Copied into a mutable list -- searchMediaFiles's contract
-            // makes no promise the returned list supports sort(), and this
-            // controller needs a deterministic order regardless.
-            files = new ArrayList<>(weblogger.getMediaFileManager().searchMediaFiles(weblog, new MediaFileFilter()));
+        MediaListing.Sort order = sort == null || sort.isBlank() ? MediaListing.Sort.NAME : MediaListing.Sort.of(sort);
+        if (order == null) {
+            throw ApiException.problemOnField("sort", ProblemCode.PARAMETER_INVALID_VALUE, "sort");
         }
-        files.sort(Comparator.comparing(MediaFile::getName, Comparator.nullsLast(String::compareToIgnoreCase)));
+        MediaFileType wantedType = type == null || type.isBlank() ? null : MediaListing.typeOf(type);
+        if (wantedType == null && type != null && !type.isBlank()) {
+            throw ApiException.problemOnField("type", ProblemCode.PARAMETER_INVALID_VALUE, "type");
+        }
+        MediaFileDirectory directory = StringUtils.isNotBlank(wanted) ? requireDirectory(request, wanted) : null;
+        List<MediaFile> files = MediaListing.sorted(
+                MediaListing.find(weblogger.getMediaFileManager(), weblog, directory, q, wantedType), order);
 
         long size = limit == null ? Long.MAX_VALUE : Math.min(limit, MAX_LIMIT);
         List<MediaDtos.MediaView> items = files.stream().skip(from).limit(size)

@@ -479,16 +479,15 @@ public class PageEditController extends BaseController {
             return ResponseEntity.notFound().build();
         }
 
-        WeblogPage scratch = new WeblogPage();
-        scratch.setWeblog(weblog);
+        String slug = null;
         if (!StringUtils.isBlank(id)) {
             WeblogPage page = lookupPage(id, request);
             if (page == null) {
                 return ResponseEntity.notFound().build();
             }
-            scratch.setSlug(page.getSlug());
+            slug = page.getSlug();
         }
-        scratch.setContent(text == null ? "" : text);
+        WeblogPage scratch = PageRules.previewScratch(weblog, slug, text);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf("text/html;charset=UTF-8"))

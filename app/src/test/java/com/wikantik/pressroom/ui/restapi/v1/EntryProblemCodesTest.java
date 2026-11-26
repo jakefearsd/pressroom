@@ -416,6 +416,6 @@ class EntryProblemCodesTest {
     void editsOnAPreviewWithNoEntryIsEditsPreviewNeedsEntry() throws Exception {
         oneField(fx.refused(post("/v1/weblogs/myblog/entries/preview").content("{" + edits(1) + "}")),
                 "edits", "edits.previewNeedsEntry",
-                "edits change an existing entry's text; preview with its id, or send text.");
+                "edits change an existing entry's or page's text; preview with its id, or send text.");
     }
 }

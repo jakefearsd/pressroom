@@ -200,6 +200,8 @@ class ProblemCodeCatalogTest {
                         "directory.notFound",
                         "directory.nameReserved",
                         "directory.nameInUse",
+                        "directory.isDefault",
+                        "directory.notEmpty",
                         "focal.outOfRange",
                         "focal.pairOnly",
                         "category.notFound",

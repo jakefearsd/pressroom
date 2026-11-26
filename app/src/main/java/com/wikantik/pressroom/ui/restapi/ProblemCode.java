@@ -329,6 +329,10 @@ public enum ProblemCode {
     DIRECTORY_NAME_RESERVED("directory.nameReserved", ProblemType.INVALID_REQUEST, 0),
     /** The weblog already has a directory with this {@code name}. */
     DIRECTORY_NAME_IN_USE("directory.nameInUse", ProblemType.CONFLICT, 1),
+    /** The weblog's default directory cannot be deleted. */
+    DIRECTORY_IS_DEFAULT("directory.isDefault", ProblemType.CONFLICT, 0),
+    /** The directory still holds files, so it is not deleted. */
+    DIRECTORY_NOT_EMPTY("directory.notEmpty", ProblemType.CONFLICT, 0),
     /** {@code focalX} or {@code focalY} is outside 0 to 1. */
     FOCAL_OUT_OF_RANGE("focal.outOfRange", ProblemType.INVALID_REQUEST, 1),
     /** One focal coordinate was sent for a file with no focal point. */

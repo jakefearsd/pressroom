@@ -32,16 +32,15 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
-import com.wikantik.pressroom.pojos.MediaFileComparator;
-import com.wikantik.pressroom.pojos.MediaFileComparator.MediaFileComparatorType;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.MediaFileFilter;
+import com.wikantik.pressroom.ui.controllers.MediaDirectories;
+import com.wikantik.pressroom.ui.controllers.MediaListing;
 import com.wikantik.pressroom.ui.controllers.MediaRules;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.pagers.MediaFilePager;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.view.KeyValueObject;
-import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -181,13 +180,15 @@ public class MediaFileViewController extends MediaFileBase {
         try {
             MediaFileManager manager = weblogger.getMediaFileManager();
             MediaFileDirectory mediaFileDir = ownedDirectory(directoryId, request);
-            if (mediaFileDir != null) {
-                manager.removeMediaFileDirectory(mediaFileDir);
-                weblogger.getWeblogManager().saveWeblog(getActionWeblog(request));
-                weblogger.flush();
+            RuleViolation refused = mediaFileDir == null ? null : MediaDirectories.deleteProblem(mediaFileDir);
+            if (refused != null) {
+                // The default folder, or one still holding files: the screen never offers the button there.
+                log.warn("Refusing to delete directory {}: {}", directoryId, refused.code());
+                addError(model, refused, request);
+            } else if (mediaFileDir != null) {
+                MediaDirectories.delete(weblogger, getActionWeblog(request), mediaFileDir);
                 weblogger.release();
                 addMessage(model, "mediaFile.deleteFolder.success", request);
-                CacheManager.invalidate(getActionWeblog(request));
 
                 shownId = manager.getDefaultMediaFileDirectory(getActionWeblog(request)).getId();
             } else if (StringUtils.isNotEmpty(directoryId)) {
@@ -228,10 +229,7 @@ public class MediaFileViewController extends MediaFileBase {
             if (directory == null) {
                 addError(model, "mediaFile.privacy.error", request);
             } else {
-                directory.setPrivate(!directory.isPrivate());
-                weblogger.getWeblogManager().saveWeblog(getActionWeblog(request));
-                weblogger.flush();
-                CacheManager.invalidate(getActionWeblog(request));
+                MediaDirectories.setPrivate(weblogger, getActionWeblog(request), directory, !directory.isPrivate());
                 addMessage(model, "mediaFile.privacy.updated", request);
             }
         } catch (WebloggerException e) {
@@ -327,16 +325,12 @@ public class MediaFileViewController extends MediaFileBase {
 
             String shownSort = sortBy;
             if (directory != null) {
-                List<MediaFile> childFiles = new ArrayList<>(directory.getMediaFiles());
-
-                if ("type".equals(sortBy)) {
-                    childFiles.sort(new MediaFileComparator(MediaFileComparatorType.TYPE));
-                } else if ("date_uploaded".equals(sortBy)) {
-                    childFiles.sort(new MediaFileComparator(MediaFileComparatorType.DATE_UPLOADED));
-                } else {
-                    shownSort = "name";
-                    childFiles.sort(new MediaFileComparator(MediaFileComparatorType.NAME));
+                MediaListing.Sort sort = MediaListing.Sort.of(sortBy);
+                if (sort == null) {
+                    sort = MediaListing.Sort.NAME;
                 }
+                shownSort = sort.key();
+                List<MediaFile> childFiles = MediaListing.sorted(new ArrayList<>(directory.getMediaFiles()), sort);
 
                 model.addAttribute("childFiles", childFiles);
                 model.addAttribute("currentDirectory", directory);

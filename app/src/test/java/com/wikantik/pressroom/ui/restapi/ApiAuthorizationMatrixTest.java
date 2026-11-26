@@ -272,6 +272,8 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs/{handle}/media/{id}/crop",        POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/media/directories",      READ,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/media/directories",      POST,  SITE_LOGIN, ON_POST),
+            row("DELETE /v1/weblogs/{handle}/media/directories/{id}", POST,  SITE_LOGIN, ON_POST),
+            row("PATCH  /v1/weblogs/{handle}/media/directories/{id}", POST,  SITE_LOGIN, ON_POST),
 
             // --- Pages: as the Pages page (POST)
             row("GET    /v1/weblogs/{handle}/pages",                  READ,  SITE_LOGIN, ON_POST),
@@ -280,6 +282,8 @@ class ApiAuthorizationMatrixTest {
             row("PATCH  /v1/weblogs/{handle}/pages/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("DELETE /v1/weblogs/{handle}/pages/{id}",             POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/pages/{id}/restore",     POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/pages/{id}/preview",     POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/pages/preview",          POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/pages/{id}/delete-forever", POST, SITE_LOGIN, ON_POST),
             row("PUT    /v1/weblogs/{handle}/pages/{id}/parts",       POST,  SITE_LOGIN, ON_POST),
             row("GET    /v1/weblogs/{handle}/pages/{id}/revisions",   READ,  SITE_LOGIN, ON_POST),
