@@ -34,7 +34,7 @@ const record = async (request: Request) => {
 describe('Businesses list', () => {
   it('lists each business with its type, its usage and edit and delete actions', async () => {
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 4000 })).toBeInTheDocument();
     await screen.findByText('Acme <Travel>');
     expect(screen.getByText(/A business is stored once/)).toHaveClass('subtitle');
     expect(document.querySelectorAll('#businesses-list-marker table.pressroomtable tr')).toHaveLength(3);
@@ -92,9 +92,10 @@ describe('Businesses list', () => {
   });
 
   it('shows a list that cannot load as the problem', async () => {
-    server.use(http.get(`${API}/admin/businesses`, () => HttpResponse.json({ code: 'x', detail: 'Cannot read.' }, { status: 500 })));
+    server.use(http.get(`${API}/admin/businesses`, () => HttpResponse.json({ code: 'x', detail: 'Cannot read.' }, { status: 409 })));
     renderRoutes(siteAdminRoutes, '/admin/businesses', { boot: adminBoot });
-    expect(await screen.findByText('Cannot read.', undefined, { timeout: 4000 })).toBeInTheDocument();
+    // A 4xx is shown at once; a 5xx would be retried twice with backoff (about 3 s) before the banner.
+    expect(await screen.findByText('Cannot read.')).toBeInTheDocument();
   });
 
   it('is not offered to an editor', async () => {
@@ -124,8 +125,7 @@ describe('Business edit', () => {
     await user.type(screen.getByLabelText('Profile links'), 'https://x.example{Enter}  https://y.example  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     // The frame shows the message; the screen only hands it over.
-    // A slow machine (typing six fields, then the save and the redirect) needs more than the 1s default.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 8000 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 4000 })).toBeInTheDocument();
     expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',

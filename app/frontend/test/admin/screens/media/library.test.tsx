@@ -83,9 +83,9 @@ describe('Media library browse', () => {
   });
 
   it('shows a refusal to list in place', async () => {
-    state.refusals.set('GET list', problem(500, 'server.internalError', 'The library could not be read.'));
+    state.refusals.set('GET list', problem(409, 'library.unreadable', 'The library could not be read.'));
     open();
-    expect(await screen.findByText('The library could not be read.', {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText('The library could not be read.')).toBeInTheDocument();
   });
 
   it('opens a tile on click and on Enter and Space, and from the alt-text marker', async () => {

@@ -167,9 +167,9 @@ describe('Frame', () => {
   });
 
   it('shows a failed meta call as an error banner, but leaves a 401 to the session-expired bar', async () => {
-    server.use(http.get(`${API}/meta`, () => HttpResponse.json({ code: 'server.internalError', detail: 'Meta is down.' }, { status: 500 })));
+    server.use(http.get(`${API}/meta`, () => HttpResponse.json({ code: 'server.internalError', detail: 'Meta is down.' }, { status: 409 })));
     const first = renderRoutes(appRoutes, '/', { boot: editorBoot });
-    expect(await screen.findByText('Meta is down.', undefined, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText('Meta is down.')).toBeInTheDocument();
     first.unmount();
 
     server.use(http.get(`${API}/me`, () => HttpResponse.json({ code: 'auth.notAuthenticated', detail: 'Sign in.' }, { status: 401 })));

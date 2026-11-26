@@ -33,7 +33,7 @@ describe('Profile', () => {
   });
 
   it('saves the fields and, with no new password, calls nothing else', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(http.patch(`${API}/me/profile`, recording(() => HttpResponse.json(profile))));
     const { router } = renderPeople('/profile', editorBoot);
     const name = await screen.findByLabelText('Screen name');
@@ -49,7 +49,7 @@ describe('Profile', () => {
   });
 
   it('changes the password with the current one after saving the fields', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(
       http.patch(`${API}/me/profile`, recording(() => HttpResponse.json(profile))),
       http.put(`${API}/me/password`, recording(() => new HttpResponse(null, { status: 204 })))
@@ -76,7 +76,7 @@ describe('Profile', () => {
   });
 
   it('refuses mismatched passwords on the confirm field without calling the API', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderPeople('/profile', editorBoot);
     await user.type(await screen.findByLabelText('Password'), 'newpassword1');
     await user.type(screen.getByLabelText('Confirm password'), 'different');
@@ -90,7 +90,7 @@ describe('Profile', () => {
   });
 
   it('puts a refused email on the email field with the problem in place', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(http.patch(`${API}/me/profile`, () => problem(400, 'user.emailInvalid', 'Enter a valid email address.',
       [{ field: 'emailAddress', message: 'Enter a valid email address.' }])));
     renderPeople('/profile', editorBoot);
@@ -103,7 +103,7 @@ describe('Profile', () => {
   });
 
   it('shows a wrong current password on its field in the JSP wording, after the fields were saved', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(
       http.patch(`${API}/me/profile`, () => HttpResponse.json(profile)),
       http.put(`${API}/me/password`, () => problem(403, 'profile.currentPasswordWrong', 'The current password is not correct.'))
@@ -121,7 +121,7 @@ describe('Profile', () => {
   });
 
   it('puts a too-short new password on the password field', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(
       http.patch(`${API}/me/profile`, () => HttpResponse.json(profile)),
       http.put(`${API}/me/password`, () => problem(400, 'password.tooShort', 'A password needs at least 8 characters.',
@@ -137,7 +137,7 @@ describe('Profile', () => {
   });
 
   it('shows the single-sign-on refusal in the JSP wording', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     server.use(
       http.patch(`${API}/me/profile`, () => HttpResponse.json(profile)),
       http.put(`${API}/me/password`, () => problem(400, 'user.ssoBound', 'sso'))
