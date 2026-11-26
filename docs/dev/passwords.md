@@ -137,6 +137,7 @@ hash or an unreadable hash).
 - `PATCH /v1/admin/users/{u}` `password` and `POST /v1/admin/users` `password`: session-only fields (a token that
   sends one is 403 `auth.sessionOnly`, even an empty one). On create a typed password makes the account enabled and
   needs no mail; without one the account is created disabled with a mailed set-password link, as before. On patch the
-  account's sessions end unless it is the admin's own (`PressroomLoginSessionManager.invalidate` plus the stamp
-  mismatch), and a disabling `enabled: false` ends them too.
+  account's login cache is dropped (`PressroomLoginSessionManager.invalidate`) and its sessions end through the stamp
+  mismatch. An admin's own password is refused there (409 `user.ownPasswordUseProfile`): it goes through the
+  profile route, which asks for the current one. A disabled account's sessions are refused by the enabled checks.
 - Tests: `MeProfileApiTest`, `AdminUsersSessionOnlyApiTest`.

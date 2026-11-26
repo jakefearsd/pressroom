@@ -308,6 +308,7 @@ class ProblemCodeCatalogTest {
                         "user.cantDisableSelf",
                         "user.cantChangeOwnRole",
                         "userWeblogs.weblogUnknown",
+                        "user.ownPasswordUseProfile",
                         "http.error"),
                 Arrays.stream(ProblemCode.values()).map(ProblemCode::code).collect(Collectors.toSet()));
     }

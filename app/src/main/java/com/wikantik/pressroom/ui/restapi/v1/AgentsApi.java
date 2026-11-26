@@ -149,7 +149,7 @@ public class AgentsApi extends BaseApiController implements UISecurityEnforced {
         }
         errors.throwIfAny();
 
-        boolean siteAdmin = body.siteAdmin() == null ? users.hasRole("admin", agent) : body.siteAdmin();
+        boolean siteAdmin = body.siteAdmin() == null ? AgentAccounts.isSiteAdmin(users, agent) : body.siteAdmin();
         AgentAccounts.update(weblogger, actor, agent, name, notes, siteAdmin);
         if (body.enabled() != null) {
             AgentAccounts.changeEnabled(weblogger, actor, agent, body.enabled());

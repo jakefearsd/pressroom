@@ -538,6 +538,8 @@ public enum ProblemCode {
     USER_CANT_DISABLE_SELF("user.cantDisableSelf", ProblemType.CONFLICT, 0),
     /** An administrator tried to remove their own administrator role. */
     USER_CANT_CHANGE_OWN_ROLE("user.cantChangeOwnRole", ProblemType.CONFLICT, 0),
+    /** A password sent for the caller's own account on the admin user route: it belongs to PUT /me/password. */
+    USER_OWN_PASSWORD_USE_PROFILE("user.ownPasswordUseProfile", ProblemType.CONFLICT, 0),
     /** {@code handle} names no weblog a membership can be granted on. */
     USER_WEBLOG_UNKNOWN("userWeblogs.weblogUnknown", ProblemType.INVALID_REQUEST, 0),
     /**

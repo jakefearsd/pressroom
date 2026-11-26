@@ -784,6 +784,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `profile.currentPasswordWrong` | 400 | `invalid-request` | The `currentPassword` sent to change one is not the signed-in account's. |
 | `user.ssoAdmin` | 400 | `invalid-request` | A single-sign-on account must never hold the administrator role. |
 | `user.cantDisableSelf` | 409 | `conflict` | An administrator cannot disable their own account. |
+| `user.ownPasswordUseProfile` | 409 | `conflict` | `password` was sent for the caller's own account on `PATCH /v1/admin/users/{userName}`; use `PUT /v1/me/password`, which asks for the current password. |
 | `user.cantChangeOwnRole` | 409 | `conflict` | An administrator cannot remove their own administrator role. |
 | `userWeblogs.weblogUnknown` | 400 | `invalid-request` | `handle` names no existing weblog (the site space is never one). |
 | `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
@@ -2277,8 +2278,8 @@ screen's "can write" box does; only a single-sign-on account has one to edit, so
 
 > **Changed in the React admin migration (wave 4): the administrator flag, a typed password and `writer` are
 > session-only fields.** `PATCH` takes `administrator` (grant or revoke the site administrator role) and `password`
-> (a new password for a person's account, at least 8 characters; it ends the account's other sessions, and the
-> admin's own session stays signed in when it is their own account); `POST` takes `password` (the account is created
+> (a new password for another person's account, at least 8 characters; it ends that account's other sessions; for
+> your own account it is refused with 409 `user.ownPasswordUseProfile`, use `PUT /v1/me/password`); `POST` takes `password` (the account is created
 > enabled and no mail is needed) and `administrator`. A token that sends `password`, or an `administrator` or `writer`
 > value that differs from the stored one, gets **403** `auth.sessionOnly` before anything is applied; resending the
 > stored value passes (the email rule's pattern). The `writer` role was token-settable before: it is lasting access

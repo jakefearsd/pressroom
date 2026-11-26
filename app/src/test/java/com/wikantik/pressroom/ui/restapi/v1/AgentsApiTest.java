@@ -247,6 +247,7 @@ class AgentsApiTest {
     void patchLeavesWhatItDoesNotNameAndAnEmptyNotesClears() throws Exception {
         bot.setNotes("old");
         when(users.hasRole("admin", bot)).thenReturn(true);
+        when(users.checkPermission(any(GlobalPermission.class), eq(bot))).thenReturn(true);
 
         assertEquals(200, status(send(patch(URL + "/bot"), "{\"notes\":\"\"}")));
 
