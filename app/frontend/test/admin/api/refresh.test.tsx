@@ -7,7 +7,7 @@ import {
   useSubmissionActions, useSubmissions, useTemplate, useTemplates, useUpdateTemplate
 } from '../../../src/admin/api/people';
 import {
-  useBusinesses, useConfig, useDeleteBusiness, useRevisionStats, useSaveBusiness, useSaveConfig, useSaveSettings, useSweepRevisions
+  useAnalyticsStatus, useBusiness, useBusinesses, useConfig, useSyncAnalytics, useDeleteBusiness, useRevisionStats, useSitePages, useSaveBusiness, useSaveConfig, useSaveSettings, useSweepRevisions
 } from '../../../src/admin/api/siteQueries';
 import { useMeta } from '../../../src/admin/api/queries';
 import { editorBoot } from '../support';
@@ -167,5 +167,79 @@ describe('site lists refresh after a change', () => {
     await act(async () => { await view.result.current.save.mutateAsync({ a: 'b' }); });
     await waitFor(() => { expect(w.gets['/admin/config']).toBe(2); });
     expect(w.gets['/meta']).toBe(1);
+  });
+});
+
+describe('site queries: what a save or a sync leaves on screen', () => {
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': status === 200 ? 'application/json' : 'application/problem+json' } });
+  const net = (answer: (method: string, path: string) => Response) => {
+    const calls: string[] = [];
+    const fetchImpl = ((input: Request | string) => {
+      const request = typeof input === 'string' ? new Request(input) : input;
+      const path = new URL(request.url).pathname.replace('/pressroom/api/v1', '');
+      calls.push(`${request.method} ${path}`);
+      return Promise.resolve(answer(request.method, path));
+    }) as typeof fetch;
+    return { calls, wrapper: ({ children }: { children: ReactNode }) => <AppProviders boot={editorBoot} fetchImpl={fetchImpl}>{children}</AppProviders> };
+  };
+
+  it('shows the analytics status a sync answered, without reading it again', async () => {
+    const n = net((method) => json(method === 'GET' ? { state: 'old' } : { state: 'synced' }));
+    const view = renderHook(() => ({ status: useAnalyticsStatus(), sync: useSyncAnalytics() }), { wrapper: n.wrapper });
+    await loaded(() => view.result.current.status.data);
+    await act(async () => { await view.result.current.sync.mutateAsync(); });
+    await waitFor(() => { expect(view.result.current.status.data).toEqual({ state: 'synced' }); });
+    expect(n.calls.filter((c) => c === 'GET /admin/analytics')).toHaveLength(1);
+  });
+
+  describe('saving a revision limit says what the next sweep will remove', () => {
+    const save = async (stats: () => Response, say: (total: number | undefined) => string | undefined) => {
+      const n = net((method, path) => (method === 'PATCH' ? json({}) : path === '/admin/revisions' ? stats() : json({})));
+      const { result } = renderHook(() => useSaveConfig(say), { wrapper: n.wrapper });
+      let messages: string[] = [];
+      await act(async () => { messages = await result.current.mutateAsync({ 'revisions.maxAgeDays': '30' }); });
+      return { messages, calls: n.calls };
+    };
+
+    it('passes the predicted total to the message and returns the line', async () => {
+      const say = vi.fn((total: number | undefined) => `will remove ${String(total)}`);
+      const out = await save(() => json({ nextSweep: { total: 7 } }), say);
+      expect(out.messages).toEqual(['will remove 7']);
+      expect(say).toHaveBeenCalledWith(7);
+    });
+
+    it('says zero when the server gives no prediction, and nothing is known when the prediction is incomplete', async () => {
+      const say = vi.fn((total: number | undefined) => `n=${String(total)}`);
+      expect((await save(() => json({}), say)).messages).toEqual(['n=0']);
+      expect((await save(() => json({ nextSweep: { incomplete: true, total: 5 } }), say)).messages).toEqual(['n=undefined']);
+    });
+
+    it('adds no line when the message has nothing to say, or the prediction cannot be read, and the save still counts', async () => {
+      expect((await save(() => json({ nextSweep: { total: 1 } }), () => undefined)).messages).toEqual([]);
+      const failed = await save(() => json({ status: 500, code: 'x', detail: 'no' }, 500), () => 'never');
+      expect(failed.messages).toEqual([]);
+      expect(failed.calls).toContain('PATCH /admin/config');
+    });
+
+    it('reads no prediction when no revision limit changed', async () => {
+      const n = net(() => json({}));
+      const { result } = renderHook(() => useSaveConfig(() => 'never'), { wrapper: n.wrapper });
+      await act(async () => { await result.current.mutateAsync({ 'site.name': 'x' }); });
+      expect(n.calls).toEqual(['PATCH /admin/config']);
+    });
+  });
+
+  it('gives up on a business at once when the server fails, without retrying', async () => {
+    const n = net(() => json({ status: 500, code: 'x', detail: 'no' }, 500));
+    const { result } = renderHook(() => useBusiness('b1'), { wrapper: n.wrapper });
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+    expect(n.calls).toEqual(['GET /admin/businesses/b1']);
+  });
+
+  it('gives up on the site pages at once when the server fails, without retrying', async () => {
+    const n = net(() => json({ status: 500, code: 'x', detail: 'no' }, 500));
+    const { result } = renderHook(() => useSitePages(), { wrapper: n.wrapper });
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+    expect(n.calls).toEqual(['GET /admin/site-pages']);
   });
 });
