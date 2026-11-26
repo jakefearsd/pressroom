@@ -7,9 +7,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
+import com.wikantik.pressroom.ui.restapi.dto.AgentDtos;
 import com.wikantik.pressroom.ui.restapi.dto.BusinessDtos;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
+import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import com.wikantik.pressroom.ui.restapi.dto.TemplateDtos;
 
@@ -41,7 +43,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page(), business(), user(), template(), media());
+        return List.of(entry(), weblogSettings(), page(), business(), user(), template(), media(), agent(), profile());
     }
 
     static Resource entry() {
@@ -93,13 +95,28 @@ final class EditableFieldManifest {
     }
 
     /**
-     * The person edit screen's fields a token may set (spec 2026-11-25 react admin migration, Wave 4). The
-     * administrator flag, memberships, passwords and another user's email stay session-only (SA-18) or off the
-     * API altogether; email is a field here because a token may resend the stored one.
+     * The person edit screen's fields (spec 2026-11-25 react admin migration, Wave 4). {@code administrator},
+     * {@code password} and {@code writer} are session-only (SA-18; owner decision 2026-11-25 for the writer
+     * role), as is a changed email: a token may only resend the stored value of each (never a password).
      */
     static Resource user() {
         return new Resource("user", AdminDtos.UserPatch.class, sorted(
-                "screenName", "fullName", "emailAddress", "locale", "timeZone", "enabled", "writer"),
+                "screenName", "fullName", "emailAddress", "locale", "timeZone", "enabled", "writer",
+                "administrator", "password"),
+                new TreeMap<>());
+    }
+
+    /** The New agent form and the agent page's Details form (session-only routes, SA-18; Wave 4). */
+    static Resource agent() {
+        return new Resource("agent", AgentDtos.AgentCreate.class, sorted(
+                "userName", "name", "emailAddress", "notes", "siteAdmin"),
+                new TreeMap<>());
+    }
+
+    /** The Profile page's account fields (session-only route, SA-18; Wave 4). */
+    static Resource profile() {
+        return new Resource("profile", MetaDtos.ProfilePatch.class, sorted(
+                "screenName", "fullName", "emailAddress", "locale", "timeZone"),
                 new TreeMap<>());
     }
 

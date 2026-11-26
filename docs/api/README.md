@@ -779,6 +779,13 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `member.selfChange` | 409 | `conflict` | A member asked to lower or remove their own role. |
 | `member.lastAdmin` | 409 | `conflict` | The change would leave the weblog with no admin. |
 | `submission.notFound` | 404 | `not-found` | No contact-form message has this id in the weblog. |
+| `agent.notFound` | 404 | `not-found` | No agent account has this user name (a person's account is not one). |
+| `password.tooShort` | 400 | `invalid-request` | A password is shorter than the minimum length (`{0}`, at present 8). |
+| `profile.currentPasswordWrong` | 400 | `invalid-request` | The `currentPassword` sent to change one is not the signed-in account's. |
+| `user.ssoAdmin` | 400 | `invalid-request` | A single-sign-on account must never hold the administrator role. |
+| `user.cantDisableSelf` | 409 | `conflict` | An administrator cannot disable their own account. |
+| `user.cantChangeOwnRole` | 409 | `conflict` | An administrator cannot remove their own administrator role. |
+| `userWeblogs.weblogUnknown` | 400 | `invalid-request` | `handle` names no existing weblog (the site space is never one). |
 | `http.error` | the reply's (4xx) | `about:blank` | MCP only: a REST reply with no problem body of its own; `title` is the status phrase. |
 
 A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where
@@ -2266,9 +2273,23 @@ and its All, People and Agents tabs. An unknown `kind` is a 400 `parameter.inval
 to the screen name), `locale` and `timeZone` (one the settings forms offer; refused as `locale.invalid` and
 `timeZone.invalid`). `PATCH` also takes `writer`, which grants or revokes the editor (author) role, as the person
 screen's "can write" box does; only a single-sign-on account has one to edit, so on any other account it is a 400
-`user.writerSsoOnly`. Every field is judged before any is saved. Still session-only and absent from the API (SA-18):
-the administrator flag, weblog memberships and another user's email address; agent and admin accounts stay
-refused to tokens as before.
+`user.writerSsoOnly`. Every field is judged before any is saved.
+
+> **Changed in the React admin migration (wave 4): the administrator flag, a typed password and `writer` are
+> session-only fields.** `PATCH` takes `administrator` (grant or revoke the site administrator role) and `password`
+> (a new password for a person's account, at least 8 characters; it ends the account's other sessions, and the
+> admin's own session stays signed in when it is their own account); `POST` takes `password` (the account is created
+> enabled and no mail is needed) and `administrator`. A token that sends `password`, or an `administrator` or `writer`
+> value that differs from the stored one, gets **403** `auth.sessionOnly` before anything is applied; resending the
+> stored value passes (the email rule's pattern). The `writer` role was token-settable before: it is lasting access
+> that revoking a token does not remove (owner decision 2026-11-25). A session is refused, as the person screen
+> refuses it, for an admin who would disable their own account (409 `user.cantDisableSelf`) or untick their own
+> administrator role (409 `user.cantChangeOwnRole`); for `administrator: true` on a single-sign-on account (400
+> `user.ssoAdmin`); and for `password` on a single-sign-on account (400 `user.ssoBound`), an agent (400
+> `user.notAPerson`) or one under 8 characters (400 `password.tooShort`, on `password`). A changed `screenName`
+> expires the weblogs showing the account's comments, as the person screen does. Memberships are written under
+> `/v1/admin/users/{userName}/weblogs` ([Session-only](#session-only)). Agent and admin accounts stay refused to
+> tokens as before; a session may change them.
 
 **`POST /api/v1/admin/users/{userName}/password-link`** mails the account's own address a set-password link, as the
 person screen's "send set-password link" does, and answers 204. It is refused with 400 when mail is not configured
@@ -2573,6 +2594,37 @@ call them. A caller who may not see the weblog still gets the 404 every weblog r
 | `GET /v1/weblogs/{handle}/submissions[?offset=&limit=]` | The contact-form inbox, newest first (default page 30, at most 200): `{items, offset, limit, hasMore, total}`, each message `{id, name, email, subject, message, pageSlug, entryAnchor, created}`. | post |
 | `DELETE /v1/weblogs/{handle}/submissions/{id}` | Delete one message (204); a bulk delete is a loop. | post |
 | `DELETE /v1/weblogs/{handle}` | Delete the weblog with everything on it, irreversibly (204). Confirming is the client's job. | admin |
+| `POST /v1/weblogs/{handle}/entries/{id}/send-newsletter` | Email the entry to the weblog's newsletter list (as before; **moved here from the token-reachable routes**, owner decision 2026-11-25: the mail goes to every subscriber and cannot be recalled). | post |
+
+Site administration and the caller's own account (a site admin, or any signed-in caller for the profile):
+
+| Route | What it does |
+|---|---|
+| `GET`, `POST /v1/admin/agents` | List agent accounts (`q`, `enabled`, `offset`, `limit`); create one: `{userName, name, emailAddress?, notes?, siteAdmin?}`, 201. |
+| `GET`, `PATCH /v1/admin/agents/{userName}` | One agent with its live `tokens`; change `{name, notes (empty clears), siteAdmin, enabled}` (a field left out is left alone). A person's account is `agent.notFound`. |
+| `POST /v1/admin/agents/{userName}/tokens` | Mint a token for the agent: `{label, role, weblog?, expiresAt?}` as `POST /v1/tokens` takes them; 201 with the secret, shown once. The pin must be a weblog the agent belongs to (any weblog for a site-admin agent): `token.weblogNotMember`. |
+| `DELETE /v1/admin/agents/{userName}/tokens/{id}` | Revoke one of that agent's tokens (204); any other id is `token.notFound`. |
+| `GET /v1/admin/tokens[?all=true]` | Every user's tokens, newest first, `{items}` each with `owner`, `ownerKind`, `issuedBy` and `live`; `all` adds revoked and expired ones. |
+| `DELETE /v1/admin/tokens/{id}` | Revoke any token (204). |
+| `POST /v1/admin/users/{userName}/weblogs` | Give an account (a person or an agent) a role: `{handle, permission}`, 201 with `{handle, name, permission}`. |
+| `PATCH`, `DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}` | Change the account's level `{permission}` there, or remove it (204). |
+| `PATCH /v1/me/profile` | The caller's own `{screenName, fullName, emailAddress, locale, timeZone}`; a field left out is left alone. Answers the profile. |
+| `PUT /v1/me/password` | Change the caller's own password: `{currentPassword, newPassword}`. 204; the account's other sessions end. |
+
+`PATCH /v1/admin/users/{userName}` also takes `administrator` and `password`, and `POST /v1/admin/users` takes
+`password` and `administrator`, as session-only fields (see the admin-users section above): a token that sends one gets
+403 `auth.sessionOnly`. `site.absoluteurl` is written through `PATCH /v1/admin/config` by a session only; a token
+still gets 403 `setting.managedInAdminUi`.
+
+The agent rules are the agent screen's: a name that is not blank and at most 255 characters, notes at most 4000, a
+user name of letters and digits that is not taken (409 `user.nameInUse`), an optional valid address; disabling an
+agent ends every one of its tokens on its next request. The memberships rules are the person page's: group blogging
+must be on to grant (409 `member.groupBloggingOff`), a reader account holds none (400 `member.readerAccount`), a
+weblog keeps at least one admin (409 `member.lastAdmin`), an account with no role there is `member.notFound`, and
+the person page has no rule against changing one's own role. The profile rules are `AccountRules`', the ones the
+user patch applies; `PUT /v1/me/password` needs the current password (`profile.currentPasswordWrong`) and refuses a
+single-sign-on account (`user.ssoBound`) and an agent (`user.notAPerson`). Every change writes the same
+`pressroom.admin` line the screen does. A token's secret is never logged.
 
 The rules are the admin screens' own. Members: one level per member; an existing, enabled account that is not a
 reader (`member.userUnknown`, `member.readerAccount`, `member.levelInvalid`); nobody new while group blogging is
@@ -2592,9 +2644,11 @@ every `locales[]` `{id, name}` and `timeZones[]`, exactly as the create form lis
 `GET /v1/weblogs/{handle}/themes` (an ADMIN token: the shared themes the weblog may switch to, the `current` one,
 `custom`, `customAllowed`, `sharedStylesheetCustomised`, `firstCustomization`; switch with `PATCH` on the weblog).
 
-Not built over the API at all, and a person does them in the admin UI: agent accounts, changes to admin accounts
-or the admin role, profile changes (email, password, names, locale), another user's email address, and the
-site-wide token list. Policy: SA-18 in the Simple Agility decision log.
+Every SA-18 resource is now behind these routes (wave 4 added agents, the site-wide token list, profile writes, the
+administrator flag, typed passwords, a user's memberships and `site.absoluteurl`; none is an MCP tool). The rule for
+a token is unchanged: a person does them in the admin app. Policy: SA-18 in the Simple Agility decision log;
+send-newsletter and the `writer` role grant were added to its list by owner decision 2026-11-25 (decision-log
+entry drafted, not yet posted).
 
 ## The OpenAPI document
 

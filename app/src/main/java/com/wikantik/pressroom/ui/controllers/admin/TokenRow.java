@@ -62,16 +62,25 @@ public final class TokenRow {
      */
     static List<TokenRow> load(Weblogger weblogger, boolean includeInactive) {
         try {
-            Map<String, String> issuers = new HashMap<>();
-            List<TokenRow> rows = new ArrayList<>();
-            for (ApiToken token : weblogger.getApiTokenManager().getAllTokens(includeInactive)) {
-                rows.add(new TokenRow(token, issuerName(weblogger, issuers, token.getIssuedBy())));
-            }
-            return rows;
+            return loadOrThrow(weblogger, includeInactive);
         } catch (WebloggerException e) {
             log.error("Could not list the API tokens", e);
             return List.of();
         }
+    }
+
+    /**
+     * {@link #load} for a decision path (the session-only API list): a store that cannot list throws, so the
+     * caller answers an error and never a shorter list than the site holds.
+     */
+    public static List<TokenRow> loadOrThrow(Weblogger weblogger, boolean includeInactive)
+            throws WebloggerException {
+        Map<String, String> issuers = new HashMap<>();
+        List<TokenRow> rows = new ArrayList<>();
+        for (ApiToken token : weblogger.getApiTokenManager().getAllTokens(includeInactive)) {
+            rows.add(new TokenRow(token, issuerName(weblogger, issuers, token.getIssuedBy())));
+        }
+        return rows;
     }
 
     private static String issuerName(Weblogger weblogger, Map<String, String> issuers, String userId)

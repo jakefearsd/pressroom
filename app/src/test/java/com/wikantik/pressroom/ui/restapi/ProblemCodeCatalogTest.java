@@ -301,6 +301,13 @@ class ProblemCodeCatalogTest {
                         "member.selfChange",
                         "member.lastAdmin",
                         "submission.notFound",
+                        "agent.notFound",
+                        "password.tooShort",
+                        "profile.currentPasswordWrong",
+                        "user.ssoAdmin",
+                        "user.cantDisableSelf",
+                        "user.cantChangeOwnRole",
+                        "userWeblogs.weblogUnknown",
                         "http.error"),
                 Arrays.stream(ProblemCode.values()).map(ProblemCode::code).collect(Collectors.toSet()));
     }

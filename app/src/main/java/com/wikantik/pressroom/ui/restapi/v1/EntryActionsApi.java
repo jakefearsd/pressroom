@@ -19,6 +19,7 @@ import com.wikantik.pressroom.ui.controllers.EntryNewsletter;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.restapi.auth.SessionOnly;
 import com.wikantik.pressroom.ui.restapi.ProblemMessages;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import org.springframework.context.MessageSource;
@@ -83,8 +84,13 @@ public class EntryActionsApi extends BaseApiController implements UISecurityEnfo
      * already, the weblog has no list, or the site has no Listmonk credentials (each a 409). A send Listmonk
      * refuses is a 502 with nothing stamped, so a retry is safe; a send that went but could not be recorded is a
      * 409 saying not to send again.
+     *
+     * <p>Session only (SA-18, owner decision 2026-11-25): the mail goes to every subscriber and cannot be
+     * recalled, so a token, which an agent may hold and which acts on text written by others, never sends it.
      */
-    @Operation(operationId = "entriesSendNewsletter")
+    @Operation(operationId = "entriesSendNewsletter", summary = "Email the entry to the weblog's newsletter list "
+            + "(session only).")
+    @SessionOnly
     @PostMapping("/{id}/send-newsletter")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
     public Object sendNewsletter(

@@ -83,6 +83,29 @@ public final class AdminAccountGuard {
     }
 
     /**
+     * The administrator flag and the editor role are lasting access that revoking a token does not remove,
+     * so changing either is the admin app's alone (SA-18; owner decision 2026-11-25 for the writer role).
+     * Refuses, before anything is applied, a non-session caller whose request carries a value differing
+     * from the stored one; resending the stored value, or sending none, passes (the email rule's pattern).
+     *
+     * @param requested the request's value, or null when absent
+     * @param stored what the account holds now
+     */
+    public static void requireSessionToChange(Caller caller, Boolean requested, boolean stored) {
+        if (isSession(caller) || requested == null || requested == stored) {
+            return;
+        }
+        throw ApiException.problem(ProblemCode.AUTH_SESSION_ONLY);
+    }
+
+    /** A typed password is the admin app's alone: refuses a non-session caller that sent one, even an empty one. */
+    public static void requireSessionToSetPassword(Caller caller, String password) {
+        if (!isSession(caller) && password != null) {
+            throw ApiException.problem(ProblemCode.AUTH_SESSION_ONLY);
+        }
+    }
+
+    /**
      * Runtime settings the API reads but never writes. site.absoluteurl is
      * the base of every password-reset and set-password link the mailer
      * builds: a stolen or prompt-injected admin token that could point it at

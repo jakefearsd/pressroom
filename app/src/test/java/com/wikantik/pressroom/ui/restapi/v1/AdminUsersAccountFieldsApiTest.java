@@ -86,6 +86,7 @@ class AdminUsersAccountFieldsApiTest {
     private static MockMvc mvc(Weblogger weblogger) {
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
+        controller.commentService = mock(com.wikantik.pressroom.business.comments.CommentService.class);
         return MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
     }
 
@@ -242,6 +243,8 @@ class AdminUsersAccountFieldsApiTest {
 
     @Test
     void writerIsGrantedAndRevokedOnASingleSignOnAccount() throws Exception {
+        // Session only since wave 4 (owner decision 2026-11-25): the role outlives a revoked token.
+        asSession();
         Weblogger weblogger = weblogger();
         UserManager users = weblogger.getUserManager();
         User reader = person("reader");
@@ -261,6 +264,8 @@ class AdminUsersAccountFieldsApiTest {
 
     @Test
     void writerOnAnAccountThatIsNotSingleSignOnIsRefusedAndSavesNothing() throws Exception {
+        // As a session, so the account's own rule is what answers (a token meets 403 first).
+        asSession();
         Weblogger weblogger = weblogger();
         UserManager users = weblogger.getUserManager();
         when(users.getUserByUserName("alice", null)).thenReturn(person("alice"));

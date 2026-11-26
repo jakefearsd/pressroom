@@ -185,12 +185,54 @@ public final class AccountRules {
      * The message key refusing a password a person is given, or null: none
      * at all when one is {@code required} (a new person who is not emailed a
      * set-password link), and under {@link PasswordRules#MIN_LENGTH} whenever
-     * one is typed. A key, not a violation: no API takes a password.
+     * one is typed. See {@link #passwordViolation} for the same rule keyed for the API.
      */
     public static String passwordProblem(String password, boolean required) {
+        RuleViolation violation = passwordViolation("password", password, required);
+        return violation == null ? null : violation.messageKey();
+    }
+
+    /**
+     * {@link #passwordProblem} as a violation on {@code field}: {@code field.required} when one is
+     * {@code required} and none is typed, {@code password.tooShort} under the floor. The one rule for the
+     * person screens, the profile page and the session-only API routes that take a typed password.
+     */
+    public static RuleViolation passwordViolation(String field, String password, boolean required) {
         if (StringUtils.isEmpty(password)) {
-            return required ? "error.add.user.missingPassword" : null;
+            return required ? RuleViolation.invalid(field, "error.add.user.missingPassword", List.of(),
+                    ProblemCode.FIELD_REQUIRED, field) : null;
         }
-        return PasswordRules.isLongEnough(password) ? null : "personForm.error.passwordTooShort";
+        return PasswordRules.isLongEnough(password) ? null
+                : RuleViolation.invalid(field, "personForm.error.passwordTooShort", List.of(),
+                        ProblemCode.PASSWORD_TOO_SHORT, Integer.toString(PasswordRules.MIN_LENGTH));
+    }
+
+    /**
+     * The person screen's rule that a single-sign-on account must never hold admin (a compromised
+     * provider account would otherwise be an admin account), as a violation on {@code administrator}.
+     */
+    public static RuleViolation ssoAdminProblem() {
+        return RuleViolation.invalid("administrator", "userAdmin.error.ssoAdmin", List.of(),
+                ProblemCode.USER_SSO_ADMIN);
+    }
+
+    /**
+     * What an administrator may not do to their own account: disable it, or remove their own admin role.
+     * Either locks them out, and since only an enabled admin reaches the admin screens, refusing it is also
+     * what keeps the site from losing its last enabled admin. {@code disabling} is the request leaving the
+     * account not enabled; {@code droppingOwnAdmin} that it unticks the admin role the account holds. Judged
+     * before anything is applied; empty when the actor is not the account.
+     */
+    public static List<RuleViolation> selfLockoutProblems(boolean disabling, boolean droppingOwnAdmin) {
+        List<RuleViolation> problems = new java.util.ArrayList<>();
+        if (disabling) {
+            problems.add(RuleViolation.conflict("enabled", "userAdmin.error.cantDisableSelf", List.of(),
+                    ProblemCode.USER_CANT_DISABLE_SELF));
+        }
+        if (droppingOwnAdmin) {
+            problems.add(RuleViolation.conflict("administrator", "userAdmin.cantChangeOwnRole", List.of(),
+                    ProblemCode.USER_CANT_CHANGE_OWN_ROLE));
+        }
+        return problems;
     }
 }

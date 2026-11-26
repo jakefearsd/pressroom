@@ -66,6 +66,7 @@ class AdminProblemCodesTest {
         when(weblogger.getDiscoveryManager()).thenReturn(mock(DiscoveryManager.class));
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
+        controller.commentService = org.mockito.Mockito.mock(com.wikantik.pressroom.business.comments.CommentService.class);
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
     }
 

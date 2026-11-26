@@ -243,7 +243,7 @@ public class UserEditController extends BaseController {
         // A bound account signs in through Google and must never hold admin
         // (a compromised Google account would otherwise be an admin account).
         if (user.isSsoBound() && bean.isAdministrator()) {
-            addError(model, "userAdmin.error.ssoAdmin", request);
+            addError(model, AccountRules.ssoAdminProblem().messageKey(), request);
             return ".UserEdit";
         }
 
@@ -500,19 +500,20 @@ public class UserEditController extends BaseController {
         if (actor == null || user.getUserName() == null || !user.getUserName().equals(actor.getUserName())) {
             return;
         }
-        if (!Boolean.TRUE.equals(bean.getEnabled())) {
-            addError(model, "userAdmin.error.cantDisableSelf", request);
-        }
+        boolean droppingOwnAdmin = false;
         if (!bean.isAdministrator()) {
             try {
-                if (weblogger.getUserManager().checkPermission(
-                        new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), user)) {
-                    addError(model, "userAdmin.cantChangeOwnRole", request);
-                }
+                droppingOwnAdmin = weblogger.getUserManager().checkPermission(
+                        new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), user);
             } catch (WebloggerException ex) {
                 log.error("Could not check the admin role of {}", user.getUserName(), ex);
                 addError(model, "generic.error.check.logs", request);
             }
+        }
+        // The rules (and their words) are AccountRules', shared with PATCH /api/v1/admin/users.
+        for (RuleViolation violation : AccountRules.selfLockoutProblems(
+                !Boolean.TRUE.equals(bean.getEnabled()), droppingOwnAdmin)) {
+            addError(model, violation.messageKey(), request);
         }
     }
 

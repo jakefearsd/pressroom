@@ -17,11 +17,7 @@
  */
 package com.wikantik.pressroom.ui.controllers.admin;
 
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -29,11 +25,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.ApiTokenManager;
-import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.AccountRules;
-import com.wikantik.pressroom.ui.controllers.AdminLog;
+import com.wikantik.pressroom.ui.controllers.AgentAccounts;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.TokenFormController;
 import com.wikantik.pressroom.ui.controllers.TokenFormValues;
@@ -64,9 +59,6 @@ public class AgentController extends TokenFormController {
 
     private static final String MINT_ACTION = "/pressroom-ui/admin/agent!mintToken.rol";
     private static final String REVOKE_ACTION = "/pressroom-ui/admin/agent!revokeToken.rol";
-
-    /** pressroom_user.screenname and fullname are varchar(255). */
-    private static final int MAX_NAME_LENGTH = 255;
 
     @Override
     public boolean isWeblogRequired() {
@@ -133,28 +125,14 @@ public class AgentController extends TokenFormController {
             return ".AgentCreate";
         }
 
-        User agent = new User();
-        agent.setUserName(bean.getUserName());
-        agent.setScreenName(name);
-        agent.setFullName(name);
-        agent.setEmailAddress(email);
-        agent.setNotes(notes);
-        agent.setLocale(Locale.getDefault().toString());
-        agent.setTimeZone(TimeZone.getDefault().getID());
-        agent.setDateCreated(new Date());
+        User agent;
         try {
-            weblogger.getUserManager().addAgent(agent, bean.isSiteAdmin());
-            weblogger.flush();
+            agent = AgentAccounts.create(weblogger, getAuthenticatedUser(request), bean.getUserName(), name, email,
+                    notes, bean.isSiteAdmin());
         } catch (WebloggerException e) {
             log.error("Could not create the agent {}", bean.getUserName(), e);
             addError(model, "generic.error.check.logs", request);
             return ".AgentCreate";
-        }
-        AdminLog.record("agent.created", getAuthenticatedUser(request),
-                "agent=" + agent.getUserName() + " siteAdmin=" + bean.isSiteAdmin());
-        if (bean.isSiteAdmin()) {
-            // The same line the person editor and the agent page write, so one grep finds every grant.
-            AdminLog.record("siteAdmin.granted", getAuthenticatedUser(request), "account=" + agent.getUserName());
         }
         addFlashMessage(redirectAttributes, "agent.created",
                 StringEscapeUtils.escapeHtml4(agent.getUserName()), request);
@@ -189,22 +167,7 @@ public class AgentController extends TokenFormController {
             return showAgent(model, agent, bean, new TokenFormValues());
         }
         try {
-            UserManager users = weblogger.getUserManager();
-            agent.setScreenName(name);
-            agent.setFullName(name);
-            agent.setNotes(notes);
-            users.saveUser(agent);
-            boolean wasSiteAdmin = users.hasRole("admin", agent);
-            if (bean.isSiteAdmin() && !wasSiteAdmin) {
-                users.grantRole("admin", agent);
-            } else if (!bean.isSiteAdmin() && wasSiteAdmin) {
-                users.revokeRole("admin", agent);
-            }
-            weblogger.flush();
-            if (bean.isSiteAdmin() != wasSiteAdmin) {
-                AdminLog.record(bean.isSiteAdmin() ? "siteAdmin.granted" : "siteAdmin.removed",
-                        getAuthenticatedUser(request), "account=" + agent.getUserName());
-            }
+            AgentAccounts.update(weblogger, getAuthenticatedUser(request), agent, name, notes, bean.isSiteAdmin());
         } catch (WebloggerException e) {
             log.error("Could not save the agent {}", agent.getUserName(), e);
             addError(model, "generic.error.check.logs", request);
@@ -226,15 +189,8 @@ public class AgentController extends TokenFormController {
             return "redirect:/pressroom-ui/admin/userAdmin.rol";
         }
         boolean enable = Boolean.parseBoolean(enabled);
-        boolean wasEnabled = !Boolean.FALSE.equals(agent.getEnabled());
         try {
-            agent.setEnabled(enable);
-            weblogger.getUserManager().saveUser(agent);
-            weblogger.flush();
-            if (enable != wasEnabled) {
-                AdminLog.record(enable ? "account.enabled" : "account.disabled", getAuthenticatedUser(request),
-                        "account=" + agent.getUserName());
-            }
+            AgentAccounts.changeEnabled(weblogger, getAuthenticatedUser(request), agent, enable);
             addFlashMessage(redirectAttributes, enable ? "agent.enabled" : "agent.disabled", request);
         } catch (WebloggerException e) {
             log.error("Could not change whether the agent {} is enabled", agent.getUserName(), e);
@@ -293,8 +249,7 @@ public class AgentController extends TokenFormController {
     private String showAgentFromStore(HttpServletRequest request, Model model, User agent, TokenFormValues values) {
         boolean siteAdmin;
         try {
-            siteAdmin = weblogger.getUserManager().checkPermission(
-                    new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), agent);
+            siteAdmin = AgentAccounts.isSiteAdmin(weblogger.getUserManager(), agent);
         } catch (WebloggerException e) {
             log.error("Could not read whether the agent {} is a site administrator", agent.getUserName(), e);
             addError(model, "generic.error.check.logs", request);
@@ -315,18 +270,18 @@ public class AgentController extends TokenFormController {
     /** The trimmed name, with a field error on {@code bean_name} when it is missing or too long. */
     private String checkedName(AgentBean bean, Model model, HttpServletRequest request) {
         String name = StringUtils.trimToNull(bean.getName());
-        if (name == null) {
-            addFieldError(model, "bean_name", "agent.error.nameRequired", request);
-        } else if (name.length() > MAX_NAME_LENGTH) {
-            addFieldError(model, "bean_name", "agent.error.nameTooLong", request);
+        RuleViolation problem = AgentAccounts.nameProblem(name);
+        if (problem != null) {
+            addFieldError(model, "bean_name", problem, request);
         }
         return name;
     }
 
     private String checkedNotes(AgentBean bean, Model model, HttpServletRequest request) {
         String notes = StringUtils.trimToNull(bean.getNotes());
-        if (notes != null && notes.length() > User.NOTES_MAX_LENGTH) {
-            addFieldError(model, "bean_notes", "agent.error.notesTooLong", request);
+        RuleViolation problem = AgentAccounts.notesProblem(notes);
+        if (problem != null) {
+            addFieldError(model, "bean_notes", problem, request);
         }
         return notes;
     }
@@ -347,8 +302,7 @@ public class AgentController extends TokenFormController {
             return null;
         }
         try {
-            User user = weblogger.getUserManager().getUserByUserName(userName, null);
-            return user != null && user.isAgent() ? user : null;
+            return AgentAccounts.find(weblogger, userName);
         } catch (WebloggerException e) {
             log.error("Could not look up the agent {}", userName, e);
             return null;
