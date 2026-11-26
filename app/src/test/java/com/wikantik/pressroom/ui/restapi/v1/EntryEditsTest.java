@@ -176,4 +176,26 @@ class EntryEditsTest {
                 assertThrows(ApiException.class, found::throwIfAny).getFieldErrors().stream()
                         .map(ApiProblem.FieldError::field).toList());
     }
+
+    private static List<String> codes(FieldErrors found) {
+        return assertThrows(ApiException.class, found::throwIfAny).getFieldErrors().stream()
+                .map(e -> e.field() + "=" + e.code()).toList();
+    }
+
+    /** Whatever an edit leaves behind is what the next edit is judged against. */
+    @Test
+    void anEmptyAmbiguousOrTooManyOutcomeLeavesTheTextForTheNextEdit() {
+        FieldErrors a = new FieldErrors();
+        assertEquals("aaB", EntryEdits.resolve(a, null,
+                Arrays.asList(null, edit("a", "A"), edit("b", "B")), "aab"), "a refused edit changes nothing and the next one applies");
+        assertEquals(List.of("edits[0]=edits.empty", "edits[1]=edits.ambiguous"), codes(a));
+
+        FieldErrors b = new FieldErrors();
+        EntryEdits.resolve(b, null, Arrays.asList(edit("a", "A"), edit("c", "C")), "aab");
+        assertEquals(List.of("edits[0]=edits.ambiguous", "edits[1]=edits.findNotMatched"), codes(b));
+
+        FieldErrors many = new FieldErrors();
+        List<EntryDtos.TextEdit> tooMany = new ArrayList<>(Collections.nCopies(EntryEdits.MAX_EDITS + 1, edit("a", "a")));
+        assertEquals("stored", EntryEdits.resolve(many, null, tooMany, "stored"));
+    }
 }

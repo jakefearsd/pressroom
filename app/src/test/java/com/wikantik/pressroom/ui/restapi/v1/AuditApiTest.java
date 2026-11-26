@@ -862,4 +862,22 @@ class AuditApiTest {
         verify(weblogger.getWeblogEntryManager(), org.mockito.Mockito.atLeastOnce()).getWeblogEntries(captor.capture());
         captor.getAllValues().forEach(c -> org.junit.jupiter.api.Assertions.assertSame(weblog, c.getWeblog()));
     }
+
+    /** What a title must differ from is looked up in this weblog only. */
+    @Test
+    void seoEntryComparesAgainstThisWeblogsPublishedEntriesOnly() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        WeblogEntry entry = entryOf(weblogger, weblog, "text");
+        when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(List.of(entry));
+
+        mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo/entries/{id}", "e1").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> captor = ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(weblogger.getWeblogEntryManager()).getWeblogEntries(captor.capture());
+        org.junit.jupiter.api.Assertions.assertSame(weblog, captor.getValue().getWeblog());
+        assertEquals(WeblogEntry.PubStatus.PUBLISHED, captor.getValue().getStatus());
+    }
 }
