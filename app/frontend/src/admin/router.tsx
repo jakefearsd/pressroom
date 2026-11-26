@@ -20,6 +20,11 @@ import { CreateWeblog } from './screens/CreateWeblog';
 import { RemoveWeblog } from './screens/RemoveWeblog';
 import { ThemeEdit } from './screens/ThemeEdit';
 import { WeblogSettings } from './screens/WeblogSettings';
+import { Inbox } from './screens/people/Inbox';
+import { Members } from './screens/people/Members';
+import { Stylesheet } from './screens/people/Stylesheet';
+import { TemplateEdit } from './screens/people/TemplateEdit';
+import { Templates } from './screens/people/Templates';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -52,6 +57,11 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/settings', element: <WeblogSettings />, ...scoped('weblog') },
     { path: 'weblogs/:handle/theme', element: <ThemeEdit />, ...scoped('weblog') },
     { path: 'weblogs/:handle/remove', element: <RemoveWeblog />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/templates', element: <Templates />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/templates/:id', element: <TemplateEdit />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/stylesheet', element: <Stylesheet />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/members', element: <Members />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/inbox', element: <Inbox />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
