@@ -85,7 +85,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
                 "uploads.enabled", false,
                 "site.allowUserWeblogCreation", false));
         try {
-            openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
+            openPath(com.wikantik.pressroom.it.support.PagesMediaApp.mediaUpload(WEBLOG_HANDLE));
             $("#uploadedFiles").should(exist).uploadFile(testImage());
             $("#uploadButton").click();
             $("#errors").should(visible);

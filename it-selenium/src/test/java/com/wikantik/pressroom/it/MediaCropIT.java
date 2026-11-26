@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,8 +74,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MediaCropIT extends PressroomIT {
 
     private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_ADD = "/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String MEDIA_VIEW = "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
+    private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
     private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
 
     /** Rendered on the edit page only once the entry is actually published. */
@@ -104,18 +105,15 @@ class MediaCropIT extends PressroomIT {
         enableUploads();
         String imageName = uploadImage("crop-" + suffix + ".jpg");
 
-        // --- open the freshly uploaded file in the edit lightbox ------------
+        // --- open the freshly uploaded file on its edit screen ---------------
         openPath(MEDIA_VIEW);
         $("div.mediaObject img[alt='" + imageName + "']").should(exist).click();
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-        switchTo().frame("mediaFileEditor");
 
         // the crop section is the new admin surface; its title is the marker
         $("#cropSectionTitle").should(exist);
         $("#cropCanvas").should(exist);
-        String mediaFileId = $("#mediaFileId").getAttribute("value");
-        assertNotNull(mediaFileId);
-        assertFalse(mediaFileId.isBlank(), "the editor must know which file it edits");
+        String mediaFileId = com.codeborne.selenide.WebDriverRunner.url().replaceFirst(".*/media/([^/?#]+).*", "$1");
+        assertFalse(mediaFileId.isBlank() || mediaFileId.contains("/"), "the edit route must name the file it edits");
 
         // hawk.jpg is 500x373; remember what the editor says before the crop
         int[] before = displayedDimensions();
@@ -134,8 +132,8 @@ class MediaCropIT extends PressroomIT {
                         + " && customElements.get('cropper-selection')"
                         + " && customElements.get('cropper-canvas'));")));
 
-        // The cropper only has a usable geometry once the lightbox iframe has
-        // a layout box of its own and the image behind the canvas has decoded.
+        // The cropper only has a usable geometry once the canvas has a layout box
+        // of its own and the image behind it has decoded.
         Selenide.Wait().withTimeout(CI_TOLERANT_TIMEOUT)
                 .withMessage(() -> "the crop surface never got a geometry: " + cropperGeometry())
                 .until(d -> Boolean.TRUE.equals(executeJavaScript(
@@ -181,23 +179,19 @@ class MediaCropIT extends PressroomIT {
 
         // --- apply the crop, accepting the destructive confirm --------------
         $("#cropButton").click();
-        Selenide.confirm();
+        PagesMediaApp.confirmDialog();
 
-        // The form posts and reloads inside the iframe: the crop itself
-        // re-encodes the file and regenerates every rendition server-side,
-        // which is the slowest step in the journey on a cold CI runner.
-        // Re-entering the frame immediately can also race the reload itself
-        // -- the old document may already be tearing down (a stale element
-        // or "no such frame" from the driver) before the new one is ready --
-        // so retry the switch itself rather than switching once and trusting
-        // Selenide's element polling to paper over a torn-down frame.
-        reenterFrameAfterPost("mediaFileEditor", "#messages", CI_TOLERANT_TIMEOUT);
+        // The crop re-encodes the file and regenerates every rendition server-side, the slowest step in
+        // the journey on a cold CI runner; the screen shows the news and the new dimensions in place.
+        $("#messages").should(exist, CI_TOLERANT_TIMEOUT);
+        Selenide.Wait().withTimeout(CI_TOLERANT_TIMEOUT)
+                .withMessage("the edit screen never showed the cropped dimensions")
+                .until(d -> displayedDimensions()[0] < before[0]);
 
         int[] after = displayedDimensions();
         assertTrue(after[0] < before[0] && after[1] < before[1],
                 "the crop must shrink the stored dimensions, got " + before[0] + "x"
                         + before[1] + " -> " + after[0] + "x" + after[1]);
-        switchTo().defaultContent();
 
         // --- publish an entry embedding the cropped image --------------------
         openPath(ENTRY_ADD);
@@ -224,76 +218,6 @@ class MediaCropIT extends PressroomIT {
                         + after[0] + "x" + after[1] + ". Tag: " + tag);
         assertFalse(tag.contains("width=\"" + before[0] + "\" height=\"" + before[1] + "\""),
                 "the pre-crop dimensions must be gone from the published image. Tag: " + tag);
-    }
-
-    /**
-     * The lightbox points the editor iframe at its URL and only then fades the
-     * modal in, so the editor document can finish loading - and upgrade its
-     * cropper custom elements - while that iframe still has no layout box at
-     * all. Cropper.js v2 sizes its {@code initial-coverage} selection exactly
-     * once, at upgrade time, from {@code cropper-canvas.offsetWidth}, and never
-     * recomputes it: losing that race left the user looking at a permanently
-     * 0x0 selection and a Crop button that silently did nothing, because the
-     * page's own submit guard drops a zero-area rectangle.
-     *
-     * <p>Which side wins is pure scheduling luck - about 100ms of margin on a
-     * dev box, and CI lost it - so this test forces the losing order instead of
-     * hoping for it: load the editor with the modal still {@code display:none},
-     * and only reveal it afterwards.
-     */
-    @Test
-    void theCropperInitialisesEvenWhenTheEditorLoadsBeforeTheLightboxIsShown() {
-        String suffix = Long.toString(System.nanoTime(), 36);
-
-        enableUploads();
-        String imageName = uploadImage("crophidden-" + suffix + ".jpg");
-
-        openPath(MEDIA_VIEW);
-        String mediaFileId = mediaFileIdOf(imageName);
-
-        executeJavaScript(
-                "window.__editorLoaded = false;"
-                + "var frame = document.getElementById('mediaFileEditor');"
-                + "frame.onload = function () { window.__editorLoaded = true; };"
-                + "frame.src = arguments[0];",
-                baseUrl() + "/pressroom-ui/authoring/mediaFileEdit.rol?weblog=" + WEBLOG_HANDLE
-                        + "&mediaFileId=" + mediaFileId);
-        Selenide.Wait().withTimeout(CI_TOLERANT_TIMEOUT)
-                .withMessage(() -> "the hidden editor iframe never loaded")
-                .until(d -> Boolean.TRUE.equals(
-                        executeJavaScript("return window.__editorLoaded === true;")));
-
-        // Only now does the crop canvas get a size at all.
-        executeJavaScript("bootstrap.Modal.getOrCreateInstance("
-                + "document.getElementById('mediafile_edit_lightbox')).show();");
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-
-        switchTo().frame("mediaFileEditor");
-        $("#cropCanvas").should(exist);
-        Selenide.Wait().withTimeout(CI_TOLERANT_TIMEOUT)
-                .withMessage(() -> "the cropper never recovered a default selection after the"
-                        + " lightbox appeared: " + cropperGeometry())
-                .until(d -> Boolean.TRUE.equals(executeJavaScript(
-                        "var s = document.getElementById('cropSelection');"
-                        + "return !!s && s.width > 0 && s.height > 0;")));
-        switchTo().defaultContent();
-    }
-
-    /**
-     * Reads the media file's id off the gallery tile.
-     *
-     * <p>It used to be scraped out of an {@code onclick="onClickEdit('id','name')"}
-     * attribute. That attribute is gone: building a JS call out of a filename
-     * meant a name containing an apostrophe produced a syntax error and a dead
-     * tile, so the id and name moved to {@code data-} attributes with a
-     * delegated listener. Reading the data attribute is also simply what this
-     * helper always wanted.
-     */
-    private String mediaFileIdOf(String imageName) {
-        String id = $("div.mediaObject img[alt='" + imageName + "']")
-                .should(exist).parent().getAttribute("data-media-file-id");
-        assertNotNull(id, "the gallery tile must carry data-media-file-id");
-        return id;
     }
 
     /**
@@ -328,30 +252,6 @@ class MediaCropIT extends PressroomIT {
     }
 
     /**
-     * Switches into {@code frameName} and waits for {@code readySelector} to
-     * exist, retrying the switch itself rather than switching once and
-     * relying on Selenide's element polling. A frame that is mid-reload -
-     * exactly the state right after an in-frame POST - can make even the
-     * switch itself throw ({@code NoSuchFrameException} while the old
-     * document is torn down, {@code StaleElementReferenceException} against
-     * a reference from before the reload), and those must be treated as
-     * "not ready yet", not as a hard failure.
-     */
-    private void reenterFrameAfterPost(String frameName, String readySelector, Duration timeout) {
-        Selenide.Wait().withTimeout(timeout).until(d -> {
-            try {
-                switchTo().defaultContent();
-                switchTo().frame(frameName);
-                return $(readySelector).exists();
-            } catch (org.openqa.selenium.NoSuchFrameException | org.openqa.selenium.StaleElementReferenceException
-                    | org.openqa.selenium.NoSuchElementException e) {
-                return false;
-            }
-        });
-        $(readySelector).should(exist);
-    }
-
-    /**
      * File uploads are globally disabled by default; there is nothing to crop
      * until one succeeds. Flipping the runtime property through the admin
      * screen keeps the journey on real UI end to end (same as EditorSeoIT).
@@ -379,7 +279,7 @@ class MediaCropIT extends PressroomIT {
         openPath(MEDIA_ADD);
         $("#uploadedFiles").should(exist).uploadFile(image);
         $("#uploadButton").click();
-        $("button[formaction$='entryAddWithMediaFile.rol']").should(exist);
+        $("#createPostButton").should(exist);
         return uniqueName;
     }
 

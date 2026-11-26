@@ -26,6 +26,7 @@ import java.time.Duration;
 
 import com.codeborne.selenide.WebDriverRunner;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -324,18 +325,17 @@ class SearchIT extends PressroomIT {
 
     private void savePage(String handle, String slug, String title, String body, boolean noindex) {
         loginAsAdmin();
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue(slug);
         $("#page_bean_title").setValue(title);
         Editor.setText(body);
         $("#page_bean_status").selectOptionByValue("PUBLISHED");
         if (noindex) {
-            $("a[data-bs-target='#collapseSeo']").click();
+            $("button[aria-controls='collapseSeo']").click();
             $("#seo_noindex").should(visible).click();
         }
-        clickAndAwaitNewPage($("#pageSaveButton"));
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
     }
 
     private String createWeblog(String name) {

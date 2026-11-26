@@ -192,12 +192,12 @@ class ThemeMatrixIT extends PressroomIT {
      * default directory cannot already hold a {@code hawk.jpg} to collide with.
      */
     private String uploadImage(String handle) {
-        openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + handle);
+        openPath(com.wikantik.pressroom.it.support.PagesMediaApp.mediaUpload(handle));
         $("#uploadedFiles").should(exist).uploadFile(testImage());
         $("#uploadButton").click();
 
-        $("button[formaction$='entryAddWithMediaFile.rol']").should(exist);
-        String mediaFileId = $("input[name='selectedImages']").should(exist).getValue();
+        $("#createPostButton").should(exist);
+        String mediaFileId = $("#entry input[type='checkbox']").should(exist).getValue();
         assertNotNull(mediaFileId, "the upload success page must carry the new file's id");
         return mediaFileId;
     }

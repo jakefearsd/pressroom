@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EntryAutosaveIT extends PressroomIT {
 
     private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String PAGE_ADD = "/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String PAGE_ADD = com.wikantik.pressroom.it.support.PagesMediaApp.newPage(WEBLOG_HANDLE);
 
     private static final String DRAFT_BAR = "#draftRecoveryBar";
     private static final String DRAFT_RESTORE = ".draft-bar-restore";
@@ -247,13 +247,13 @@ class EntryAutosaveIT extends PressroomIT {
         String body = "A page paragraph nobody saved yet " + suffix;
 
         openPath(PAGE_ADD);
-        $("#pageEditForm").should(exist);
+        com.wikantik.pressroom.it.support.PagesMediaApp.awaitPageEditor();
         Editor.setText(body);
 
-        waitForDraftSnapshot(pageDraftKey("new"));
+        waitForAppDraftSnapshot(pageDraftKey("new"));
         reloadWithoutLeaveWarning();
 
-        $("#pageEditForm").should(exist);
+        com.wikantik.pressroom.it.support.PagesMediaApp.awaitPageEditor();
         $(DRAFT_BAR).shouldBe(visible);
         $(DRAFT_RESTORE).click();
 
@@ -291,6 +291,18 @@ class EntryAutosaveIT extends PressroomIT {
                 + "if (window.jQuery) { jQuery(window).off('beforeunload'); }");
         Selenide.refresh();
         BrowserHealth.current().settle();
+    }
+
+    /** The React admin keeps its drafts under its own prefix: waits for the one whose key ends with this. */
+    private void waitForAppDraftSnapshot(String key) {
+        Selenide.Wait().withTimeout(SNAPSHOT_TIMEOUT)
+                .withMessage(() -> "no app draft snapshot was ever written for key " + key)
+                .until(d -> Boolean.TRUE.equals(executeJavaScript(
+                        "for (var i = 0; i < window.localStorage.length; i++) {"
+                        + "  var k = window.localStorage.key(i);"
+                        + "  if (k && k.indexOf('pressroom.appdraft.v1:') === 0 && k.slice(-arguments[0].length) === arguments[0]) { return true; }"
+                        + "}"
+                        + "return false;", key)));
     }
 
     /** Waits, on the actual condition, for the debounced snapshot to land in storage. */

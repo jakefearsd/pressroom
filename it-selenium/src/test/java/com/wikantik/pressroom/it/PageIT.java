@@ -25,6 +25,7 @@ import java.time.Duration;
 
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,8 +73,7 @@ class PageIT extends PressroomIT {
      * weblog of their own. The nav-link test above still owns a
      * {@code portfolio} weblog, for the reason the class comment gives.
      */
-    private static final String PAGE_EDIT_ON_SHARED =
-            "/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String PAGE_EDIT_ON_SHARED = PagesMediaApp.newPage(WEBLOG_HANDLE);
 
     /** The shell renders through the theme; journal's prose class is qj-prose. */
     private static final String PREVIEW_ARTICLE = "#previewArticle.qj-prose";
@@ -98,8 +98,8 @@ class PageIT extends PressroomIT {
         String pageUrl = baseUrl() + "/" + handle + "/about";
 
         // --- create as a draft, with Markdown and a [cta] in the body ------
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("about");
         $("#page_bean_title").setValue("About Us");
         Editor.setText("This page has **bold** text.\n\n"
@@ -130,7 +130,8 @@ class PageIT extends PressroomIT {
         // route, so an author clicking the URL on their own admin screen got
         // a 404. Asserted by fetching it rather than by matching a string:
         // what makes this a bug is that the link does not resolve.
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         String listedHref = $("tr[data-page-slug='about'] td.data a").getAttribute("href");
         assertTrue(listedHref != null && listedHref.endsWith("/" + handle + "/about"),
                 "the Pages list must link a published page at /<handle>/<slug>, got: " + listedHref);
@@ -172,8 +173,8 @@ class PageIT extends PressroomIT {
     void aChangedPageKeepsARevisionTheEditorCanCompareAndRestore() {
         String handle = createWeblog();
 
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("history");
         $("#page_bean_title").setValue("History");
         Editor.setText("The first version.");
@@ -191,8 +192,8 @@ class PageIT extends PressroomIT {
         $("#revision-diff-modal .btn-close").click();
         $("#revision-diff-modal").shouldNotBe(visible);
 
-        clickAndAwaitNewPage($(".revision-restore-button"));
-        $("#messages").should(exist);
+        $(".revision-restore-button").click();
+        $("#messages").shouldHave(text("restored"));
         assertTrue(Editor.getText().contains("The first version."),
                 "the editor must show the restored content, got: " + Editor.getText());
         $$("#pageRevisionsTable .revision-restore-button")
@@ -212,8 +213,8 @@ class PageIT extends PressroomIT {
         String pageUrl = baseUrl() + "/" + handle + "/terms";
         String row = "tr.trashed-page-row[data-page-slug='terms']";
 
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("terms");
         $("#page_bean_title").setValue("Terms of Use");
         Editor.setText("The terms.");
@@ -222,17 +223,17 @@ class PageIT extends PressroomIT {
         assertEquals(200, statusOf(pageUrl), "the published page must resolve before it is trashed");
 
         // Move to the trash from the Pages screen.
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='terms'] button[data-confirm]").click();
-            com.codeborne.selenide.Selenide.confirm();
-        });
-        $("#messages").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $("tr[data-page-slug='terms'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
+        $("#messages").shouldHave(text("trash"));
         $$("tr[data-page-slug='terms']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
         assertEquals(404, statusOf(pageUrl), "a trashed page must not be served");
 
         // Its address is held: a new page may not take it, and the editor says why.
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("terms");
         $("#page_bean_title").setValue("Terms again");
         Editor.setText("Other terms.");
@@ -241,28 +242,31 @@ class PageIT extends PressroomIT {
         BrowserHealth.current().settle();
 
         // Restore: back on the Pages list, as a draft, still not served.
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        clickAndAwaitNewPage($("a.pages-trash-link").should(exist));
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $("a.pages-trash-link").should(exist).click();
         $("#pages-trash-list-marker").should(exist);
-        clickAndAwaitNewPage($(row + " button.page-restore-btn").should(exist));
+        $(row + " button.page-restore-btn").should(exist).click();
         $("#messages").shouldHave(text("draft"));
         $$(row).shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         $("tr[data-page-slug='terms']").should(exist);
         assertEquals(404, statusOf(pageUrl), "a restored page is a draft, never republished");
 
         // Trash it again and delete it forever: the address is free.
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='terms'] button[data-confirm]").click();
-            com.codeborne.selenide.Selenide.confirm();
-        });
+        $("tr[data-page-slug='terms'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
+        $$("tr[data-page-slug='terms']").shouldHave(com.codeborne.selenide.CollectionCondition.size(0));
         deletePageForeverFromTrash(handle, "terms");
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_slug").setValue("terms");
         $("#page_bean_title").setValue("Terms, rewritten");
         Editor.setText("New terms.");
         saveOpenPage();
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         $("tr[data-page-slug='terms']").should(exist);
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
@@ -323,8 +327,7 @@ class PageIT extends PressroomIT {
 
         // One save landed: the add form became the edit form, carrying an id.
         $("#messages").should(exist);
-        assertTrue(!$("input[name='bean.id']").getValue().isEmpty(),
-                "Ctrl+S must have saved the page, leaving it with an id");
+        webdriver().shouldNotHave(urlContaining("/pages/new"));
     }
 
     // ---------------------------------------------------------------- helpers
@@ -341,8 +344,7 @@ class PageIT extends PressroomIT {
      */
     private void openPageEditorInWriteMode() {
         openPath(PAGE_EDIT_ON_SHARED);
-        $("#pageEditForm").should(exist);
-        $(Editor.ROOT).should(exist);
+        PagesMediaApp.awaitPageEditor();
         $(Editor.MODE_WRITE).click();
         $(Editor.ROOT).shouldBe(visible);
     }
@@ -358,16 +360,16 @@ class PageIT extends PressroomIT {
     void movingAPageUpOnThePagesScreenReordersTheNav() {
         String handle = createWeblog();
         for (String title : new String[] {"Alpha", "Bravo", "Charlie"}) {
-            openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-            $("#pageEditForm").should(exist);
+            openPath(PagesMediaApp.newPage(handle));
+            PagesMediaApp.awaitPageEditor();
             $("#page_bean_slug").setValue(title.toLowerCase(java.util.Locale.ROOT));
             $("#page_bean_title").setValue(title);
             $("#page_bean_status").selectOptionByValue("PUBLISHED");
             saveOpenPage();
         }
 
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
         $("#pagesOrderSave").shouldNotBe(visible);
         $$("tr.page-row").shouldHave(com.codeborne.selenide.CollectionCondition.size(3));
 
@@ -411,16 +413,15 @@ class PageIT extends PressroomIT {
 
     /** Opens a page for editing from the list, found by its title link text. */
     private void openPageByTitle(String handle, String title) {
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
-        $("#pageRemoveForm").should(exist);
-        $$("a").findBy(text(title)).should(exist).click();
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.pages(handle));
+        PagesMediaApp.awaitPagesList();
+        $$("tr.page-row td a").findBy(text(title)).should(exist).click();
+        PagesMediaApp.awaitPageEditor();
     }
 
     /** Submits the page edit form and waits for the save to land. */
     private void saveOpenPage() {
-        $("#pageSaveButton").click();
-        $("#messages").should(exist);
+        PagesMediaApp.savePage();
         BrowserHealth.current().settle();
     }
 

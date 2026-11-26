@@ -197,7 +197,8 @@ class ErrorCasesIT extends PressroomIT {
         for (String path : new String[] {
                 "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE,
                 "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE,
-                "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE}) {
+                "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/media"}) {
             // A redirect to the login page is the expected answer and carries
             // no body, so judge on the status first and only inspect content
             // when something was actually served.

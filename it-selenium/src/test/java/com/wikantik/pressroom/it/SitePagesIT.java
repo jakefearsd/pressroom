@@ -26,6 +26,7 @@ import java.time.Duration;
 import com.codeborne.selenide.CollectionCondition;
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -85,16 +86,16 @@ class SitePagesIT extends PressroomIT {
             // --- Site -> Pages from the main menu (the React home), then create and publish --
             openPath("/pressroom-ui/app/");
             $(".site-row").should(exist);
-            clickAndAwaitNewPage($$(".site-row a.quiet-link").first());
-            $("#pageRemoveForm").should(exist);
+            $$(".site-row a.quiet-link").first().click();
+            PagesMediaApp.awaitPagesList();
             removeSitePage(); // a leftover from an aborted run would clash
             openPath(sitePageEditPath());
-            $("#pageEditForm").should(exist);
+            PagesMediaApp.awaitPageEditor();
             $("#page_bean_slug").setValue(SLUG);
             $("#page_bean_title").setValue("It Front");
             Editor.setText("## " + HEADING + "\n\nWelcome.");
             $("#page_bean_status").selectOptionByValue("PUBLISHED");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
 
             // --- choose it as the front door ---------------------------------
@@ -125,12 +126,12 @@ class SitePagesIT extends PressroomIT {
                     "the site sitemap must be a urlset with the page, got: " + truncate(sitemap.body));
 
             // --- unpublish: / shows the discovery page, the slug is a 404 -----
-            openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
-            $("#pageRemoveForm").should(exist);
-            $$("a").findBy(text("It Front")).should(exist).click();
-            $("#pageEditForm").should(exist);
+            openPath(PagesMediaApp.pages("site-space"));
+            PagesMediaApp.awaitPagesList();
+            $$("tr.page-row td a").findBy(text("It Front")).should(exist).click();
+            PagesMediaApp.awaitPageEditor();
             $("#page_bean_status").selectOptionByValue("DRAFT");
-            clickAndAwaitNewPage($("#pageSaveButton"));
+            PagesMediaApp.savePage();
             $("#messages").should(exist);
 
             Fetched after = fetch(root);
@@ -160,7 +161,7 @@ class SitePagesIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private static String sitePageEditPath() {
-        return "/pressroom-ui/authoring/pageEdit.rol?weblog=site-space";
+        return PagesMediaApp.newPage("site-space");
     }
 
     /** Restores the front-door choice, then deletes the page: identity cleanup. */
@@ -181,8 +182,8 @@ class SitePagesIT extends PressroomIT {
             assertEquals(restore, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "the front door was not restored");
         }
-        openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
-        $("#pageRemoveForm").should(exist);
+        openPath(PagesMediaApp.pages("site-space"));
+        PagesMediaApp.awaitPagesList();
         removeSitePage();
     }
 
@@ -193,11 +194,8 @@ class SitePagesIT extends PressroomIT {
             deletePageForeverFromTrash("site-space", SLUG);
             return;
         }
-        awaitNewPageAfter(() -> {
-            $("tr[data-page-slug='" + SLUG + "'] button[data-confirm]").click();
-            Selenide.confirm();
-        });
-        $("#messages").should(exist);
+        $("tr[data-page-slug='" + SLUG + "'] button.page-delete-btn").click();
+        PagesMediaApp.confirmDialog();
         $$("tr[data-page-slug='" + SLUG + "']").shouldHave(CollectionCondition.size(0));
         // Trashed, which still holds the slug: out of the trash too.
         deletePageForeverFromTrash("site-space", SLUG);

@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.util.List;
 
 import com.wikantik.pressroom.it.support.Editor;
+import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -70,8 +71,8 @@ class StrandPartsIT extends PressroomIT {
         }
 
         // --- a new page, ticked as a strand: the panel appears ---------------
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
-        $("#pageEditForm").should(exist);
+        openPath(PagesMediaApp.newPage(handle));
+        PagesMediaApp.awaitPageEditor();
         $("#page_strand_parts").shouldBe(hidden);
         $("#page_bean_slug").setValue("tale");
         $("#page_bean_title").setValue("The Tale");
@@ -93,9 +94,9 @@ class StrandPartsIT extends PressroomIT {
         $$(ROWS + " .strand-part-title").shouldHave(exactTexts(gamma, beta));
         $("#strandAddSelect").$$("option").findBy(text(alpha)).should(exist);
 
-        clickAndAwaitNewPage($("#pageSaveButton"));
-        $("#messages").should(exist);
-        String pageId = $("input[name='bean.id']").getValue();
+        PagesMediaApp.savePage();
+        String pageId = com.codeborne.selenide.WebDriverRunner.url().replaceFirst(".*/pages/([^/?#]+).*", "$1");
+        assertFalse(pageId.contains("/"), "the save moved the editor to the page's own route: " + pageId);
         assertTrue(pageId != null && !pageId.isEmpty(), "the save created the page");
 
         // --- a reader sees the saved order -----------------------------------
@@ -109,7 +110,8 @@ class StrandPartsIT extends PressroomIT {
         assertEquals(2, parts.split("<li class=\"strand-part\"", -1).length - 1, parts);
 
         // --- the editor shows the rows again ---------------------------------
-        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle + "&id=" + pageId);
+        openPath(PagesMediaApp.pages(handle) + "/" + pageId);
+        PagesMediaApp.awaitPageEditor();
         $("#page_bean_strand").shouldBe(checked);
         $("#page_strand_parts").shouldBe(visible);
         $$(ROWS + " .strand-part-title").shouldHave(exactTexts(gamma, beta));
