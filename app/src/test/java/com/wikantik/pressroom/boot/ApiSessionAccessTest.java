@@ -53,6 +53,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
@@ -218,6 +219,58 @@ class ApiSessionAccessTest {
                 .andReturn();
         assertEquals(200, result.getResponse().getStatus());
         assertNoCookies(result);
+    }
+
+    /**
+     * The React admin fires several API reads at once from one browser session. Spring's session fixation
+     * protection ran on a session-authenticated API request (seen as a fresh sign-in: the API chain stores no
+     * context) and changed the session id, so the first call's new id invalidated the cookie the parallel calls
+     * were carrying and they answered 401 (found by the browser suite; MockMvc cannot see an id rotate, so this
+     * pins the strategy each chain's SessionManagementFilter runs). An API call signs nobody in: no chain under
+     * /api rotates the id; the UI chain, where a sign-in is a sign-in, still does.
+     */
+    @Test
+    void noApiChainRotatesTheSessionIdButTheUiChainStillDoes() throws Exception {
+        for (String path : List.of("/api/v1/me", "/api/v1/tokens", "/api/mcp")) {
+            assertFalse(rotatesSessionId(chainFor(path)), path + "'s chain rotates the session id on a read");
+        }
+        assertTrue(rotatesSessionId(chainFor("/pressroom-ui/profile.rol")),
+                "the UI chain lost its session fixation protection");
+    }
+
+    private static org.springframework.security.web.SecurityFilterChain chainFor(String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+        request.setServletPath(path);
+        // The first chain that matches, in the order the FilterChainProxy tries them.
+        return context.getBean(org.springframework.security.web.FilterChainProxy.class).getFilterChains().stream()
+                .filter(chain -> chain.matches(request)).findFirst()
+                .orElseThrow(() -> new AssertionError("no security chain matches " + path));
+    }
+
+    /** Whether the chain's SessionManagementFilter holds a session-fixation strategy that changes the id. */
+    private static boolean rotatesSessionId(org.springframework.security.web.SecurityFilterChain chain) {
+        org.springframework.security.web.session.SessionManagementFilter filter = chain.getFilters().stream()
+                .filter(org.springframework.security.web.session.SessionManagementFilter.class::isInstance)
+                .map(org.springframework.security.web.session.SessionManagementFilter.class::cast)
+                .findFirst().orElse(null);
+        if (filter == null) {
+            return false;
+        }
+        Object strategy = org.springframework.test.util.ReflectionTestUtils.getField(
+                filter, "sessionAuthenticationStrategy");
+        return anyRotates(strategy);
+    }
+
+    private static boolean anyRotates(Object strategy) {
+        if (strategy instanceof org.springframework.security.web.authentication.session
+                .CompositeSessionAuthenticationStrategy) {
+            @SuppressWarnings("unchecked")
+            List<Object> delegates = (List<Object>) org.springframework.test.util.ReflectionTestUtils.getField(
+                    strategy, "delegateStrategies");
+            return delegates != null && delegates.stream().anyMatch(ApiSessionAccessTest::anyRotates);
+        }
+        return strategy instanceof org.springframework.security.web.authentication.session
+                .AbstractSessionFixationProtectionStrategy;
     }
 
     @Test
