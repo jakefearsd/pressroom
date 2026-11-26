@@ -121,3 +121,22 @@ recovers a lost password. Spec: `docs/superpowers/specs/2026-10-10-admin-bootstr
   PostgreSQL container with a psql argv shim (so a password in argv fails the
   test). `AdminRunbookTest` pins that `docker_deployment.md` documents every
   subcommand in the usage block.
+
+## Typed passwords over the session-only API (React admin migration, wave 4)
+
+The admin app sets passwords through session-only routes (SA-18), by the same rules as the screens, in one place
+each: `AccountRules.passwordViolation` (a typed password is at least `PasswordRules.MIN_LENGTH`, 8; a violation
+carries both the screen's message key and the API's code `password.tooShort`), and
+`PasswordRules.matchesCurrent` (the profile's current-password check; fails closed on no account, nothing typed, no
+hash or an unreadable hash).
+
+- `PUT /v1/me/password` (`MeProfileApi`): `{currentPassword, newPassword}`; a wrong or missing current password is
+  `profile.currentPasswordWrong` on `currentPassword`; a single-sign-on account is `user.ssoBound` and an agent
+  `user.notAPerson`, on `newPassword`. It restamps the request's session (`CredentialStampFilter.restamp`), so the
+  caller stays signed in and every other session of the account ends on its next request, as the profile page does.
+- `PATCH /v1/admin/users/{u}` `password` and `POST /v1/admin/users` `password`: session-only fields (a token that
+  sends one is 403 `auth.sessionOnly`, even an empty one). On create a typed password makes the account enabled and
+  needs no mail; without one the account is created disabled with a mailed set-password link, as before. On patch the
+  account's sessions end unless it is the admin's own (`PressroomLoginSessionManager.invalidate` plus the stamp
+  mismatch), and a disabling `enabled: false` ends them too.
+- Tests: `MeProfileApiTest`, `AdminUsersSessionOnlyApiTest`.

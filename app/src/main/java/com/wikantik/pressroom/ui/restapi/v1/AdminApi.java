@@ -12,14 +12,16 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.RevisionSweep;
 import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
 import com.wikantik.pressroom.config.runtime.DisplayGroup;
@@ -36,6 +38,8 @@ import com.wikantik.pressroom.ui.controllers.SiteSettingsEffects;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
+import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkService;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -90,6 +94,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     private static final Logger log = LoggerFactory.getLogger(AdminApi.class);
 
     private static final int MAX_LIMIT = Paging.MAX_LIMIT;
+
+    /** Expires the weblogs showing an account's comments when it is renamed (as the person screen does). */
+    @Autowired
+    @Lazy
+    CommentService commentService;
 
     // ------------------------------------------------------------- users
 
@@ -151,10 +160,86 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     @Operation(operationId = "usersCreate")
     @ApiResponse(responseCode = "201", description = "Created.")
     @PostMapping("/users")
-    public ResponseEntity<AdminDtos.UserView> createUser(@RequestBody AdminDtos.UserCreate body)
-            throws WebloggerException {
-        // The account rules the person screen applies (AccountRules); the trimming and the
-        // screen name's default are the API's own.
+    public ResponseEntity<AdminDtos.UserView> createUser(HttpServletRequest request,
+            @RequestBody AdminDtos.UserCreate body) throws WebloggerException {
+        // A typed password and the administrator role are the admin app's alone (SA-18): refused to any other
+        // caller before the body is judged, so nothing about the request is learnt from its other fields.
+        AdminAccountGuard.requireSessionToSetPassword(Caller.current(), body.password());
+        AdminAccountGuard.requireSessionToChange(Caller.current(), body.administrator(), false);
+        boolean typedPassword = StringUtils.isNotEmpty(body.password());
+        User user = judgedNewAccount(body);
+        String userName = user.getUserName();
+
+        UserManager mgr = weblogger.getUserManager();
+        // Checked with enabled=null (any status) rather than relying on
+        // UserManager.addUser's own duplicate check, which only looks among
+        // ENABLED users -- a same-named disabled account would otherwise
+        // reach addUser and fail as a bare, unguarded WebloggerException.
+        // A lookup that fails throws: the opaque 500.
+        RuleViolation taken = AccountRules.userNameTaken(userName, mgr);
+        if (taken != null) {
+            throw RuleProblems.problem(taken, true);
+        }
+
+        // A typed password is handed over in person, so no link and no mail; without one the account could
+        // never be used unless a link can be delivered.
+        if (!typedPassword && !PasswordLinkMailer.isReady()) {
+            throw ApiException.problem(ProblemCode.USER_MAIL_NOT_CONFIGURED);
+        }
+
+        if (typedPassword) {
+            // Session only: the person screen's typed-password create, enabled at once.
+            user.setEnabled(Boolean.TRUE);
+            user.resetPassword(body.password());
+        } else {
+            // Never accepted from a token -- see class javadoc. A random value nobody is ever told, matching
+            // CreateUserBean's own blank-password branch; the account is unusable until the emailed link
+            // sets a real one.
+            user.setEnabled(Boolean.FALSE);
+            user.resetPassword(TokenGenerator.newToken());
+        }
+
+        mgr.addUser(user);
+        boolean administrator = Boolean.TRUE.equals(body.administrator());
+        if (administrator) {
+            mgr.grantRole("admin", user);
+        }
+        weblogger.flush();
+        if (administrator) {
+            AdminLog.record("siteAdmin.granted", (User) request.getAttribute("authenticatedUser"),
+                    "account=" + user.getUserName());
+        }
+        if (typedPassword) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
+        }
+
+        try {
+            PasswordLinkService.send(weblogger, user, PasswordLinkService.DEFAULT_SUBJECT);
+        } catch (MessagingException e) {
+            // The account exists either way -- disabled and resendable from
+            // the JSP UserAdmin screen's "send set-password link" action --
+            // so this is caught and logged rather than left to bubble as an
+            // opaque 500, the same convention CLAUDE.md's Audience section
+            // describes for best-effort side work. Unlike that convention,
+            // though, the request is NOT allowed to read as an ordinary
+            // success: 502, not 400 or 201, because a 400 reads as "your
+            // request was malformed" (inviting a retry that then 409s on the
+            // account that already exists) and a bare 201 would silently
+            // hide that the one thing this endpoint exists to do -- get a
+            // usable link to the new account -- did not happen.
+            log.error("Set-password link could not be sent for new user {}", userName, e);
+            throw ApiException.problem(ProblemCode.USER_PASSWORD_LINK_NOT_SENT, e);
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
+    }
+
+    /**
+     * The account rules the person screen applies ({@link AccountRules}); the trimming and the screen name's
+     * default are the API's own. Every broken field is named in one 400; what passes is the new, unsaved account
+     * (no password, not yet enabled).
+     */
+    private static User judgedNewAccount(AdminDtos.UserCreate body) {
         FieldErrors errors = new FieldErrors();
         String userName = body.userName() == null ? null : body.userName().trim();
         if (StringUtils.isBlank(userName)) {
@@ -188,22 +273,8 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (timeZone != null) {
             RuleProblems.add(errors, AccountRules.timeZoneProblem(timeZone));
         }
+        RuleProblems.add(errors, AccountRules.passwordViolation("password", body.password(), false));
         errors.throwIfAny();
-
-        UserManager mgr = weblogger.getUserManager();
-        // Checked with enabled=null (any status) rather than relying on
-        // UserManager.addUser's own duplicate check, which only looks among
-        // ENABLED users -- a same-named disabled account would otherwise
-        // reach addUser and fail as a bare, unguarded WebloggerException.
-        // A lookup that fails throws: the opaque 500.
-        RuleViolation taken = AccountRules.userNameTaken(userName, mgr);
-        if (taken != null) {
-            throw RuleProblems.problem(taken, true);
-        }
-
-        if (!PasswordLinkMailer.isReady()) {
-            throw ApiException.problem(ProblemCode.USER_MAIL_NOT_CONFIGURED);
-        }
 
         User user = new User();
         user.setUserName(userName);
@@ -212,36 +283,8 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         user.setLocale(locale);
         user.setTimeZone(timeZone);
         user.setEmailAddress(emailAddress);
-        user.setEnabled(Boolean.FALSE);
         user.setDateCreated(new Date());
-        // Never accepted from the caller -- see class javadoc. A random
-        // value nobody is ever told, matching CreateUserBean's own
-        // blank-password branch; the account is unusable until the emailed
-        // link sets a real one.
-        user.resetPassword(TokenGenerator.newToken());
-
-        mgr.addUser(user);
-        weblogger.flush();
-
-        try {
-            PasswordLinkService.send(weblogger, user, PasswordLinkService.DEFAULT_SUBJECT);
-        } catch (MessagingException e) {
-            // The account exists either way -- disabled and resendable from
-            // the JSP UserAdmin screen's "send set-password link" action --
-            // so this is caught and logged rather than left to bubble as an
-            // opaque 500, the same convention CLAUDE.md's Audience section
-            // describes for best-effort side work. Unlike that convention,
-            // though, the request is NOT allowed to read as an ordinary
-            // success: 502, not 400 or 201, because a 400 reads as "your
-            // request was malformed" (inviting a retry that then 409s on the
-            // account that already exists) and a bare 201 would silently
-            // hide that the one thing this endpoint exists to do -- get a
-            // usable link to the new account -- did not happen.
-            log.error("Set-password link could not be sent for new user {}", userName, e);
-            throw ApiException.problem(ProblemCode.USER_PASSWORD_LINK_NOT_SENT, e);
-        }
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
+        return user;
     }
 
     @Operation(operationId = "usersUpdate")
@@ -255,54 +298,105 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         AdminAccountGuard.requireNotAgent(caller, user);
         AdminAccountGuard.requireNotAdmin(caller, mgr, user);
         AdminAccountGuard.requireEmailChangeAllowed(caller, user, body.emailAddress());
+        // Lasting access and credentials are the admin app's alone (SA-18), refused before anything is judged.
+        requireSessionForPrivileged(caller, mgr, user, body);
+        User actor = (User) request.getAttribute("authenticatedUser");
+        boolean self = actor != null && user.getUserName().equals(actor.getUserName());
         boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
+        String screenNameBefore = user.getScreenName();
 
-        // Each value is set only when it passes: the user is a managed entity.
-        FieldErrors errors = new FieldErrors();
-        applyField(errors, body.emailAddress(),
-                v -> AccountRules.emailProblem(v, AccountRules.EmailUse.REPLACEMENT), user::setEmailAddress);
-        applyField(errors, body.screenName(), AccountRules::screenNameProblem, user::setScreenName);
-        applyField(errors, body.fullName(), AccountRules::fullNameProblem, user::setFullName);
-        applyField(errors, body.locale(), AccountRules::localeProblem, user::setLocale);
-        applyField(errors, body.timeZone(), AccountRules::timeZoneProblem, user::setTimeZone);
-        // Only a single-sign-on account has an author role to edit (the person screen's own rule); any other
-        // account's follows its memberships.
-        if (body.writer() != null && !user.isSsoBound()) {
-            errors.add("writer", ProblemCode.USER_WRITER_SSO_ONLY);
+        // What the person screen refuses before applying anything: an admin locking themselves out.
+        if (self) {
+            boolean droppingOwnAdmin = Boolean.FALSE.equals(body.administrator()) && holdsAdmin(mgr, user);
+            RuleProblems.refuseViolations(AccountRules.selfLockoutProblems(Boolean.FALSE.equals(body.enabled()),
+                    droppingOwnAdmin));
         }
+
+        FieldErrors errors = new FieldErrors();
+        judgeAccountFields(errors, user, body);
+        boolean passwordChanged = StringUtils.isNotEmpty(body.password());
         errors.throwIfAny();
         if (body.enabled() != null) {
             user.setEnabled(body.enabled());
+        }
+        if (passwordChanged) {
+            user.resetPassword(body.password());
+        }
+        // A new password or a disabled account ends the user's other sessions, unless it is the actor's own.
+        if (!self && (passwordChanged || !Boolean.TRUE.equals(user.getEnabled()))) {
+            PressroomLoginSessionManager.getInstance().invalidate(user.getUserName());
         }
 
         mgr.saveUser(user);
         if (body.writer() != null) {
             AccountRoles.sync(mgr, user, AccountRoles.EDITOR, body.writer(), mgr.hasRole(AccountRoles.EDITOR, user));
         }
+        String roleEvent = body.administrator() == null ? null
+                : AccountRoles.sync(mgr, user, "admin", body.administrator(), holdsAdmin(mgr, user));
         weblogger.flush();
+        if (passwordChanged && self) {
+            // The account's other sessions end on their next request (CredentialStampFilter); this one stays.
+            CredentialStampFilter.restamp(request, user);
+        }
         boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
         if (enabledBefore != enabledNow) {
-            AdminLog.record(enabledNow ? "account.enabled" : "account.disabled",
-                    (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
+            AdminLog.record(enabledNow ? "account.enabled" : "account.disabled", actor,
+                    "account=" + user.getUserName());
+        }
+        if (roleEvent != null) {
+            AdminLog.record(roleEvent, actor, "account=" + user.getUserName());
+        }
+        // The screen name signs the account's comments, and rendered pages expire only through their weblog.
+        if (!Objects.equals(screenNameBefore, user.getScreenName())) {
+            commentService.expireWhereShown(user);
         }
         return AdminDtos.toView(user, roles(user));
     }
 
+    /** Whether the account holds the site administrator role; a lookup that fails throws, so the caller refuses. */
+    private static boolean holdsAdmin(UserManager mgr, User user) throws WebloggerException {
+        return mgr.checkPermission(new GlobalPermission(List.of(GlobalPermission.ADMIN)), user);
+    }
+
+    /** The administrator flag, the editor role and a typed password: a non-session caller may only resend stored values. */
+    private void requireSessionForPrivileged(Caller caller, UserManager mgr, User user, AdminDtos.UserPatch body)
+            throws WebloggerException {
+        AdminAccountGuard.requireSessionToChange(caller, body.writer(),
+                body.writer() != null && mgr.hasRole(AccountRoles.EDITOR, user));
+        AdminAccountGuard.requireSessionToChange(caller, body.administrator(),
+                body.administrator() != null && holdsAdmin(mgr, user));
+        AdminAccountGuard.requireSessionToSetPassword(caller, body.password());
+    }
+
     /**
-     * One optional text field of a user patch: absent leaves it alone; present is trimmed, judged by its rule and
-     * set only when it passes (the user is a managed entity), its problem recorded either way.
+     * Judges every field of a user patch, recording each broken one on {@code errors}: each value is set only
+     * when it passes (the user is a managed entity). The writer role is a single-sign-on account's only; the
+     * administrator role is never one's; a typed password belongs to a person with a password of their own.
      */
-    private static void applyField(FieldErrors errors, String value,
-            Function<String, RuleViolation> rule, Consumer<String> setter) {
-        if (value == null) {
-            return;
+    private static void judgeAccountFields(FieldErrors errors, User user, AdminDtos.UserPatch body) {
+        AccountFieldPatch.apply(errors, body.emailAddress(),
+                v -> AccountRules.emailProblem(v, AccountRules.EmailUse.REPLACEMENT), user::setEmailAddress);
+        AccountFieldPatch.apply(errors, body.screenName(), AccountRules::screenNameProblem, user::setScreenName);
+        AccountFieldPatch.apply(errors, body.fullName(), AccountRules::fullNameProblem, user::setFullName);
+        AccountFieldPatch.apply(errors, body.locale(), AccountRules::localeProblem, user::setLocale);
+        AccountFieldPatch.apply(errors, body.timeZone(), AccountRules::timeZoneProblem, user::setTimeZone);
+        // Only a single-sign-on account has an author role to edit (the person screen's own rule); any other
+        // account's follows its memberships.
+        if (body.writer() != null && !user.isSsoBound()) {
+            errors.add("writer", ProblemCode.USER_WRITER_SSO_ONLY);
         }
-        String trimmed = value.trim();
-        RuleViolation problem = rule.apply(trimmed);
-        if (problem == null) {
-            setter.accept(trimmed);
+        if (user.isSsoBound() && Boolean.TRUE.equals(body.administrator())) {
+            RuleProblems.add(errors, AccountRules.ssoAdminProblem());
         }
-        RuleProblems.add(errors, problem);
+        if (StringUtils.isNotEmpty(body.password())) {
+            if (user.isSsoBound()) {
+                errors.add("password", ProblemCode.USER_SSO_BOUND);
+            } else if (user.isAgent()) {
+                errors.add("password", ProblemCode.USER_NOT_A_PERSON);
+            } else {
+                RuleProblems.add(errors, AccountRules.passwordViolation("password", body.password(), false));
+            }
+        }
     }
 
     /**

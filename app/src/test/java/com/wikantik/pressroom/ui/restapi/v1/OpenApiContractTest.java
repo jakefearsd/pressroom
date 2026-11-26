@@ -110,7 +110,10 @@ class OpenApiContractTest {
             "membersGrant", "membersChange", "membersRemove",
             "templatesList", "templatesGet", "templatesCreate", "templatesUpdate", "templatesDelete",
             "stylesheetGet", "stylesheetSave", "stylesheetCopyFromShared", "stylesheetRevert", "stylesheetDelete",
-            "submissionsList", "submissionsDelete", "weblogsDelete");
+            "submissionsList", "submissionsDelete", "weblogsDelete",
+            "agentsList", "agentsCreate", "agentsGet", "agentsUpdate", "agentsMintToken", "agentsRevokeToken",
+            "siteTokensList", "siteTokensRevoke", "meProfileUpdate", "mePasswordChange",
+            "userWeblogsGrant", "userWeblogsChange", "userWeblogsRemove");
 
     /**
      * Request bodies the API defines as an open map of names to values, by

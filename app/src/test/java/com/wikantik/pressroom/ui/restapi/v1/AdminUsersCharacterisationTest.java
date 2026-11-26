@@ -63,6 +63,7 @@ class AdminUsersCharacterisationTest {
         when(weblogger.getUserManager()).thenReturn(users);
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
+        controller.commentService = org.mockito.Mockito.mock(com.wikantik.pressroom.business.comments.CommentService.class);
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
         // Mail is never ready here, so a create that passes every field check is refused for that
         // instead of creating anything.

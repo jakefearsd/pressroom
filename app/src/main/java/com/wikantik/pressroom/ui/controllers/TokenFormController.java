@@ -98,7 +98,7 @@ public abstract class TokenFormController extends BaseController {
         } else if (label.length() > MAX_LABEL_LENGTH) {
             addFieldError(model, "tokenLabel", "apiTokens.error.labelTooLong", request);
         }
-        ApiToken.Role role = roleOf(values.getRole());
+        ApiToken.Role role = TokenOps.roleOf(values.getRole());
         if (role == null) {
             addFieldError(model, "tokenRole", "apiTokens.error.role", request);
         }
@@ -114,11 +114,7 @@ public abstract class TokenFormController extends BaseController {
             return null;
         }
         try {
-            ApiTokenManager.Issued issued = weblogger.getApiTokenManager()
-                    .issueToken(owner, label, pin, role, expiry.expiresAt(), actor);
-            weblogger.flush();
-            AdminLog.record("token.minted", actor, AdminLog.tokenDetails(issued.token()));
-            return issued;
+            return TokenOps.mint(weblogger, owner, actor, label, pin, role, expiry.expiresAt());
         } catch (WebloggerException e) {
             log.error("Could not mint a token for {}", owner.getUserName(), e);
             addError(model, "generic.error.check.logs", request);
@@ -175,19 +171,10 @@ public abstract class TokenFormController extends BaseController {
      */
     protected RevokeOutcome revokeToken(User actor, String tokenId, User requiredOwner) {
         try {
-            ApiTokenManager tokens = weblogger.getApiTokenManager();
-            ApiToken token = tokens.getToken(tokenId);
-            if (token == null
-                    || (requiredOwner != null && !token.getUser().getId().equals(requiredOwner.getId()))) {
-                return RevokeOutcome.NOT_FOUND;
-            }
-            boolean wasLive = token.getRevokedAt() == null;
-            tokens.revoke(token);
-            weblogger.flush();
-            if (wasLive) {
-                AdminLog.record("token.revoked", actor, AdminLog.tokenDetails(token));
-            }
-            return RevokeOutcome.REVOKED;
+            return switch (TokenOps.revoke(weblogger, actor, tokenId, requiredOwner)) {
+                case REVOKED -> RevokeOutcome.REVOKED;
+                case NOT_FOUND -> RevokeOutcome.NOT_FOUND;
+            };
         } catch (WebloggerException e) {
             log.error("Could not revoke token {}", tokenId, e);
             return RevokeOutcome.FAILED;
@@ -222,15 +209,6 @@ public abstract class TokenFormController extends BaseController {
             log.error("Could not check the pin {} for {}", pin, owner.getUserName(), e);
             return false;
         }
-    }
-
-    private static ApiToken.Role roleOf(String role) {
-        for (ApiToken.Role candidate : ApiToken.Role.values()) {
-            if (candidate.name().equals(role)) {
-                return candidate;
-            }
-        }
-        return null;
     }
 
     private static ExpiryChoice expiryFor(String choice, Instant now) {

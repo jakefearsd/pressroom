@@ -121,6 +121,7 @@ class AdminApiTest {
     private AdminApi controllerFor(Weblogger weblogger) {
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
+        controller.commentService = mock(com.wikantik.pressroom.business.comments.CommentService.class);
         return controller;
     }
 
@@ -451,18 +452,20 @@ class AdminApiTest {
     }
 
     /**
-     * The load-bearing shape of the create-user body: it has no place to put
-     * a password even if a caller tried, and {@code UserCreate} carries only
-     * the six fields listed here (names, address, locale and time zone).
+     * The load-bearing shape of the create-user body: the one password field it has is documented session-only
+     * (SA-18; {@code AdminUsersSessionOnlyApiTest} pins that a token sending it meets 403), and it still has no
+     * field that reads back or echoes a password. {@code UserCreate} carries the six account fields, that
+     * password and the administrator flag.
      */
     @Test
-    void userCreateHasNoPasswordField() {
+    void userCreateCarriesAPasswordOnlyAsTheSessionOnlyField() {
         var components = AdminDtos.UserCreate.class.getRecordComponents();
-        assertEquals(6, components.length);
-        for (var component : components) {
-            assertFalse(component.getName().toLowerCase().contains("password"),
-                    "UserCreate must never carry a password field: " + component.getName());
-        }
+        assertEquals(8, components.length);
+        long passwordFields = java.util.Arrays.stream(components)
+                .filter(c -> c.getName().toLowerCase().contains("password")).count();
+        assertEquals(1, passwordFields);
+        assertTrue(java.util.Arrays.stream(AdminDtos.UserView.class.getRecordComponents())
+                .noneMatch(c -> c.getName().toLowerCase().contains("password")), "a view never shows a password");
     }
 
     @Test
@@ -850,6 +853,32 @@ class AdminApiTest {
 
         verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
         verify(weblogger, never()).flush();
+    }
+
+    /**
+     * Wave 4 (SA-18): {@code site.absoluteurl} is the admin app's alone, so a session writes it where a token
+     * meets 403 (the two tests above). Written the way Global Config writes it: trimmed, saved, flushed.
+     */
+    @Test
+    void patchConfigAppliesSiteAbsoluteUrlForASession() throws Exception {
+        asSession();
+        Weblogger weblogger = mockedConfigWeblogger();
+        // Changing it expires every cached page (SiteSettingsEffects), which walks the weblogs.
+        when(weblogger.getWeblogManager()).thenReturn(mock(com.wikantik.pressroom.business.WeblogManager.class));
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"site.absoluteurl\":\"https://blog.example.com\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<Map<String, RuntimeConfigProperty>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(weblogger.getPropertiesManager()).saveProperties(captor.capture());
+        assertEquals("https://blog.example.com", captor.getValue().get("site.absoluteurl").getValue());
+        // The save, then the expiry of every cached page the new address appears on.
+        verify(weblogger, times(2)).flush();
     }
 
     // --- Permission/scope declarations ---

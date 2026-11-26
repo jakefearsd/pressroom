@@ -121,6 +121,32 @@ public final class MetaDtos {
             int entryTextMaxChars) {
     }
 
+    /**
+     * The body of {@code PATCH /me/profile}: the Profile page's account fields. A field left out is left alone.
+     * Session only (SA-18): the email address is where password-reset links go.
+     */
+    public record ProfilePatch(
+            @Schema(description = "The display name that signs the account's comments and posts.")
+            String screenName,
+            @Schema(description = "The account holder's full name.")
+            String fullName,
+            @Schema(description = "The account's email address, where password-reset links go.")
+            String emailAddress,
+            @Schema(description = "The account's locale, one the settings form offers, such as en_US.")
+            String locale,
+            @Schema(description = "The account's time zone id, such as America/Denver.")
+            String timeZone) {
+    }
+
+    /** The body of {@code PUT /me/password}: the Profile page's password change. Session only (SA-18). */
+    public record PasswordChange(
+            @Schema(description = "The account's current password: a signed-in session alone must not be enough "
+                    + "to take the account over for good. Required.")
+            String currentPassword,
+            @Schema(description = "The new password, at least the minimum length. Required.")
+            String newPassword) {
+    }
+
     /** The caller's own account, read-only; no password, hash or token. */
     public record ProfileView(
             @Schema(description = "The account's user name.", requiredMode = Schema.RequiredMode.REQUIRED)

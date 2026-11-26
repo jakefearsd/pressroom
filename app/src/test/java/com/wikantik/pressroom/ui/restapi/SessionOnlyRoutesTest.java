@@ -50,7 +50,7 @@ class SessionOnlyRoutesTest {
 
     @Test
     void theMarkIsNotVacuous() {
-        assertTrue(MARKED.size() >= 17, "the SA-18 routes of wave 3 are marked: " + keys(MARKED));
+        assertTrue(MARKED.size() >= 31, "the SA-18 routes of waves 3 and 4 are marked: " + keys(MARKED));
     }
 
     @Test

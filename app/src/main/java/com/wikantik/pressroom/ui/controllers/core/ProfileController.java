@@ -36,7 +36,6 @@ import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.PasswordRules;
-import com.wikantik.pressroom.ui.core.PressroomContext;
 import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -162,7 +161,7 @@ public class ProfileController extends BaseController {
         } else if (changesPassword) {
             // A signed-in session alone (a borrowed laptop, a stolen cookie)
             // must not be enough to take the account over for good.
-            if (!currentPasswordMatches(signedIn, bean.getCurrentPassword())) {
+            if (!PasswordRules.matchesCurrent(signedIn, bean.getCurrentPassword())) {
                 addFieldError(model, "currentPassword", "yourProfile.error.currentPassword", request);
             }
             if (!PasswordRules.isLongEnough(bean.getPasswordText())) {
@@ -191,23 +190,6 @@ public class ProfileController extends BaseController {
             if (first.isEmpty() || "".equals(first.get().getDisplayName())) {
                 addFieldError(model, "locale", "error.add.user.invalid.locale", request);
             }
-        }
-    }
-
-    /**
-     * Whether {@code typed} is the signed-in user's current password. Fails
-     * closed: no user, nothing typed, or a stored hash the encoder cannot read
-     * (it throws on an unknown {@code {id}}) all answer false.
-     */
-    private static boolean currentPasswordMatches(User signedIn, String typed) {
-        if (signedIn == null || StringUtils.isEmpty(typed) || signedIn.getPassword() == null) {
-            return false;
-        }
-        try {
-            return PressroomContext.getPasswordEncoder().matches(typed, signedIn.getPassword());
-        } catch (IllegalArgumentException ex) {
-            log.warn("The stored password of {} could not be checked", signedIn.getUserName(), ex);
-            return false;
         }
     }
 

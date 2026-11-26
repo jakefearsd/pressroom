@@ -82,6 +82,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -256,7 +257,8 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/weblogs/{handle}/entries/{id}/delete-forever", POST, SITE_LOGIN, ON_POST),
             // Duplicate and send-newsletter are the entries list's and the editor's own POST-level actions.
             row("POST   /v1/weblogs/{handle}/entries/{id}/duplicate", POST,  SITE_LOGIN, ON_POST),
-            row("POST   /v1/weblogs/{handle}/entries/{id}/send-newsletter", POST, SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/send-newsletter", POST, SITE_LOGIN, ON_POST,
+                    Flag.SESSION_ONLY),
             row("POST   /v1/weblogs/{handle}/entries/{id}/preview",   POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/preview",        POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore", POST, SITE_LOGIN, ON_DRAFT),
@@ -346,6 +348,24 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/weblogs/{handle}/submissions",            ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
             row("DELETE /v1/weblogs/{handle}/submissions/{id}",       ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
             row("DELETE /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
+
+            // --- Session-only (SA-18), wave 4: the site admin's own screens and the caller's profile writes.
+            //     A site admin reads as the user list does; the profile writes as the caller's own read.
+            row("GET    /v1/admin/agents",                            ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("POST   /v1/admin/agents",                            ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("GET    /v1/admin/agents/{userName}",                 ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("PATCH  /v1/admin/agents/{userName}",                 ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("POST   /v1/admin/agents/{userName}/tokens",          ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("DELETE /v1/admin/agents/{userName}/tokens/{id}",     ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("GET    /v1/admin/tokens",                            ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("DELETE /v1/admin/tokens/{id}",                       ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("POST   /v1/admin/users/{userName}/weblogs",          ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("PATCH  /v1/admin/users/{userName}/weblogs/{weblogHandle}", ADMIN, SITE_ADMIN, NO_WEBLOG,
+                    Flag.SESSION_ONLY),
+            row("DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}", ADMIN, SITE_ADMIN, NO_WEBLOG,
+                    Flag.SESSION_ONLY),
+            row("PATCH  /v1/me/profile",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.SESSION_ONLY),
+            row("PUT    /v1/me/password",                             READ,  NO_GLOBAL,  NO_WEBLOG, Flag.SESSION_ONLY),
 
             // --- A weblog's shared themes: the owner's, with an ADMIN token, as the settings read
             row("GET    /v1/weblogs/{handle}/themes",                 ADMIN, SITE_LOGIN, ON_ADMIN),
@@ -647,6 +667,9 @@ class ApiAuthorizationMatrixTest {
             when(tier.userManager().getRoles(user)).thenReturn(
                     GlobalPermission.ADMIN.equals(person.global()) ? List.of("admin") : List.of("editor"));
         }
+        // A session signs in as <name>#<n> (see sessionOf): the lookup answers the account behind the suffix.
+        when(tier.userManager().getUserByUserName(argThat(name -> name != null && name.contains("#"))))
+                .thenAnswer(call -> users.get(((String) call.getArgument(0)).replaceFirst("#.*$", "")));
         // The real ladders (GlobalPermission/WeblogPermission.implies) over the fixture's grants.
         when(tier.userManager().checkPermission(any(), any())).thenAnswer(call -> {
             Person person = byName.get(((User) call.getArgument(1)).getUserName());
@@ -701,7 +724,7 @@ class ApiAuthorizationMatrixTest {
             request.header("Authorization", "Bearer " + RAW_TOKEN_PREFIX + CALLERS.indexOf(who) + "_" + n);
         }
         if (who.kind() == Kind.SESSION) {
-            request.session(sessionOf(who.person()));
+            request.session(sessionOf(who.person(), n));
             if (!"GET".equals(method)) {
                 request.with(csrf().asHeader());
             }
@@ -712,10 +735,16 @@ class ApiAuthorizationMatrixTest {
         return mockMvc.perform(request).andReturn();
     }
 
-    /** The session form login leaves: the stock details, and the one authority the user's global role gives. */
-    private static MockHttpSession sessionOf(Person person) {
+    /**
+     * The session form login leaves: the stock details, and the one authority the user's global role gives.
+     * A session caller is throttled by its signed-in user name (the admin app makes many calls), so a user
+     * who is five sessions' cells over the whole route table would pass the 120-a-minute budget once the table
+     * grew past it (wave 4). Each request therefore signs in under {@code <name>#<n>}, which the user lookup in
+     * {@link #stubTheSite} answers as {@code <name>}; the throttle has its own tests.
+     */
+    private static MockHttpSession sessionOf(Person person, int request) {
         UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.authenticated(
-                person.name(), null, List.of(new SimpleGrantedAuthority(
+                person.name() + "#" + request, null, List.of(new SimpleGrantedAuthority(
                         GlobalPermission.ADMIN.equals(person.global()) ? "admin" : "editor")));
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(new MockHttpServletRequest()));
         MockHttpSession session = new MockHttpSession();

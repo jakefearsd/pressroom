@@ -170,8 +170,9 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   newsletter" both need `POST`, where the rest of the entry writes take `EDIT_DRAFT`. Each calls the code the JSP
   controller calls (`EntryDuplication`, `EntryNewsletter`: the newsletter's outcomes are an enum each screen words
   its own way, and its "stamp only after the send" rule lives there). Both are MCP `Exclusion`s: duplicate is an
-  editing-screen convenience, and a send emails every subscriber, so it stays a person's decision. Whether
-  send-newsletter belongs on SA-18's session-only list is not decided here; it is token-reachable at `POST`.
+  editing-screen convenience, and a send emails every subscriber, so it stays a person's decision. Send-newsletter
+  is `@SessionOnly` (owner decision 2026-11-25, wave 4): irreversible mail to every subscriber, so a token never
+  sends it; the decision-log entry is drafted in `docs/superpowers/specs/2026-11-25-sa-draft-session-only-additions.md`.
   `GET .../entries` takes `startDate`/`endDate`, the JSP filter's bounds (`EntryListQuery.startOfDay`/`endOfDay`,
   server time zone), strictly parsed. An entry's `pinnedToMain` is a site administrator's (`ContributorRules.isSiteAdmin`,
   `entry.needsSiteAdmin`, refused only when the value would change); `locale` is anyone's. A category's `image`
@@ -842,8 +843,30 @@ Decision: SA-18 in `SimpleAgilityDecisionLog` (Wikantik); drafting record in
   actions (`admin`/`post`/`edit_draft`).
 
 Built in wave 3: weblog membership writes, custom templates, the stylesheet, the switch to a custom theme, the
-contact-form inbox, weblog deletion. Still only in the JSP admin UI (no API route yet): agent accounts, admin
-accounts and the admin role, profile writes, the site-wide token list.
+contact-form inbox, weblog deletion.
+
+**Wave 4 (2026-11-25) added the rest.** Whole-controller `@SessionOnly` (class level, plus `@AdminScoped`):
+`AgentsApi` (`/v1/admin/agents`: list, create, get, patch, mint and revoke tokens), `SiteTokensApi`
+(`/v1/admin/tokens`), `MeProfileApi` (`PATCH /v1/me/profile`, `PUT /v1/me/password`; no `@AdminScoped`, any signed-in
+caller) and `UserWeblogsApi` (`/v1/admin/users/{userName}/weblogs`, per method). The shared code is in
+`ui.controllers`: `AgentAccounts` (name and notes rules, create, update, enable, with the audit lines), `TokenOps`
+(mint and revoke with `token.minted`/`token.revoked`; `TokenFormController` delegates), `AccountRules`
+(`passwordViolation`, `ssoAdminProblem`, `selfLockoutProblems`, shared by `UserEditController` and the API),
+`PasswordRules.matchesCurrent`, `TokenRow.loadOrThrow`, `Memberships` (unchanged; `UserWeblogsController` already
+used its primitives). Three more things share the pattern but are **field-level, not route-level**: on
+`/v1/admin/users` the `administrator`, `password` and `writer` fields are refused to a non-session caller through
+`AdminAccountGuard.requireSessionToChange` / `requireSessionToSetPassword` (403 `auth.sessionOnly`, before anything is
+applied; a token resending the stored value passes), so the routes themselves stay token-reachable for the
+token-safe fields. `site.absoluteurl` already passed `AdminAccountGuard.requireApiManageable` for a session; it is
+pinned by `AdminApiTest.patchConfigAppliesSiteAbsoluteUrlForASession`. The self-lock-out refusals
+(`user.cantDisableSelf`, `user.cantChangeOwnRole`) apply to any caller acting on their own account, before any
+field is applied. A renamed account expires the weblogs showing its comments (`CommentService.expireWhereShown`),
+for the user patch and the profile route alike.
+
+Test notes. The authorization matrix signs each session request in as `<name>#<n>`: a session is throttled by user
+name (120 a minute) and the route table passed 120 in wave 4; the matrix's user lookup strips the suffix. A
+membership path variable is `{weblogHandle}`, never `{handle}`: the interceptor reads `{handle}` as the action
+weblog. Wave 4 left no SA-18 resource only in the JSP.
 
 Rules for building one: the route's caller-kind check refuses `TOKEN` and `PASSWORD` callers with 403
 (`ANONYMOUS` and anything unrecognised fail closed), after the visibility rules (a caller who may not

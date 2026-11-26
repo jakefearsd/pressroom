@@ -27,6 +27,9 @@
     "name" : "Weblog themes",
     "description" : "The shared themes a weblog may switch to, and the switch to its own templates (a custom theme)."
   }, {
+    "name" : "Site tokens",
+    "description" : "Every token on the site (session only: the admin app, never a token)."
+  }, {
     "name" : "Pages",
     "description" : "A weblog's pages: write, trash and restore them, their revisions, and a strand's parts."
   }, {
@@ -45,6 +48,12 @@
     "name" : "Stylesheet",
     "description" : "A weblog's own stylesheet (session only: the admin app, never a token)."
   }, {
+    "name" : "User memberships",
+    "description" : "Granting, changing and removing an account's roles on weblogs (session only: the admin app, never a token)."
+  }, {
+    "name" : "Agents",
+    "description" : "Agent accounts and the tokens minted for them (session only: the admin app, never a token)."
+  }, {
     "name" : "Entry actions",
     "description" : "Duplicate an entry into a new draft, or send it to the weblog's newsletter list. Needs publish rights, as the screens that do them do."
   }, {
@@ -62,6 +71,9 @@
   }, {
     "name" : "Meta",
     "description" : "Liveness, site facts, and who the caller is."
+  }, {
+    "name" : "Profile writes",
+    "description" : "Changing the caller's own account and password (session only: the admin app, never a token)."
   }, {
     "name" : "Site status",
     "description" : "What the Maintenance screen shows about front-page discovery and analytics, and the two actions beside it (site admins)."
@@ -246,6 +258,38 @@
                 }
               }
             }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/password" : {
+      "put" : {
+        "tags" : [ "Profile writes" ],
+        "summary" : "Change the caller's own password (session only).",
+        "operationId" : "mePasswordChange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
           },
           "default" : {
             "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
@@ -1690,6 +1734,7 @@
     "/v1/weblogs/{handle}/entries/{id}/send-newsletter" : {
       "post" : {
         "tags" : [ "Entry actions" ],
+        "summary" : "Email the entry to the weblog's newsletter list (session only).",
         "operationId" : "entriesSendNewsletter",
         "parameters" : [ {
           "name" : "id",
@@ -2572,6 +2617,87 @@
         }
       }
     },
+    "/v1/admin/users/{userName}/weblogs" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "usersListWeblogs",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserWeblogsPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "User memberships" ],
+        "summary" : "Give an account a role on a weblog (session only).",
+        "operationId" : "userWeblogsGrant",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserWeblogGrant"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Granted.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogMembership"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/users/{userName}/password-link" : {
       "post" : {
         "tags" : [ "Site administration" ],
@@ -2764,6 +2890,153 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AnalyticsStatusView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents" : {
+      "get" : {
+        "tags" : [ "Agents" ],
+        "summary" : "List agent accounts (session only).",
+        "operationId" : "agentsList",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Only agents whose user name, name or email contains this text, ignoring case.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "enabled",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Agents" ],
+        "summary" : "Create an agent account (session only).",
+        "operationId" : "agentsCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AgentCreate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/{userName}/tokens" : {
+      "post" : {
+        "tags" : [ "Agents" ],
+        "summary" : "Mint a token for an agent (session only).",
+        "operationId" : "agentsMintToken",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/IssueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created; the secret is in this response only.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/IssuedToken"
                 }
               }
             }
@@ -3822,6 +4095,72 @@
         }
       }
     },
+    "/v1/me/profile" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "summary" : "The caller's own account details (read-only).",
+        "operationId" : "meProfileGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Profile writes" ],
+        "summary" : "Change the caller's own account details (session only).",
+        "operationId" : "meProfileUpdate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfilePatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/users/{userName}" : {
       "patch" : {
         "tags" : [ "Site administration" ],
@@ -3851,6 +4190,95 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{userName}/weblogs/{weblogHandle}" : {
+      "delete" : {
+        "tags" : [ "User memberships" ],
+        "summary" : "Remove an account's role on a weblog (session only).",
+        "operationId" : "userWeblogsRemove",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "weblogHandle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "User memberships" ],
+        "summary" : "Change the level an account holds on a weblog (session only).",
+        "operationId" : "userWeblogsChange",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "weblogHandle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserWeblogChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogMembership"
                 }
               }
             }
@@ -4034,6 +4462,88 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/{userName}" : {
+      "get" : {
+        "tags" : [ "Agents" ],
+        "summary" : "One agent, with its live tokens (session only).",
+        "operationId" : "agentsGet",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Agents" ],
+        "summary" : "Change an agent (session only).",
+        "operationId" : "agentsUpdate",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AgentPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentView"
                 }
               }
             }
@@ -4879,71 +5389,6 @@
         }
       }
     },
-    "/v1/me/profile" : {
-      "get" : {
-        "tags" : [ "Meta" ],
-        "summary" : "The caller's own account details (read-only).",
-        "operationId" : "meProfileGet",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProfileView"
-                }
-              }
-            }
-          },
-          "default" : {
-            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiProblem"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/admin/users/{userName}/weblogs" : {
-      "get" : {
-        "tags" : [ "Site administration" ],
-        "operationId" : "usersListWeblogs",
-        "parameters" : [ {
-          "name" : "userName",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/UserWeblogsPage"
-                }
-              }
-            }
-          },
-          "default" : {
-            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiProblem"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/admin/traffic" : {
       "get" : {
         "tags" : [ "Site traffic" ],
@@ -4966,6 +5411,45 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/SiteTrafficView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/tokens" : {
+      "get" : {
+        "tags" : [ "Site tokens" ],
+        "summary" : "Every user's tokens (session only).",
+        "operationId" : "siteTokensList",
+        "parameters" : [ {
+          "name" : "all",
+          "in" : "query",
+          "description" : "True adds revoked and expired tokens.",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SiteTokenPage"
                 }
               }
             }
@@ -5168,6 +5652,73 @@
           }
         }
       }
+    },
+    "/v1/admin/tokens/{id}" : {
+      "delete" : {
+        "tags" : [ "Site tokens" ],
+        "summary" : "Revoke any token (session only).",
+        "operationId" : "siteTokensRevoke",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/{userName}/tokens/{id}" : {
+      "delete" : {
+        "tags" : [ "Agents" ],
+        "summary" : "Revoke one of an agent's tokens (session only).",
+        "operationId" : "agentsRevokeToken",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -5303,6 +5854,19 @@
           "position" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "PasswordChange" : {
+        "type" : "object",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string",
+            "description" : "The account's current password: a signed-in session alone must not be enough to take the account over for good. Required."
+          },
+          "newPassword" : {
+            "type" : "string",
+            "description" : "The new password, at least the minimum length. Required."
           }
         }
       },
@@ -6465,6 +7029,14 @@
           "timeZone" : {
             "type" : "string",
             "description" : "The account's time zone id, for example Europe/Berlin."
+          },
+          "password" : {
+            "type" : "string",
+            "description" : "Session only (SA-18). A password for the account to sign in with at once, instead of a set-password link; the account is then created enabled and no mail is needed."
+          },
+          "administrator" : {
+            "type" : "boolean",
+            "description" : "Session only (SA-18). Give the new account the site administrator role."
           }
         }
       },
@@ -6512,6 +7084,38 @@
             "description" : "Whether the account holds the editor (author) role. Settable only on a single-sign-on account."
           }
         }
+      },
+      "UserWeblogGrant" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string",
+            "description" : "The handle of an existing weblog (never the site space). Required."
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "ADMIN, POST or EDIT_DRAFT. Required.",
+            "enum" : [ "ADMIN", "POST", "EDIT_DRAFT" ]
+          }
+        }
+      },
+      "WeblogMembership" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string",
+            "description" : "The weblog's handle."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The weblog's name; an empty string when it has none."
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "ADMIN, POST or EDIT_DRAFT: the highest permission the account holds on it."
+          }
+        },
+        "required" : [ "handle", "name", "permission" ]
       },
       "RevisionSweepRequest" : {
         "type" : "object",
@@ -6781,6 +7385,68 @@
         },
         "required" : [ "configured", "failures", "registered", "total" ]
       },
+      "AgentCreate" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The agent's user name; letters and digits, it never changes. Required."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The agent's name, stored as screen name and full name. Required."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "An optional email address; blank leaves the store's placeholder."
+          },
+          "notes" : {
+            "type" : "string",
+            "description" : "Notes about what the agent is for."
+          },
+          "siteAdmin" : {
+            "type" : "boolean",
+            "description" : "Give the agent the site administrator role. Default false."
+          }
+        }
+      },
+      "AgentView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The agent's user name, which never changes."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The agent's name: its screen name and full name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The agent's email address; the store fills one in when none was given."
+          },
+          "notes" : {
+            "type" : "string",
+            "description" : "Notes about what the agent is for."
+          },
+          "enabled" : {
+            "type" : "boolean",
+            "description" : "Whether the agent may act; disabling ends every one of its tokens on its next request."
+          },
+          "siteAdmin" : {
+            "type" : "boolean",
+            "description" : "Whether the agent holds the site administrator role, for the site-wide admin API."
+          },
+          "tokens" : {
+            "type" : "array",
+            "description" : "The agent's live tokens, newest first. Only on a single agent's read.",
+            "items" : {
+              "$ref" : "#/components/schemas/TokenView"
+            }
+          }
+        },
+        "required" : [ "enabled", "name", "siteAdmin", "userName" ]
+      },
       "WeblogPatch" : {
         "type" : "object",
         "properties" : {
@@ -7018,6 +7684,65 @@
           }
         }
       },
+      "ProfilePatch" : {
+        "type" : "object",
+        "properties" : {
+          "screenName" : {
+            "type" : "string",
+            "description" : "The display name that signs the account's comments and posts."
+          },
+          "fullName" : {
+            "type" : "string",
+            "description" : "The account holder's full name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The account's email address, where password-reset links go."
+          },
+          "locale" : {
+            "type" : "string",
+            "description" : "The account's locale, one the settings form offers, such as en_US."
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "The account's time zone id, such as America/Denver."
+          }
+        }
+      },
+      "ProfileView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The account's user name."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The account's display name."
+          },
+          "fullName" : {
+            "type" : "string",
+            "description" : "The account holder's full name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The account's email address."
+          },
+          "locale" : {
+            "type" : "string",
+            "description" : "The account's locale, such as en_US."
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "The account's time zone, such as America/Denver."
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "PERSON or AGENT: whether the account is a person or an agent."
+          }
+        },
+        "required" : [ "kind", "userName" ]
+      },
       "UserPatch" : {
         "type" : "object",
         "properties" : {
@@ -7047,7 +7772,25 @@
           },
           "writer" : {
             "type" : "boolean",
-            "description" : "Grant or revoke the editor (author) role. Only a single-sign-on account has one to edit; any other is refused."
+            "description" : "Grant or revoke the editor (author) role. Only a single-sign-on account has one to edit; any other is refused. Session only (SA-18): a token may resend the stored value."
+          },
+          "administrator" : {
+            "type" : "boolean",
+            "description" : "Session only (SA-18). Grant or revoke the site administrator role. A token may resend the stored value. Refused for a single-sign-on account, and for an admin on their own account (they cannot lock themselves out)."
+          },
+          "password" : {
+            "type" : "string",
+            "description" : "Session only (SA-18). A new password for a person's account, at least the minimum length; it ends the account's other sessions. Refused for a single-sign-on account and an agent."
+          }
+        }
+      },
+      "UserWeblogChange" : {
+        "type" : "object",
+        "properties" : {
+          "permission" : {
+            "type" : "string",
+            "description" : "ADMIN, POST or EDIT_DRAFT. Required.",
+            "enum" : [ "ADMIN", "POST", "EDIT_DRAFT" ]
           }
         }
       },
@@ -7062,6 +7805,27 @@
           },
           "type" : {
             "type" : "string"
+          }
+        }
+      },
+      "AgentPatch" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The agent's name, stored as screen name and full name."
+          },
+          "notes" : {
+            "type" : "string",
+            "description" : "Notes; an empty string clears them."
+          },
+          "siteAdmin" : {
+            "type" : "boolean",
+            "description" : "Grant or revoke the site administrator role."
+          },
+          "enabled" : {
+            "type" : "boolean",
+            "description" : "Enable or disable the agent."
           }
         }
       },
@@ -7837,58 +8601,6 @@
           }
         }
       },
-      "WeblogMembership" : {
-        "type" : "object",
-        "properties" : {
-          "handle" : {
-            "type" : "string",
-            "description" : "The weblog's handle."
-          },
-          "name" : {
-            "type" : "string",
-            "description" : "The weblog's name; an empty string when it has none."
-          },
-          "permission" : {
-            "type" : "string",
-            "description" : "ADMIN, POST or EDIT_DRAFT: the highest permission the account holds on it."
-          }
-        },
-        "required" : [ "handle", "name", "permission" ]
-      },
-      "ProfileView" : {
-        "type" : "object",
-        "properties" : {
-          "userName" : {
-            "type" : "string",
-            "description" : "The account's user name."
-          },
-          "screenName" : {
-            "type" : "string",
-            "description" : "The account's display name."
-          },
-          "fullName" : {
-            "type" : "string",
-            "description" : "The account holder's full name."
-          },
-          "emailAddress" : {
-            "type" : "string",
-            "description" : "The account's email address."
-          },
-          "locale" : {
-            "type" : "string",
-            "description" : "The account's locale, such as en_US."
-          },
-          "timeZone" : {
-            "type" : "string",
-            "description" : "The account's time zone, such as America/Denver."
-          },
-          "kind" : {
-            "type" : "string",
-            "description" : "PERSON or AGENT: whether the account is a person or an agent."
-          }
-        },
-        "required" : [ "kind", "userName" ]
-      },
       "UserPage" : {
         "type" : "object",
         "properties" : {
@@ -8020,6 +8732,73 @@
           }
         }
       },
+      "SiteTokenPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "Newest first.",
+            "items" : {
+              "$ref" : "#/components/schemas/SiteTokenView"
+            }
+          }
+        },
+        "required" : [ "items" ]
+      },
+      "SiteTokenView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "The token's id; what revoking it takes."
+          },
+          "label" : {
+            "type" : "string",
+            "description" : "The label its owner gave it."
+          },
+          "scopeWeblog" : {
+            "type" : "string",
+            "description" : "The weblog it is limited to; absent when it reaches every weblog its owner can."
+          },
+          "scopeRole" : {
+            "type" : "string",
+            "description" : "READ, POST or ADMIN."
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastUsedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "revokedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "owner" : {
+            "type" : "string",
+            "description" : "The user name of the account the token acts as."
+          },
+          "ownerKind" : {
+            "type" : "string",
+            "description" : "PERSON or AGENT: what kind of account the owner is."
+          },
+          "issuedBy" : {
+            "type" : "string",
+            "description" : "The user name of whoever issued it (the stored id when that account is gone); absent on a token issued before issuers were recorded."
+          },
+          "live" : {
+            "type" : "boolean",
+            "description" : "Neither revoked nor expired."
+          }
+        },
+        "required" : [ "id", "live", "owner", "ownerKind" ]
+      },
       "ItemCount" : {
         "type" : "object",
         "properties" : {
@@ -8113,6 +8892,33 @@
         },
         "required" : [ "hasMore", "items", "limit", "offset", "total" ]
       },
+      "AgentPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/AgentView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
       "ApiProblem" : {
         "type" : "object",
         "description" : "Why a request failed: an RFC 9457 problem detail, served as application/problem+json. Branch on code, never on detail.",
@@ -8152,7 +8958,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "userWeblogs.weblogUnknown", "http.error" ]
           }
         },
         "required" : [ "code", "status", "title", "type" ]
@@ -8172,7 +8978,7 @@
           "code" : {
             "type" : "string",
             "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
-            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "http.error" ]
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "entry.needsSiteAdmin", "newsletter.notPublished", "newsletter.alreadySent", "newsletter.noList", "newsletter.notConfigured", "newsletter.sendFailed", "newsletter.sentButNotRecorded", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "csrf.invalid", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "user.notAPerson", "user.ssoBound", "user.writerSsoOnly", "user.passwordLinkFailed", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "directory.isDefault", "directory.notEmpty", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.imageInvalid", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "auth.sessionOnly", "template.notFound", "template.nameInUse", "template.required", "template.actionUnavailable", "stylesheet.notFound", "stylesheet.customTheme", "theme.customisationDisabled", "member.notFound", "member.userUnknown", "member.readerAccount", "member.levelInvalid", "member.groupBloggingOff", "member.selfChange", "member.lastAdmin", "submission.notFound", "agent.notFound", "password.tooShort", "profile.currentPasswordWrong", "user.ssoAdmin", "user.cantDisableSelf", "user.cantChangeOwnRole", "userWeblogs.weblogUnknown", "http.error" ]
           }
         },
         "required" : [ "code" ]

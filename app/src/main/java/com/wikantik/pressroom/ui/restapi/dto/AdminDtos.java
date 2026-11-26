@@ -86,6 +86,22 @@ public final class AdminDtos {
             List<MetaDtos.WeblogMembership> items) {
     }
 
+    /** Grants an account a role on a weblog, at once: the person page's "add to a weblog" form. */
+    public record UserWeblogGrant(
+            @Schema(description = "The handle of an existing weblog (never the site space). Required.")
+            String handle,
+            @Schema(description = "ADMIN, POST or EDIT_DRAFT. Required.",
+                    allowableValues = {"ADMIN", "POST", "EDIT_DRAFT"})
+            String permission) {
+    }
+
+    /** Changes the level an account holds on a weblog. */
+    public record UserWeblogChange(
+            @Schema(description = "ADMIN, POST or EDIT_DRAFT. Required.",
+                    allowableValues = {"ADMIN", "POST", "EDIT_DRAFT"})
+            String permission) {
+    }
+
     /**
      * The body of a create-user request. Deliberately carries no password
      * field -- {@link com.wikantik.pressroom.ui.restapi.v1.AdminApi}
@@ -104,7 +120,12 @@ public final class AdminDtos {
             @Schema(description = "The account's locale, one the settings form offers, for example en_US.")
             String locale,
             @Schema(description = "The account's time zone id, for example Europe/Berlin.")
-            String timeZone) {
+            String timeZone,
+            @Schema(description = "Session only (SA-18). A password for the account to sign in with at once, "
+                    + "instead of a set-password link; the account is then created enabled and no mail is needed.")
+            String password,
+            @Schema(description = "Session only (SA-18). Give the new account the site administrator role.")
+            Boolean administrator) {
     }
 
     /**
@@ -127,8 +148,16 @@ public final class AdminDtos {
             @Schema(description = "The account's time zone id, for example Europe/Berlin.")
             String timeZone,
             @Schema(description = "Grant or revoke the editor (author) role. Only a single-sign-on account has "
-                    + "one to edit; any other is refused.")
-            Boolean writer) {
+                    + "one to edit; any other is refused. Session only (SA-18): a token may resend the stored value.")
+            Boolean writer,
+            @Schema(description = "Session only (SA-18). Grant or revoke the site administrator role. A token may "
+                    + "resend the stored value. Refused for a single-sign-on account, and for an admin on their own "
+                    + "account (they cannot lock themselves out).")
+            Boolean administrator,
+            @Schema(description = "Session only (SA-18). A new password for a person's account, at least the "
+                    + "minimum length; it ends the account's other sessions. Refused for a single-sign-on account "
+                    + "and an agent.")
+            String password) {
     }
 
     /**

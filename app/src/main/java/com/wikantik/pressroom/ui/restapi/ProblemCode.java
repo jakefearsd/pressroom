@@ -526,6 +526,20 @@ public enum ProblemCode {
     MEMBER_LAST_ADMIN("member.lastAdmin", ProblemType.CONFLICT, 0),
     /** No contact-form message has this id in the weblog. */
     SUBMISSION_NOT_FOUND("submission.notFound", ProblemType.NOT_FOUND, 0),
+    /** No agent account has this user name (a person's account is not one). */
+    AGENT_NOT_FOUND("agent.notFound", ProblemType.NOT_FOUND, 0),
+    /** A password is shorter than the floor ({0}: the minimum length, as digits). */
+    PASSWORD_TOO_SHORT("password.tooShort", ProblemType.INVALID_REQUEST, 1),
+    /** The current password sent to change one is not the signed-in account's. */
+    PROFILE_CURRENT_PASSWORD_WRONG("profile.currentPasswordWrong", ProblemType.INVALID_REQUEST, 0),
+    /** A single-sign-on account must never hold the administrator role. */
+    USER_SSO_ADMIN("user.ssoAdmin", ProblemType.INVALID_REQUEST, 0),
+    /** An administrator tried to disable their own account. */
+    USER_CANT_DISABLE_SELF("user.cantDisableSelf", ProblemType.CONFLICT, 0),
+    /** An administrator tried to remove their own administrator role. */
+    USER_CANT_CHANGE_OWN_ROLE("user.cantChangeOwnRole", ProblemType.CONFLICT, 0),
+    /** {@code handle} names no weblog a membership can be granted on. */
+    USER_WEBLOG_UNKNOWN("userWeblogs.weblogUnknown", ProblemType.INVALID_REQUEST, 0),
     /**
      * RFC 9457's {@code about:blank}, which MCP answers for an error reply
      * that brought no problem body of its own: the status is the reply's and

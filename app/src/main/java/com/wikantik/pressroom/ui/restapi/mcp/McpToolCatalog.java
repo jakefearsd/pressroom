@@ -217,8 +217,7 @@ public final class McpToolCatalog {
                     "Operator maintenance: starts a registration sync; the admin screen and admin API only."),
             new Exclusion("POST " + W + "/entries/{id}/duplicate", "An editing-screen convenience: an agent has "
                     + "the entry's text and fields already, and entries create makes a draft from them."),
-            new Exclusion("POST " + W + "/entries/{id}/send-newsletter", "Emails every subscriber and cannot be "
-                    + "undone: a person's decision, made on the editor or the REST API, never an agent's."),
+            sessionOnly("POST " + W + "/entries/{id}/send-newsletter"),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."),
             new Exclusion("GET /v1/meta/weblog-options", "A screen's picker (themes with previews, every locale and "
@@ -241,7 +240,20 @@ public final class McpToolCatalog {
             sessionOnly("DELETE " + W + "/members/{userName}"),
             sessionOnly("GET " + W + "/submissions"),
             sessionOnly("DELETE " + W + "/submissions/{id}"),
-            sessionOnly("DELETE " + W));
+            sessionOnly("DELETE " + W),
+            sessionOnly("GET /v1/admin/agents"),
+            sessionOnly("POST /v1/admin/agents"),
+            sessionOnly("GET /v1/admin/agents/{userName}"),
+            sessionOnly("PATCH /v1/admin/agents/{userName}"),
+            sessionOnly("POST /v1/admin/agents/{userName}/tokens"),
+            sessionOnly("DELETE /v1/admin/agents/{userName}/tokens/{id}"),
+            sessionOnly("GET /v1/admin/tokens"),
+            sessionOnly("DELETE /v1/admin/tokens/{id}"),
+            sessionOnly("PATCH /v1/me/profile"),
+            sessionOnly("PUT /v1/me/password"),
+            sessionOnly("POST /v1/admin/users/{userName}/weblogs"),
+            sessionOnly("PATCH /v1/admin/users/{userName}/weblogs/{weblogHandle}"),
+            sessionOnly("DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}"));
 
     /**
      * The reason every session-only route (SA-18) is excluded: an {@code Exclusion} with exactly this

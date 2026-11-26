@@ -47,6 +47,7 @@ class AdminApiBranchesTest {
     private static MockMvc mvc(Weblogger weblogger) {
         AdminApi controller = new AdminApi();
         controller.weblogger = weblogger;
+        controller.commentService = org.mockito.Mockito.mock(com.wikantik.pressroom.business.comments.CommentService.class);
         return MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
     }
 
