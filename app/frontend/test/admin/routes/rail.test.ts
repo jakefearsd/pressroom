@@ -126,9 +126,17 @@ describe('entryTarget', () => {
   });
 
   it('links the migrated screens to React routes and every other entry to its .rol', () => {
-    expect(RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path])).toEqual([
-      ['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']
-    ]);
+    const migrated = RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path]);
+    expect(migrated).toEqual(expect.arrayContaining([['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']]));
+  });
+
+  it('links the wave 3 screens (settings, theme, stylesheet, templates, members, inbox) to their React routes', () => {
+    const migrated = Object.fromEntries(RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path]));
+    expect(migrated).toMatchObject({
+      weblogConfig: '/weblogs/:handle/settings', themeEdit: '/weblogs/:handle/theme',
+      stylesheetEdit: '/weblogs/:handle/stylesheet', templates: '/weblogs/:handle/templates',
+      members: '/weblogs/:handle/members', submissions: '/weblogs/:handle/inbox'
+    });
   });
 
   it('offers the site space only the screens the interceptor lets reach it, and drops a tab left empty', () => {

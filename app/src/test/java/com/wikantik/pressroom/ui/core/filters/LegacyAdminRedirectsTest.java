@@ -79,6 +79,50 @@ class LegacyAdminRedirectsTest {
                 "/pressroom/pressroom-ui/app/admin/traffic?period=90d");
     }
 
+    // ---- wave 3: settings, create, theme, templates, stylesheet, members, inbox, remove
+
+    /** The weblog-scoped screens of wave 3 each carry the handle, at both context paths. */
+    @Test
+    void wave3WeblogScreensCarryTheHandle() throws Exception {
+        Map<String, String> routes = Map.of(
+                "weblogConfig", "settings", "themeEdit", "theme", "templates", "templates",
+                "stylesheetEdit", "stylesheet", "members", "members", "submissions", "inbox",
+                "weblogRemove", "remove");
+        for (Map.Entry<String, String> route : routes.entrySet()) {
+            String legacy = "/pressroom-ui/authoring/" + route.getKey() + ".rol";
+            assertRedirect("", legacy, Map.of("weblog", "it_weblog"),
+                    "/pressroom-ui/app/weblogs/it_weblog/" + route.getValue());
+            assertRedirect("/pressroom", legacy, Map.of("weblog", "it weblog"),
+                    "/pressroom/pressroom-ui/app/weblogs/it%20weblog/" + route.getValue());
+            assertRedirect("", legacy, Map.of(), "/pressroom-ui/app/");
+        }
+    }
+
+    @Test
+    void createWeblogHasNoParameters() throws Exception {
+        assertRedirect("", "/pressroom-ui/createWeblog.rol", Map.of(), "/pressroom-ui/app/weblogs/new");
+        assertRedirect("/pressroom", "/pressroom-ui/createWeblog.rol", Map.of("x", "y"),
+                "/pressroom/pressroom-ui/app/weblogs/new");
+    }
+
+    @Test
+    void templateEditCarriesTheHandleAndTheTemplateId() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/templateEdit.rol",
+                Map.of("weblog", "it_weblog", "bean.id", "t-1"),
+                "/pressroom-ui/app/weblogs/it_weblog/templates/t-1");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/templateEdit.rol",
+                Map.of("weblog", "it_weblog", "bean.id", "a/b"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/templates/a%2Fb");
+        assertRedirect("", "/pressroom-ui/authoring/templateEdit.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/");
+    }
+
+    @Test
+    void theInboxCarriesItsPage() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/submissions.rol", Map.of("weblog", "it_weblog", "page", "2"),
+                "/pressroom-ui/app/weblogs/it_weblog/inbox?page=2");
+    }
+
     // ---- the filter
 
     @Test

@@ -309,10 +309,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .content("/WEB-INF/jsps/core/Account.jsp")
                 .register();
 
-        define(".CreateWeblog").on(SIMPLE)
-                .content("/WEB-INF/jsps/core/CreateWeblog.jsp")
-                .register();
-
         define(".GenericError").on(SIMPLE)
                 .content("/WEB-INF/jsps/core/GenericError.jsp")
                 .register();
@@ -445,31 +441,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // ---- weblog admin pages ----
 
-        define(".WeblogConfig").on(TABBED)
-                .content("/WEB-INF/jsps/editor/WeblogConfig.jsp")
-                .register();
-
-        define(".WeblogRemoveConfirm").on(TABBED)
-                .content("/WEB-INF/jsps/editor/WeblogRemoveConfirm.jsp")
-                .register();
-
-        define(".ThemeEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/ThemeEdit.jsp")
-                .register();
-
-        define(".StylesheetEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/StylesheetEdit.jsp")
-                .register();
-
-        define(".Templates").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Templates.jsp")
-                .sidebar("/WEB-INF/jsps/editor/TemplatesSidebar.jsp")
-                .register();
-
-        define(".TemplateEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/TemplateEdit.jsp")
-                .register();
-
         define(".Pages").on(TABBED)
                 .content("/WEB-INF/jsps/editor/Pages.jsp")
                 .register();
@@ -482,23 +453,13 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .content("/WEB-INF/jsps/editor/PageEdit.jsp")
                 .register();
 
-        // Inquiries is an authoring screen reached from the editor tabs, so it
-        // wears the same tabbed chrome the rest of them do. The attribute map
-        // is .Trash's -- the minimal tabbed shape: explicit head, the content
-        // tile, no page-specific styles, and the base layout's empty menu tile
-        // (the tabs come from the navMenu model attribute, not from a tile).
-        define(".Submissions").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Submissions.jsp")
-                .register();
-
-        // Reader-comment moderation: the same minimal tabbed shape as .Submissions.
+        // Reader-comment moderation: an authoring screen on the editor tabs, so the tabbed chrome. The minimal
+        // tabbed shape: the content tile only, and the base layout's empty menu tile (the tabs come from the
+        // navMenu model attribute, not from a tile).
         define(".Comments").on(TABBED)
                 .content("/WEB-INF/jsps/editor/Comments.jsp")
                 .register();
 
-        define(".Members").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Members.jsp")
-                .register();
     }
 
     // ---------------------------------------------------------- helper

@@ -2651,6 +2651,7 @@ Site administration and the caller's own account (a site admin, or any signed-in
 | `PATCH`, `DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}` | Change the account's level `{permission}` there, or remove it (204). |
 | `PATCH /v1/me/profile` | The caller's own `{screenName, fullName, emailAddress, locale, timeZone}`; a field left out is left alone. Answers the profile. |
 | `PUT /v1/me/password` | Change the caller's own password: `{currentPassword, newPassword}`. 204; the account's other sessions end. |
+| `GET`, `PUT /v1/admin/site-theme` | The theme of the site's own pages (the hidden site space, which the weblog routes withhold): the site themes on offer with the one in use (the `GET /v1/weblogs/{handle}/themes` shape), and the switch `{theme}`; a theme that is no site theme is 400 `theme.notOffered`. Session only. |
 
 `PATCH /v1/admin/users/{userName}` also takes `administrator` and `password`, and `POST /v1/admin/users` takes
 `password` and `administrator`, as session-only fields (see the admin-users section above): a token that sends one gets

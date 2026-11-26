@@ -42,7 +42,25 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/authoring/traffic.rol", "/weblogs/{weblog}/traffic",
                     Map.of("weblog", "weblog"), List.of("period", "tab", "sort")),
             new LegacyAdminRedirects("/pressroom-ui/admin/siteTraffic.rol", "/admin/traffic", Map.of(),
-                    List.of("period")));
+                    List.of("period")),
+            // Wave 3: settings, create, theme, templates, stylesheet, members, inbox, remove.
+            weblogScreen("weblogConfig", "settings"),
+            new LegacyAdminRedirects("/pressroom-ui/createWeblog.rol", "/weblogs/new", Map.of(), List.of()),
+            weblogScreen("themeEdit", "theme"),
+            weblogScreen("templates", "templates"),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/templateEdit.rol",
+                    "/weblogs/{weblog}/templates/{id}", Map.of("weblog", "weblog", "id", "bean.id"), List.of()),
+            weblogScreen("stylesheetEdit", "stylesheet"),
+            weblogScreen("members", "members"),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/submissions.rol", "/weblogs/{weblog}/inbox",
+                    Map.of("weblog", "weblog"), List.of("page")),
+            weblogScreen("weblogRemove", "remove"));
+
+    /** A weblog-scoped screen with no query: {@code authoring/<action>.rol?weblog=h} to {@code /weblogs/h/<screen>}. */
+    private static LegacyAdminRedirects weblogScreen(String action, String screen) {
+        return new LegacyAdminRedirects("/pressroom-ui/authoring/" + action + ".rol", "/weblogs/{weblog}/" + screen,
+                Map.of("weblog", "weblog"), List.of());
+    }
 
     /** Every legacy path in the table, for the filter's URL patterns. */
     public static List<String> legacyPaths() {

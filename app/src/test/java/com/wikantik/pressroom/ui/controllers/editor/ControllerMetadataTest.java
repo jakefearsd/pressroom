@@ -79,20 +79,6 @@ class ControllerMetadataTest {
     }
 
     @Test
-    void settingsMembershipAndTemplatesFallBackToWeblogAdmin() {
-        // These do not override the inherited default, and must not: changing a
-        // blog's configuration, its members or its templates is an owner's job.
-        assertEquals(List.of(WeblogPermission.ADMIN),
-                new WeblogConfigController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.ADMIN),
-                new MembersController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.ADMIN),
-                new TemplateEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.ADMIN),
-                new StylesheetEditController().requiredWeblogPermissionActions());
-    }
-
-    @Test
     void everyEditorControllerRequiresALoggedInUserAndTheLoginPermission() {
         for (BaseController controller : allControllers()) {
             assertTrue(controller.isUserRequired(),
@@ -117,11 +103,7 @@ class ControllerMetadataTest {
     void controllersThatHighlightAMenuItemDeclareTheirActionName() {
         // The action name is matched against the menu definition to decide
         // which tab is shown as current.
-        assertEquals("members", new MembersController().getActionName());
         assertEquals("categoryRemove", new CategoryRemoveController().getActionName());
-        assertEquals("weblogConfig", new WeblogConfigController().getActionName());
-        assertEquals("templateEdit", new TemplateEditController().getActionName());
-        assertEquals("stylesheetEdit", new StylesheetEditController().getActionName());
         assertEquals("mediaFileAdd", new MediaFileAddController().getActionName());
         assertEquals("mediaFileView", new MediaFileViewController().getActionName());
         assertEquals("mediaFileEdit", new MediaFileEditController().getActionName());
@@ -129,12 +111,8 @@ class ControllerMetadataTest {
 
     @Test
     void controllersThatOwnAPageDeclareItsTitleKey() {
-        assertEquals("memberPermissions.title", new MembersController().getPageTitle());
         assertEquals("categoryDeleteOK.title", new CategoryRemoveController().getPageTitle());
         assertEquals("weblogEdit.deleteEntry", new EntryRemoveController().getPageTitle());
-        assertEquals("websiteSettings.title", new WeblogConfigController().getPageTitle());
-        assertEquals("pagesForm.title", new TemplateEditController().getPageTitle());
-        assertEquals("stylesheetEdit.title", new StylesheetEditController().getPageTitle());
         assertEquals("mediaFileAdd.title", new MediaFileAddController().getPageTitle());
         assertEquals("mediaFileView.title", new MediaFileViewController().getPageTitle());
         assertEquals("mediaFile.edit.title", new MediaFileEditController().getPageTitle());
@@ -148,11 +126,7 @@ class ControllerMetadataTest {
                 new EntryRemoveController(),
                 new MediaFileAddController(),
                 new MediaFileEditController(),
-                new MediaFileViewController(),
-                new MembersController(),
-                new StylesheetEditController(),
-                new TemplateEditController(),
-                new WeblogConfigController());
+                new MediaFileViewController());
     }
 
     /**
