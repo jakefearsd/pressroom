@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { call } from '../../api/client';
+import { useMeta } from '../../api/queries';
 import { usePages, type PageView } from '../../api/pages';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateTime } from '../../components/DateTime';
@@ -13,10 +14,12 @@ import { useT } from '../../i18n/messages';
 import { Markup, markupArg } from '../../components/Markup';
 import { isSiteSpace } from './urls';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * The page trash (PagesTrash.jsp): restore a page as a draft, or delete it for good.
- * Not reproduced: the retention sentence and the "Deleted permanently" date column, which
- * need the retention setting the API does not expose yet.
+ * The page trash (PagesTrash.jsp): restore a page as a draft, or delete it for good, with the
+ * retention sentence and the date each page is deleted permanently (its trashed time plus the
+ * page retention days from /v1/meta; a negative setting keeps pages until deleted by hand).
  */
 export function PagesTrash() {
   const t = useT();
@@ -24,6 +27,7 @@ export function PagesTrash() {
   const queries = useQueryClient();
   const handle = useParams()['handle'] ?? '';
   const trashQuery = usePages(handle, 'TRASHED');
+  const retention = useMeta().data?.pageTrashRetentionDays;
   const [messages, setMessages] = useState<string[]>([]);
   const [confirming, setConfirming] = useState<PageView | null>(null);
 
@@ -61,6 +65,12 @@ export function PagesTrash() {
     <>
       <PageTitle>{t('pages.trash.title')}</PageTitle>
       <p className="subtitle"><Markup text={subtitle} /></p>
+      {retention === undefined ? null : (
+        <p className="pagetip">
+          {retention < 0 ? t('pages.trash.retention.forever')
+            : retention === 0 ? t('pages.trash.retention.nextSweep') : t('pages.trash.retention.days', retention)}
+        </p>
+      )}
       <ProblemBanner messages={messages} error={trashQuery.error ?? restore.error ?? forever.error} />
       <div className="list-actions">
         <Link to=".." relative="path" className="btn btn-outline-secondary btn-sm">{t('pages.trash.backToPages')}</Link>
@@ -74,6 +84,7 @@ export function PagesTrash() {
                   <th scope="col" className="pressroomtable">{t('weblogPagesForm.slug')}</th>
                   <th scope="col" className="pressroomtable">{t('weblogEdit.title')}</th>
                   <th scope="col" className="pressroomtable" style={{ width: '15%' }}>{t('trash.column.trashed')}</th>
+                  <th scope="col" className="pressroomtable" style={{ width: '20%' }}>{t('pages.trash.column.purged')}</th>
                   <th scope="col" className="pressroomtable" style={{ width: '10%' }} />
                   <th scope="col" className="pressroomtable" style={{ width: '10%' }} />
                 </tr>
@@ -84,6 +95,11 @@ export function PagesTrash() {
                     <td className="data">{`/${p.slug ?? ''}`}</td>
                     <td>{p.title}</td>
                     <td className="data"><DateTime value={p.trashedAt} /></td>
+                    <td className="data">
+                      {retention === undefined ? null : retention >= 0 && p.trashedAt !== undefined
+                        ? <DateTime value={new Date(p.trashedAt).getTime() + retention * DAY_MS} />
+                        : t('pages.trash.keptForever')}
+                    </td>
                     <td>
                       <button type="button" className="btn btn-outline-secondary btn-sm page-restore-btn"
                               onClick={() => { restore.mutate(p); }}>

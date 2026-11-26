@@ -9,6 +9,8 @@ export interface Call {
   path: string;
   body: unknown;
   csrf: string | null;
+  /** The query string as sent, e.g. "?largerThan=2048&tags=sea". */
+  search: string;
 }
 
 export const problem = (status: number, code: string, detail: string, errors?: { field: string; message: string }[]) =>
@@ -40,7 +42,7 @@ export function mediaServer(initial: { me?: object } = {}) {
   const record = async (request: Request, path: string) => {
     const type = request.headers.get('content-type') ?? '';
     const body: unknown = type.includes('json') ? await request.clone().json() : type.includes('multipart') ? 'multipart' : undefined;
-    state.calls.push({ method: request.method, path, body, csrf: request.headers.get('X-CSRF-TOKEN') });
+    state.calls.push({ method: request.method, path, body, csrf: request.headers.get('X-CSRF-TOKEN'), search: new URL(request.url).search });
   };
   const guarded = (key: string, make: (r: Request, p: Record<string, string | readonly string[] | undefined>) => Response | Promise<Response>) =>
     async ({ request, params }: { request: Request; params: Record<string, string | readonly string[] | undefined> }) => {
@@ -79,6 +81,11 @@ export function mediaServer(initial: { me?: object } = {}) {
         const type = q.get('type');
         items = items.filter((f) => type === 'other' ? !(f.contentType ?? '').startsWith('image/') : (f.contentType ?? '').startsWith(`${type ?? ''}/`));
       }
+      if (q.get('largerThan')) { items = items.filter((f) => (f.length ?? 0) > Number(q.get('largerThan'))); }
+      if (q.getAll('tags').length > 0) {
+        const wanted = q.getAll('tags');
+        items = items.filter((f) => (f.tags ?? []).some((tag) => wanted.includes(tag)));
+      }
       if (q.get('sort') === 'type') { items = [...items].sort((a, b) => (a.contentType ?? '').localeCompare(b.contentType ?? '')); }
       return HttpResponse.json({ items, offset: 0, limit: items.length, hasMore: false });
     })),
@@ -94,6 +101,12 @@ export function mediaServer(initial: { me?: object } = {}) {
       const body = (await r.clone().json()) as { width: number; height: number };
       const found = find(p['id']);
       if (found) { found.width = body.width; found.height = body.height; }
+      return HttpResponse.json(found);
+    })),
+    http.put(`${API}/weblogs/alpha/media/:id/content`, guarded('PUT content', (_r, p) => {
+      const found = find(p['id']);
+      if (!found) { return problem(404, 'media.notFound', 'No such media file.'); }
+      found.length = 4242;
       return HttpResponse.json(found);
     })),
     http.get(`${API}/weblogs/alpha/media/:id`, guarded('GET file', (_r, p) => {

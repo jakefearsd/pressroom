@@ -262,6 +262,68 @@ describe('PageEditor: an existing page', () => {
     expect(writes.map((w) => w.method)).toEqual(['PUT']);
   });
 
+  it('finds posts to add by searching, not by listing the first 200', async () => {
+    const asked: URLSearchParams[] = [];
+    server.use(http.get(`${API}/weblogs/alpha/entries`, ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      asked.push(params);
+      return HttpResponse.json({ hasMore: false, offset: 0, limit: 20, items: params.get('text') === 'bea'
+        ? [{ id: 'e7', title: 'Beach day', status: 'PUBLISHED' }] : [{ id: 'e1', title: 'Newest post', status: 'PUBLISHED' }] });
+    }));
+    const { user } = await open('/weblogs/alpha/pages/new');
+    await screen.findByLabelText('Title');
+    await user.click(screen.getByLabelText('This page is a strand'));
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Newest post' })).toBeInTheDocument(); });
+    expect(asked[0]?.get('limit')).toBe('20');
+    expect(asked[0]?.has('text')).toBe(false);
+    await user.type(screen.getByLabelText('Find posts'), 'bea');
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Beach day' })).toBeInTheDocument(); });
+    expect(asked.at(-1)?.get('text')).toBe('bea');
+    await user.selectOptions(screen.getByLabelText('Add posts'), 'e7');
+    expect(document.querySelector('.strand-part-title')).toHaveTextContent('Beach day');
+    // A part chosen from one search stays named after the next search replaces the choices.
+    await user.clear(screen.getByLabelText('Find posts'));
+    await waitFor(() => { expect(within(screen.getByLabelText('Add posts')).getByRole('option', { name: 'Newest post' })).toBeInTheDocument(); });
+    expect(document.querySelector('.strand-part-title')).toHaveTextContent('Beach day');
+  });
+
+  it('shows the address from the page itself: the blog root for its front page, a custom domain as the prefix', async () => {
+    server.use(http.get(`${API}/weblogs/:handle`, () => HttpResponse.json({
+      handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'UTC', frontPage: 'p2', absoluteUrl: 'https://maiia.example.org/' })));
+    withPage({ absoluteUrl: 'https://maiia.example.org/' });
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://maiia.example.org/');
+    expect(document.querySelector('.editor-preview-link')).toHaveAttribute('href', 'https://maiia.example.org/');
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+    await user.click(screen.getByRole('button', { name: 'Copy to clipboard' }));
+    expect(writeText).toHaveBeenCalledWith('https://maiia.example.org/');
+  });
+
+  it('offers no copy or full-preview link for a draft', async () => {
+    withPage({ status: 'DRAFT', absoluteUrl: 'https://blog.example.com/alpha/about' });
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('.editor-preview-link')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Copy to clipboard' })).toBeNull();
+  });
+
+  it('says the site page that is the front door is served at the site root', async () => {
+    server.use(http.get(`${API}/weblogs/site-space/pages/p2`, () => HttpResponse.json(page({
+      frontDoor: true, absoluteUrl: 'https://blog.example.com/' }))));
+    await open('/weblogs/site-space/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('p.editor-permalink-note'))
+      .toHaveTextContent('This page is the front door, so it is served at https://blog.example.com/ rather than at its slug.');
+  });
+
+  it('has no front-door note for an ordinary page', async () => {
+    withPage();
+    await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.querySelector('p.editor-permalink-note')).toBeNull();
+  });
+
   it('asks before moving to the trash, says what a strand keeps, and returns to the list with the news', async () => {
     withPage({ strand: true, parts: [{ id: 'e1', title: 'First post', status: 'PUBLISHED' }] });
     server.use(

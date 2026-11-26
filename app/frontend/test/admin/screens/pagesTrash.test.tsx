@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { appRoutes } from '../../../src/admin/router';
 import { editorBoot, renderRoutes } from '../support';
-import { API, makeServer, page, problem, writes, writing } from './pagesSupport';
+import { API, makeServer, meta, page, problem, writes, writing } from './pagesSupport';
 
 const { server, start } = makeServer();
 start();
@@ -20,7 +20,44 @@ const open = (at = '/weblogs/alpha/pages/trash') => {
   return { ...view, user: userEvent.setup() };
 };
 
+const withRetention = (days: number) => server.use(
+  http.get(`${API}/meta`, () => HttpResponse.json({ ...meta, pageTrashRetentionDays: days, trashRetentionDays: 99 })));
+
 describe('PagesTrash', () => {
+  it('says how long a trashed page lasts, in the three cases of the page retention setting', async () => {
+    withTrash();
+    withRetention(14);
+    const first = open();
+    expect(await screen.findByText(/deleted permanently after 14 days/)).toHaveClass('pagetip');
+    first.unmount();
+    withRetention(-1);
+    const second = open();
+    expect(await screen.findByText(/kept until you delete them here/)).toBeInTheDocument();
+    second.unmount();
+    withRetention(0);
+    open();
+    expect(await screen.findByText(/deleted permanently on the next sweep/)).toBeInTheDocument();
+  });
+
+  it('shows when each page is deleted permanently: the trashed time plus the retention days', async () => {
+    withTrash();
+    withRetention(30);
+    open();
+    const old = (await screen.findByText('Old page')).closest('tr') as HTMLElement;
+    expect(screen.getByRole('columnheader', { name: 'Deleted permanently' })).toBeInTheDocument();
+    const times = old.querySelectorAll('time');
+    expect(times[1]).toHaveAttribute('datetime', '2026-12-24T08:30:00.000Z');
+  });
+
+  it('says a page is kept until deleted by hand when nothing expires', async () => {
+    withTrash();
+    withRetention(-1);
+    open();
+    const old = (await screen.findByText('Old page')).closest('tr') as HTMLElement;
+    expect(old.querySelectorAll('time')).toHaveLength(1);
+    expect(within(old).getByText('Kept until deleted by hand')).toBeInTheDocument();
+  });
+
   it('lists trashed pages with the trashed time, never as links', async () => {
     withTrash();
     open();

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useDirectories, useMediaActions, useMediaFile, type MediaPatch, type MediaView } from '../../api/media';
+import { useReplacer } from '../../api/upload';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { Markup, markupArg } from '../../components/Markup';
 import { PageTitle } from '../../frame/PageTitle';
@@ -14,7 +15,7 @@ import { isCroppable, isImage, libraryPath, splitTags, thumbnailUrl } from './sh
 const CONTROL_IDS: Record<string, string> = {
   name: 'mfedit_bean_name', description: 'mfedit_bean_description', altText: 'mfedit_bean_altText',
   tags: 'mfedit_bean_tagsAsString', copyrightText: 'mfedit_bean_copyrightText', directoryId: 'mfedit_bean_directoryId',
-  focalX: 'focalPicker', focalY: 'focalPicker'
+  focalX: 'focalPicker', focalY: 'focalPicker', file: 'mfedit_uploadedFile'
 };
 
 interface Draft {
@@ -119,6 +120,8 @@ function EditForm({ handle, id, loaded }: { handle: string; id: string; loaded: 
   const navigate = useNavigate();
   const dirs = useDirectories(handle);
   const actions = useMediaActions(handle);
+  const replace = useReplacer();
+  const [replacement, setReplacement] = useState<File | null>(null);
   const [draft, setDraft] = useState<Draft>(() => draftOf(loaded));
   const [error, setError] = useState<unknown>(null);
   const [cropError, setCropError] = useState<unknown>(null);
@@ -138,6 +141,10 @@ function EditForm({ handle, id, loaded }: { handle: string; id: string; loaded: 
     setSaving(true);
     setError(null);
     try {
+      // The new bytes first: a refused replacement (size, quota, type) stops before anything else changes.
+      if (replacement !== null) {
+        await replace(handle, id, replacement);
+      }
       const patch = patchFor(loaded, draft);
       if (Object.keys(patch).length > 0) {
         await actions.update(id, patch);
@@ -209,6 +216,15 @@ function EditForm({ handle, id, loaded }: { handle: string; id: string; loaded: 
           <div className="col-sm-9">
             <Markup text={t('mediaFileEdit.fileTypeSize', markupArg(loaded.contentType ?? ''), String(loaded.length ?? 0))} />
             {image ? <> <Markup text={t('mediaFileEdit.fileDimensions', String(loaded.width ?? 0), String(loaded.height ?? 0))} /></> : null}
+          </div>
+        </div>
+
+        <div className="row mb-3">
+          <label className="col-sm-3 col-form-label" htmlFor="mfedit_uploadedFile">{t('mediaFileEdit.replaceFile')}</label>
+          <div className="col-sm-9">
+            <input type="file" {...fields.props('file', 'form-control')} aria-describedby="mfedit_uploadedFile_tip"
+                   onChange={(e) => { setReplacement(e.target.files?.[0] ?? null); }} />
+            <div id="mfedit_uploadedFile_tip" className="form-text">{t('mediaFileEdit.replaceFile.tip')}</div>
           </div>
         </div>
 

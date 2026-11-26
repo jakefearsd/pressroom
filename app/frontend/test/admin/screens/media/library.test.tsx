@@ -2,7 +2,8 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { appRoutes } from '../../../../src/admin/router';
 import { adminBoot, renderRoutes } from '../../support';
-import { file, mediaServer, problem } from './mediaServer';
+import { http, HttpResponse } from 'msw';
+import { API, file, mediaServer, problem } from './mediaServer';
 
 const { server, state } = mediaServer();
 beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); });
@@ -50,7 +51,6 @@ describe('Media library browse', () => {
     await screen.findByLabelText('t1-trip.jpg', { selector: '.mediaObject' });
     expect(document.querySelector('.subtitle')).toHaveTextContent('Folder: trips');
     expect(document.querySelector('.pagetip')).toHaveTextContent('This is a media file subfolder.');
-    expect(screen.getByRole('button', { name: 'Delete folder' })).toBeInTheDocument();
   });
 
   it('switches folders from the folder menu and keeps the choice in the URL', async () => {
@@ -154,7 +154,7 @@ describe('Media library search', () => {
     expect(screen.getByText(/Files of type/)).toHaveTextContent('Files of type Image');
   });
 
-  it('narrows by size and by tags, which the API does not filter', async () => {
+  it('filters by size and by tags on the server, so a page holds the matches', async () => {
     open();
     await search(async () => {
       await userEvent.type(screen.getByLabelText('Larger than', { selector: 'input' }), '2');
@@ -162,10 +162,22 @@ describe('Media library search', () => {
     });
     await waitFor(() => { expect(tiles()).toEqual(['a-beach.jpg', 'b-noalt.png']); });
     expect(screen.getByText(/^size > 2 KB$/)).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText('Tags'), 'sea, SUN');
+    expect(listCalls().at(-1)?.search).toContain('largerThan=2048');
+    await userEvent.type(screen.getByLabelText('Tags'), 'Sea, SUN');
     await userEvent.click(screen.getByRole('button', { name: 'Search' }));
     await waitFor(() => { expect(tiles()).toEqual(['a-beach.jpg']); });
-    expect(screen.getByText(/Files with tags/)).toHaveTextContent('Files with tags sea, SUN');
+    const last = new URLSearchParams(listCalls().at(-1)?.search);
+    expect(last.getAll('tags')).toEqual(['sea', 'sun']);
+    expect(last.get('largerThan')).toBe('2048');
+    expect(screen.getByText(/Files with tags/)).toHaveTextContent('Files with tags Sea, SUN');
+  });
+
+  it('counts the size unit: megabytes and bytes reach the API as bytes', async () => {
+    open('/weblogs/alpha/media?size=1&unit=mb');
+    await screen.findByText(/^size > 1 MB$/);
+    await waitFor(() => { expect(listCalls().at(-1)?.search).toContain('largerThan=1048576'); });
+    open('/weblogs/alpha/media?size=300&unit=bytes');
+    await waitFor(() => { expect(listCalls().at(-1)?.search).toContain('largerThan=300'); });
   });
 
   it('states an empty search and its way back, and Reset clears it', async () => {
@@ -277,18 +289,30 @@ describe('Media library bulk actions', () => {
     expect(alert).toHaveTextContent('a-beach.jpg: That name is taken.');
   });
 
-  it('starts an entry from the selection with a form post of the ids and the CSRF token', async () => {
-    open();
+  it('starts an entry from the selection by opening the entry editor with the files, no form post', async () => {
+    const { router } = open();
     await select('a-beach.jpg', 'b-noalt.png');
-    const form = document.getElementById('createPostForm') as HTMLFormElement;
-    expect(form).toHaveAttribute('method', 'post');
-    expect(form).toHaveAttribute('action', 'http://pressroom.test/pressroom/pressroom-ui/authoring/entryAddWithMediaFile.rol');
-    expect([...form.querySelectorAll('input[name=selectedImages]')].map((i) => (i as HTMLInputElement).value)).toEqual(['a', 'b']);
-    expect((form.querySelector('input[name=weblog]') as HTMLInputElement).value).toBe('alpha');
-    expect((form.querySelector('input[name=_csrf]') as HTMLInputElement).value).toBe('tok');
+    expect(document.getElementById('createPostForm')).toBeNull();
     const button = screen.getByRole('button', { name: 'New entry with selected' });
-    expect(button).toHaveAttribute('form', 'createPostForm');
-    expect(button).toHaveAttribute('type', 'submit');
+    expect(button).toHaveAttribute('type', 'button');
+    await userEvent.click(button);
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/entries/new'); });
+    expect(new URLSearchParams(router.state.location.search).getAll('mediaId')).toEqual(['a', 'b']);
+    expect(state.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('offers no new entry from the site space, which has no posts', async () => {
+    state.me = { userName: 'jake', screenName: 'Jake', kind: 'PERSON', globalAdmin: false, tokenScope: {},
+      weblogs: [{ handle: 'site-space', name: 'Site', permission: 'POST' }] };
+    server.use(
+      http.get(`${API}/weblogs/site-space`, () => HttpResponse.json({ handle: 'site-space', name: 'Site', active: true, timeZone: 'UTC' })),
+      http.get(`${API}/weblogs/site-space/media/directories`, () => HttpResponse.json(state.dirs)),
+      http.get(`${API}/weblogs/site-space/media`, () => HttpResponse.json({ items: state.files, offset: 0, limit: 3, hasMore: false })));
+    open('/weblogs/site-space/media');
+    await screen.findByLabelText('a-beach.jpg', { selector: '.mediaObject' });
+    await userEvent.click(screen.getByLabelText('a-beach.jpg', { selector: 'input' }));
+    expect(document.getElementById('moveButton')).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'New entry with selected' })).toBeNull();
   });
 });
 
@@ -328,16 +352,28 @@ describe('Media library folders', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('A folder cannot be named default.');
   });
 
-  it('offers no Delete folder on the default folder', async () => {
+  it('offers no Delete folder on the default folder, even when it is empty', async () => {
+    state.files = [];
     open();
-    await screen.findByLabelText('a-beach.jpg', { selector: '.mediaObject' });
+    await screen.findByText('No photos yet.');
     expect(screen.queryByRole('button', { name: 'Delete folder' })).toBeNull();
   });
 
-  it('deletes a folder and its files after a confirmation, files first', async () => {
+  it('offers no Delete folder on a folder that still holds files (the API refuses it)', async () => {
+    open('/weblogs/alpha/media?dir=d-trips');
+    await screen.findByLabelText('t1-trip.jpg', { selector: '.mediaObject' });
+    expect(screen.queryByRole('button', { name: 'Delete folder' })).toBeNull();
+  });
+
+  it('offers Delete folder on an empty folder once its last file is deleted, and deletes only the folder', async () => {
     const { router } = open('/weblogs/alpha/media?dir=d-trips');
     await screen.findByLabelText('t1-trip.jpg', { selector: '.mediaObject' });
-    await userEvent.click(screen.getByRole('button', { name: 'Delete folder' }));
+    await userEvent.click(screen.getByLabelText('t1-trip.jpg', { selector: 'input' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete selected' }));
+    await screen.findByText('No photos yet.');
+    state.calls.length = 0;
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete folder' }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent('Delete entire folder including all its media files?');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -345,20 +381,8 @@ describe('Media library folders', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete folder' }));
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete folder' }));
     expect(await screen.findByText('Folder deleted.')).toBeInTheDocument();
-    expect(state.calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/media/t1', '/media/directories/d-trips']);
+    expect(state.calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/media/directories/d-trips']);
     expect(router.state.location.search).toBe('');
-  });
-
-  it('stops and names the file when a file in the folder will not delete', async () => {
-    state.refusals.set('DELETE file', problem(500, 'server.internalError', 'Disk error.'));
-    open('/weblogs/alpha/media?dir=d-trips');
-    await screen.findByLabelText('t1-trip.jpg', { selector: '.mediaObject' });
-    await userEvent.click(screen.getByRole('button', { name: 'Delete folder' }));
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete folder' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('The folder could not be deleted.');
-    expect(alert).toHaveTextContent('t1-trip.jpg: Disk error.');
-    expect(state.calls.some((c) => c.path.startsWith('/media/directories/') && c.method === 'DELETE')).toBe(false);
   });
 
   it('shows the server refusal when the folder itself will not delete', async () => {
