@@ -30,7 +30,7 @@ public record Caller(Kind kind, ApiPrincipal principal) {
         TOKEN,
         /** A password over HTTP Basic. */
         PASSWORD,
-        /** An interactive login: the admin UI's form login, or reader SSO. */
+        /** An interactive login: the admin UI's form login, a remember-me restore, or reader SSO. */
         SESSION,
         /** Nobody. */
         ANONYMOUS,

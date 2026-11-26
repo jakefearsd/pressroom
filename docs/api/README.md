@@ -205,8 +205,9 @@ password only when challenged still works; no other route challenges.
 > resource answers a password with the 401 above. A script that sends `-u
 > user:password` to any other route must mint a token once
 > (`bin/pressroom-api auth login`, or `POST /api/v1/tokens`) and send
-> `Authorization: Bearer <token>` instead. An admin-UI session cookie was
-> never a credential on `/api` and still is not. Smaller edges of the same
+> `Authorization: Bearer <token>` instead. An admin-UI session cookie
+> is no credential for scripts: only the admin app itself uses it on `/api`, with a
+> CSRF token on writes (`csrf.invalid` below), and `/api/mcp` never accepts one. Smaller edges of the same
 > change: `GET /api/v1/ping` with a wrong password is now 200 (it was 401);
 > a password on `/api/pressroom-ui/...` is now 401 (it was 403); a wrong
 > password on any route but the token resource is the problem+json 401 above,
@@ -602,6 +603,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `parameter.aliasConflict` | 400 | `invalid-request` | A deprecated parameter alias (`{0}`) was sent with a different value than its current name (`{1}`). |
 | `auth.passwordNotAcceptedHere` | 401 | `unauthorized` | A password (HTTP Basic) was sent anywhere but the token resource, which is the only place one is accepted. |
 | `auth.passwordRejected` | 401 | `unauthorized` | The token resource turned the password away: wrong, a disabled account, an agent or an unknown user, told alike. |
+| `csrf.invalid` | 403 | `forbidden` | A write made with the admin UI's session (no `Authorization` header) carried no CSRF token, or the wrong one. Token callers never meet it. |
 | `auth.noPermission` | 403 | `forbidden` | The caller lacks the role this route needs (on the site, or on a weblog it is a member of). |
 | `auth.apiNotAllowed` | 403 | `forbidden` | The account (a reader signed in with SSO) holds no login permission, so it may not use the API. |
 | `token.notAdminScoped` | 403 | `forbidden` | An administration route was called with a token whose role is not ADMIN. |

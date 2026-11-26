@@ -17,6 +17,7 @@ import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -77,7 +78,7 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
         // every other endpoint by credential. The digest, not the raw token,
         // is the map key: a throttle map holding live credentials in memory
         // is a credential store nobody meant to build.
-        String key = bearer ? TokenGenerator.sha256Hex(rawToken) : request.getRemoteAddr();
+        String key = bearer ? TokenGenerator.sha256Hex(rawToken) : throttleKeyWithoutToken(request);
         if (throttle.isThrottled(key)) {
             writeThrottled(request, response);
             return;
@@ -87,6 +88,17 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
             authenticate(rawToken);
         }
         chain.doFilter(request, response);
+    }
+
+    /**
+     * The key of a request with no Bearer token: the signed-in user for a
+     * session caller (the admin app makes many calls; an office behind one
+     * address must not share one budget), the client address otherwise.
+     */
+    private static String throttleKeyWithoutToken(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && Caller.of(auth).kind() == Caller.Kind.SESSION
+                ? TokenGenerator.sha256Hex("session:" + auth.getName()) : request.getRemoteAddr();
     }
 
     /**

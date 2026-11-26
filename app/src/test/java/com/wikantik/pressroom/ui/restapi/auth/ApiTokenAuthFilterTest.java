@@ -275,4 +275,40 @@ class ApiTokenAuthFilterTest {
         // interval is never too short a wait (RFC 9110, Retry-After in delay-seconds).
         assertEquals("60", response.getHeader("Retry-After"));
     }
+
+    /**
+     * A session caller (the admin app) is throttled by user, not by address,
+     * so an office behind one address does not share one budget; a Bearer-less
+     * request with no session still keys by address.
+     */
+    @Test
+    void sessionCallersAreThrottledPerUserNotPerAddress() throws Exception {
+        ApiThrottle throttle = ApiThrottle.forTesting(1, 60);
+        ApiTokenAuthFilter filter = new ApiTokenAuthFilter(() -> mock(ApiTokenManager.class), provider, throttle,
+                PROBLEM_WRITER);
+
+        assertEquals(200, sessionRequest(filter, "erin"));
+        assertEquals(200, sessionRequest(filter, "owen"), "another user at the same address has their own budget");
+        assertEquals(429, sessionRequest(filter, "erin"));
+
+        // No session: keyed by the address, which the two session users above never used.
+        MockHttpServletResponse first = new MockHttpServletResponse();
+        filter.doFilter(new MockHttpServletRequest("GET", "/api/v1/me"), first, mock(FilterChain.class));
+        assertEquals(200, first.getStatus());
+        MockHttpServletResponse second = new MockHttpServletResponse();
+        filter.doFilter(new MockHttpServletRequest("GET", "/api/v1/me"), second, mock(FilterChain.class));
+        assertEquals(429, second.getStatus());
+    }
+
+    private static int sessionRequest(ApiTokenAuthFilter filter, String userName) throws Exception {
+        var auth = org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+                userName, null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("editor")));
+        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetailsSource()
+                .buildDetails(new MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(new MockHttpServletRequest("GET", "/api/v1/me"), response, mock(FilterChain.class));
+        SecurityContextHolder.clearContext();
+        return response.getStatus() == 0 ? 200 : response.getStatus();
+    }
 }

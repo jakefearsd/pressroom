@@ -9,6 +9,7 @@ import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfException;
 
 /**
  * Answers a denied {@code /api/**} request with problem+json.
@@ -17,7 +18,9 @@ import org.springframework.security.web.access.AccessDeniedHandler;
  * default handling for a denied request commits the response entirely
  * outside {@code DispatcherServlet}'s reach, where {@code
  * ApiExceptionHandler}'s {@code @RestControllerAdvice} cannot see it. The
- * answer is {@code auth.forbidden}, in the caller's {@code Accept-Language}.
+ * answer is {@code auth.forbidden}, in the caller's {@code Accept-Language};
+ * for a session write the CSRF filter refused (a missing or wrong token) it is
+ * {@code csrf.invalid}.
  */
 public class ApiAccessDeniedHandler implements AccessDeniedHandler {
 
@@ -30,6 +33,8 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        problemWriter.write(request, response, ApiException.problem(ProblemCode.AUTH_FORBIDDEN));
+        ProblemCode code = accessDeniedException instanceof CsrfException
+                ? ProblemCode.CSRF_INVALID : ProblemCode.AUTH_FORBIDDEN;
+        problemWriter.write(request, response, ApiException.problem(code));
     }
 }

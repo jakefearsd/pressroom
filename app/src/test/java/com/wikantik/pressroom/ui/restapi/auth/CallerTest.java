@@ -6,6 +6,8 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.ui.core.security.PressroomRememberMeAuthenticationProvider;
+import com.wikantik.pressroom.ui.core.security.PressroomRememberMeServices;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +24,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.web.authentication.rememberme.AbstractRememberMeServices;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -126,6 +130,30 @@ class CallerTest {
                 UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(new MockHttpServletRequest()));
         assertEquals(Caller.Kind.SESSION, Caller.of(auth).kind());
+    }
+
+    /**
+     * A remember-me cookie restored by the real services and passed through the
+     * real provider is a session caller: its details are the stock
+     * {@code WebAuthenticationDetails}, no other class.
+     */
+    @Test
+    void aRememberMeRestoredSessionIsASession() {
+        UserDetails alice = org.springframework.security.core.userdetails.User.withUsername("alice").password("pw").authorities("editor").build();
+        PressroomRememberMeServices services = new PressroomRememberMeServices(name -> alice);
+        MockHttpServletRequest signIn = new MockHttpServletRequest();
+        signIn.setParameter(AbstractRememberMeServices.DEFAULT_PARAMETER, "true");
+        MockHttpServletResponse issued = new MockHttpServletResponse();
+        services.loginSuccess(signIn, issued, UsernamePasswordAuthenticationToken.authenticated(
+                "alice", "pw", alice.getAuthorities()));
+        MockHttpServletRequest back = new MockHttpServletRequest();
+        back.setCookies(issued.getCookie(AbstractRememberMeServices.SPRING_SECURITY_REMEMBER_ME_COOKIE_KEY));
+
+        Authentication restored = services.autoLogin(back, new MockHttpServletResponse());
+        Authentication accepted = new PressroomRememberMeAuthenticationProvider().authenticate(restored);
+
+        assertEquals(Caller.Kind.SESSION, Caller.of(accepted).kind());
+        assertEquals(Caller.Kind.SESSION, Caller.of(restored).kind());
     }
 
     @Test

@@ -34,7 +34,9 @@ import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAccessDeniedHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAuthenticationEntryPoint;
+import com.wikantik.pressroom.ui.restapi.auth.ApiSessionAuthFilter;
 import com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -56,8 +58,18 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.function.Supplier;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Set;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -95,6 +107,12 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Configuration
 public class SecurityConfig {
+
+    /**
+     * The header a session write to {@code /api} carries its CSRF token in.
+     * The admin shell is told this name in its bootstrap block.
+     */
+    public static final String CSRF_HEADER_NAME = "X-CSRF-TOKEN";
 
     /**
      * Publishes the same {@link PasswordEncoder} {@link PressroomContext}
@@ -275,7 +293,14 @@ public class SecurityConfig {
                         "/pressroom-ui/profile*",
                         "/pressroom-ui/createWeblog*",
                         "/pressroom-ui/menu*",
-                        "/pressroom-ui/authoring/**")
+                        "/pressroom-ui/authoring/**",
+                        // The React admin app: its shell, its client routes and
+                        // assets, and its message bundle. An unauthenticated
+                        // request goes to login and comes back here
+                        // (ReturnPathLoginSuccessHandler); an SSO reader is 403.
+                        "/pressroom-ui/app.rol",
+                        "/pressroom-ui/app/**",
+                        "/pressroom-ui/app-messages.rol")
                     .hasAnyAuthority("admin", "editor")
                 .requestMatchers(
                         "/pressroom-ui/admin/**",
@@ -379,10 +404,10 @@ public class SecurityConfig {
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
             ApiAccessDeniedHandler apiAccessDeniedHandler,
             AuthenticationManager authenticationManager,
-            ApiProblemWriter apiProblemWriter) throws Exception {
+            ApiProblemWriter apiProblemWriter, WebloggerProvider webloggerProvider) throws Exception {
 
         apiChain(http.securityMatcher(TOKEN_RESOURCE), apiTokenAuthFilter, apiAuthenticationEntryPoint,
-                apiAccessDeniedHandler, authenticationManager, apiProblemWriter)
+                apiAccessDeniedHandler, authenticationManager, apiProblemWriter, webloggerProvider)
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .httpBasic(basic -> basic
                 .authenticationDetailsSource(PasswordCallerDetails.SOURCE)
@@ -410,9 +435,11 @@ public class SecurityConfig {
      * password is never checked off the token resource, so it carries no
      * scope ceiling anywhere and is never a second credential for every route.
      *
-     * <p>Both API chains are stateless ({@link #apiChain}): neither reads nor
-     * writes a session, so an admin-UI session is no credential on
-     * {@code /api} either.
+     * <p>Both API chains are stateless ({@link #apiChain}): neither stores a
+     * context or writes a session. A request with no {@code Authorization}
+     * header may still be authenticated by reading an existing admin-UI
+     * session ({@link ApiSessionAuthFilter}; never on {@code /api/mcp}), and
+     * such a write then needs the session's CSRF token.
      */
     @Bean
     @Order(1)
@@ -423,11 +450,11 @@ public class SecurityConfig {
             HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
             ApiAccessDeniedHandler apiAccessDeniedHandler,
             AuthenticationManager authenticationManager,
-            ApiProblemWriter apiProblemWriter) throws Exception {
+            ApiProblemWriter apiProblemWriter, WebloggerProvider webloggerProvider) throws Exception {
 
         apiChain(http.securityMatcher("/api/**"), apiTokenAuthFilter,
                 ApiAuthenticationEntryPoint.refusingPasswords(apiProblemWriter),
-                apiAccessDeniedHandler, authenticationManager, apiProblemWriter)
+                apiAccessDeniedHandler, authenticationManager, apiProblemWriter, webloggerProvider)
             // Only the API itself: /api/* is a prefix mapping on the same
             // DispatcherServlet as *.rol, so /api/pressroom-ui/... would reach
             // the JSP controllers with an API credential, no CSRF check and no
@@ -445,8 +472,10 @@ public class SecurityConfig {
     /**
      * What both API chains share.
      *
-     * <p>Stateless: an API call must never mint a session cookie, and never
-     * reads one.
+     * <p>Stateless: an API call must never mint a session cookie. It reads
+     * an existing session only through {@link ApiSessionAuthFilter}, for a
+     * request with no {@code Authorization} header, and checks CSRF on a
+     * session write (see {@link #isSessionWrite}).
      *
      * <p>The same {@link ApiTokenAuthFilter} instance runs in both chains, so
      * there is one throttle and its keys are unchanged (the token's digest,
@@ -477,12 +506,33 @@ public class SecurityConfig {
     private static HttpSecurity apiChain(
             HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
             AuthenticationEntryPoint entryPoint, ApiAccessDeniedHandler apiAccessDeniedHandler,
-            AuthenticationManager authenticationManager, ApiProblemWriter apiProblemWriter) throws Exception {
+            AuthenticationManager authenticationManager, ApiProblemWriter apiProblemWriter,
+            WebloggerProvider webloggerProvider) throws Exception {
+        HttpSessionCsrfTokenRepository csrfTokens = new HttpSessionCsrfTokenRepository();
+        csrfTokens.setHeaderName(CSRF_HEADER_NAME);
         return http
             .authenticationManager(authenticationManager)
-            .csrf(AbstractHttpConfigurer::disable)
+            // CSRF applies to a session-authenticated write only (see
+            // isSessionWrite); Bearer and Basic callers carry no ambient
+            // authority and stay exempt. The same repository the UI chain
+            // uses by default (the HTTP session), so one token serves both.
+            //
+            // No CSRF session strategy: SessionManagementFilter sees a
+            // session-authenticated request as a fresh sign-in (this chain stores
+            // no context) and would run CsrfAuthenticationStrategy, which discards
+            // the session's CSRF token after every call. An API call signs nobody in.
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(csrfTokens)
+                .csrfTokenRequestHandler(new HeaderOnlyCsrfTokenRequestHandler())
+                .requireCsrfProtectionMatcher(SecurityConfig::isSessionWrite)
+                .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Before CSRF, which asks who authenticated. Reads an existing
+            // session only; never /api/mcp (bearer only).
+            .addFilterAfter(new ApiSessionAuthFilter(
+                    PathPatternRequestMatcher.withDefaults().matcher(McpServerConfig.ENDPOINT + "/**"),
+                    new CredentialStampFilter(webloggerProvider), webloggerProvider), SecurityContextHolderFilter.class)
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(entryPoint)
                 .accessDeniedHandler(apiAccessDeniedHandler))
@@ -491,6 +541,45 @@ public class SecurityConfig {
             .addFilterBefore(new ApiBodyLimitFilter(apiProblemWriter), ApiTokenAuthFilter.class)
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(AbstractHttpConfigurer::disable);
+    }
+
+    /**
+     * The default CSRF handler (Xor masking included), except that the token
+     * is read from the header only: a {@code _csrf} query or body parameter
+     * does not satisfy CSRF on the API chains. The UI chain is unchanged.
+     */
+    static final class HeaderOnlyCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
+        private final XorCsrfTokenRequestAttributeHandler xor = new XorCsrfTokenRequestAttributeHandler();
+
+        @Override
+        public void handle(HttpServletRequest request, HttpServletResponse response,
+                           Supplier<CsrfToken> deferredCsrfToken) {
+            xor.handle(request, response, deferredCsrfToken);
+        }
+
+        @Override
+        public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+            return xor.resolveCsrfTokenValue(new HttpServletRequestWrapper(request) {
+                @Override
+                public String getParameter(String name) {
+                    return null;
+                }
+            }, csrfToken);
+        }
+    }
+
+    /** Methods that change nothing and so need no CSRF token. */
+    private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
+
+    /**
+     * Whether the API chains' CSRF check applies: a write whose caller
+     * authenticated from the admin UI's session. A Bearer or Basic request is
+     * authenticated after this check runs, so it reads as nobody here and is
+     * exempt; a request with no credential is not asked for a token either
+     * (it is a 401, not a 403).
+     */
+    static boolean isSessionWrite(HttpServletRequest request) {
+        return !SAFE_METHODS.contains(request.getMethod()) && Caller.current().kind() == Caller.Kind.SESSION;
     }
 
     /**

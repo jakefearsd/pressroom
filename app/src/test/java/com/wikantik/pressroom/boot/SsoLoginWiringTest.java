@@ -330,6 +330,28 @@ class SsoLoginWiringTest {
                 "no authorized client (access token) is kept after sign-in");
     }
 
+    /**
+     * The session a reader sign-in leaves is a {@code SESSION} caller by its details (the
+     * stock {@code WebAuthenticationDetails}); what keeps a reader out of {@code /api} is
+     * that it holds neither {@code admin} nor {@code editor}, not an unrecognised kind.
+     */
+    @Test
+    void aSignInLeavesASessionCaller() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        String state = authorize(session);
+        MvcResult r = onMvc.perform(get("/pressroom-ui/sso/callback").session(session)
+                        .param("code", "c").param("state", state))
+                .andExpect(authenticated().withUsername(READER))
+                .andReturn();
+
+        Authentication signedIn = ((org.springframework.security.core.context.SecurityContext) r.getRequest()
+                .getSession().getAttribute(
+                        org.springframework.security.web.context.HttpSessionSecurityContextRepository
+                                .SPRING_SECURITY_CONTEXT_KEY)).getAuthentication();
+        assertEquals(com.wikantik.pressroom.ui.restapi.auth.Caller.Kind.SESSION,
+                com.wikantik.pressroom.ui.restapi.auth.Caller.of(signedIn).kind());
+    }
+
     // ----------------------------------------------------------- criterion 4
 
     /**
