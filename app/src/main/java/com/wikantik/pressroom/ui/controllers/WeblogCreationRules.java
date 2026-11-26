@@ -13,6 +13,7 @@ import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.themes.SharedTheme;
+import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.config.ProtectedPaths;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -34,6 +35,21 @@ public final class WeblogCreationRules {
     public static final int MAX_TEXT = 255;
     /** The $site-wide aggregator theme; it breaks any weblog that adopts it. */
     private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
+
+    /** The theme a fresh create form preselects, when it is enabled. */
+    public static final String DEFAULT_THEME_ID = "journal";
+
+    /**
+     * The enabled shared themes a new weblog may start on, in the theme manager's order: every theme but
+     * {@code frontpage}, which a brand-new weblog can never be grandfathered on, so it is left out
+     * unconditionally. The one list the create form's picker, the create route's check and
+     * {@code GET /v1/meta/weblog-options} all use.
+     */
+    public static List<SharedTheme> offeredThemes(ThemeManager themes) {
+        return themes.getEnabledThemesList().stream()
+                .filter(t -> !SITEWIDE_ONLY_THEME_ID.equals(t.getId()))
+                .toList();
+    }
 
     /**
      * One refusal; status is the API's (400, 403 or 409); field is the form
@@ -69,9 +85,8 @@ public final class WeblogCreationRules {
         public static Context current(Weblogger weblogger) {
             String allowed = WebloggerConfig.getProperty("username.allowedChars");
             Set<String> reserved = ProtectedPaths.site();
-            List<String> themes = weblogger.getThemeManager().getEnabledThemesList().stream()
+            List<String> themes = offeredThemes(weblogger.getThemeManager()).stream()
                     .map(SharedTheme::getId)
-                    .filter(id -> !SITEWIDE_ONLY_THEME_ID.equals(id))
                     .toList();
             return new Context(
                     WebloggerRuntimeConfig.getBooleanProperty("site.allowUserWeblogCreation"),

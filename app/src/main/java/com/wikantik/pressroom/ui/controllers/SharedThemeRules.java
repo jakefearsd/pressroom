@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
@@ -100,5 +104,98 @@ public final class SharedThemeRules {
             }
         }
         weblog.setEditorTheme(themeId);
+    }
+
+    /** The site-relative path of {@code theme}'s preview image ({@code /themes/<id>/<file>}), or null when it has none. */
+    public static String previewPath(SharedTheme theme) {
+        return theme.getPreviewImage() == null ? null
+                : "/themes/" + theme.getId() + "/" + theme.getPreviewImage().getPath();
+    }
+
+    /**
+     * Whether {@code weblog} may adopt a custom theme. {@code themes.customtheme.allowed} gates the
+     * switch, which imports a shared theme's templates and is one way, so it is enforced here, not only
+     * by the menu. A weblog already custom stays editable whatever the setting says (turning the option
+     * off stops new customisations; refusing would strand the ones made while it was on). The site space
+     * never takes a custom theme.
+     */
+    public static boolean customThemeAllowed(Weblog weblog) {
+        return !weblog.isSiteSpace()
+                && (WebloggerRuntimeConfig.getBooleanProperty("themes.customtheme.allowed")
+                        || WeblogTheme.CUSTOM.equals(weblog.getEditorTheme()));
+    }
+
+    /**
+     * The first rule a switch to a custom theme breaks, or null: the site space and a site that has
+     * custom themes off ({@code themeEditor.error.notOffered} / {@code ...customThemeNotAllowed} for the
+     * screen, {@code theme.customisationDisabled} for the API), then an {@code importThemeId} that is not
+     * one of the themes offered (blank means import nothing). The screen's rule is {@link #offered} (its
+     * picker lists the enabled themes, so an unknown id never reaches it); with {@code mustBeEnabled} the id
+     * must also be an enabled theme, for a client that types the id.
+     */
+    public static RuleViolation customViolation(ThemeManager themes, Weblog weblog, String importThemeId,
+            boolean mustBeEnabled) {
+        if (weblog.isSiteSpace()) {
+            return RuleViolation.invalid("theme", "themeEditor.error.notOffered", List.of(),
+                    ProblemCode.THEME_CUSTOMISATION_DISABLED);
+        }
+        if (!customThemeAllowed(weblog)) {
+            return RuleViolation.invalid("theme", "themeEditor.error.customThemeNotAllowed", List.of(),
+                    ProblemCode.THEME_CUSTOMISATION_DISABLED);
+        }
+        if (importThemeId == null || importThemeId.isEmpty()) {
+            return null;
+        }
+        String current = WeblogTheme.CUSTOM.equals(weblog.getEditorTheme()) ? null
+                : themeId(currentTheme(themes, weblog));
+        List<String> offered = offeredThemes(themes, weblog, current).stream().map(SharedTheme::getId).toList();
+        boolean refused = mustBeEnabled ? !offered.contains(importThemeId) : !offered(weblog, importThemeId, current);
+        if (refused) {
+            return RuleViolation.invalid("importTheme", "themeEditor.error.notOffered", List.of(),
+                    ProblemCode.THEME_NOT_OFFERED, String.join(", ", offered));
+        }
+        return null;
+    }
+
+    private static String themeId(WeblogTheme theme) {
+        return theme == null ? null : theme.getId();
+    }
+
+    /**
+     * Imports the shared theme {@code themeId}'s templates into {@code weblog} and returns the theme.
+     * Re-importing the current theme keeps a customised stylesheet; the check throws rather than answering
+     * "not customised" when it cannot run, so a failure refuses instead of overwriting the stylesheet.
+     */
+    public static SharedTheme importTemplates(Weblogger weblogger, Weblog weblog, String themeId)
+            throws WebloggerException {
+        ThemeManager themes = weblogger.getThemeManager();
+        SharedTheme theme = themes.getTheme(themeId);
+        boolean skipStylesheet = themeId.equals(weblog.getEditorTheme())
+                && hasCustomisedSharedStylesheet(weblogger, weblog);
+        themes.importTheme(weblog, theme, skipStylesheet);
+        return theme;
+    }
+
+    /** Puts {@code weblog} on its own templates ({@link WeblogTheme#CUSTOM}), saved, flushed and its pages expired. */
+    public static void enableCustom(Weblogger weblogger, Weblog weblog) throws WebloggerException {
+        weblog.setEditorTheme(WeblogTheme.CUSTOM);
+        weblogger.getWeblogManager().saveWeblog(weblog);
+        weblogger.flush();
+        CacheManager.invalidate(weblog);
+    }
+
+    /**
+     * Whether {@code weblog}, on a shared theme, holds its own copy of that theme's stylesheet. Throws
+     * when the theme or the template cannot be looked up: the import decides from this whether to
+     * overwrite the stylesheet, so a lookup that could not run must not read as "no".
+     */
+    public static boolean hasCustomisedSharedStylesheet(Weblogger weblogger, Weblog weblog)
+            throws WebloggerException {
+        if (WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())) {
+            return false;
+        }
+        WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
+        return theme != null && theme.getStylesheet() != null
+                && weblogger.getWeblogManager().getTemplateByLink(weblog, theme.getStylesheet().getLink()) != null;
     }
 }

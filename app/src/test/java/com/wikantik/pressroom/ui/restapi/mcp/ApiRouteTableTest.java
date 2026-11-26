@@ -25,7 +25,8 @@ class ApiRouteTableTest {
         // + Wave 4 of the React admin migration (2026-11-25): a user's weblogs and set-password link, and discovery
         // and analytics status, refresh and sync.
         // + Wave 1: entry duplicate and send-newsletter.
-        assertEquals(91, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // + Wave 3: weblog options, themes, and the SA-18 session-only routes.
+        assertEquals(110, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep").isPresent());

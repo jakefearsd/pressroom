@@ -16,6 +16,7 @@ import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
 import com.wikantik.pressroom.ui.controllers.admin.CreateUserBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
+import com.wikantik.pressroom.ui.controllers.editor.TemplateEditBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -85,6 +86,15 @@ class FormBodyParityTest {
                                         + "the API always mails the link.",
                                 "administrator", "The admin role is session-only (SA-18); no token may grant or "
                                         + "revoke it.")),
+                new Parity("TemplateEditBean -> template", TemplateEditBean.class, EditableFieldManifest.template(),
+                        Map.of("contentsStandard", "contents", "manualContentType", "contentType"),
+                        Map.of("id", "The template's id is the update route's path variable.",
+                                "action", "What a template is for is fixed once it exists; the form shows it.",
+                                "autoContentType", "The API's empty contentType means the engine chooses; the "
+                                        + "form's checkbox is that choice.",
+                                "standardTemplateId", "The STANDARD rendition's id, round-tripped by the form; "
+                                        + "the API addresses the template, not its renditions.",
+                                "type", "A hidden form field the page does not use; no surface edits it.")),
                 new Parity("BusinessBean -> business", BusinessBean.class, EditableFieldManifest.business(),
                         Map.of(),
                         Map.of("id", "The business's id is the update route's path variable; create assigns "

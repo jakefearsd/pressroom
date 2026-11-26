@@ -74,6 +74,11 @@ public final class ColumnLimits {
     public static final int CATEGORY_IMAGE = ColumnWidths.CATEGORY_IMAGE;
 
     // pressroom_weblogpage (V014__weblog_pages.sql)
+    /** weblog_custom_template: name, description and link are varchar(255), outputtype varchar(48). */
+    public static final int TEMPLATE_NAME = 255;
+    public static final int TEMPLATE_DESCRIPTION = 255;
+    public static final int TEMPLATE_LINK = 255;
+    public static final int TEMPLATE_OUTPUT_TYPE = 48;
     public static final int PAGE_SLUG = ColumnWidths.PAGE_SLUG;
 
     // pressroom_weblog_redirect (V028__weblog_redirects.sql)

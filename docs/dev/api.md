@@ -803,19 +803,36 @@ pins it (red when the `saveWeblog` call is removed).
 Decision: SA-18 in `SimpleAgilityDecisionLog` (Wikantik); drafting record in
 `docs/superpowers/specs/2026-11-21-session-only-policy-decision.md`.
 
-These are built only for `SESSION` callers; session access to `/api` now exists, but none of these
-routes is built yet, so they stay in the JSP admin UI and have no API route (weblog memberships are readable with a token, never
-writable):
+**How a route is session-only (wave 3, 2026-11-25).** One mark and one guard, never a `Caller` check per route:
 
-- agent accounts (create, change, site-admin switch, their tokens);
-- admin accounts and the admin role (any change);
-- weblog membership writes (grant, change level, remove);
-- profile writes (email, password, names, locale), and another user's email address on
-  `PATCH /v1/admin/users/{userName}` (a rule, not a missing route: see below);
-- the site-wide token list (every user's tokens, revoke any);
-- weblog deletion;
-- custom templates and stylesheets;
-- the contact-form inbox (read or delete).
+- `@SessionOnly` (`ui.restapi.auth`) on a controller class or a handler method. `ApiScopeInterceptor` reads it
+  off the resolved handler (never the URI) and calls `SessionOnlyGuard.check(Caller.current(), handler)`, which
+  lets only `Caller.Kind.SESSION` through (`Caller.isSession()`, the one resolver; `AdminAccountGuard` uses the
+  same). TOKEN, PASSWORD, ANONYMOUS and UNRECOGNISED get 403 `auth.sessionOnly`, so a login mechanism added later is
+  refused until it is named. The guard runs after `PressroomHandlerInterceptor` (an unseen weblog is 404, a member
+  below the page's level 403) and after the token pin (404), and before the role ceiling.
+- Each marked route is an MCP `Exclusion` with the reason `McpToolCatalog.SESSION_ONLY` ("session-only") and has a
+  `Flag.SESSION_ONLY` row in `ApiAuthorizationMatrixTest.ROWS` (403 for every token caller after the pin's 404; the
+  permitted session reaches the handler). `SessionOnlyRoutesTest` sweeps all three both ways and dispatches every
+  marked route as each caller kind through the interceptor: a route cannot forget the mark's companions, and a
+  future one is swept without editing the test.
+- Handlers that need a person (`requireAuthenticatedUser`) and weblog permission follow the page they mirror:
+  `WeblogAdminApi` (ADMIN on the weblog, global login) is the base for the template, stylesheet and theme routes;
+  `SubmissionsApi` asks POST as the inbox does.
+- The rules and writes are shared with the JSP controllers, so the two cannot drift: `Memberships`
+  (`grant`/`change`/`remove` beside the existing rules), `CustomTemplates`, `ThemeStylesheets`,
+  `SharedThemeRules` (`customViolation`, `importTemplates`, `enableCustom`), `WeblogRemoval`,
+  `WeblogCreationRules.offeredThemes`. The API's problem codes are in the README's table
+  (`template.*`, `stylesheet.*`, `member.*`, `submission.notFound`, `theme.customisationDisabled`,
+  `auth.sessionOnly`). Where the API is stricter than the page, it is because the page's picker made the case
+  unreachable (a template `action` the weblog may not add, an `importTheme` that is not an enabled theme); a client
+  types what a picker chose.
+- API names for membership levels are `ADMIN`/`POST`/`EDIT_DRAFT`; `Memberships.actionFor` maps them to the stored
+  actions (`admin`/`post`/`edit_draft`).
+
+Built in wave 3: weblog membership writes, custom templates, the stylesheet, the switch to a custom theme, the
+contact-form inbox, weblog deletion. Still only in the JSP admin UI (no API route yet): agent accounts, admin
+accounts and the admin role, profile writes, the site-wide token list.
 
 Rules for building one: the route's caller-kind check refuses `TOKEN` and `PASSWORD` callers with 403
 (`ANONYMOUS` and anything unrecognised fail closed), after the visibility rules (a caller who may not
