@@ -12,6 +12,8 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,46 +259,12 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
         // Each value is set only when it passes: the user is a managed entity.
         FieldErrors errors = new FieldErrors();
-        if (body.emailAddress() != null) {
-            String emailAddress = body.emailAddress().trim();
-            RuleViolation problem = AccountRules.emailProblem(emailAddress, AccountRules.EmailUse.REPLACEMENT);
-            if (problem == null) {
-                user.setEmailAddress(emailAddress);
-            }
-            RuleProblems.add(errors, problem);
-        }
-        if (body.screenName() != null) {
-            String screenName = body.screenName().trim();
-            RuleViolation problem = AccountRules.screenNameProblem(screenName);
-            if (problem == null) {
-                user.setScreenName(screenName);
-            }
-            RuleProblems.add(errors, problem);
-        }
-        if (body.fullName() != null) {
-            String fullName = body.fullName().trim();
-            RuleViolation problem = AccountRules.fullNameProblem(fullName);
-            if (problem == null) {
-                user.setFullName(fullName);
-            }
-            RuleProblems.add(errors, problem);
-        }
-        if (body.locale() != null) {
-            String locale = body.locale().trim();
-            RuleViolation problem = AccountRules.localeProblem(locale);
-            if (problem == null) {
-                user.setLocale(locale);
-            }
-            RuleProblems.add(errors, problem);
-        }
-        if (body.timeZone() != null) {
-            String timeZone = body.timeZone().trim();
-            RuleViolation problem = AccountRules.timeZoneProblem(timeZone);
-            if (problem == null) {
-                user.setTimeZone(timeZone);
-            }
-            RuleProblems.add(errors, problem);
-        }
+        applyField(errors, body.emailAddress(),
+                v -> AccountRules.emailProblem(v, AccountRules.EmailUse.REPLACEMENT), user::setEmailAddress);
+        applyField(errors, body.screenName(), AccountRules::screenNameProblem, user::setScreenName);
+        applyField(errors, body.fullName(), AccountRules::fullNameProblem, user::setFullName);
+        applyField(errors, body.locale(), AccountRules::localeProblem, user::setLocale);
+        applyField(errors, body.timeZone(), AccountRules::timeZoneProblem, user::setTimeZone);
         // Only a single-sign-on account has an author role to edit (the person screen's own rule); any other
         // account's follows its memberships.
         if (body.writer() != null && !user.isSsoBound()) {
@@ -318,6 +286,23 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
         }
         return AdminDtos.toView(user, roles(user));
+    }
+
+    /**
+     * One optional text field of a user patch: absent leaves it alone; present is trimmed, judged by its rule and
+     * set only when it passes (the user is a managed entity), its problem recorded either way.
+     */
+    private static void applyField(FieldErrors errors, String value,
+            Function<String, RuleViolation> rule, Consumer<String> setter) {
+        if (value == null) {
+            return;
+        }
+        String trimmed = value.trim();
+        RuleViolation problem = rule.apply(trimmed);
+        if (problem == null) {
+            setter.accept(trimmed);
+        }
+        RuleProblems.add(errors, problem);
     }
 
     /**
