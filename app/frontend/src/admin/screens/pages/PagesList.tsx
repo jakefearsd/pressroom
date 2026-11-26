@@ -29,7 +29,7 @@ export function PagesList() {
   const handle = useParams()['handle'] ?? '';
   const pagesQuery = usePages(handle);
   const trashQuery = usePages(handle, 'TRASHED');
-  const weblog = useWeblog(handle).data;
+  const weblog = useWeblog(isSiteSpace(handle) ? undefined : handle).data;
 
   const pages = pagesQuery.data ?? [];
   const [order, setOrder] = useState<string[] | null>(null);

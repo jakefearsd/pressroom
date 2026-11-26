@@ -157,7 +157,7 @@ class RedirectIT extends PressroomIT {
         $("select[name='theme']").selectOptionByValue("journal");
         $("button[type='submit']").click();
 
-        $("#messages").should(exist);
+        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
         return handle;
     }
 

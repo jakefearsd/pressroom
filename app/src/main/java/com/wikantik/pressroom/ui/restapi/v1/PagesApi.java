@@ -532,6 +532,12 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         }
     }
 
+    /** The React admin's site Pages and Media screens read and write through the API, as a session only. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
+
     @Override
     public boolean isUserRequired() {
         return true;

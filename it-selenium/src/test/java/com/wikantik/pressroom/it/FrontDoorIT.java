@@ -123,7 +123,7 @@ class FrontDoorIT extends PressroomIT {
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("portfolio");
         $("button[type='submit']").click();
-        $("#messages").should(exist);
+        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
     }
 
     private void publishPost(String handle, String title) {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { call } from '../../api/client';
-import { useWeblog } from '../../api/queries';
+import { useMeta, useWeblog } from '../../api/queries';
 import { usePage, useStrandCandidates, type PageView, type PageWrite } from '../../api/pages';
 import { ApiError } from '../../api/problem';
 import { useBoot } from '../../context';
@@ -134,9 +134,11 @@ function PageForm({ handle, page, onSaved }: {
   const api = useApi();
   const navigate = useNavigate();
   const siteSpace = isSiteSpace(handle);
-  const weblog = useWeblog(handle).data;
+  // The API never serves the site space as a weblog; its pages live at the site root.
+  const weblog = useWeblog(siteSpace ? undefined : handle).data;
+  const siteUrl = useMeta().data?.siteUrl;
   // Where readers reach the blog (its own domain when it has one): the slug's prefix.
-  const base = weblog?.absoluteUrl;
+  const base = siteSpace ? (siteUrl === undefined ? undefined : `${siteUrl}/`) : weblog?.absoluteUrl;
 
   const [form, setForm] = useState<FormState>(() => formOf(page));
   const [seoOpen, setSeoOpen] = useState(false);

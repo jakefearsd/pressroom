@@ -213,6 +213,11 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
+        com.wikantik.pressroom.ui.restapi.v1.MediaReadApi mediaReadApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.MediaReadApi();
+        }
+
+        @Bean
         WeblogsApi weblogsApi() {
             return new WeblogsApi();
         }
@@ -355,6 +360,30 @@ class SiteSpaceAccessTest {
                 "no permission row on the site space");
     }
 
+    // ------------------------------------------------------------ the React admin's session
+
+    @Test
+    void anAdminsSessionReadsTheSitePagesAndMediaThroughTheApiButNothingElse() throws Exception {
+        siteSpace();
+        signInWithSession(admin);
+        assertEquals(200, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus(),
+                "the site pages for the admin's session");
+        assertEquals(200, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus(),
+                "the site media for the admin's session");
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/entries"))).getResponse().getStatus(),
+                "a route that does not offer the site space still withholds it");
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE))).getResponse().getStatus(),
+                "and so do its settings");
+    }
+
+    @Test
+    void aBlogAuthorsSessionNeverReachesTheSitePages() throws Exception {
+        siteSpace();
+        signInWithSession(author);
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus());
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus());
+    }
+
     // ------------------------------------------------------------ the automation API
 
     @Test
@@ -366,6 +395,12 @@ class SiteSpaceAccessTest {
             assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus(),
                     who.getUserName() + ": the site pages through the API");
         }
+
+        // ... a token never opens it, however privileged; only an admin's own session does, and only on the
+        // routes that offer it (below).
+        signInWithToken(admin, ApiToken.Role.ADMIN);
+        assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus(),
+                "the site media through the API with a token");
 
         // WeblogsApi once served these routes requiring no action weblog, so a rule that only ran when
         // one was required would have let an admin token read and rewrite the site space's settings
@@ -452,6 +487,14 @@ class SiteSpaceAccessTest {
     private static void signIn(User who) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(who.getUserName(), null, List.of()));
+    }
+
+    /** A form-login session, as the React admin's calls arrive: the details are the web authentication's. */
+    private static void signInWithSession(User who) {
+        var auth = new UsernamePasswordAuthenticationToken(who.getUserName(), null, List.of());
+        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
+                new org.springframework.mock.web.MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     private static void signInWithToken(User who, ApiToken.Role role) {

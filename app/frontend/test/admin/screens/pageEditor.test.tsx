@@ -318,6 +318,14 @@ describe('PageEditor: an existing page', () => {
       .toHaveTextContent('This page is the front door, so it is served at https://blog.example.com/ rather than at its slug.');
   });
 
+  it('roots the site space\'s slug at the site address, without asking for the site space as a weblog', async () => {
+    server.use(http.get(`${API}/weblogs/site-space`, () => problem(404, 'weblog.notFound', 'No such weblog.')));
+    await open('/weblogs/site-space/pages/new');
+    await screen.findByLabelText('Title');
+    await waitFor(() => { expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://blog.example.com/'); });
+    expect(screen.queryByText('No such weblog.')).toBeNull();
+  });
+
   it('has no front-door note for an ordinary page', async () => {
     withPage();
     await open('/weblogs/alpha/pages/p2');

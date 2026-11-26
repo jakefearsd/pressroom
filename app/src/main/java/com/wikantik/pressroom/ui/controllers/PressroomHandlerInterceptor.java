@@ -281,7 +281,8 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
      * Whether this request may act on the site space, the hidden weblog that
      * owns the site's pages: only a global admin, only through a JSP handler
      * that {@linkplain UISecurityEnforced#allowsSiteSpace offers it} (Pages,
-     * Media, Theme, Traffic), never through the API.
+     * Media, Theme, Traffic), and through the API only for a signed-in session on the handlers that offer it
+     * (the Pages and Media routes), never for a token.
      *
      * <p>When the answer is no, preHandle withholds the site space as though
      * its handle named no weblog: the action weblog stays unset, so a handler
@@ -298,8 +299,12 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
      * cannot run withholds it.
      */
     private boolean siteSpaceOffered(Object controller, boolean apiHandler, User user) {
-        if (apiHandler || user == null
-                || !(controller instanceof UISecurityEnforced secured) || !secured.allowsSiteSpace()) {
+        if (user == null || !(controller instanceof UISecurityEnforced secured) || !secured.allowsSiteSpace()) {
+            return false;
+        }
+        // The API offers it to an interactive session only (the React admin's Pages and Media screens), never
+        // to a token however privileged: automation does not act on the site's own pages.
+        if (apiHandler && !com.wikantik.pressroom.ui.restapi.auth.Caller.current().isSession()) {
             return false;
         }
         try {

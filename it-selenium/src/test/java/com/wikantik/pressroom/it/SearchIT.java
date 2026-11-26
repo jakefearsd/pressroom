@@ -347,7 +347,7 @@ class SearchIT extends PressroomIT {
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("journal");
         clickAndAwaitNewPage($("button[type='submit']"));
-        $("#messages").should(exist);
+        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
         return handle;
     }
 

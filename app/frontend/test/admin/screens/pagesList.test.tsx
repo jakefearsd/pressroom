@@ -57,6 +57,13 @@ describe('PagesList', () => {
     expect(document.getElementById('pages-list-marker')?.querySelector('.empty-state')).not.toBeNull();
   });
 
+  it('never asks the API for the site space as a weblog (it answers "No such weblog")', async () => {
+    server.use(http.get(`${API}/weblogs/site-space`, () => problem(404, 'weblog.notFound', 'No such weblog.')));
+    await open('/weblogs/site-space/pages');
+    await screen.findByText('Welcome');
+    expect(screen.queryByText('No such weblog.')).toBeNull();
+  });
+
   it('says "Site pages" for the site space', async () => {
     await open('/weblogs/site-space/pages');
     await screen.findByText('Welcome');
