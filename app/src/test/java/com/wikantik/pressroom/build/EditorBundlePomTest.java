@@ -168,7 +168,7 @@ class EditorBundlePomTest {
                 && scripts.contains("vitest run --coverage"),
                 "npm test runs node:test, ESLint with zero warnings, and Vitest with its coverage floor");
         assertTrue(Files.readString(Path.of("frontend", "vitest.config.ts"))
-                        .contains("thresholds: { lines: 90, branches: 80 }"),
+                        .contains("thresholds: { lines: 98.2, branches: 91.3, functions: 95.8, statements: 98.0 }"),
                 "the coverage floor on src/admin (ratchet up only)");
     }
 }
