@@ -145,9 +145,9 @@ describe('Inbox screen', () => {
   });
 
   it('shows a failed list in place', async () => {
-    server.use(http.get(`${API}/weblogs/alpha/submissions`, () => problem(500, 'server.error', 'Something broke.')));
+    server.use(http.get(`${API}/weblogs/alpha/submissions`, () => problem(409, 'server.error', 'Something broke.')));
     open('/weblogs/alpha/inbox');
-    expect(await screen.findByText('Something broke.', undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText('Something broke.')).toBeInTheDocument();
   }, 10000);
 
   it('is open to an author, closed to a limited member', async () => {
