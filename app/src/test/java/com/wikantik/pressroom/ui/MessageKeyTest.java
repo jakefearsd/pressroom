@@ -19,6 +19,7 @@ package com.wikantik.pressroom.ui;
 
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,8 +30,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -101,6 +104,77 @@ public class MessageKeyTest {
                         + "define. spring:message throws JspTagException for a missing code, so "
                         + "each of these renders as HTTP 500:\n  "
                         + String.join("\n  ", where));
+    }
+
+    /** The React admin's sources (spec A5): {@code t('key')} literals count as uses, and must exist. */
+    private static final Path REACT_ROOT = Paths.get("frontend/src/admin");
+
+    /** {@code t('some.key')} / {@code t("some.key")}: the React admin's message call, literal keys only. */
+    private static final Pattern REACT_MESSAGE_KEY = Pattern.compile("\\bt\\(\\s*[\"']([A-Za-z0-9_.]+)[\"']");
+
+    @Test
+    public void everyMessageKeyUsedInTheReactAdminExists() throws IOException {
+        Properties bundle = loadDefaultBundle();
+        Map<String, String> missing = new TreeMap<>();
+        reactKeyUsages(REACT_ROOT).forEach((key, file) -> {
+            if (!bundle.containsKey(key)) {
+                missing.put(key, file);
+            }
+        });
+
+        assertTrue(missing.isEmpty(), "src/admin calls t() with keys ApplicationResources.properties does not "
+                + "define (the app would show the raw key): " + missing);
+    }
+
+    /** Guards the guard, with a fixture: the React scan finds literals in .ts and .tsx and nothing else. */
+    @Test
+    public void theReactScanFindsLiteralKeysInTsAndTsxAndCountsThemAsUses(@TempDir Path fixture) throws IOException {
+        Files.createDirectories(fixture.resolve("api"));
+        Files.writeString(fixture.resolve("Screen.tsx"),
+                "export const A = () => <p>{t('react.only.key')} {t( \"second.key\" )} {format('not.a.key')}</p>;");
+        Files.writeString(fixture.resolve("api/util.ts"), "const x = t('third.key'); const y = t(dynamic);");
+        Files.writeString(fixture.resolve("ignored.js"), "t('js.key')");
+
+        Map<String, String> found = reactKeyUsages(fixture);
+
+        assertEquals(Set.of("react.only.key", "second.key", "third.key"), found.keySet());
+        assertEquals("Screen.tsx", found.get("react.only.key"));
+        String sources = reactSourceText(fixture);
+        assertTrue(isWholeKeyReferenced("react.only.key", sources, keyTokens(sources)),
+                "a key used only by React is not an orphan");
+    }
+
+    private static Map<String, String> reactKeyUsages(Path root) throws IOException {
+        Map<String, String> usages = new TreeMap<>();
+        if (!Files.isDirectory(root)) {
+            return usages;
+        }
+        try (Stream<Path> paths = Files.walk(root)) {
+            for (Path p : paths.filter(MessageKeyTest::isReactSource).toList()) {
+                Matcher matcher = REACT_MESSAGE_KEY.matcher(Files.readString(p, StandardCharsets.UTF_8));
+                while (matcher.find()) {
+                    usages.putIfAbsent(matcher.group(1), root.relativize(p).toString());
+                }
+            }
+        }
+        return usages;
+    }
+
+    private static String reactSourceText(Path root) throws IOException {
+        StringBuilder all = new StringBuilder();
+        if (Files.isDirectory(root)) {
+            try (Stream<Path> paths = Files.walk(root)) {
+                for (Path p : paths.filter(MessageKeyTest::isReactSource).toList()) {
+                    all.append(Files.readString(p, StandardCharsets.UTF_8));
+                }
+            }
+        }
+        return all.toString();
+    }
+
+    private static boolean isReactSource(Path p) {
+        String n = p.getFileName().toString();
+        return Files.isRegularFile(p) && (n.endsWith(".ts") || n.endsWith(".tsx")) && !n.endsWith(".d.ts");
     }
 
     /**
@@ -406,6 +480,7 @@ public class MessageKeyTest {
                 }
             }
         }
+        all.append(reactSourceText(REACT_ROOT));
         return all.toString();
     }
 

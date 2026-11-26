@@ -140,7 +140,37 @@ class EditorBundlePomTest {
                 "the built bundle must be git-ignored: it lives under src/main/webapp");
         assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js"),
                 "the reader bundle must be git-ignored too: it lives beside the editor's");
+        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/app/admin.js\n"),
+                "the React admin bundle must be git-ignored: it lives under src/main/webapp");
+        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/app/admin.css"));
+        assertTrue(ignore.contains("app/frontend/src/admin/api/schema.d.ts"),
+                "the types generated from the API snapshot are a build output");
         assertTrue(Files.exists(PACKAGE_JSON.resolveSibling("package-lock.json")),
                 "package-lock.json must be committed so npm ci is reproducible");
+    }
+
+    /**
+     * The React admin: one bundle, unhashed, beside the {@code .rol} shell route,
+     * type-checked before it is built, and gated by Vitest, ESLint and the
+     * existing node:test suite in the same {@code npm test} (spec A2).
+     */
+    @Test
+    void theReactAdminBundleIsBuiltTypeCheckedAndTested() throws IOException {
+        String build = Files.readString(Path.of("frontend", "build.mjs"));
+        assertTrue(build.contains("src/admin/main.tsx"), "build.mjs must bundle the React admin entry");
+        assertTrue(build.contains("src/main/webapp/pressroom-ui/app/admin.js"),
+                "the React admin bundle must land in the webapp root, beside the shell route");
+        assertTrue(build.contains("--watch"), "npm run watch is the dev loop (./pressroom dev serves the webapp root)");
+        String scripts = Files.readString(PACKAGE_JSON);
+        assertTrue(scripts.contains("\"build\": \"openapi-typescript src/admin/api/openapi.json -o "
+                + "src/admin/api/schema.d.ts && tsc --noEmit && node build.mjs\""),
+                "a type error must fail the build, after the types are generated from the snapshot");
+        assertTrue(scripts.contains("\"watch\": \"node build.mjs --watch\""));
+        assertTrue(scripts.contains("node --test") && scripts.contains("eslint --max-warnings=0")
+                && scripts.contains("vitest run --coverage"),
+                "npm test runs node:test, ESLint with zero warnings, and Vitest with its coverage floor");
+        assertTrue(Files.readString(Path.of("frontend", "vitest.config.ts"))
+                        .contains("thresholds: { lines: 90, branches: 80 }"),
+                "the coverage floor on src/admin (ratchet up only)");
     }
 }

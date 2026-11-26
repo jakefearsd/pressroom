@@ -180,6 +180,11 @@ public final class Routes {
             // seed ever stops granting it, this marker is the thing that fails.
             new Route("/pressroom-ui/menu.rol", Role.EDITOR, "", "h2.mm_weblog_name"),
 
+            // The React admin's shell. #pressroom-app is emitted by the bundle
+            // itself (App.tsx), so the marker proves admin.js loaded and read
+            // the bootstrap block, not just that the JSP rendered.
+            new Route("/pressroom-ui/app.rol", Role.EDITOR, "", "#pressroom-app"),
+
             new Route("/pressroom-ui/profile.rol", Role.EDITOR, "",
                     "form[action$='/pressroom-ui/profile!save.rol']"),
 
@@ -390,6 +395,10 @@ public final class Routes {
                             + "no literal URL to sweep. Without one the required "
                             + "@RequestParam makes the request 400 rather than render a "
                             + "page. Covered by PasswordResetControllerTest."),
+
+            new SkippedRoute("/pressroom-ui/app-messages.rol", Role.ANONYMOUS,
+                    "A JSON endpoint (the React admin's message bundle), not a page; "
+                            + "covered by AppMessagesControllerTest."),
 
             // --- need a seeded entity id ---
 

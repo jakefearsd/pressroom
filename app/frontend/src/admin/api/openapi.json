@@ -1,0 +1,5856 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "tags" : [ {
+    "name" : "Business profiles",
+    "description" : "The site's shared business profiles, which blogs show as schema.org data (site admins)."
+  }, {
+    "name" : "Site administration",
+    "description" : "Site-wide administration (site admins): user accounts, revision retention, runtime properties."
+  }, {
+    "name" : "Comments",
+    "description" : "Readers' comments on a weblog's entries: read, moderate, delete and reply."
+  }, {
+    "name" : "Traffic",
+    "description" : "A weblog's visitor figures, from the site's analytics."
+  }, {
+    "name" : "Entry trash",
+    "description" : "An entry in the trash: restore it as a draft, or delete it forever. Needs publish rights, as the Trash page does."
+  }, {
+    "name" : "Audits",
+    "description" : "Work lists for one weblog: entries with SEO gaps, and images without alt text."
+  }, {
+    "name" : "Media",
+    "description" : "Reading a weblog's media files and directories. A contributor may, as the editor's image chooser shows them."
+  }, {
+    "name" : "Category writes",
+    "description" : "Changing a weblog's categories: create, rename or describe, and delete. Needs publish rights, as the Categories page does."
+  }, {
+    "name" : "Meta",
+    "description" : "Liveness, site facts, and who the caller is."
+  }, {
+    "name" : "Pages",
+    "description" : "A weblog's pages: write, trash and restore them, their revisions, and a strand's parts."
+  }, {
+    "name" : "Members",
+    "description" : "Who holds a role on a weblog. Read only; memberships are changed in the admin UI."
+  }, {
+    "name" : "Weblog business profiles",
+    "description" : "The business profiles a weblog's owner may point the weblog at."
+  }, {
+    "name" : "Weblog settings",
+    "description" : "A weblog's settings and theme, for its owner."
+  }, {
+    "name" : "Weblogs",
+    "description" : "Every weblog on the site (site admins)."
+  }, {
+    "name" : "Tokens",
+    "description" : "Minting, listing and revoking the caller's own API tokens, with a password (HTTP Basic)."
+  }, {
+    "name" : "Redirects",
+    "description" : "A weblog's redirect rules: 301s for URLs that would otherwise 404."
+  }, {
+    "name" : "Entry writes",
+    "description" : "Writing entries: create, update, trash, preview, and restore or keep a revision. A member without publish rights writes drafts: a publish is submitted for review."
+  }, {
+    "name" : "Categories and tags",
+    "description" : "Reading a weblog's categories and the tags its entries carry. A contributor may, as the entry editor shows them."
+  }, {
+    "name" : "Entries",
+    "description" : "Reading a weblog's entries and their revisions."
+  }, {
+    "name" : "Site traffic",
+    "description" : "Every blog's visitor figures, from the site's analytics (site admins)."
+  }, {
+    "name" : "Maintenance",
+    "description" : "The maintenance actions a site admin starts on one weblog: flush its page cache, rebuild its search index, regenerate its media renditions."
+  }, {
+    "name" : "Media writes",
+    "description" : "Changing a weblog's media: upload, import from a URL, describe, move and delete files, and create directories. Needs publish rights, as the Media Files pages do."
+  }, {
+    "name" : "Weblog creation",
+    "description" : "Creating a weblog; the caller becomes its owner."
+  } ],
+  "paths" : {
+    "/v1/weblogs/{handle}/pages/{id}/parts" : {
+      "put" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesReplaceParts",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PartsWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs" : {
+      "get" : {
+        "tags" : [ "Weblogs" ],
+        "operationId" : "weblogsList",
+        "parameters" : [ {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogListPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Weblog creation" ],
+        "operationId" : "weblogsCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WeblogCreate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/redirects" : {
+      "get" : {
+        "tags" : [ "Redirects" ],
+        "operationId" : "redirectsList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RedirectView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Redirects" ],
+        "operationId" : "redirectsCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RedirectWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RedirectView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages" : {
+      "get" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesList",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "description" : "TRASHED lists the page trash; omit it for the pages themselves.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PageView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PageWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep" : {
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesUnkeepRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/restore" : {
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesRestoreRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PageRevisionRestore"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/keep" : {
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesKeepRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/restore" : {
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesRestore",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/delete-forever" : {
+      "post" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesDeleteForever",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/media" : {
+      "get" : {
+        "tags" : [ "Media" ],
+        "operationId" : "mediaList",
+        "parameters" : [ {
+          "name" : "directoryId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "dir",
+          "in" : "query",
+          "description" : "Deprecated: the old name of directoryId.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Skip this many files of the name-sorted list. Default 0.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "At most this many files (capped at 200). Without it, every file.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaUpload",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "array",
+                    "description" : "One part per file; repeat the part to upload several.",
+                    "items" : {
+                      "type" : "string",
+                      "format" : "binary"
+                    }
+                  },
+                  "directoryId" : {
+                    "type" : "string",
+                    "description" : "The directory to store the files in; the weblog's default directory if omitted."
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Every file was stored.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "207" : {
+            "description" : "Some files were refused; results says which and why.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/media/{id}/crop" : {
+      "post" : {
+        "tags" : [ "Media writes" ],
+        "description" : "Crops an image to a rectangle. It cannot be undone: the original is replaced. Send expectedWidth and expectedHeight from the file's last read.",
+        "operationId" : "mediaCrop",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MediaCrop"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/media/imports" : {
+      "post" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaImport",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MediaImport"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Imported as a new file.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "The directory already holds these bytes; that file.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/media/directories" : {
+      "get" : {
+        "tags" : [ "Media" ],
+        "operationId" : "mediaListDirectories",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DirectoryView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaCreateDirectory",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DirectoryWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DirectoryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries" : {
+      "get" : {
+        "tags" : [ "Entries" ],
+        "operationId" : "entriesList",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "category",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tags",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "name" : "text",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "locale",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesCreate",
+        "parameters" : [ {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EntryWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep" : {
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesUnkeepRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore" : {
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesRestoreRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RevisionRestore"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep" : {
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesKeepRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/restore" : {
+      "post" : {
+        "tags" : [ "Entry trash" ],
+        "operationId" : "entriesRestore",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/preview" : {
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesPreview",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreviewView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/delete-forever" : {
+      "post" : {
+        "tags" : [ "Entry trash" ],
+        "operationId" : "entriesDeleteForever",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/preview" : {
+      "post" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesPreviewNew",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreviewView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/comments/{id}/replies" : {
+      "post" : {
+        "tags" : [ "Comments" ],
+        "operationId" : "commentsReply",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CommentReply"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/categories" : {
+      "get" : {
+        "tags" : [ "Categories and tags" ],
+        "operationId" : "categoriesList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CategoryView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Category writes" ],
+        "operationId" : "categoriesCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CategoryWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CategoryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tokens" : {
+      "get" : {
+        "tags" : [ "Tokens" ],
+        "operationId" : "tokensList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TokenView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Tokens" ],
+        "operationId" : "tokensIssue",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/IssueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/IssuedToken"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/weblogs/{handle}/actions/regenerate-renditions" : {
+      "post" : {
+        "tags" : [ "Maintenance" ],
+        "operationId" : "maintenanceRegenerateRenditions",
+        "responses" : {
+          "202" : {
+            "description" : "Started; the work finishes after the response.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MaintenanceAccepted"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/weblogs/{handle}/actions/rebuild-index" : {
+      "post" : {
+        "tags" : [ "Maintenance" ],
+        "operationId" : "maintenanceRebuildIndex",
+        "responses" : {
+          "202" : {
+            "description" : "Started; the work finishes after the response.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MaintenanceAccepted"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/weblogs/{handle}/actions/flush-cache" : {
+      "post" : {
+        "tags" : [ "Maintenance" ],
+        "operationId" : "maintenanceFlushCache",
+        "responses" : {
+          "202" : {
+            "description" : "Started; the work finishes after the response.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MaintenanceAccepted"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "usersList",
+        "parameters" : [ {
+          "name" : "enabled",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "usersCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/revisions/sweep" : {
+      "post" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "revisionsSweep",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RevisionSweepRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/businesses" : {
+      "get" : {
+        "tags" : [ "Business profiles" ],
+        "summary" : "The site's business profiles.",
+        "operationId" : "businessesList",
+        "parameters" : [ {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "How many profiles to skip. Default 0.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The page size: default 50, at most 200.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Business profiles" ],
+        "summary" : "Create a business profile.",
+        "operationId" : "businessesCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BusinessWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}" : {
+      "get" : {
+        "tags" : [ "Weblog settings" ],
+        "operationId" : "weblogsGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Weblog settings" ],
+        "operationId" : "weblogsUpdate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WeblogPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}" : {
+      "get" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesGet",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesTrash",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PageWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/media/{id}" : {
+      "get" : {
+        "tags" : [ "Media" ],
+        "operationId" : "mediaGet",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaDelete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Media writes" ],
+        "operationId" : "mediaUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MediaPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}" : {
+      "get" : {
+        "tags" : [ "Entries" ],
+        "operationId" : "entriesGet",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesTrash",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Entry writes" ],
+        "operationId" : "entriesUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EntryWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/comments/{id}" : {
+      "get" : {
+        "tags" : [ "Comments" ],
+        "operationId" : "commentsGet",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Comments" ],
+        "operationId" : "commentsDelete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Comments" ],
+        "operationId" : "commentsUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CommentPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/categories/{id}" : {
+      "delete" : {
+        "tags" : [ "Category writes" ],
+        "operationId" : "categoriesDelete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "moveTo",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Category writes" ],
+        "operationId" : "categoriesUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CategoryWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CategoryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{userName}" : {
+      "patch" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "usersUpdate",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/config" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "configList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ConfigEntry"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "configUpdate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ConfigEntry"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/businesses/{id}" : {
+      "get" : {
+        "tags" : [ "Business profiles" ],
+        "summary" : "One business profile.",
+        "operationId" : "businessesGet",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Business profiles" ],
+        "summary" : "Delete an unused business profile.",
+        "operationId" : "businessesDelete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "Business profiles" ],
+        "summary" : "Change a business profile.",
+        "operationId" : "businessesUpdate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BusinessWrite"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/traffic" : {
+      "get" : {
+        "tags" : [ "Traffic" ],
+        "operationId" : "trafficGet",
+        "parameters" : [ {
+          "name" : "period",
+          "in" : "query",
+          "description" : "One of 24h, 7d, 30d (the default) or 90d.",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "30d"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TrafficView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/tags" : {
+      "get" : {
+        "tags" : [ "Categories and tags" ],
+        "operationId" : "tagsList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TagView"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/revisions" : {
+      "get" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesListRevisions",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RevisionSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}" : {
+      "get" : {
+        "tags" : [ "Pages" ],
+        "operationId" : "pagesGetRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "against",
+          "in" : "query",
+          "description" : "Another revision of the same page to diff against, in place of the page's current text.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/members" : {
+      "get" : {
+        "tags" : [ "Members" ],
+        "summary" : "Who holds a role on the weblog.",
+        "operationId" : "membersList",
+        "parameters" : [ {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "How many members to skip. Default 0.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The page size: default 50, at most 200.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/revisions" : {
+      "get" : {
+        "tags" : [ "Entries" ],
+        "operationId" : "entriesListRevisions",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RevisionSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}" : {
+      "get" : {
+        "tags" : [ "Entries" ],
+        "operationId" : "entriesGetRevision",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "revisionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "against",
+          "in" : "query",
+          "description" : "Another revision of the same entry to diff against, in place of the entry's current text.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevisionView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/entries/by-anchor/{anchor}" : {
+      "get" : {
+        "tags" : [ "Entries" ],
+        "operationId" : "entriesGetByAnchor",
+        "parameters" : [ {
+          "name" : "anchor",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "description" : "The entry fields to return, for example [\"anchor\", \"searchDescription\"]; id always comes back, and a list projects each item. Without it, the whole entry, text included.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/comments" : {
+      "get" : {
+        "tags" : [ "Comments" ],
+        "operationId" : "commentsList",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "entryId",
+          "in" : "query",
+          "description" : "Only this entry's comments: an entry id of this weblog.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "entry",
+          "in" : "query",
+          "description" : "Deprecated: the old name of entryId.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentPage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/businesses" : {
+      "get" : {
+        "tags" : [ "Weblog business profiles" ],
+        "summary" : "The business profiles this weblog may point at.",
+        "operationId" : "weblogBusinessesList",
+        "parameters" : [ {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "How many profiles to skip. Default 0.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The page size: default 50, at most 200.",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessChoicePage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/audit/seo" : {
+      "get" : {
+        "tags" : [ "Audits" ],
+        "operationId" : "auditsGetSeo",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SeoAudit"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/audit/seo/entries/{id}" : {
+      "get" : {
+        "tags" : [ "Audits" ],
+        "operationId" : "auditsGetSeoEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SeoEntryAudit"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/audit/media" : {
+      "get" : {
+        "tags" : [ "Audits" ],
+        "operationId" : "auditsGetMedia",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaAudit"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ping" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "operationId" : "pingGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PingView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meta" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "summary" : "The site's version, address, feature switches and limits.",
+        "operationId" : "metaGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MetaView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "operationId" : "meGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/profile" : {
+      "get" : {
+        "tags" : [ "Meta" ],
+        "summary" : "The caller's own account details (read-only).",
+        "operationId" : "meProfileGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/traffic" : {
+      "get" : {
+        "tags" : [ "Site traffic" ],
+        "summary" : "Every blog's views and visits, and the site's top posts and sources.",
+        "operationId" : "siteTrafficGet",
+        "parameters" : [ {
+          "name" : "period",
+          "in" : "query",
+          "description" : "One of 24h, 7d, 30d (the default) or 90d.",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "30d"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SiteTrafficView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/revisions" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "revisionsGetStats",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Stats"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weblogs/{handle}/redirects/{id}" : {
+      "delete" : {
+        "tags" : [ "Redirects" ],
+        "operationId" : "redirectsDelete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tokens/{id}" : {
+      "delete" : {
+        "tags" : [ "Tokens" ],
+        "operationId" : "tokensRevoke",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "PartsWrite" : {
+        "type" : "object",
+        "properties" : {
+          "entries" : {
+            "type" : "array",
+            "description" : "Ids of this blog's posts, in reading order: they become the strand's parts, replacing the whole list. An empty list removes every part. A post already in another strand is refused; move it with entries update strand.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PageView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "showInNav" : {
+            "type" : "boolean"
+          },
+          "navOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "metaTitle" : {
+            "type" : "string"
+          },
+          "searchDescription" : {
+            "type" : "string"
+          },
+          "canonicalUrl" : {
+            "type" : "string"
+          },
+          "noindex" : {
+            "type" : "boolean"
+          },
+          "ogImageId" : {
+            "type" : "string"
+          },
+          "updateTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "contentHash" : {
+            "type" : "string",
+            "description" : "SHA-256 of text, as hex. Send it back as expectedContentHash on update or on a revision restore so the change is refused if the page's text changed meanwhile."
+          },
+          "trashedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the page was moved to the trash; absent for a page that is not in it. Trashed pages are listed only by GET .../pages?status=TRASHED."
+          },
+          "strand" : {
+            "type" : "boolean",
+            "description" : "True when the page is a strand: an ordered series of this blog's posts."
+          },
+          "parts" : {
+            "type" : "array",
+            "description" : "A strand's parts, every member in order, drafts and the trash included; empty for a page that is not a strand. Change them with PUT .../pages/{id}/parts.",
+            "items" : {
+              "$ref" : "#/components/schemas/PartView"
+            }
+          }
+        }
+      },
+      "PartView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "anchor" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "WeblogCreate" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string",
+            "description" : "The weblog's handle: its URL path. Letters and digits."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The weblog's name."
+          },
+          "theme" : {
+            "type" : "string",
+            "description" : "A shared theme id, for example journal: required on create; on update it switches the blog to that theme. A wrong one answers with the ones offered. Custom themes are managed in the admin UI. Not clearable."
+          },
+          "tagline" : {
+            "type" : "string",
+            "description" : "A line under the weblog's name."
+          },
+          "copyright" : {
+            "type" : "string",
+            "description" : "The footer's copyright notice, plain text, at most 255 characters."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The weblog's contact email address. On create, defaults to the user's own."
+          },
+          "locale" : {
+            "type" : "string",
+            "description" : "A locale such as en_US. On create, defaults to the user's own."
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "A time zone id such as Europe/Berlin. On create, defaults to the user's own."
+          }
+        }
+      },
+      "WeblogView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "handle" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tagline" : {
+            "type" : "string"
+          },
+          "copyright" : {
+            "type" : "string"
+          },
+          "emailAddress" : {
+            "type" : "string"
+          },
+          "locale" : {
+            "type" : "string"
+          },
+          "timeZone" : {
+            "type" : "string"
+          },
+          "entryDisplayCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "commentsEnabled" : {
+            "type" : "boolean"
+          },
+          "commentNotify" : {
+            "type" : "boolean"
+          },
+          "showMoreFromSite" : {
+            "type" : "boolean",
+            "description" : "Show the more-from-the-site block on this blog. Default true."
+          },
+          "shareRowEnabled" : {
+            "type" : "boolean",
+            "description" : "Show the share row under this blog's posts. Default true."
+          },
+          "entryOrder" : {
+            "type" : "string",
+            "description" : "NEWEST (the default) or OLDEST: the order of this blog's listings. Feeds stay newest first."
+          },
+          "pageWidth" : {
+            "type" : "string",
+            "description" : "WIDE (the default) or STANDARD: STANDARD keeps the theme's narrower page and line length on large screens."
+          },
+          "frontPage" : {
+            "type" : "string",
+            "description" : "Id of the published page shown at the blog's root; absent when the root lists posts (they then live at /posts)."
+          },
+          "editorTheme" : {
+            "type" : "string",
+            "deprecated" : true,
+            "description" : "The same value as theme, under its older name."
+          },
+          "theme" : {
+            "type" : "string",
+            "description" : "The blog's theme: a shared theme id such as journal, or custom for a customised theme."
+          },
+          "creatorUserName" : {
+            "type" : "string"
+          },
+          "customDomain" : {
+            "type" : "string"
+          },
+          "icon" : {
+            "type" : "string"
+          },
+          "about" : {
+            "type" : "string"
+          },
+          "newsletterListUuid" : {
+            "type" : "string"
+          },
+          "businessId" : {
+            "type" : "string"
+          },
+          "placeType" : {
+            "type" : "string"
+          },
+          "placeLocality" : {
+            "type" : "string"
+          },
+          "placeRegion" : {
+            "type" : "string"
+          },
+          "placeCountry" : {
+            "type" : "string"
+          },
+          "placeLat" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "placeLng" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "bookingUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RedirectWrite" : {
+        "type" : "object",
+        "properties" : {
+          "source" : {
+            "type" : "string",
+            "description" : "The weblog-relative path to redirect, such as /old-path: no handle, no query string. Only a path that would otherwise 404 is ever redirected."
+          },
+          "target" : {
+            "type" : "string",
+            "description" : "The weblog-relative path it answers with a 301, such as /new-path. Not off-site, and not itself redirected."
+          }
+        }
+      },
+      "RedirectView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "target" : {
+            "type" : "string"
+          },
+          "origin" : {
+            "type" : "string"
+          },
+          "hitCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lastHitAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "PageWrite" : {
+        "type" : "object",
+        "properties" : {
+          "slug" : {
+            "type" : "string",
+            "description" : "The page's URL path segment: no slash, not a reserved name, unique in the weblog."
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "The page's title, as plain text."
+          },
+          "text" : {
+            "type" : "string",
+            "description" : "The page's text, in Markdown."
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "DRAFT or PUBLISHED; a new page without one is a DRAFT."
+          },
+          "showInNav" : {
+            "type" : "boolean",
+            "description" : "List the page in the blog's navigation."
+          },
+          "navOrder" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Position in the navigation, lowest first (0 or more; a negative number is refused); pages with the same number sort by title."
+          },
+          "metaTitle" : {
+            "type" : "string",
+            "description" : "The search-result title: replaces the whole <title> and og:title. At most 60 characters, the length a search result shows; write one, not a copy of the title and not the title cut off: lead with the place or topic. Without one the page title is the title, plus the blog's name when that fits."
+          },
+          "searchDescription" : {
+            "type" : "string",
+            "description" : "The meta description search engines and share previews show: one or two whole sentences, 50 to 160 characters (longer is cut off in a search result), saying what a reader will find."
+          },
+          "canonicalUrl" : {
+            "type" : "string",
+            "description" : "An absolute http(s) URL this page canonicalises to, when it was first published elsewhere."
+          },
+          "noindex" : {
+            "type" : "boolean",
+            "description" : "True asks search engines not to index the page. Not clearable."
+          },
+          "ogImageId" : {
+            "type" : "string",
+            "description" : "Id of an image in this weblog's media, outside any private directory, used as the share image."
+          },
+          "strand" : {
+            "type" : "boolean",
+            "description" : "True makes this page a strand: an ordered series of this blog's posts, listed beneath its text. Refused while it has parts if set false."
+          },
+          "clear" : {
+            "type" : "array",
+            "description" : "On update, fields to remove: metaTitle, searchDescription, canonicalUrl, ogImageId. Null never removes anything.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "revisionNote" : {
+            "type" : "string",
+            "description" : "On update, why the change was made; it labels the revision the update leaves when it changes the title or text. At most 255 characters."
+          },
+          "expectedContentHash" : {
+            "type" : "string",
+            "description" : "On update and on a revision restore, the contentHash the page was read with. If the page's text is no longer that, the request is a 409 page-changed whose currentContentHash is the stored text's hash, and nothing is saved. Optional."
+          }
+        }
+      },
+      "RevisionSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the save that replaced this content was made."
+          },
+          "creator" : {
+            "type" : "string",
+            "description" : "The user who made that save: the signed-in editor, or the API token's user."
+          },
+          "note" : {
+            "type" : "string",
+            "description" : "Why that save was made, when it said: an update's revisionNote."
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "The entry's title as it was, as plain text like an entry's title."
+          },
+          "kept" : {
+            "type" : "boolean",
+            "description" : "True when the revision is kept: exempt from every retention limit until released with .../unkeep. At most 10 per item."
+          }
+        }
+      },
+      "PageRevisionRestore" : {
+        "type" : "object",
+        "properties" : {
+          "expectedContentHash" : {
+            "type" : "string",
+            "description" : "On update and on a revision restore, the contentHash the page was read with. If the page's text is no longer that, the request is a 409 page-changed whose currentContentHash is the stored text's hash, and nothing is saved. Optional."
+          }
+        }
+      },
+      "MediaView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "altText" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "length" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "directory" : {
+            "type" : "string"
+          },
+          "focalX" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "focalY" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "blurhash" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UploadResponse" : {
+        "type" : "object",
+        "properties" : {
+          "results" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/UploadResult"
+            }
+          },
+          "created" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "UploadResult" : {
+        "type" : "object",
+        "properties" : {
+          "fileName" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "file" : {
+            "$ref" : "#/components/schemas/MediaView"
+          }
+        }
+      },
+      "MediaCrop" : {
+        "type" : "object",
+        "properties" : {
+          "x" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Left edge of the crop, in pixels of the displayed image. Required."
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Top edge of the crop, in pixels of the displayed image. Required."
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Width of the crop in pixels; at least 1. Required."
+          },
+          "height" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Height of the crop in pixels; at least 1. Required."
+          },
+          "expectedWidth" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The file's width as media get reported it. When sent, the crop runs only if it still matches, so a retry cannot crop twice."
+          },
+          "expectedHeight" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The file's height as media get reported it; checked as expectedWidth is."
+          }
+        }
+      },
+      "MediaImport" : {
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "description" : "A public http or https URL of a JPEG, PNG, GIF or WebP image."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "A name. On import, the image's file name; the extension follows the image's real type."
+          },
+          "directoryId" : {
+            "type" : "string",
+            "description" : "A directory id. On import, defaults to the weblog's default directory."
+          },
+          "altText" : {
+            "type" : "string",
+            "description" : "Alt text for the image."
+          }
+        }
+      },
+      "DirectoryWrite" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The directory's name, unique in the weblog. Required."
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the directory holds."
+          }
+        }
+      },
+      "DirectoryView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "isPrivate" : {
+            "type" : "boolean"
+          },
+          "fileCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "EntryWrite" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "The entry's title, as plain text in and out: send and receive \"Tom & Jerry\", never \"Tom &amp; Jerry\". The server escapes it once for storage and unescapes it on every read, so a title read back can be sent back unchanged."
+          },
+          "summary" : {
+            "type" : "string",
+            "description" : "A sentence or two shown under the title in lists of entries, and as the feed's summary. Markdown is accepted; lists show it as plain text. Without one, lists show the first couple of sentences of the text."
+          },
+          "text" : {
+            "type" : "string",
+            "description" : "The entry's text, in Markdown. On update it replaces the whole text; not with edits."
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "DRAFT, PUBLISHED, PENDING or SCHEDULED; a new entry without one is a DRAFT. Without publish rights on the weblog, PUBLISHED and SCHEDULED are saved as PENDING, for review. TRASHED is not writable: trash, restore and delete-forever are their own calls."
+          },
+          "category" : {
+            "type" : "string",
+            "description" : "The category's name, not its id. Omitted on create, the weblog's default category."
+          },
+          "pubTime" : {
+            "type" : "string",
+            "description" : "Wall-clock publication time in the weblog's own timezone, for example 2026-03-01T09:30, or an instant with Z or an offset (2026-03-01T08:30:00Z, the form an entry is read back with). Publishing without one means now; SCHEDULED needs one."
+          },
+          "tags" : {
+            "type" : "array",
+            "description" : "The entry's tags. On update, replaces the whole set.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "metaTitle" : {
+            "type" : "string",
+            "description" : "The search-result title: replaces the whole <title> and og:title. At most 60 characters, the length a search result shows; write one, not a copy of the title and not the title cut off: lead with the place or topic. Without one the page title is the title, plus the blog's name when that fits."
+          },
+          "searchDescription" : {
+            "type" : "string",
+            "description" : "The meta description search engines and share previews show: one or two whole sentences, 50 to 160 characters (longer is cut off in a search result), saying what a reader will find."
+          },
+          "canonicalUrl" : {
+            "type" : "string",
+            "description" : "An absolute http(s) URL this entry canonicalises to, when it was first published elsewhere."
+          },
+          "noindex" : {
+            "type" : "boolean",
+            "description" : "True asks search engines not to index the entry. Not clearable."
+          },
+          "featuredImageId" : {
+            "type" : "string",
+            "description" : "Id of a media file in this weblog, used as the featured image."
+          },
+          "ogImageId" : {
+            "type" : "string",
+            "description" : "Id of an image in this weblog's media, outside any private directory, used as the share image."
+          },
+          "jsonLdType" : {
+            "type" : "string",
+            "description" : "Structured data the permalink emits beside BlogPosting: BLOG_POSTING (the default), TOURIST_ATTRACTION, TOURIST_TRIP, EVENT, FAQ_PAGE or TECH_ARTICLE (which makes the article block a TechArticle instead of a BlogPosting)."
+          },
+          "geoLatitude" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Latitude in decimal degrees, -90 to 90. With TOURIST_ATTRACTION it is the place's geo; it also centres the entry's [map]."
+          },
+          "geoLongitude" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Longitude in decimal degrees, -180 to 180."
+          },
+          "eventStart" : {
+            "type" : "string",
+            "description" : "With EVENT: the start, wall-clock time in the weblog's zone, for example 2026-08-02T19:30, or an instant such as 2026-08-02T17:30:00Z."
+          },
+          "eventEnd" : {
+            "type" : "string",
+            "description" : "The end, in the same form; not before eventStart."
+          },
+          "eventLocation" : {
+            "type" : "string",
+            "description" : "The venue's name."
+          },
+          "commentsClosed" : {
+            "type" : "boolean",
+            "description" : "True to stop new comments on this entry; existing ones stay. Not clearable."
+          },
+          "anchor" : {
+            "type" : "string",
+            "description" : "The entry's URL slug: lower-case letters and digits in words joined by - or _, for example torrey-pines. On create it sets the slug, made from the title when omitted, and one another entry of the weblog holds, a trashed one included, answers 409; it cannot change after. entries get (GET .../entries/by-anchor/{anchor}) finds the entry by it."
+          },
+          "featuredImageUrl" : {
+            "type" : "string",
+            "description" : "A public http(s) URL of a JPEG, PNG, GIF or WebP image to import as the featured image, in one call. An image already in the weblog's default directory with the same bytes is reused. Not with featuredImageId."
+          },
+          "featuredImageAlt" : {
+            "type" : "string",
+            "description" : "Alt text for the image featuredImageUrl imports: what the picture shows, in a short phrase. Always send it with featuredImageUrl. It fills the file's alt text only when that has none."
+          },
+          "importExternalImages" : {
+            "type" : "boolean",
+            "description" : "Import every image the text loads from another site (HTML img src and Markdown images, at most 10) and point the text at the copies. Default: on, best effort, when the write sends text or edits: an image that cannot be copied stays linked and the write saves. False keeps linking. True is all or nothing: if any image fails, the entry is not written (images already imported stay and a retry reuses them); with no text on an update it imports from the stored text. With no featured image, the first picture becomes it."
+          },
+          "clear" : {
+            "type" : "array",
+            "description" : "On update, fields to remove: summary, metaTitle, searchDescription, canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation, strand (out of its strand). Null never removes anything.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "edits" : {
+            "type" : "array",
+            "description" : "Find/replace pairs applied to the entry's stored text, in order, each to the text as the previous ones left it: on update, and on preview with id. Each find must occur exactly once, or the request is refused naming every failing edit, and nothing is saved. At most 50; not with text. The result is saved as though sent as text (importExternalImages included).",
+            "items" : {
+              "$ref" : "#/components/schemas/TextEdit"
+            }
+          },
+          "expectedContentHash" : {
+            "type" : "string",
+            "description" : "On update and on a revision restore, the contentHash the entry was read with. When the stored text's hash differs, someone changed the entry since: the request is a 409 entry-changed whose currentContentHash is the stored text's hash, and nothing is saved. Get the entry again and redo the change. Without it, the write overwrites whatever is stored."
+          },
+          "revisionNote" : {
+            "type" : "string",
+            "description" : "On update, why this change is made, at most 255 characters, for example \"Shorten the intro\". It labels, in the entry's revision list, the revision the update leaves: the content it replaced. An update that changes no title, text or summary leaves no revision, and its note is dropped. Not on create."
+          },
+          "pinned" : {
+            "type" : "boolean",
+            "description" : "True to pin this entry to the top of its blog's home listing; at most 3 per blog. Needs publish rights."
+          },
+          "strand" : {
+            "type" : "string",
+            "description" : "Id of one of this blog's strand pages: the entry joins it as the last part. clear: [\"strand\"] takes it out. Needs publish rights."
+          }
+        }
+      },
+      "TextEdit" : {
+        "type" : "object",
+        "properties" : {
+          "find" : {
+            "type" : "string",
+            "description" : "Text of the entry, exactly as stored (get returns it), that must occur exactly once; include surrounding text until it does."
+          },
+          "replace" : {
+            "type" : "string",
+            "description" : "What replaces it; an empty string deletes it."
+          }
+        }
+      },
+      "EntryView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "anchor" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "contentHash" : {
+            "type" : "string",
+            "description" : "SHA-256 of the stored text (UTF-8), lower-case hex. Send it back as expectedContentHash on update so the update is refused if the entry changed meanwhile."
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "pubTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "updateTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "permalink" : {
+            "type" : "string"
+          },
+          "metaTitle" : {
+            "type" : "string"
+          },
+          "searchDescription" : {
+            "type" : "string"
+          },
+          "canonicalUrl" : {
+            "type" : "string"
+          },
+          "noindex" : {
+            "type" : "boolean"
+          },
+          "featuredImageId" : {
+            "type" : "string"
+          },
+          "ogImageId" : {
+            "type" : "string"
+          },
+          "jsonLdType" : {
+            "type" : "string"
+          },
+          "geoLatitude" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "geoLongitude" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "eventStart" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "eventEnd" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "eventLocation" : {
+            "type" : "string"
+          },
+          "commentsClosed" : {
+            "type" : "boolean"
+          },
+          "pinned" : {
+            "type" : "boolean",
+            "description" : "True when the entry is pinned to the top of its blog's home listing."
+          },
+          "strand" : {
+            "type" : "string",
+            "description" : "Id of the strand page this entry is a part of; absent when it is in none."
+          }
+        }
+      },
+      "RevisionRestore" : {
+        "type" : "object",
+        "properties" : {
+          "expectedContentHash" : {
+            "type" : "string",
+            "description" : "On update and on a revision restore, the contentHash the entry was read with. When the stored text's hash differs, someone changed the entry since: the request is a 409 entry-changed whose currentContentHash is the stored text's hash, and nothing is saved. Get the entry again and redo the change. Without it, the write overwrites whatever is stored."
+          }
+        }
+      },
+      "PreviewRequest" : {
+        "type" : "object",
+        "properties" : {
+          "text" : {
+            "type" : "string",
+            "description" : "The text to render, in Markdown; absent renders an empty draft."
+          },
+          "edits" : {
+            "type" : "array",
+            "description" : "Find/replace pairs applied to the entry's stored text, in order, each to the text as the previous ones left it: on update, and on preview with id. Each find must occur exactly once, or the request is refused naming every failing edit, and nothing is saved. At most 50; not with text. The result is saved as though sent as text (importExternalImages included).",
+            "items" : {
+              "$ref" : "#/components/schemas/TextEdit"
+            }
+          },
+          "featuredImageId" : {
+            "type" : "string",
+            "deprecated" : true,
+            "description" : "Ignored; accepted so older clients keep working. It served a warning about the body repeating the featured image, which no theme does any more."
+          }
+        }
+      },
+      "PreviewView" : {
+        "type" : "object",
+        "properties" : {
+          "html" : {
+            "type" : "string"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "CommentReply" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "description" : "The reply's text, written as the token's user and published at once; at most 4000 characters."
+          }
+        }
+      },
+      "CommentView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "entryId" : {
+            "type" : "string"
+          },
+          "entryTitle" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "statusChanged" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "authorUserName" : {
+            "type" : "string"
+          },
+          "authorDisplayName" : {
+            "type" : "string"
+          },
+          "authorIsOwner" : {
+            "type" : "boolean"
+          },
+          "replyTo" : {
+            "type" : "string"
+          },
+          "reply" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CategoryWrite" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The category's name, unique in the weblog. Required on create."
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the category is for."
+          }
+        }
+      },
+      "CategoryView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "IssueRequest" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "description" : "A name for the token, so its owner can tell it from the others."
+          },
+          "weblog" : {
+            "type" : "string",
+            "description" : "The handle of the one weblog the token may act on; omitted, every weblog its user can reach."
+          },
+          "role" : {
+            "type" : "string",
+            "description" : "READ, POST or ADMIN: what the token may do."
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the token stops working, an ISO-8601 instant in the future; omitted, it works until revoked."
+          }
+        }
+      },
+      "IssuedToken" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "info" : {
+            "$ref" : "#/components/schemas/TokenView"
+          }
+        }
+      },
+      "TokenView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "scopeWeblog" : {
+            "type" : "string"
+          },
+          "scopeRole" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastUsedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "revokedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "MaintenanceAccepted" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string",
+            "description" : "flush-cache, rebuild-index or regenerate-renditions: the action started."
+          },
+          "weblog" : {
+            "type" : "string",
+            "description" : "The handle of the weblog it was started on."
+          }
+        },
+        "required" : [ "action", "weblog" ]
+      },
+      "UserCreate" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The account's user name, which it signs in with; it never changes."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The account's display name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The account's email address; the set-password link is sent to it."
+          }
+        }
+      },
+      "UserView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string"
+          },
+          "screenName" : {
+            "type" : "string"
+          },
+          "emailAddress" : {
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "globalRoles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "sso" : {
+            "type" : "boolean"
+          },
+          "kind" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RevisionSweepRequest" : {
+        "type" : "object",
+        "properties" : {
+          "dryRun" : {
+            "type" : "boolean",
+            "description" : "False runs the sweep and removes revisions. True, or no body at all, only reports what it would remove."
+          }
+        }
+      },
+      "Report" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "byCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "byAge" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "byCeiling" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ceilingUnmeetable" : {
+            "type" : "boolean"
+          },
+          "weblogsFailed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "ceilingFailed" : {
+            "type" : "boolean"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incomplete" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "BusinessWrite" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The business's name, at most 255 characters. Required on create; never cleared."
+          },
+          "businessType" : {
+            "type" : "string",
+            "description" : "The schema.org type: Organization, LocalBusiness or ProfessionalService. Defaults to Organization on create; never cleared.",
+            "enum" : [ "Organization", "LocalBusiness", "ProfessionalService" ]
+          },
+          "websiteUrl" : {
+            "type" : "string",
+            "description" : "A public http or https URL, at most 255 characters."
+          },
+          "bookingUrl" : {
+            "type" : "string",
+            "description" : "Where the business is booked: a public http or https URL, at most 255 characters."
+          },
+          "telephone" : {
+            "type" : "string",
+            "description" : "Digits, plus, parentheses, hyphen, dot and space, optionally an extension such as \"ext. 89\"; 3 to 32 characters."
+          },
+          "email" : {
+            "type" : "string",
+            "description" : "An email address, at most 255 characters."
+          },
+          "logoUrl" : {
+            "type" : "string",
+            "description" : "The logo's public http or https URL, at most 255 characters."
+          },
+          "sameAs" : {
+            "type" : "array",
+            "description" : "Profile links, each a public http or https URL of at most 255 characters; at most 10. Replaces the whole list.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "areaServed" : {
+            "type" : "string",
+            "description" : "The area the business serves, at most 255 characters."
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the business does."
+          },
+          "clear" : {
+            "type" : "array",
+            "description" : "Fields to remove: websiteUrl, bookingUrl, telephone, email, logoUrl, sameAs, areaServed, description. Updates only. Null never removes anything.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "BusinessView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "The business's id; a weblog's businessId names it."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The business's name."
+          },
+          "businessType" : {
+            "type" : "string",
+            "description" : "The schema.org type: Organization, LocalBusiness or ProfessionalService.",
+            "enum" : [ "Organization", "LocalBusiness", "ProfessionalService" ]
+          },
+          "websiteUrl" : {
+            "type" : "string",
+            "description" : "The business's website, or null."
+          },
+          "bookingUrl" : {
+            "type" : "string",
+            "description" : "Where the business is booked, or null."
+          },
+          "telephone" : {
+            "type" : "string",
+            "description" : "The business's telephone number, or null."
+          },
+          "email" : {
+            "type" : "string",
+            "description" : "The business's email address, or null."
+          },
+          "logoUrl" : {
+            "type" : "string",
+            "description" : "The URL of the business's logo, or null."
+          },
+          "sameAs" : {
+            "type" : "array",
+            "description" : "Profile links that identify the business (social profiles, listings), in order; empty when there are none.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "areaServed" : {
+            "type" : "string",
+            "description" : "The area the business serves, or null."
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the business does, or null."
+          },
+          "weblogCount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "How many weblogs use this business."
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the business was created."
+          },
+          "lastModified" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the business was last saved."
+          }
+        },
+        "required" : [ "businessType", "id", "name", "sameAs", "weblogCount" ]
+      },
+      "WeblogPatch" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The weblog's name."
+          },
+          "tagline" : {
+            "type" : "string",
+            "description" : "A line under the weblog's name. Remove with clear."
+          },
+          "copyright" : {
+            "type" : "string",
+            "description" : "The footer's copyright notice, plain text, at most 255 characters. Remove with clear."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The weblog's contact email address."
+          },
+          "locale" : {
+            "type" : "string",
+            "description" : "A locale such as en_US."
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "A time zone id such as Europe/Berlin."
+          },
+          "entryDisplayCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries a page of the weblog shows: at least 1, at most the site's limit."
+          },
+          "active" : {
+            "type" : "boolean",
+            "description" : "False takes the weblog offline."
+          },
+          "customDomain" : {
+            "type" : "string",
+            "description" : "A hostname the weblog is served at, such as blog.example.com; an empty string or clear removes it."
+          },
+          "icon" : {
+            "type" : "string",
+            "description" : "The path of the weblog's icon image, at most 255 characters. Remove with clear."
+          },
+          "about" : {
+            "type" : "string",
+            "description" : "A short text about this weblog, at most 255 characters. Remove with clear."
+          },
+          "newsletterListUuid" : {
+            "type" : "string",
+            "description" : "The UUID of the newsletter list readers subscribe to. Remove with clear."
+          },
+          "businessId" : {
+            "type" : "string",
+            "description" : "Id of an existing business profile"
+          },
+          "placeType" : {
+            "type" : "string",
+            "description" : "LodgingBusiness, or omit; needs placeLocality"
+          },
+          "placeLocality" : {
+            "type" : "string",
+            "description" : "The place's town or city, at most 128 characters"
+          },
+          "placeRegion" : {
+            "type" : "string",
+            "description" : "The place's region, at most 128 characters"
+          },
+          "placeCountry" : {
+            "type" : "string",
+            "description" : "Two-letter country code"
+          },
+          "placeLat" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Decimal degrees, given as a pair; stored to two decimals"
+          },
+          "placeLng" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Decimal degrees, given as a pair; stored to two decimals"
+          },
+          "bookingUrl" : {
+            "type" : "string",
+            "description" : "An http or https URL where the place is booked, at most 255 characters"
+          },
+          "commentsEnabled" : {
+            "type" : "boolean",
+            "description" : "Allow signed-in readers to comment. Not clearable."
+          },
+          "commentNotify" : {
+            "type" : "boolean",
+            "description" : "Email the owners when a comment needs approval. Not clearable."
+          },
+          "showMoreFromSite" : {
+            "type" : "boolean",
+            "description" : "Show popular posts from the site's other blogs on this blog. Not clearable."
+          },
+          "shareRowEnabled" : {
+            "type" : "boolean",
+            "description" : "Show the share row under this blog's posts. Not clearable."
+          },
+          "entryOrder" : {
+            "type" : "string",
+            "description" : "NEWEST or OLDEST (any case): the order of this blog's listings. Feeds stay newest first. Not clearable."
+          },
+          "pageWidth" : {
+            "type" : "string",
+            "description" : "WIDE or STANDARD (any case): STANDARD keeps the theme's narrower page and line length on large screens. Not clearable."
+          },
+          "frontPage" : {
+            "type" : "string",
+            "description" : "Id of a published page of this blog to show at its root; the post list then moves to /posts. Remove with clear."
+          },
+          "theme" : {
+            "type" : "string",
+            "description" : "A shared theme id, for example journal: required on create; on update it switches the blog to that theme. A wrong one answers with the ones offered. Custom themes are managed in the admin UI. Not clearable."
+          },
+          "clear" : {
+            "type" : "array",
+            "description" : "Fields to remove: tagline, copyright, customDomain, icon, about, newsletterListUuid, businessId, frontPage, placeType, placeLocality, placeRegion, placeCountry, placeLat with placeLng, bookingUrl. Null never removes anything.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "MediaPatch" : {
+        "type" : "object",
+        "properties" : {
+          "altText" : {
+            "type" : "string",
+            "description" : "Alt text for the image; an empty string marks it decorative. Remove with clear."
+          },
+          "focalX" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "The focal point's left-to-right position, a fraction of the width from 0 to 1. A file has both coordinates or neither."
+          },
+          "focalY" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "The focal point's top-to-bottom position, a fraction of the height from 0 to 1."
+          },
+          "directoryId" : {
+            "type" : "string",
+            "description" : "A directory id: moves the file there."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The file's name; not blank."
+          },
+          "clear" : {
+            "type" : "array",
+            "description" : "Fields to remove: altText, focalX with focalY.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "CommentPatch" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string",
+            "description" : "On update: PUBLISHED or HIDDEN, the only statuses a comment can be set to."
+          }
+        }
+      },
+      "UserPatch" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean",
+            "description" : "Whether the account may sign in."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The account's display name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The account's email address. On a single-sign-on account, replaced at its next sign-in."
+          }
+        }
+      },
+      "ConfigEntry" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "WeblogListPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/WeblogView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
+      "Point" : {
+        "type" : "object",
+        "properties" : {
+          "day" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "hour" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "visitors" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "views" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "Post" : {
+        "type" : "object",
+        "properties" : {
+          "entryId" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "views" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "visitors" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Distinct visitors to this path; null when the service cannot say."
+          },
+          "trend" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "This period's daily view rate against the next longer period's, minus one (0 is steady, 1 is twice the usual rate); null when no longer period has the path."
+          }
+        }
+      },
+      "Row" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "Summary" : {
+        "type" : "object",
+        "properties" : {
+          "visitors" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "visits" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "views" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bounces" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalTimeSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "TrafficView" : {
+        "type" : "object",
+        "properties" : {
+          "state" : {
+            "type" : "string",
+            "description" : "NOT_CONFIGURED, NO_DATA, STALE (the last read failed: shown, not hidden) or OK."
+          },
+          "asOf" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the snapshot was read; the numbers are as fresh as this."
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "current" : {
+            "$ref" : "#/components/schemas/Summary"
+          },
+          "previous" : {
+            "$ref" : "#/components/schemas/Summary",
+            "description" : "The immediately preceding period of the same length."
+          },
+          "series" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Point"
+            }
+          },
+          "posts" : {
+            "type" : "array",
+            "description" : "One row per recorded path, most viewed first.",
+            "items" : {
+              "$ref" : "#/components/schemas/Post"
+            }
+          },
+          "breakdowns" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/Row"
+              }
+            },
+            "description" : "Rows by tab: sources, places, devices, events, campaigns, speed."
+          },
+          "pathsCappedAt" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "0 when posts holds every recorded path; else the number of top paths it was cut at, and a path outside them is unknown, not zero."
+          }
+        }
+      },
+      "TagView" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "RevisionView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "diff" : {
+            "type" : "string",
+            "description" : "A unified diff (---/+++ lines, @@ hunks, 3 lines of context) from this revision's text to the entry's current text, or to the revision named by against. Lines starting with + are only in the current text (or that revision). Empty when they are the same."
+          },
+          "kept" : {
+            "type" : "boolean",
+            "description" : "True when the revision is kept: exempt from every retention limit."
+          }
+        }
+      },
+      "MemberPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/MemberView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many members the weblog has, across every page."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset", "total" ]
+      },
+      "MemberView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The account's user name."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The name the account is shown under."
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "PERSON, or AGENT for an agent account.",
+            "enum" : [ "PERSON", "AGENT" ]
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "The strongest action the membership grants: ADMIN (manage the weblog and its members), POST (publish) or EDIT_DRAFT (write drafts, submitted for review).",
+            "enum" : [ "ADMIN", "POST", "EDIT_DRAFT" ]
+          }
+        },
+        "required" : [ "kind", "permission", "screenName", "userName" ]
+      },
+      "MediaPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/MediaView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
+      "EntryPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/EntryView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
+      "CommentPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/CommentView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
+      "BusinessChoice" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "The id to send as a weblog's businessId."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The business's name."
+          },
+          "businessType" : {
+            "type" : "string",
+            "description" : "The schema.org type: Organization, LocalBusiness or ProfessionalService.",
+            "enum" : [ "Organization", "LocalBusiness", "ProfessionalService" ]
+          }
+        },
+        "required" : [ "businessType", "id", "name" ]
+      },
+      "BusinessChoicePage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/BusinessChoice"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many business profiles there are to choose from, across every page."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset", "total" ]
+      },
+      "SeoAudit" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries have a gap, across every page."
+          },
+          "counts" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            },
+            "description" : "Per gap code, how many entries have that gap, across every page; every code the audit can report is a key, zero or not."
+          },
+          "entries" : {
+            "type" : "array",
+            "description" : "This page of the entries with gaps.",
+            "items" : {
+              "$ref" : "#/components/schemas/SeoGap"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "entries", "hasMore", "limit", "offset" ]
+      },
+      "SeoGap" : {
+        "type" : "object",
+        "properties" : {
+          "entryId" : {
+            "type" : "string"
+          },
+          "anchor" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "gaps" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "SeoEntryAudit" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "anchor" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "findings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SeoFinding"
+            }
+          }
+        }
+      },
+      "SeoFinding" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "MediaAudit" : {
+        "type" : "object",
+        "properties" : {
+          "missingAltText" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MediaGap"
+            }
+          }
+        }
+      },
+      "MediaGap" : {
+        "type" : "object",
+        "properties" : {
+          "mediaId" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "directoryName" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PingView" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string",
+            "description" : "Always ok: the API is answering."
+          }
+        },
+        "required" : [ "status" ]
+      },
+      "Features" : {
+        "type" : "object",
+        "properties" : {
+          "customThemes" : {
+            "type" : "boolean",
+            "description" : "True when weblog owners may use custom templates and stylesheets."
+          },
+          "groupBlogging" : {
+            "type" : "boolean",
+            "description" : "True when a weblog may have more than one member."
+          },
+          "userWeblogCreation" : {
+            "type" : "boolean",
+            "description" : "True when any user, not only a site admin, may create a weblog."
+          },
+          "uploads" : {
+            "type" : "boolean",
+            "description" : "True when media uploads are switched on."
+          },
+          "readerSignIn" : {
+            "type" : "boolean",
+            "description" : "True when readers can sign in (single sign-on is configured)."
+          },
+          "analytics" : {
+            "type" : "boolean",
+            "description" : "True when an analytics service is configured; false is what makes a traffic read answer NOT_CONFIGURED."
+          }
+        },
+        "required" : [ "analytics", "customThemes", "groupBlogging", "readerSignIn", "uploads", "userWeblogCreation" ]
+      },
+      "Limits" : {
+        "type" : "object",
+        "properties" : {
+          "maxBodyBytes" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The largest JSON request body, in bytes; a larger one is refused with 413."
+          },
+          "maxListLimit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The largest page a list answers; a bigger limit is capped to it."
+          },
+          "entryTextMaxChars" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The most characters an entry's text may hold."
+          }
+        },
+        "required" : [ "entryTextMaxChars", "maxBodyBytes", "maxListLimit" ]
+      },
+      "MetaView" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "string",
+            "description" : "The Pressroom version, as the footer shows it; null when unknown."
+          },
+          "siteUrl" : {
+            "type" : "string",
+            "description" : "The site's absolute URL without a trailing slash; null when none is configured."
+          },
+          "features" : {
+            "$ref" : "#/components/schemas/Features",
+            "description" : "Which optional features the site has switched on."
+          },
+          "limits" : {
+            "$ref" : "#/components/schemas/Limits",
+            "description" : "Sizes the API holds every caller to."
+          }
+        },
+        "required" : [ "features", "limits" ]
+      },
+      "MeView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The account's user name."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The account's display name."
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "PERSON or AGENT: whether the account is a person or an agent."
+          },
+          "globalAdmin" : {
+            "type" : "boolean",
+            "description" : "True when the account is a site admin."
+          },
+          "tokenScope" : {
+            "$ref" : "#/components/schemas/TokenScope",
+            "description" : "The token's ceiling: its role, and the weblog it is limited to. An empty object for a caller that did not authenticate with a token."
+          },
+          "weblogs" : {
+            "type" : "array",
+            "description" : "The weblogs this token can act on, sorted by handle: the one a pinned token is limited to, or every weblog the account belongs to.",
+            "items" : {
+              "$ref" : "#/components/schemas/WeblogMembership"
+            }
+          }
+        },
+        "required" : [ "globalAdmin", "kind", "tokenScope", "userName", "weblogs" ]
+      },
+      "TokenScope" : {
+        "type" : "object",
+        "properties" : {
+          "weblog" : {
+            "type" : "string",
+            "description" : "The weblog the token is limited to; an empty string when it is not limited to one."
+          },
+          "role" : {
+            "type" : "string",
+            "description" : "READ, POST or ADMIN: the token's role."
+          }
+        }
+      },
+      "WeblogMembership" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string",
+            "description" : "The weblog's handle."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The weblog's name; an empty string when it has none."
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "ADMIN, POST or EDIT_DRAFT: the highest permission the account holds on it."
+          }
+        },
+        "required" : [ "handle", "name", "permission" ]
+      },
+      "ProfileView" : {
+        "type" : "object",
+        "properties" : {
+          "userName" : {
+            "type" : "string",
+            "description" : "The account's user name."
+          },
+          "screenName" : {
+            "type" : "string",
+            "description" : "The account's display name."
+          },
+          "fullName" : {
+            "type" : "string",
+            "description" : "The account holder's full name."
+          },
+          "emailAddress" : {
+            "type" : "string",
+            "description" : "The account's email address."
+          },
+          "locale" : {
+            "type" : "string",
+            "description" : "The account's locale, such as en_US."
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "The account's time zone, such as America/Denver."
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "PERSON or AGENT: whether the account is a person or an agent."
+          }
+        },
+        "required" : [ "kind", "userName" ]
+      },
+      "UserPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/UserView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset" ]
+      },
+      "SiteBlogRow" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "siteSpace" : {
+            "type" : "boolean",
+            "description" : "True for the site space, which holds the site's own pages."
+          },
+          "standing" : {
+            "type" : "string",
+            "description" : "READ (the blog has numbers), NO_DATA (not read yet) or NOT_REGISTERED (registering it with the analytics service failed)."
+          },
+          "visitors" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The blog's distinct visitors; null unless standing is READ."
+          },
+          "views" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The blog's views; null unless standing is READ."
+          },
+          "visits" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The blog's visits; null unless standing is READ."
+          },
+          "change" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Views against the previous period, as a fraction (0.25 is a quarter more); null unless standing is READ, and null when the previous period had no views."
+          },
+          "topPostTitle" : {
+            "type" : "string",
+            "description" : "The blog's most viewed entry's title as plain text; null when it has none."
+          }
+        }
+      },
+      "SiteTrafficView" : {
+        "type" : "object",
+        "properties" : {
+          "state" : {
+            "type" : "string",
+            "description" : "NOT_CONFIGURED, NO_DATA, STALE (a blog's last read failed: shown, not hidden) or OK."
+          },
+          "asOf" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the oldest snapshot was read; the numbers are as fresh as this."
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "totalViews" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Views summed across the blogs that have a snapshot."
+          },
+          "totalVisits" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Visits summed across the blogs that have a snapshot."
+          },
+          "blogs" : {
+            "type" : "array",
+            "description" : "One row per blog, the site space included: those with a snapshot first, most viewed first, then those without one, by handle. Empty when the state is NOT_CONFIGURED.",
+            "items" : {
+              "$ref" : "#/components/schemas/SiteBlogRow"
+            }
+          },
+          "posts" : {
+            "type" : "array",
+            "description" : "The most viewed entries across the blogs, most viewed first.",
+            "items" : {
+              "$ref" : "#/components/schemas/Post"
+            }
+          },
+          "sources" : {
+            "type" : "array",
+            "description" : "The site's top sources; a source several blogs share shows the largest single blog's visitors, so the value is a lower bound.",
+            "items" : {
+              "$ref" : "#/components/schemas/Row"
+            }
+          }
+        }
+      },
+      "ItemCount" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "description" : "ENTRY or PAGE: whose revisions these are.",
+            "enum" : [ "ENTRY", "PAGE" ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "revisions" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "Stats" : {
+        "type" : "object",
+        "properties" : {
+          "entryRevisions" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pageRevisions" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "kept" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "approximateBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "oldest" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "largest" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ItemCount"
+            }
+          },
+          "lastSweep" : {
+            "$ref" : "#/components/schemas/Report"
+          },
+          "nextSweep" : {
+            "$ref" : "#/components/schemas/Report"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "BusinessPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/BusinessView"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many business profiles the site has, across every page."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset", "total" ]
+      },
+      "ApiProblem" : {
+        "type" : "object",
+        "description" : "Why a request failed: an RFC 9457 problem detail, served as application/problem+json. Branch on code, never on detail.",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "description" : "The problem's coarse category, as a URI."
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "The category's short English name. Not localised."
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The HTTP status code."
+          },
+          "detail" : {
+            "type" : "string",
+            "description" : "What went wrong, for a person to read; in the Accept-Language language when the server has it. Never branch on it."
+          },
+          "instance" : {
+            "type" : "string",
+            "description" : "The path of the request that failed."
+          },
+          "errors" : {
+            "type" : "array",
+            "description" : "One entry per field the request got wrong, when the problem names fields.",
+            "items" : {
+              "$ref" : "#/components/schemas/ProblemFieldError"
+            }
+          },
+          "currentContentHash" : {
+            "type" : "string",
+            "description" : "On an entry-changed or page-changed 409: the hash of the text now stored, which the request's expectedContentHash did not match."
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
+          }
+        },
+        "required" : [ "code", "status", "title", "type" ]
+      },
+      "ProblemFieldError" : {
+        "type" : "object",
+        "description" : "One field's problem.",
+        "properties" : {
+          "field" : {
+            "type" : "string",
+            "description" : "The request field at fault; absent when the problem names no field the request sent."
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "What is wrong with it, for a person to read. Never branch on it."
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "A stable, case-sensitive code to branch on, refining type. Codes are never renamed or removed, but new ones are added: treat one you do not know by its type and status.",
+            "x-extensible-enum" : [ "request.invalid", "request.invalidFields", "request.malformedBody", "parameter.notWholeNumber", "parameter.notNumber", "parameter.notBoolean", "parameter.invalidValue", "paging.invalidRange", "auth.unauthorized", "auth.forbidden", "resource.notFound", "request.notAcceptable", "resource.conflict", "entry.changed", "page.changed", "request.tooLarge", "request.unsupportedMediaType", "request.throttled", "server.internalError", "upstream.failure", "server.busy", "entry.notFound", "page.notFound", "revision.notFound", "weblog.notFound", "auth.notAuthenticated", "entry.trashed", "entry.alreadyTrashed", "entry.notInTrash", "entry.deleteForeverNeedsTrash", "entry.notChangeable", "entry.needsPublishRights", "page.trashed", "page.alreadyTrashed", "page.notInTrash", "page.deleteForeverNeedsTrash", "revision.tooMany", "field.required", "field.blank", "field.tooLong", "field.updateOnly", "revisionNote.onCreate", "status.unknown", "entry.trashStatusNotWritable", "page.trashStatusNotWritable", "page.statusFilterInvalid", "entry.expectedContentHashInvalid", "page.expectedContentHashInvalid", "fields.unknown", "fields.unknownMany", "edits.withText", "edits.tooMany", "edits.empty", "edits.noFind", "edits.noReplace", "edits.findNotMatched", "edits.ambiguous", "edits.onCreate", "edits.previewNeedsEntry", "anchor.immutable", "anchor.invalidForm", "anchor.heldByTrashedEntry", "anchor.inUse", "pubTime.requiredForScheduled", "pubTime.invalid", "eventTime.invalid", "eventEnd.beforeStart", "jsonLdType.unknown", "geo.outOfRange", "strand.idNotStrandPage", "pinned.tooMany", "category.unknown", "image.notPublic", "canonicalUrl.notAbsolute", "clear.notClearable", "clear.togetherOnly", "clear.setAndCleared", "upload.disabled", "image.altWithoutUrl", "image.urlAndId", "image.urlAndClear", "image.scanRefused", "image.tooManyBodyImages", "image.directoryPrivate", "image.importBudgetExhausted", "image.importFailed", "strand.entriesRequired", "strand.flagNotSet", "strand.tooMany", "strand.postInAnotherStrand", "strand.postListedTwice", "strand.postUnknown", "strand.sitePage", "strand.hasParts", "navOrder.negative", "slug.reserved", "slug.hasSlash", "slug.heldByTrashedPage", "slug.inUse", "parameter.aliasConflict", "auth.passwordNotAcceptedHere", "auth.passwordRejected", "auth.noPermission", "auth.apiNotAllowed", "token.notAdminScoped", "token.readOnly", "token.weblogScopedRoute", "token.mintRefused", "token.managementNeedsPassword", "token.notFound", "token.weblogNotMember", "token.expiryNotInFuture", "token.roleUnknown", "mcp.tokenRequired", "mcp.actionMissing", "mcp.actionUnknown", "mcp.argumentNotApplicable", "mcp.argumentMissing", "mcp.argumentNotObject", "mcp.argumentNotPathSegment", "account.adminManagedInAdminUi", "account.agentManagedInAdminUi", "setting.managedInAdminUi", "user.notFound", "user.nameInUse", "user.nameHasDisallowedCharacters", "user.emailRequired", "user.emailInvalid", "user.emailUiOnly", "user.mailNotConfigured", "user.passwordLinkNotSent", "config.propertiesRequired", "config.propertyNameRequired", "config.propertyUnknown", "config.valueNull", "config.outOfRange", "config.notBoolean", "config.notInteger", "config.notNumber", "config.frontDoorSiteSpace", "config.frontDoorPageUnpublished", "config.frontDoorBothSet", "config.privacyPageUnpublished", "field.notFinite", "field.notUuid", "media.fileRequired", "media.importRefused", "media.notFound", "media.nameInUse", "media.notCroppable", "media.cropOutside", "media.cropSizeInvalid", "media.cropStale", "directory.nameInvalid", "directory.notFound", "directory.nameReserved", "directory.nameInUse", "focal.outOfRange", "focal.pairOnly", "category.notFound", "category.nameInUse", "category.nameInvalid", "category.lastOne", "category.moveToSelf", "category.moveTargetNotFound", "category.hasEntries", "comment.notFound", "comment.statusNotSettable", "comment.statusUnknown", "comment.deletedByAuthor", "comment.replyNotSignedIn", "comment.replyNoPermission", "comment.replyAccountDisabled", "comment.replyParentUnknown", "comment.replyEntryClosed", "comment.replyCommentsOff", "comment.replyCustomDomain", "comment.replyEmptyBody", "comment.replyBodyTooLong", "comment.replyNotAccepted", "comment.replyRateLimited", "redirect.notFound", "redirect.pathNotRelative", "redirect.pathHasQuery", "redirect.pathHasBackslash", "redirect.pathHasControlCharacters", "redirect.targetIsSource", "redirect.sourceInUse", "redirect.sourceIsTarget", "redirect.targetRedirected", "redirect.weblogRequired", "redirect.pathRequired", "audit.trashedNotCovered", "traffic.periodUnknown", "theme.customNotAllowed", "theme.notOffered", "weblog.creationDisabled", "weblog.oneBlogLimit", "weblog.emailRequired", "locale.invalid", "timeZone.invalid", "handle.invalid", "handle.reserved", "handle.inUse", "handle.heldBySitePage", "entryDisplayCount.outOfRange", "entryOrder.invalid", "pageWidth.invalid", "business.unknown", "business.notFound", "business.inUse", "businessType.unknown", "field.notPublicUrl", "telephone.invalid", "email.invalid", "sameAs.tooMany", "sameAs.entryInvalid", "frontPage.invalid", "placeType.invalid", "placeLocality.required", "placeCountry.invalid", "placeLat.invalid", "placeLng.invalid", "bookingUrl.invalid", "customDomain.malformed", "customDomain.siteHost", "customDomain.inUse", "customDomain.uncheckable", "http.error" ]
+          }
+        },
+        "required" : [ "code" ]
+      }
+    }
+  }
+}

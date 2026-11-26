@@ -31,6 +31,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
+import com.wikantik.pressroom.ui.core.filters.AppShellForwardFilter;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
 import com.wikantik.pressroom.ui.core.filters.ControlPlaneHostFilter;
@@ -336,6 +337,16 @@ class ServletRegistrationConfigTest {
         assertInstanceOf(RequestMappingFilter.class, bean.getFilter());
         assertEquals(80, bean.getOrder());
         assertEquals(Set.of("/*"), Set.copyOf(bean.getUrlPatterns()));
+        assertEquals(java.util.EnumSet.of(DispatcherType.REQUEST), bean.determineDispatcherTypes());
+    }
+
+    /** After security, persistence and init (REQUEST-only filters the forwarded dispatch needs), before 80. */
+    @Test
+    void appShellForwardFilterRunsAfterInitFilterAtOrderSeventyFive() {
+        FilterRegistrationBean<AppShellForwardFilter> bean = config.appShellForwardFilterRegistration();
+        assertInstanceOf(AppShellForwardFilter.class, bean.getFilter());
+        assertEquals(75, bean.getOrder());
+        assertEquals(Set.of("/pressroom-ui/app", "/pressroom-ui/app/*"), Set.copyOf(bean.getUrlPatterns()));
         assertEquals(java.util.EnumSet.of(DispatcherType.REQUEST), bean.determineDispatcherTypes());
     }
 }

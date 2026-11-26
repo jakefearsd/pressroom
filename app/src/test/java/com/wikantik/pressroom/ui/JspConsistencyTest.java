@@ -1279,6 +1279,9 @@ class JspConsistencyTest {
             "_csrf.parameterName", "_csrf.token",
             // Layout attributes: a message key, or getText() bundle text.
             "pageTitle",
+            // app/Shell.jsp: AppBootstrap.toJson() escapes <, >, & and the JS line separators
+            // as \\uXXXX, so no screen name can end the script element (AppBootstrapTest).
+            "bootstrapJson",
             // Controller constants: action names and URL fragments.
             "mainAction", "deleteAction", "actionName", "editorFieldName",
             // EditorSurface.jsp's contract: the caller fn:escapeXml'd it (PageEdit/EntryEdit).

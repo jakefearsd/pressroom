@@ -166,16 +166,26 @@ class OpenApiContractTest {
 
     @BeforeAll
     static void generate() throws Exception {
-        context = new AnnotationConfigWebApplicationContext();
-        context.setServletContext(new MockServletContext());
-        context.getEnvironment().getPropertySources().addFirst(
+        context = newContext();
+        document = new ObjectMapper().readTree(documentJson(context));
+    }
+
+    /** A refreshed context holding every API controller; the caller closes it. */
+    static AnnotationConfigWebApplicationContext newContext() throws Exception {
+        AnnotationConfigWebApplicationContext created = new AnnotationConfigWebApplicationContext();
+        created.setServletContext(new MockServletContext());
+        created.getEnvironment().getPropertySources().addFirst(
                 new org.springframework.core.env.PropertiesPropertySource("application", springdocProperties()));
-        context.register(Config.class);
-        context.register(controllerTypes().toArray(Class<?>[]::new));
-        context.refresh();
-        String json = webAppContextSetup(context).build().perform(get("/v1/openapi.json"))
+        created.register(Config.class);
+        created.register(controllerTypes().toArray(Class<?>[]::new));
+        created.refresh();
+        return created;
+    }
+
+    /** {@code GET /v1/openapi.json} as springdoc generates it from {@code created}. */
+    static String documentJson(AnnotationConfigWebApplicationContext created) throws Exception {
+        return webAppContextSetup(created).build().perform(get("/v1/openapi.json"))
                 .andReturn().getResponse().getContentAsString();
-        document = new ObjectMapper().readTree(json);
     }
 
     @AfterAll
