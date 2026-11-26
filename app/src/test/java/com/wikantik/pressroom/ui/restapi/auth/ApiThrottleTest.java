@@ -41,4 +41,19 @@ class ApiThrottleTest {
             assertFalse(throttle.isThrottled("agent-a"));
         }
     }
+
+    /**
+     * The production throttle is sized from {@code pressroom.properties} (120 calls per 60 seconds): the
+     * 120th call in a window passes, the 121st does not, and a refused caller is told to wait the interval.
+     */
+    @Test
+    void theProductionThrottleAllowsItsThresholdThenRefusesAndSaysHowLongToWait() {
+        ApiThrottle throttle = ApiThrottle.create();
+
+        for (int i = 0; i < 120; i++) {
+            assertFalse(throttle.isThrottled("prod-agent"), "call " + (i + 1) + " is inside the threshold");
+        }
+        assertTrue(throttle.isThrottled("prod-agent"), "the 121st call in the window is refused");
+        assertEquals(60, throttle.retryAfterSeconds());
+    }
 }

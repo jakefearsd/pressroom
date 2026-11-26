@@ -63,7 +63,8 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) throws IOException {
         try {
-            return check(request, handler);
+            check(request, handler);
+            return true;
         } catch (ApiException refused) {
             if (isAdvised(handler)) {
                 throw refused;
@@ -81,7 +82,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
         return pkg.equals(ADVISED_PACKAGE) || pkg.startsWith(ADVISED_PACKAGE + ".");
     }
 
-    private static boolean check(HttpServletRequest request, Object handler) {
+    private static void check(HttpServletRequest request, Object handler) {
         Caller caller = Caller.current();
         ApiPrincipal principal = caller.principal();
         if (principal != null && principal.scopeWeblog() != null) {
@@ -91,7 +92,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
         // session-only route fails closed for anything that is not a session (SA-18 rule 1).
         SessionOnlyGuard.check(caller, handler);
         if (principal == null) {
-            return true;
+            return;
         }
 
         ApiToken.Role role = principal.scopeRole();
@@ -101,7 +102,6 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
         if (isWrite(request) && !mayWrite(role)) {
             throw ApiException.problem(ProblemCode.TOKEN_READ_ONLY);
         }
-        return true;
     }
 
     /**

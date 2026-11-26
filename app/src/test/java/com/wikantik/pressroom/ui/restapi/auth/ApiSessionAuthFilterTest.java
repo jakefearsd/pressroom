@@ -40,13 +40,13 @@ class ApiSessionAuthFilterTest {
 
     private final WebloggerProvider provider = mock(WebloggerProvider.class);
     private final UserManager users = mock(UserManager.class);
+    private final Weblogger weblogger = mock(Weblogger.class);
     private final RequestMatcher refusesMcp = request -> request.getRequestURI().startsWith("/api/mcp");
     private final ApiSessionAuthFilter filter =
             new ApiSessionAuthFilter(refusesMcp, new CredentialStampFilter(provider), provider);
 
     @BeforeEach
     void tierIsUpAndKnowsEveryone() throws Exception {
-        Weblogger weblogger = mock(Weblogger.class);
         when(provider.isBootstrapped()).thenReturn(true);
         when(provider.getWeblogger()).thenReturn(weblogger);
         when(weblogger.getUserManager()).thenReturn(users);
@@ -146,5 +146,31 @@ class ApiSessionAuthFilterTest {
     void mayUseApiRefusesNull() {
         assertFalse(ApiSessionAuthFilter.mayUseApi(null));
         assertTrue(ApiSessionAuthFilter.mayUseApi(auth("editor", true)));
+    }
+
+    /**
+     * The account check fails closed on its own, not by the next filter happening to refuse too: only the
+     * first lookup fails here, so a filter that read a failure as "still enabled" would let the session in.
+     */
+    @Test
+    void aLookupThatFailsOnceRefusesTheSessionEvenIfTheNextWouldSucceed() throws Exception {
+        User enabled = new User();
+        enabled.setUserName("erin");
+        enabled.setEnabled(Boolean.TRUE);
+        when(users.getUserByUserName("erin")).thenThrow(new WebloggerException("blip")).thenReturn(enabled);
+
+        assertNull(seenBy(requestWith("/api/v1/me", new SecurityContextImpl(auth("editor", true)))));
+    }
+
+    /** The check runs inside the security chain, so it releases the persistence session itself, success or not. */
+    @Test
+    void theAccountCheckReleasesThePersistenceSessionWhateverItAnswers() throws Exception {
+        seenBy(requestWith("/api/v1/me", new SecurityContextImpl(auth("editor", true))));
+        org.mockito.Mockito.verify(weblogger, org.mockito.Mockito.atLeastOnce()).release();
+
+        org.mockito.Mockito.clearInvocations(weblogger);
+        when(users.getUserByUserName("erin")).thenThrow(new WebloggerException("down"));
+        seenBy(requestWith("/api/v1/me", new SecurityContextImpl(auth("editor", true))));
+        org.mockito.Mockito.verify(weblogger, org.mockito.Mockito.atLeastOnce()).release();
     }
 }

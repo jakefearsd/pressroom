@@ -311,4 +311,23 @@ class ApiTokenAuthFilterTest {
         SecurityContextHolder.clearContext();
         return response.getStatus() == 0 ? 200 : response.getStatus();
     }
+
+    /**
+     * Not every failure is an {@code Exception}: an {@code Error} out of the token lookup is not swallowed
+     * into "unauthenticated", but it must not leave the thread's EntityManager bound either.
+     */
+    @Test
+    void anErrorFromTheLookupStillReleasesThePersistenceSessionAndPropagates() throws Exception {
+        ApiTokenManager mgr = mock(ApiTokenManager.class);
+        when(mgr.authenticate(anyString())).thenThrow(new AssertionError("boom"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
+        request.addHeader("Authorization", "Bearer prs_bad");
+
+        org.junit.jupiter.api.Assertions.assertThrows(AssertionError.class, () ->
+                new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
+                        .doFilter(request, new MockHttpServletResponse(), mock(FilterChain.class)));
+
+        verify(weblogger).release();
+        org.junit.jupiter.api.Assertions.assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
 }

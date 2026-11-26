@@ -263,4 +263,20 @@ class ApiScopeInterceptorTest {
                         .isAnnotationPresent(WeblogScopeExempt.class),
                 "MetaApi.me() must be reachable by a weblog-scoped token");
     }
+
+    /**
+     * A handler that is not a controller method (a library's resource handler) cannot be answered by
+     * {@code ApiExceptionHandler}, so a refusal is written as problem+json and the request stops.
+     */
+    @Test
+    void aRefusalOnAHandlerThatIsNoControllerMethodIsWrittenNotThrown() throws Exception {
+        MockHttpServletRequest request = request("GET", null, "testblog", ApiToken.Role.POST);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean proceed = interceptor.preHandle(request, response, new Object());
+
+        assertFalse(proceed);
+        assertEquals(404, response.getStatus());
+        assertTrue(response.getContentType().startsWith("application/problem+json"), response.getContentType());
+    }
 }
