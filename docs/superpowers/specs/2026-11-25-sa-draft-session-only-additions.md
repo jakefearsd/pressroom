@@ -81,3 +81,14 @@ they are recorded below as built, so that the entry states what the code does an
 - Binds no other repository: no API or event shape another product reads changed for a token caller that was
   supported (the wiki-content and blogger agents use neither). If one does, it learns of it through the 403
   `auth.sessionOnly` problem body.
+
+## Further item (draft, 2026-11-26): the weblog read opened to members
+
+Not a session-only addition but a route change that binds other callers, so it belongs in the same SA entry
+if one is posted. `GET /v1/weblogs/{handle}` was weblog-`ADMIN` and `ADMIN`-role-token only; it is now readable by
+any weblog member (`EDIT_DRAFT` and up) and by `READ` tokens, because the admin frame and entry editor call it
+as every member (an Author's editor stayed blank on the 403). To keep least privilege, a caller below weblog
+admin, or holding a token below the `ADMIN` role, gets `emailAddress`, `creatorUserName`, `businessId`, the
+`place*` fields and `bookingUrl` absent. Consequence for other repositories: an agent that read those fields with
+a `READ` or `POST` token (it could not before: the route refused it) still cannot; one with a member's session
+or token newly can read the rest of the view. Draft only; not posted to `SimpleAgilityDecisionLog`.

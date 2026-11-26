@@ -226,7 +226,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   (2026-11-26):** `GET /v1/weblogs/{handle}` moved to `WeblogReadApi` (`EDIT_DRAFT`, read-role
   token), because the admin frame and the entry editor call it as an Author or Limited member;
   on `ADMIN` their editor stayed blank on a 403 (found by `MembersIT`). `PATCH`/`DELETE` stay
-  here, `ADMIN`.
+  here, `ADMIN`. **Least privilege:** `WeblogReadApi` returns `WeblogView.withoutAdminOnlyFields()` unless
+  the caller holds weblog `ADMIN` and, with a token, the `ADMIN` role: `emailAddress`, `creatorUserName`,
+  `businessId`, `place*` and `bookingUrl` are then null (absent in JSON). The set is what the frame, rail and
+  editor do not read; a field they start to read must leave that set in the same change
+  (`WeblogReadApiRedactionTest`).
 - **List shape (spec 2026-11-20, Task 5; the wraps landed with the owner decisions, 0.16.0).** Every
   operation with a `limit` answers `{items|entries, offset, limit, hasMore}`, all required
   (`OpenApiContractTest`, no exception set). `GET /v1/weblogs`, `GET /v1/admin/users` and

@@ -3218,6 +3218,7 @@
     "/v1/weblogs/{handle}" : {
       "get" : {
         "tags" : [ "Weblog" ],
+        "description" : "One weblog, readable by any member and by read-role tokens. For a caller below weblog admin (or with a token below the ADMIN role) the settings-only fields are absent: emailAddress, creatorUserName, businessId, placeType, placeLocality, placeRegion, placeCountry, placeLat, placeLng and bookingUrl.",
         "operationId" : "weblogsGet",
         "parameters" : [ {
           "name" : "handle",

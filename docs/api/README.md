@@ -292,7 +292,7 @@ request: the token's `role`, and its `weblog` pin.
 |---------|--------|
 | `READ`  | GET only. |
 | `POST`  | GET, plus writes (POST/PATCH/DELETE) on ordinary content endpoints — entries, media, categories, pages. Still only what the owner's weblog permission allows: a contributor's (`EDIT_DRAFT`) token writes entries as the entry editor lets them (drafts; a publish is submitted for review, see [Entries](#entries)) and reads what the editor shows them, the categories, tags and media, but changes none of those. |
-| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`GET/PATCH /api/v1/weblogs/{handle}`, and its business picker `GET /api/v1/weblogs/{handle}/businesses`; not the per-weblog content APIs) and the Maintenance actions. |
+| `ADMIN` | Everything `POST` can, plus every `/api/v1/admin/**` endpoint, the site-wide weblog list `GET /api/v1/weblogs`, one weblog's settings and theme (`PATCH /api/v1/weblogs/{handle}`; the `GET` is open to any weblog member and to `READ` tokens, see below, and its business picker `GET /api/v1/weblogs/{handle}/businesses`; not the per-weblog content APIs) and the Maintenance actions. |
 
 A non-write method (`GET`/`HEAD`) never needs more than `READ`. Anything else
 needs `POST` or `ADMIN`; a `READ`-role token gets a 403
@@ -2790,3 +2790,12 @@ The CLI, REST and MCP name some operations differently:
 A leading `--url URL`/`--token TOKEN`, before the command name, overrides
 `PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` and `~/.pressroom/credentials` for a single
 one-off call against a different instance, without touching either.
+
+## Reading one weblog
+
+`GET /api/v1/weblogs/{handle}` is readable by any member of the weblog (Admin, Author or Limited) and by any
+token that can reach the weblog, because the admin app asks for it as every member. For a caller below weblog
+admin, or with a token below the `ADMIN` role, the settings-only fields are absent from the answer:
+`emailAddress`, `creatorUserName`, `businessId`, `placeType`, `placeLocality`, `placeRegion`, `placeCountry`,
+`placeLat`, `placeLng` and `bookingUrl`. Everything else (name, time zone, locale, theme, addresses, custom
+domain, newsletter list) is returned. A weblog admin, a site admin and an `ADMIN` token see every field.
