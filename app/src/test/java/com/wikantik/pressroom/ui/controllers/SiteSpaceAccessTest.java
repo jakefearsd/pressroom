@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +39,9 @@ import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import com.wikantik.pressroom.ui.core.security.sso.PressroomOidcUser;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
+import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogSettingsApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogsApi;
@@ -49,9 +53,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -63,6 +72,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -169,6 +179,16 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
+        com.wikantik.pressroom.business.fetch.RemoteImageFetcher remoteImageFetcher() {
+            return org.mockito.Mockito.mock(com.wikantik.pressroom.business.fetch.RemoteImageFetcher.class);
+        }
+
+        @Bean
+        com.wikantik.pressroom.ui.restapi.v1.MediaApi mediaApi() {
+            return new com.wikantik.pressroom.ui.restapi.v1.MediaApi();
+        }
+
+        @Bean
         WeblogsApi weblogsApi() {
             return new WeblogsApi();
         }
@@ -251,6 +271,107 @@ class SiteSpaceAccessTest {
         signInWithSession(author);
         assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus());
         assertEquals(404, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus());
+    }
+
+    /**
+     * Characterisation (the boundary was built without these pins): an admin's session WRITES to the site
+     * pages and media, not only reads them. Create, update and trash a page; create and delete a folder.
+     */
+    @Test
+    void anAdminsSessionWritesTheSitePagesAndMedia() throws Exception {
+        siteSpace();
+        signInWithSession(admin);
+
+        MvcResult created = perform(api(post("/api/v1/weblogs/" + SITE + "/pages")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Site about\",\"text\":\"Hello\"}")));
+        assertEquals(201, created.getResponse().getStatus(), created.getResponse().getContentAsString());
+        String id = jsonField(created.getResponse().getContentAsString(StandardCharsets.UTF_8), "id");
+
+        assertEquals(200, perform(api(patch("/api/v1/weblogs/" + SITE + "/pages/" + id)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Site about us\"}")))
+                .getResponse().getStatus(), "a page update");
+        assertEquals(204, perform(api(delete("/api/v1/weblogs/" + SITE + "/pages/" + id)))
+                .getResponse().getStatus(), "a page trashed");
+
+        MvcResult folder = perform(api(post("/api/v1/weblogs/" + SITE + "/media/directories")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"ssa-folder\"}")));
+        assertEquals(201, folder.getResponse().getStatus(), folder.getResponse().getContentAsString());
+        String folderId = jsonField(folder.getResponse().getContentAsString(StandardCharsets.UTF_8), "id");
+        assertEquals(204, perform(api(delete("/api/v1/weblogs/" + SITE + "/media/directories/" + folderId)))
+                .getResponse().getStatus(), "a folder deleted");
+    }
+
+    @Test
+    void aTokenNeverWritesTheSitePagesOrMediaHoweverPrivileged() throws Exception {
+        siteSpace();
+        signInWithToken(admin, ApiToken.Role.ADMIN);
+
+        assertEquals(404, perform(api(post("/api/v1/weblogs/" + SITE + "/pages")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Nope\",\"text\":\"x\"}")))
+                .getResponse().getStatus());
+        assertEquals(404, perform(api(patch("/api/v1/weblogs/" + SITE + "/pages/none")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Nope\"}"))).getResponse().getStatus());
+        assertEquals(404, perform(api(delete("/api/v1/weblogs/" + SITE + "/pages/none"))).getResponse().getStatus());
+        assertEquals(404, perform(api(post("/api/v1/weblogs/" + SITE + "/media/directories")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"nope\"}"))).getResponse().getStatus());
+    }
+
+    /**
+     * Only a recognised interactive session is offered the site space: a password over HTTP Basic, an
+     * unrecognised mechanism and nobody at all are withheld it, reads and writes alike. Nobody at all is
+     * refused as unauthenticated (401) before the site space comes into it; the others get the 404 of a weblog
+     * that does not exist.
+     */
+    @Test
+    void aPasswordAnUnrecognisedAndAnAnonymousCallerAreNotOfferedTheSiteSpace() throws Exception {
+        siteSpace();
+
+        var password = new UsernamePasswordAuthenticationToken(admin.getUserName(), null, List.of());
+        password.setDetails(PasswordCallerDetails.SOURCE.buildDetails(new MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(password);
+        assertSiteSpaceWithheld("a password caller", 404);
+
+        var unrecognised = new UsernamePasswordAuthenticationToken(admin.getUserName(), null, List.of());
+        unrecognised.setDetails("some future login mechanism");
+        SecurityContextHolder.getContext().setAuthentication(unrecognised);
+        assertSiteSpaceWithheld("an unrecognised caller", 404);
+
+        SecurityContextHolder.clearContext();
+        assertSiteSpaceWithheld("an anonymous caller", 401);
+    }
+
+    /** A global admin signed in through the provider (reader SSO) holds a session like a form login does. */
+    @Test
+    void anSsoSignedInGlobalAdminCountsAsASession() throws Exception {
+        siteSpace();
+        Instant now = Instant.now();
+        var delegate = new DefaultOidcUser(List.of(),
+                new OidcIdToken("token", now, now.plusSeconds(3600), Map.of("sub", "google-subject")));
+        var principal = new PressroomOidcUser(delegate, admin.getUserName(), List.of(), false);
+        var sso = new OAuth2AuthenticationToken(principal, List.of(), "google");
+        sso.setDetails(new WebAuthenticationDetails(new MockHttpServletRequest()));
+        SecurityContextHolder.getContext().setAuthentication(sso);
+
+        assertEquals(200, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus());
+        MvcResult created = perform(api(post("/api/v1/weblogs/" + SITE + "/pages")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Via SSO\",\"text\":\"x\"}")));
+        assertEquals(201, created.getResponse().getStatus(), created.getResponse().getContentAsString());
+    }
+
+    private void assertSiteSpaceWithheld(String who, int status) throws Exception {
+        assertEquals(status, perform(api(get("/api/v1/weblogs/" + SITE + "/pages"))).getResponse().getStatus(),
+                who + " reads the site pages");
+        assertEquals(status, perform(api(post("/api/v1/weblogs/" + SITE + "/pages")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Nope\",\"text\":\"x\"}")))
+                .getResponse().getStatus(), who + " writes a site page");
+        assertEquals(status, perform(api(get("/api/v1/weblogs/" + SITE + "/media"))).getResponse().getStatus(),
+                who + " reads the site media");
+    }
+
+    private static String jsonField(String json, String field) {
+        Matcher m = Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+        assertTrue(m.find(), field + " in " + json);
+        return m.group(1);
     }
 
     // ------------------------------------------------------------ the automation API
@@ -361,8 +482,7 @@ class SiteSpaceAccessTest {
     /** A form-login session, as the React admin's calls arrive: the details are the web authentication's. */
     private static void signInWithSession(User who) {
         var auth = new UsernamePasswordAuthenticationToken(who.getUserName(), null, List.of());
-        auth.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetails(
-                new org.springframework.mock.web.MockHttpServletRequest()));
+        auth.setDetails(new WebAuthenticationDetails(new MockHttpServletRequest()));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

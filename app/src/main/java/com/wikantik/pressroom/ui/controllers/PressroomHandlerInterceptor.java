@@ -36,6 +36,7 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.core.security.sso.PressroomOidcUser;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -304,7 +305,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         }
         // The API offers it to an interactive session only (the React admin's Pages and Media screens), never
         // to a token however privileged: automation does not act on the site's own pages.
-        if (apiHandler && !com.wikantik.pressroom.ui.restapi.auth.Caller.current().isSession()) {
+        if (apiHandler && !Caller.current().isSession()) {
             return false;
         }
         try {
