@@ -130,3 +130,27 @@ describe('PagesTrash', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
+
+describe('PagesTrash with thin page records', () => {
+  it('lists, restores and deletes a page that has no slug or title, naming it by the empty address', async () => {
+    server.use(http.get(`${API}/weblogs/:handle/pages`, ({ request }) => HttpResponse.json(
+      new URL(request.url).searchParams.get('status') === 'TRASHED' ? [{ id: 't9' }] : [])),
+    writing('post', '/weblogs/alpha/pages/t9/restore', () => HttpResponse.json(page({ id: 't9' }))),
+    writing('post', '/weblogs/alpha/pages/t9/delete-forever', () => new HttpResponse(null, { status: 204 })));
+    const { user } = open();
+    await user.click(await screen.findByRole('button', { name: 'Delete forever' }));
+    expect(screen.getByText('/')).toHaveClass('data');
+    expect(screen.getByRole('dialog')).toHaveTextContent("Delete this page permanently? This cannot be undone: ''?");
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete forever' }));
+    expect(await screen.findByText('Page "" deleted permanently.')).toBeInTheDocument();
+  });
+
+  it('restores such a page and says so', async () => {
+    server.use(http.get(`${API}/weblogs/:handle/pages`, ({ request }) => HttpResponse.json(
+      new URL(request.url).searchParams.get('status') === 'TRASHED' ? [{ id: 't9' }] : [])),
+    writing('post', '/weblogs/alpha/pages/t9/restore', () => HttpResponse.json(page({ id: 't9' }))));
+    const { user } = open();
+    await user.click(await screen.findByRole('button', { name: 'Restore' }));
+    expect(await screen.findByText(/Page "" restored/)).toBeInTheDocument();
+  });
+});

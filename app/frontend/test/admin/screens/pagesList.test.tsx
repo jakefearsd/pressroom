@@ -190,3 +190,49 @@ describe('PagesList', () => {
     });
   });
 });
+
+describe('PagesList with thin page records', () => {
+  const thin = () => server.use(
+    http.get(`${API}/weblogs/:handle/pages`, ({ request }) => HttpResponse.json(
+      new URL(request.url).searchParams.get('status') === 'TRASHED' ? [] : [{ id: 'q1' }])),
+    writing('delete', '/weblogs/alpha/pages/q1', () => new HttpResponse(null, { status: 204 })));
+
+  it('lists a page that has no slug, title or status as an unlinked draft at the root', async () => {
+    thin();
+    await open();
+    const cell = await screen.findByText('/');
+    expect(cell.closest('a')).toBeNull();
+    expect(within(cell.closest('tr') as HTMLElement).getByText('Draft')).toBeInTheDocument();
+  });
+
+  it('asks about it without a name and trashes it, naming the empty address', async () => {
+    thin();
+    const { user } = await open();
+    await user.click(await screen.findByRole('button', { name: /Move to the trash/ }));
+    expect(screen.getByRole('dialog')).toHaveTextContent("Move this page to the trash: ''?");
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Move to the trash' }));
+    expect(await screen.findByText('Page "" moved to the trash.')).toBeInTheDocument();
+  });
+
+  it('names a page that could not be moved by its address, and falls back to an empty one', async () => {
+    server.use(
+      http.get(`${API}/weblogs/:handle/pages`, ({ request }) => HttpResponse.json(
+        new URL(request.url).searchParams.get('status') === 'TRASHED' ? [] : [
+          page({ id: 'p1', slug: 'one', navOrder: 0 }), { id: 'q1', navOrder: 1 }])),
+      http.patch(`${API}/weblogs/:handle/pages/:id`, () => problem(409, 'page.changed', 'Changed meanwhile.')));
+    const { user } = await open();
+    await screen.findByText('/one');
+    await user.click(screen.getAllByRole('button', { name: /Move up/ })[1] as HTMLElement);
+    await user.click(await screen.findByRole('button', { name: 'Save order' }));
+    expect(await screen.findByText('/: Changed meanwhile.')).toBeInTheDocument();
+    expect(screen.getByText('/one: Changed meanwhile.')).toBeInTheDocument();
+  });
+
+  it('links a published page that has no slug to the address the server gave', async () => {
+    server.use(http.get(`${API}/weblogs/:handle/pages`, ({ request }) => HttpResponse.json(
+      new URL(request.url).searchParams.get('status') === 'TRASHED' ? [] : [
+        { id: 'q2', status: 'PUBLISHED', absoluteUrl: 'https://blog.example.com/alpha/' }])));
+    await open();
+    expect((await screen.findByText('/')).closest('a')).toHaveAttribute('href', 'https://blog.example.com/alpha/');
+  });
+});

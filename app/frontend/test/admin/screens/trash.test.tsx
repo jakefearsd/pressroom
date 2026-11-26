@@ -9,7 +9,7 @@ const TRASHED = [
   { id: 't2', title: "Tom & Jerry's", category: 'Fun', trashedAt: '2026-03-02T09:30:00Z' }
 ];
 
-function list(items = TRASHED) {
+function list(items: object[] = TRASHED) {
   return http.get(`${BLOG}/entries`, ({ request }) => {
     expect(new URL(request.url).searchParams.get('status')).toBe('TRASHED');
     return HttpResponse.json({ items, offset: 0, limit: 200, hasMore: false });
@@ -136,5 +136,28 @@ describe('Trash', () => {
     server.use(http.get(`${BLOG}/entries`, () => problem(403, 'auth.forbidden', 'No.')));
     show();
     expect(await screen.findByRole('alert')).toHaveTextContent('No.');
+  });
+
+  it('names an untitled entry by its anchor, then its id, so the row and the confirmations are never blank', async () => {
+    const user = userEvent.setup();
+    server.use(list([
+      { id: 'u1', title: '', anchor: 'rome-trip', category: 'Trips' },
+      { id: 'u2', category: 'Trips' }
+    ]), http.post(`${BLOG}/entries/u1/restore`, () => new HttpResponse(null, { status: 204 })));
+    show();
+    const row = (await screen.findByText('rome-trip')).closest('tr') as HTMLElement;
+    expect(screen.getByText('u2')).toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'Restore' }));
+    expect(await screen.findByText('Entry "rome-trip" restored')).toBeInTheDocument();
+  });
+
+  it('claims no success when every delete in an empty-trash run was refused', async () => {
+    const user = userEvent.setup();
+    server.use(http.post(`${BLOG}/entries/:id/delete-forever`, () => problem(409, 'entry.deleteForeverNeedsTrash', 'Already gone.')));
+    show();
+    await user.click(await screen.findByRole('button', { name: 'Empty trash' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Empty trash' }));
+    expect(await screen.findByText("Old news: Already gone.")).toBeInTheDocument();
+    expect(screen.queryByText(/permanently deleted: /)).toBeNull();
   });
 });
