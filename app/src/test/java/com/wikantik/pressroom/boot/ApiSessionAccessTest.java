@@ -234,7 +234,11 @@ class ApiSessionAccessTest {
         for (String path : List.of("/api/v1/me", "/api/v1/tokens", "/api/mcp")) {
             assertFalse(rotatesSessionId(chainFor(path)), path + "'s chain rotates the session id on a read");
         }
-        assertTrue(rotatesSessionId(chainFor("/pressroom-ui/profile.rol")),
+        // The UI chain's sign-in is the form login filter, whose strategy is the one that rotates.
+        Object signIn = chainFor("/pressroom-ui/profile.rol").getFilters().stream()
+                .filter(org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class::isInstance)
+                .findFirst().orElseThrow(() -> new AssertionError("the UI chain has no form login filter"));
+        assertTrue(anyRotates(org.springframework.test.util.ReflectionTestUtils.getField(signIn, "sessionStrategy")),
                 "the UI chain lost its session fixation protection");
     }
 
