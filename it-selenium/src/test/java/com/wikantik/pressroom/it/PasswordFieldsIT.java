@@ -204,7 +204,8 @@ class PasswordFieldsIT extends PressroomIT {
         // The two states must look different, not only read differently.
         assertNotEquals(mismatchColour, line.getCssValue("color"), "match and mismatch share a colour");
 
-        $("#passwordConfirm").setValue("");
+        // Typed away, not cleared by the driver: a driver clear fires no input event, so a React field keeps its state.
+        $("#passwordConfirm").sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.BACK_SPACE);
         line.shouldHave(exactText(""));
 
         $("#passwordConfirm").setValue("correct-horse-1");
