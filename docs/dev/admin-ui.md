@@ -533,7 +533,7 @@ Routes `/weblogs/:handle/media` (+ `?dir=<directoryId>&sort=&q=&type=&size=&unit
 
 Routes: `/admin/users` (`?kind=&q=`), `/admin/users/new`, `/admin/users/:userName`,
 `/admin/agents/new`, `/admin/agents/:userName`, `/admin/tokens`, `/profile`, `/profile/tokens`
-(`routes.tsx`; the admin ones sit behind `AdminOnly`, which renders nothing and fetches nothing
+(`routes.tsx`; the admin ones sit behind `RequireAdmin`, which renders nothing and fetches nothing
 for a non-admin). Not yet cut over: no legacy redirect, no JSP deleted, no rail `path`.
 
 - **A token's secret lives in component state only** (`tokens.tsx`, `TokenReveal`), and writes
