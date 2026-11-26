@@ -60,7 +60,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.function.Supplier;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Set;
@@ -517,6 +523,7 @@ public class SecurityConfig {
             // the session's CSRF token after every call. An API call signs nobody in.
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfTokens)
+                .csrfTokenRequestHandler(new HeaderOnlyCsrfTokenRequestHandler())
                 .requireCsrfProtectionMatcher(SecurityConfig::isSessionWrite)
                 .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
             .sessionManagement(session ->
@@ -525,7 +532,7 @@ public class SecurityConfig {
             // session only; never /api/mcp (bearer only).
             .addFilterAfter(new ApiSessionAuthFilter(
                     PathPatternRequestMatcher.withDefaults().matcher(McpServerConfig.ENDPOINT + "/**"),
-                    new CredentialStampFilter(webloggerProvider)), SecurityContextHolderFilter.class)
+                    new CredentialStampFilter(webloggerProvider), webloggerProvider), SecurityContextHolderFilter.class)
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(entryPoint)
                 .accessDeniedHandler(apiAccessDeniedHandler))
@@ -534,6 +541,31 @@ public class SecurityConfig {
             .addFilterBefore(new ApiBodyLimitFilter(apiProblemWriter), ApiTokenAuthFilter.class)
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(AbstractHttpConfigurer::disable);
+    }
+
+    /**
+     * The default CSRF handler (Xor masking included), except that the token
+     * is read from the header only: a {@code _csrf} query or body parameter
+     * does not satisfy CSRF on the API chains. The UI chain is unchanged.
+     */
+    static final class HeaderOnlyCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
+        private final XorCsrfTokenRequestAttributeHandler xor = new XorCsrfTokenRequestAttributeHandler();
+
+        @Override
+        public void handle(HttpServletRequest request, HttpServletResponse response,
+                           Supplier<CsrfToken> deferredCsrfToken) {
+            xor.handle(request, response, deferredCsrfToken);
+        }
+
+        @Override
+        public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+            return xor.resolveCsrfTokenValue(new HttpServletRequestWrapper(request) {
+                @Override
+                public String getParameter(String name) {
+                    return null;
+                }
+            }, csrfToken);
+        }
     }
 
     /** Methods that change nothing and so need no CSRF token. */

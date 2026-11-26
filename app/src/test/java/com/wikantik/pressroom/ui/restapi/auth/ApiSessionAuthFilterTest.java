@@ -2,7 +2,12 @@ package com.wikantik.pressroom.ui.restapi.auth;
 
 import java.util.List;
 
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
+import com.wikantik.pressroom.pojos.User;
+import org.junit.jupiter.api.BeforeEach;
 import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -26,14 +31,47 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /** What {@link ApiSessionAuthFilter} accepts from a session, branch by branch. */
 class ApiSessionAuthFilterTest {
 
+    private final WebloggerProvider provider = mock(WebloggerProvider.class);
+    private final UserManager users = mock(UserManager.class);
     private final RequestMatcher refusesMcp = request -> request.getRequestURI().startsWith("/api/mcp");
     private final ApiSessionAuthFilter filter =
-            new ApiSessionAuthFilter(refusesMcp, new CredentialStampFilter(mock(WebloggerProvider.class)));
+            new ApiSessionAuthFilter(refusesMcp, new CredentialStampFilter(provider), provider);
+
+    @BeforeEach
+    void tierIsUpAndKnowsEveryone() throws Exception {
+        Weblogger weblogger = mock(Weblogger.class);
+        when(provider.isBootstrapped()).thenReturn(true);
+        when(provider.getWeblogger()).thenReturn(weblogger);
+        when(weblogger.getUserManager()).thenReturn(users);
+        when(users.getUserByUserName(anyString())).thenAnswer(call -> {
+            User user = new User();
+            user.setUserName(call.getArgument(0));
+            user.setEnabled(Boolean.TRUE);
+            return user;
+        });
+    }
+
+    @Test
+    void aDisabledUnknownOrUnreadableAccountOrADownTierRefusesTheSession() throws Exception {
+        Authentication editor = auth("editor", true);
+        User disabled = new User();
+        disabled.setEnabled(Boolean.FALSE);
+        when(users.getUserByUserName("erin")).thenReturn(disabled);
+        assertNull(seenBy(requestWith("/api/v1/me", new SecurityContextImpl(editor))), "disabled");
+        when(users.getUserByUserName("erin")).thenReturn(null);
+        assertNull(seenBy(requestWith("/api/v1/me", new SecurityContextImpl(editor))), "unknown");
+        when(users.getUserByUserName("erin")).thenThrow(new WebloggerException("down"));
+        assertNull(seenBy(requestWith("/api/v1/me", new SecurityContextImpl(editor))), "lookup failed");
+        when(provider.isBootstrapped()).thenReturn(false);
+        assertNull(seenBy(requestWith("/api/v1/me", new SecurityContextImpl(editor))), "tier not up");
+    }
 
     @AfterEach
     void clear() {

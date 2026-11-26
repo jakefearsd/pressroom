@@ -73,6 +73,7 @@ class ApiSessionAccessTest {
     private static final AtomicInteger APPLIED = new AtomicInteger();
     private static final AtomicInteger REQUESTS = new AtomicInteger();
     private static final WebloggerProvider PROVIDER = mock(WebloggerProvider.class);
+    private static final UserManager USERS = mock(UserManager.class);
 
     private static AnnotationConfigWebApplicationContext context;
     private static MockMvc mockMvc;
@@ -144,8 +145,11 @@ class ApiSessionAccessTest {
 
     @BeforeEach
     void resetProvider() {
-        reset(PROVIDER);
-        when(PROVIDER.isBootstrapped()).thenReturn(false);
+        reset(PROVIDER, USERS);
+        Weblogger weblogger = mock(Weblogger.class);
+        when(PROVIDER.isBootstrapped()).thenReturn(true);
+        when(PROVIDER.getWeblogger()).thenReturn(weblogger);
+        when(weblogger.getUserManager()).thenReturn(USERS);
         APPLIED.set(0);
     }
 
@@ -157,6 +161,19 @@ class ApiSessionAccessTest {
                 name, null, List.of(new SimpleGrantedAuthority(authority)));
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(new MockHttpServletRequest()));
         return sessionOf(auth);
+    }
+
+    /** A session whose account the (bootstrapped) business tier knows and has enabled. */
+    private static MockHttpSession signedUp(String name, String authority) {
+        com.wikantik.pressroom.pojos.User user = new com.wikantik.pressroom.pojos.User();
+        user.setUserName(name);
+        user.setEnabled(Boolean.TRUE);
+        try {
+            when(USERS.getUserByUserName(name)).thenReturn(user);
+        } catch (com.wikantik.pressroom.WebloggerException e) {
+            throw new IllegalStateException(e);
+        }
+        return sessionOf(name, authority);
     }
 
     private static MockHttpSession sessionOf(Authentication auth) {
@@ -197,7 +214,7 @@ class ApiSessionAccessTest {
 
     @Test
     void anEditorsSessionAuthenticatesAGetWithNoAuthorizationHeader() throws Exception {
-        MvcResult result = mockMvc.perform(api("GET", "/api/v1/me").session(sessionOf("erin", "editor")))
+        MvcResult result = mockMvc.perform(api("GET", "/api/v1/me").session(signedUp("erin", "editor")))
                 .andReturn();
         assertEquals(200, result.getResponse().getStatus());
         assertNoCookies(result);
@@ -205,13 +222,13 @@ class ApiSessionAccessTest {
 
     @Test
     void anAdminsSessionAuthenticatesToo() throws Exception {
-        assertEquals(200, mockMvc.perform(api("GET", "/api/v1/me").session(sessionOf("root", "admin")))
+        assertEquals(200, mockMvc.perform(api("GET", "/api/v1/me").session(signedUp("root", "admin")))
                 .andReturn().getResponse().getStatus());
     }
 
     @Test
     void aSignedOutRequestIsA401Problem() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         session.invalidate();
         assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(session)).andReturn(),
                 401, "auth.unauthorized");
@@ -237,7 +254,7 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionOnMcpIsA401() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         String[] token = shellToken(session);
         assertProblem(mockMvc.perform(api("POST", "/api/mcp").session(session).header(token[0], token[1]))
                 .andReturn(), 401, "auth.unauthorized");
@@ -248,7 +265,7 @@ class ApiSessionAccessTest {
 
     @Test
     void anSsoReaderSessionIsA401WhereverAnAnonymousCallerIs() throws Exception {
-        MockHttpSession reader = sessionOf("rae", "reader");
+        MockHttpSession reader = signedUp("rae", "reader");
         assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(reader)).andReturn(),
                 401, "auth.unauthorized");
         assertProblem(mockMvc.perform(api("GET", "/api/v1/tokens").session(reader)).andReturn(),
@@ -261,13 +278,13 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionPlusABadBearerHeaderIsA401TheHeaderWins() throws Exception {
-        assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(sessionOf("erin", "editor"))
+        assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(signedUp("erin", "editor"))
                 .header("Authorization", "Bearer prs_nope")).andReturn(), 401, "auth.unauthorized");
     }
 
     @Test
     void aSessionPlusAnyOtherAuthorizationHeaderNeverFallsBackToTheSession() throws Exception {
-        assertEquals(401, mockMvc.perform(api("GET", "/api/v1/me").session(sessionOf("erin", "editor"))
+        assertEquals(401, mockMvc.perform(api("GET", "/api/v1/me").session(signedUp("erin", "editor"))
                 .header("Authorization", "Basic Zm9vOmJhcg==")).andReturn().getResponse().getStatus());
     }
 
@@ -275,7 +292,7 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionWriteWithTheRightTokenIsApplied() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         String[] token = shellToken(session);
         assertEquals(SecurityConfig.CSRF_HEADER_NAME, token[0], "the header name the shell is told");
 
@@ -289,7 +306,7 @@ class ApiSessionAccessTest {
 
     @Test
     void oneTokenServesBothChainsAcrossRequests() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         String[] token = shellToken(session);
         for (String method : new String[] {"POST", "PATCH", "DELETE", "PUT"}) {
             assertEquals(200, mockMvc.perform(api(method, "/api/v1/probe").session(session)
@@ -300,7 +317,7 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionWriteWithNoTokenIs403CsrfInvalidAndNothingIsApplied() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         shellToken(session);
         MvcResult result = mockMvc.perform(api("PATCH", "/api/v1/probe").session(session)).andReturn();
         assertProblem(result, 403, "csrf.invalid");
@@ -310,7 +327,7 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionWriteWithAWrongTokenIs403CsrfInvalidAndNothingIsApplied() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         shellToken(session);
         assertProblem(mockMvc.perform(api("POST", "/api/v1/probe").session(session)
                 .header(SecurityConfig.CSRF_HEADER_NAME, "not-the-token")).andReturn(), 403, "csrf.invalid");
@@ -319,16 +336,16 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionWriteBeforeAnyTokenWasIssuedIsRefusedToo() throws Exception {
-        assertProblem(mockMvc.perform(api("POST", "/api/v1/probe").session(sessionOf("erin", "editor"))
+        assertProblem(mockMvc.perform(api("POST", "/api/v1/probe").session(signedUp("erin", "editor"))
                 .header(SecurityConfig.CSRF_HEADER_NAME, "guess")).andReturn(), 403, "csrf.invalid");
         assertEquals(0, APPLIED.get());
     }
 
     @Test
     void sessionReadsNeedNoToken() throws Exception {
-        assertEquals(200, mockMvc.perform(api("GET", "/api/v1/probe").session(sessionOf("erin", "editor")))
+        assertEquals(200, mockMvc.perform(api("GET", "/api/v1/probe").session(signedUp("erin", "editor")))
                 .andReturn().getResponse().getStatus());
-        assertEquals(200, mockMvc.perform(api("OPTIONS", "/api/v1/probe").session(sessionOf("erin", "editor")))
+        assertEquals(200, mockMvc.perform(api("OPTIONS", "/api/v1/probe").session(signedUp("erin", "editor")))
                 .andReturn().getResponse().getStatus());
     }
 
@@ -367,7 +384,7 @@ class ApiSessionAccessTest {
         when(weblogger.getApiTokenManager()).thenReturn(manager);
         when(manager.authenticate("prs_good")).thenReturn(token);
 
-        assertEquals(200, mockMvc.perform(api("PATCH", "/api/v1/probe").session(sessionOf("erin", "editor"))
+        assertEquals(200, mockMvc.perform(api("PATCH", "/api/v1/probe").session(signedUp("erin", "editor"))
                 .header("Authorization", "Bearer prs_good")).andReturn().getResponse().getStatus());
     }
 
@@ -380,7 +397,7 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionCallerReachesTheTokenResourceWithCsrfOnWrites() throws Exception {
-        MockHttpSession session = sessionOf("erin", "editor");
+        MockHttpSession session = signedUp("erin", "editor");
         String[] token = shellToken(session);
 
         assertEquals(200, mockMvc.perform(api("GET", "/api/v1/tokens").session(session)).andReturn()
@@ -401,16 +418,12 @@ class ApiSessionAccessTest {
 
     @Test
     void aSessionWhosePasswordChangedIsA401OnApiToo() throws Exception {
-        Weblogger weblogger = mock(Weblogger.class);
-        UserManager users = mock(UserManager.class);
         User erin = new User();
         erin.setUserName("erin");
         erin.setPassword("hash-1");
-        when(PROVIDER.isBootstrapped()).thenReturn(true);
-        when(PROVIDER.getWeblogger()).thenReturn(weblogger);
-        when(weblogger.getUserManager()).thenReturn(users);
-        when(users.getUserByUserName("erin", null)).thenReturn(erin);
-        MockHttpSession session = sessionOf("erin", "editor");
+        erin.setEnabled(Boolean.TRUE);
+        when(USERS.getUserByUserName("erin", null)).thenReturn(erin);
+        MockHttpSession session = signedUp("erin", "editor");
 
         assertEquals(200, mockMvc.perform(api("GET", "/api/v1/me").session(session)).andReturn()
                 .getResponse().getStatus());
@@ -426,11 +439,11 @@ class ApiSessionAccessTest {
     void theAppRoutesRequireAnEditorOrAnAdmin() throws Exception {
         for (String path : List.of("/pressroom-ui/app.rol", "/pressroom-ui/app/", "/pressroom-ui/app/weblogs/x/traffic",
                 "/pressroom-ui/app/assets/a.js", "/pressroom-ui/app-messages.rol")) {
-            assertEquals(200, mockMvc.perform(get(path).session(sessionOf("erin", "editor"))).andReturn()
+            assertEquals(200, mockMvc.perform(get(path).session(signedUp("erin", "editor"))).andReturn()
                     .getResponse().getStatus(), path);
-            assertEquals(200, mockMvc.perform(get(path).session(sessionOf("root", "admin"))).andReturn()
+            assertEquals(200, mockMvc.perform(get(path).session(signedUp("root", "admin"))).andReturn()
                     .getResponse().getStatus(), path);
-            assertEquals(403, mockMvc.perform(get(path).session(sessionOf("rae", "reader"))).andReturn()
+            assertEquals(403, mockMvc.perform(get(path).session(signedUp("rae", "reader"))).andReturn()
                     .getResponse().getStatus(), path);
             MvcResult anonymous = mockMvc.perform(get(path)).andReturn();
             assertEquals(302, anonymous.getResponse().getStatus(), path);
@@ -453,5 +466,84 @@ class ApiSessionAccessTest {
 
         assertNotNull(response.getRedirectedUrl());
         assertEquals("http://localhost/pressroom-ui/app/weblogs/x/traffic?range=30d&continue", response.getRedirectedUrl());
+    }
+
+    // ------------------------------------------------------------ review follow-ups
+
+    /** A header that names no usable credential is still an Authorization header: the session is not consulted. */
+    @Test
+    void anEmptyBlankOrTokenlessAuthorizationHeaderNeverFallsBackToTheSession() throws Exception {
+        for (String value : new String[] {"", "   ", "Bearer", "Bearer ", "Bearer    "}) {
+            assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(signedUp("erin", "editor"))
+                    .header("Authorization", value)).andReturn(), 401, "auth.unauthorized");
+        }
+        assertEquals(0, APPLIED.get());
+    }
+
+    /** What actually happens to other spellings of the MCP endpoint with a live session: refused, nothing applied. */
+    @Test
+    void otherSpellingsOfMcpNeverTakeTheSession() throws Exception {
+        MockHttpSession session = signedUp("erin", "editor");
+        String[] token = shellToken(session);
+        for (String path : new String[] {"/api/mcp/", "/api/mcp/x", "/api/%6dcp"}) {
+            for (String method : new String[] {"GET", "POST"}) {
+                MvcResult result = mockMvc.perform(api(method, path).session(session)
+                        .header(token[0], token[1])).andReturn();
+                int status = result.getResponse().getStatus();
+                assertTrue(status == 401 || status == 400, method + " " + path + " answered " + status);
+            }
+        }
+        assertEquals(0, APPLIED.get());
+    }
+
+    /** The API mount serves only the API: a UI route under /api is refused even for a live editor session. */
+    @Test
+    void aSessionCannotReachUiRoutesThroughTheApiMount() throws Exception {
+        MockHttpSession session = signedUp("erin", "editor");
+        String[] token = shellToken(session);
+        assertEquals(403, mockMvc.perform(api("GET", "/api/pressroom-ui/menu.rol").session(session))
+                .andReturn().getResponse().getStatus());
+        assertEquals(403, mockMvc.perform(api("POST", "/api/pressroom-ui/menu.rol").session(session)
+                .header(token[0], token[1])).andReturn().getResponse().getStatus());
+        assertEquals(403, mockMvc.perform(api("POST", "/api/pressroom-ui/menu.rol").session(session))
+                .andReturn().getResponse().getStatus());
+        assertEquals(0, APPLIED.get());
+    }
+
+    /** A signed-in account disabled after sign-in loses the session's API access, read and write alike. */
+    @Test
+    void anAccountDisabledWhileSignedInIs401OnApi() throws Exception {
+        MockHttpSession session = signedUp("erin", "editor");
+        String[] token = shellToken(session);
+        assertEquals(200, mockMvc.perform(api("GET", "/api/v1/me").session(session)).andReturn()
+                .getResponse().getStatus());
+
+        // The enabled-only lookup no longer finds her.
+        when(USERS.getUserByUserName("erin")).thenReturn(null);
+
+        assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(session)).andReturn(),
+                401, "auth.unauthorized");
+        assertProblem(mockMvc.perform(api("PATCH", "/api/v1/probe").session(session)
+                .header(token[0], token[1])).andReturn(), 401, "auth.unauthorized");
+        assertEquals(0, APPLIED.get());
+    }
+
+    @Test
+    void aLookupThatThrowsRefusesTheSessionToo() throws Exception {
+        MockHttpSession session = signedUp("erin", "editor");
+        when(USERS.getUserByUserName("erin")).thenThrow(new com.wikantik.pressroom.WebloggerException("down"));
+        assertProblem(mockMvc.perform(api("GET", "/api/v1/me").session(session)).andReturn(),
+                401, "auth.unauthorized");
+    }
+
+    @Test
+    void theCsrfTokenIsReadFromTheHeaderOnly() throws Exception {
+        MockHttpSession session = signedUp("erin", "editor");
+        String[] token = shellToken(session);
+        assertProblem(mockMvc.perform(api("POST", "/api/v1/probe").session(session)
+                .queryParam("_csrf", token[1])).andReturn(), 403, "csrf.invalid");
+        assertProblem(mockMvc.perform(api("POST", "/api/v1/probe").session(session)
+                .param("_csrf", token[1])).andReturn(), 403, "csrf.invalid");
+        assertEquals(0, APPLIED.get());
     }
 }
