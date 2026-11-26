@@ -390,6 +390,7 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/admin/users/{userName}/password-link",    ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/users/{userName}/weblogs",          ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/config/definitions",                ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/config",                            ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/revisions",                         ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/revisions/sweep",                   ADMIN, SITE_ADMIN, NO_WEBLOG),

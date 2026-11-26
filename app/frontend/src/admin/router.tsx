@@ -25,6 +25,7 @@ import { Members } from './screens/people/Members';
 import { Stylesheet } from './screens/people/Stylesheet';
 import { TemplateEdit } from './screens/people/TemplateEdit';
 import { Templates } from './screens/people/Templates';
+import { siteAdminRoutes } from './routes/siteRoutes';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -64,6 +65,7 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/inbox', element: <Inbox />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
+    ...siteAdminRoutes,
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
 }];

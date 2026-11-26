@@ -5531,6 +5531,37 @@
         }
       }
     },
+    "/v1/admin/config/definitions" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "configGetDefinitions",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ConfigGroup"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/analytics" : {
       "get" : {
         "tags" : [ "Site status" ],
@@ -8882,6 +8913,59 @@
             "format" : "int64"
           }
         }
+      },
+      "ConfigGroup" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The group's name."
+          },
+          "key" : {
+            "type" : "string",
+            "description" : "The message key of its heading."
+          },
+          "properties" : {
+            "type" : "array",
+            "description" : "Its properties, in display order.",
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigPropertyDefinition"
+            }
+          }
+        },
+        "required" : [ "key", "name", "properties" ]
+      },
+      "ConfigPropertyDefinition" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "The property's name, as GET and PATCH /v1/admin/config use it."
+          },
+          "key" : {
+            "type" : "string",
+            "description" : "The message key of its label."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "string, text, boolean, integer or float; anything else is edited as a string."
+          },
+          "defaultValue" : {
+            "type" : "string",
+            "description" : "The value used while none is stored."
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Rows of the text box for a text property."
+          },
+          "cols" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Columns of the text box for a text property."
+          }
+        },
+        "required" : [ "cols", "key", "name", "rows", "type" ]
       },
       "BusinessPage" : {
         "type" : "object",

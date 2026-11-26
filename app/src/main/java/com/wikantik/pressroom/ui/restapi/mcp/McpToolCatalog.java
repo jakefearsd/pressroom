@@ -207,6 +207,9 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),
             new Exclusion("GET /v1/ping", "Unauthenticated liveness check; nothing for an agent."),
+            new Exclusion("GET /v1/admin/config/definitions",
+                    "Operator screen: how the Global Config page draws its form (groups, labels, types); "
+                    + "an agent reads the values with site_settings."),
             new Exclusion("GET /v1/admin/revisions", "Operator maintenance: the admin screen and admin API only."),
             new Exclusion("POST /v1/admin/revisions/sweep",
                     "Operator maintenance: removes history site-wide; the admin screen and admin API only."),
