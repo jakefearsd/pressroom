@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    // The page is served from the context path, so a multipart XHR to the API is same-origin as it is in production.
+    environmentOptions: { jsdom: { url: 'http://pressroom.test/pressroom/pressroom-ui/app/' } },
     globals: true,
     include: ['test/admin/**/*.test.{ts,tsx}'],
     setupFiles: ['test/admin/setup.ts'],

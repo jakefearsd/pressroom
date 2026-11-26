@@ -23,6 +23,8 @@ function useAppContext(): AppContextValue {
 
 export const useBoot = (): Bootstrap => useAppContext().boot;
 export const useApi = (): ApiClient => useAppContext().api;
+/** Reports a 401 from a call that bypasses the API client (multipart upload progress). */
+export const useExpire = (): (() => void) => useAppContext().session.expire;
 
 /** True once any API call has answered 401. */
 export function useSessionExpired(): boolean {

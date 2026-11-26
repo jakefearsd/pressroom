@@ -10,6 +10,9 @@ import { Comments } from './screens/Comments';
 import { Entries } from './screens/Entries';
 import { Trash } from './screens/Trash';
 import { EntryEditor } from './screens/EntryEditor';
+import { MediaEdit } from './screens/media/MediaEdit';
+import { MediaLibrary } from './screens/media/MediaLibrary';
+import { MediaUpload } from './screens/media/MediaUpload';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -31,6 +34,9 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/categories', element: <Categories />, ...scoped('weblog') },
     { path: 'weblogs/:handle/entries/new', element: <EntryEditor />, ...scoped('weblog') },
     { path: 'weblogs/:handle/entries/:id', element: <EntryEditor />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media', element: <MediaLibrary />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media/upload', element: <MediaUpload />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/media/:id', element: <MediaEdit />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
