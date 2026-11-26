@@ -41,12 +41,12 @@ export const RAIL_GROUPS: readonly RailGroup[] = [
 ];
 
 export const RAIL_ENTRIES: readonly RailEntry[] = [
-  { id: 'entryAdd', messageKey: 'tabbedmenu.weblog.newEntry', group: 'tabbedmenu.weblog', requires: weblog('edit_draft') },
-  { id: 'entries', messageKey: 'tabbedmenu.weblog.archives', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'trash', messageKey: 'tabbedmenu.trash', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
+  { id: 'entryAdd', messageKey: 'tabbedmenu.weblog.newEntry', group: 'tabbedmenu.weblog', requires: weblog('edit_draft'), path: '/weblogs/:handle/entries/new' },
+  { id: 'entries', messageKey: 'tabbedmenu.weblog.archives', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/entries' },
+  { id: 'trash', messageKey: 'tabbedmenu.trash', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/trash' },
   { id: 'submissions', messageKey: 'tabbedmenu.submissions', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'comments', messageKey: 'tabbedmenu.comments', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'categories', messageKey: 'tabbedmenu.weblog.categories', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
+  { id: 'comments', messageKey: 'tabbedmenu.comments', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/comments' },
+  { id: 'categories', messageKey: 'tabbedmenu.weblog.categories', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/categories' },
   { id: 'pages', messageKey: 'tabbedmenu.pages', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'mediaFileView', messageKey: 'tabbedmenu.weblog.mediaFiles', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'traffic', messageKey: 'tabbedmenu.weblog.traffic', group: 'tabbedmenu.weblog', requires: weblog('admin'), switchable: true, path: '/weblogs/:handle/traffic' },

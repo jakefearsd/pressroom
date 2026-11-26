@@ -20,6 +20,8 @@ describe('readBootstrap', () => {
     ['not an object', '"x"'],
     ['a missing string', JSON.stringify({ ...sample, version: undefined })],
     ['a bad csrf', JSON.stringify({ ...sample, csrf: { headerName: 'X' } })],
+    ['no session timeout', JSON.stringify({ ...sample, sessionTimeoutSeconds: undefined })],
+    ['a session timeout that is not a number', JSON.stringify({ ...sample, sessionTimeoutSeconds: '1800' })],
     ['a bad user', JSON.stringify({ ...sample, user: null })],
     ['no site block', JSON.stringify({ ...sample, site: undefined })],
     ['a site name that is not text', JSON.stringify({ ...sample, site: { ...sample.site, name: 1 } })],

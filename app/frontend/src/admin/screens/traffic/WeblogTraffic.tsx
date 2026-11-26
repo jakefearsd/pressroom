@@ -54,7 +54,6 @@ function PostsTable({ view, sort, handle, period, locale }: {
   view: TrafficView; sort: Sort; handle: string; period: Period; locale: string;
 }) {
   const t = useT();
-  const { contextPath } = useBoot();
   const link = usePageLink();
   if (view.posts.length === 0) {
     return <p className="traffic-empty">{t('traffic.empty.posts')}</p>;
@@ -76,7 +75,7 @@ function PostsTable({ view, sort, handle, period, locale }: {
               <tr key={`${line.entryId ?? ''}${line.path}`}>
                 <td>
                   {line.entryId !== null && line.title !== null && line.title !== '' ? (
-                    <a href={`${contextPath}/pressroom-ui/authoring/entryEdit.rol?weblog=${encodeURIComponent(handle)}&bean.id=${encodeURIComponent(line.entryId)}`}>{line.title}</a>
+                    <Link to={`/weblogs/${encodeURIComponent(handle)}/entries/${encodeURIComponent(line.entryId)}`}>{line.title}</Link>
                   ) : <span className="data">{line.path}</span>}
                 </td>
                 <td className="n">{figure(line.views, locale)}</td>

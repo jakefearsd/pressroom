@@ -277,18 +277,18 @@ describe('Media library bulk actions', () => {
     expect(alert).toHaveTextContent('a-beach.jpg: That name is taken.');
   });
 
-  it('starts an entry from the selection with a form post of the ids and the CSRF token', async () => {
-    open();
+  it('starts an entry from the selection in the React editor (no .rol form post)', async () => {
+    const { router } = open();
     await select('a-beach.jpg', 'b-noalt.png');
     const form = document.getElementById('createPostForm') as HTMLFormElement;
-    expect(form).toHaveAttribute('method', 'post');
-    expect(form).toHaveAttribute('action', 'http://pressroom.test/pressroom/pressroom-ui/authoring/entryAddWithMediaFile.rol');
-    expect([...form.querySelectorAll('input[name=selectedImages]')].map((i) => (i as HTMLInputElement).value)).toEqual(['a', 'b']);
-    expect((form.querySelector('input[name=weblog]') as HTMLInputElement).value).toBe('alpha');
-    expect((form.querySelector('input[name=_csrf]') as HTMLInputElement).value).toBe('tok');
+    expect(form).not.toHaveAttribute('action');
+    expect(form.querySelector('input[name=_csrf]')).toBeNull();
     const button = screen.getByRole('button', { name: 'New entry with selected' });
     expect(button).toHaveAttribute('form', 'createPostForm');
     expect(button).toHaveAttribute('type', 'submit');
+    await userEvent.click(button);
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/entries/new'); });
+    expect(router.state.location.search).toBe('?mediaId=a&mediaId=b');
   });
 });
 

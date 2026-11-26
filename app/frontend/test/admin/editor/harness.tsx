@@ -25,6 +25,8 @@ export const state = {
   trashedPages: [] as object[],
   revisions: [] as object[],
   comments: [] as object[],
+  /** The query string of each comment list read (reads are not in `requests`). */
+  commentReads: [] as string[],
   requests: [] as Recorded[]
 };
 
@@ -44,6 +46,7 @@ export function resetState(): void {
   state.trashedPages = [];
   state.revisions = [];
   state.comments = [];
+  state.commentReads = [];
   state.requests = [];
 }
 
@@ -70,8 +73,11 @@ export const server = setupServer(
   http.get(`${API}/weblogs/:handle/entries/:id/revisions/:rid`, () =>
     HttpResponse.json({ id: 'r1', title: 'Old title', summary: '', text: 'old', diff: '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+Hello **Rome**\n' })),
   http.get(`${API}/weblogs/:handle/comments`, ({ request }) => {
-    const status = new URL(request.url).searchParams.get('status');
-    return HttpResponse.json({ items: state.comments.filter((c) => (c as { status: string }).status === status), offset: 0, limit: 200, hasMore: false });
+    const query = new URL(request.url).searchParams;
+    state.commentReads.push(query.toString());
+    const matching = state.comments.filter((c) => (c as { status: string }).status === query.get('status')
+      && (query.get('topLevel') !== 'true' || (c as { replyTo?: string }).replyTo === undefined));
+    return HttpResponse.json({ items: matching.slice(0, Number(query.get('limit') ?? 50)), offset: 0, limit: 200, hasMore: false, total: matching.length });
   }),
   http.post(`${API}/weblogs/:handle/entries`, async ({ request }) => {
     const body = await request.json();

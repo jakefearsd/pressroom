@@ -1,14 +1,13 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useDirectories, useMediaActions, type MediaView } from '../../api/media';
 import { ApiError } from '../../api/problem';
 import { useUploader } from '../../api/upload';
 import { runBulk } from '../../lib/bulk';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { PageTitle } from '../../frame/PageTitle';
-import { useBoot } from '../../context';
 import { useT } from '../../i18n/messages';
-import { formatSize, isImage, libraryPath, splitTags, thumbnailUrl } from './shared';
+import { formatSize, isImage, libraryPath, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 interface Row {
   file: File;
@@ -41,7 +40,7 @@ function LinkField({ id, value }: { id: string; value: string }) {
 /** The success half: MediaFileAddSuccess.jsp. */
 function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: string; created: MediaView[]; onMore: () => void }) {
   const t = useT();
-  const boot = useBoot();
+  const navigate = useNavigate();
   const images = created.filter(isImage);
   const others = created.filter((f) => !isImage(f));
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -66,11 +65,7 @@ function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: strin
     <>
       <p className="subtitle">{t('mediaFileSuccess.subtitle')}</p>
       <p className="pagetip">{t('mediaFileSuccess.pageTip')}</p>
-      <form id="entry" method="post" action={`${boot.contextPath}/pressroom-ui/authoring/entryAddWithMediaFile.rol`}>
-        <input type="hidden" name="weblog" value={handle} />
-        <input type="hidden" name="bean.enclosureURL" id="enclosureURL" value={enclosure} />
-        {[...picked].map((id) => <input key={id} type="hidden" name="selectedImages" value={id} />)}
-        <input type="hidden" name="_csrf" value={boot.csrf.token} />
+      <form id="entry" onSubmit={(event) => { event.preventDefault(); void navigate(newEntryPath(handle, picked)); }}>
 
         {images.length > 0 ? (
           <>

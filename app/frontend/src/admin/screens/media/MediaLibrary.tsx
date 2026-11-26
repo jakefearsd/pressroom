@@ -9,11 +9,10 @@ import { Markup, markupArg } from '../../components/Markup';
 import { runBulk } from '../../lib/bulk';
 import { SelectionBar } from '../../components/SelectionBar';
 import { PageTitle } from '../../frame/PageTitle';
-import { useBoot } from '../../context';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { useT } from '../../i18n/messages';
 import { useWeblogRights } from '../../lib/permission';
-import { isImage, splitTags, thumbnailUrl } from './shared';
+import { isImage, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 const SORTS = ['name', 'date_uploaded', 'type'] as const;
 const UNIT_BYTES: Record<string, number> = { bytes: 1, kb: 1024, mb: 1024 * 1024 };
@@ -90,7 +89,6 @@ function Tile({ file, selectable, selected, onToggle, onOpen }: {
  */
 export function MediaLibrary() {
   const t = useT();
-  const boot = useBoot();
   const handle = useParams()['handle'] ?? '';
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -443,11 +441,7 @@ export function MediaLibrary() {
         </EmptyState>
       ) : null}
 
-      <form id="createPostForm" method="post" action={`${boot.contextPath}/pressroom-ui/authoring/entryAddWithMediaFile.rol`}>
-        <input type="hidden" name="weblog" value={handle} />
-        {[...selected].map((id) => <input key={id} type="hidden" name="selectedImages" value={id} />)}
-        <input type="hidden" name="_csrf" value={boot.csrf.token} />
-      </form>
+      <form id="createPostForm" onSubmit={(event) => { event.preventDefault(); void navigate(newEntryPath(handle, selected)); }} />
 
       {canManage && current !== undefined && !searching ? (
         <div id="directoryPrivacyCard" className="card mt-3">

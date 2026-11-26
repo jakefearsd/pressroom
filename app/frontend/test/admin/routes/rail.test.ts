@@ -106,11 +106,12 @@ describe('the switcher set', () => {
 
 describe('entryTarget', () => {
   const entries = RAIL_ENTRIES.find((e) => e.id === 'entries');
+  const themes = RAIL_ENTRIES.find((e) => e.id === 'themeEdit');
   const config = RAIL_ENTRIES.find((e) => e.id === 'globalConfig');
 
   it('links an unmigrated weblog screen to its authoring .rol with the handle', () => {
-    expect(entryTarget(entries as never, '/pressroom', 'my blog')).toEqual({
-      kind: 'legacy', to: '/pressroom/pressroom-ui/authoring/entries.rol?weblog=my%20blog'
+    expect(entryTarget(themes as never, '/pressroom', 'my blog')).toEqual({
+      kind: 'legacy', to: '/pressroom/pressroom-ui/authoring/themeEdit.rol?weblog=my%20blog'
     });
   });
 
@@ -127,6 +128,9 @@ describe('entryTarget', () => {
 
   it('links the migrated screens to React routes and every other entry to its .rol', () => {
     expect(RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path])).toEqual([
+      ['entryAdd', '/weblogs/:handle/entries/new'], ['entries', '/weblogs/:handle/entries'],
+      ['trash', '/weblogs/:handle/trash'], ['comments', '/weblogs/:handle/comments'],
+      ['categories', '/weblogs/:handle/categories'],
       ['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']
     ]);
   });

@@ -21,10 +21,11 @@ import { entryKey, useCategories, useCommentCounts, useEntry, useRevisions, revi
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
 import { useT, type Translate } from '../i18n/messages';
-import { RAIL_ENTRIES, entryTarget } from '../routes/railTable';
-import { hardNavigate } from '../routes/hardNavigate';
 import { weblogLevel } from '../routes/visibility';
+import { RAIL_ENTRIES, entryTarget } from '../routes/railTable';
 import { DraftBar } from '../session/DraftBar';
+import { flashState } from '../session/flash';
+import { SessionExpiryBar } from '../session/SessionExpiryBar';
 import { useDraftKeeper } from '../session/useDraftKeeper';
 
 
@@ -129,14 +130,7 @@ export function EntryEditor() {
 }
 
 function TrashedRedirect({ handle }: { handle: string }) {
-  const { contextPath } = useBoot();
-  const target = entryTarget(RAIL_ENTRIES.find((e) => e.id === 'trash') ?? RAIL_ENTRIES[0] as never, contextPath, handle);
-  useEffect(() => {
-    if (target.kind === 'legacy') {
-      hardNavigate(target.to);
-    }
-  }, [target.kind, target.to]);
-  return target.kind === 'react' ? <Navigate to={target.to} replace /> : null;
+  return <Navigate to={`/weblogs/${encodeURIComponent(handle)}/trash`} replace />;
 }
 
 function noticeText(notice: Notice, t: Translate, server: EntryView | undefined, tz: string | undefined): string {
@@ -322,12 +316,9 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
     await call(api.DELETE('/v1/weblogs/{handle}/entries/{id}', { params: { path: { handle, id: entryId ?? '' } } }));
     keeper.clear();
     setDeleting(false);
-    const target = entryTarget(RAIL_ENTRIES.find((e) => e.id === 'entries') ?? RAIL_ENTRIES[0] as never, contextPath, handle);
-    if (target.kind === 'legacy') {
-      hardNavigate(target.to);
-    } else {
-      void navigate(target.to);
-    }
+    // The list shows the removed message above itself: the one flash channel, router state {message}.
+    void navigate(`/weblogs/${encodeURIComponent(handle)}/entries`,
+      { state: flashState(t('weblogEdit.entryRemoved', server?.title ?? form.title)) });
   });
 
   const compare = async (revisionId: string): Promise<RevisionDiff> => {
@@ -376,12 +367,9 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   const saveState: SaveState = !dirty ? (server === undefined ? 'notSaved' : 'saved')
     : keeper.savedAt !== null ? 'savedLocally' : 'unsaved';
 
-  const comments = RAIL_ENTRIES.find((e) => e.id === 'comments');
-  const commentsTarget = comments === undefined ? undefined : entryTarget(comments, contextPath, handle);
   const settings = RAIL_ENTRIES.find((e) => e.id === 'weblogConfig');
   const settingsHref = settings === undefined ? '#' : entryTarget(settings, contextPath, handle).to;
-  const commentsHref = commentsTarget === undefined ? '#'
-    : `${commentsTarget.to}${commentsTarget.to.includes('?') ? '&' : '?'}entry=${encodeURIComponent(entryId ?? '')}`;
+  const commentsHref = `/weblogs/${encodeURIComponent(handle)}/comments?entry=${encodeURIComponent(entryId ?? '')}`;
 
   const pageTitle = t(server === undefined ? 'weblogEdit.title.newEntry' : 'weblogEdit.title.editEntry');
   const title = server?.title ?? '';
@@ -413,6 +401,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
       <PageTitle {...(title === '' ? {} : { tabTitle: `${title} — ${pageTitle}` })}>{pageTitle}</PageTitle>
       <p className="subtitle"><Markup text={t(server === undefined ? 'weblogEdit.subtitle.newEntry' : 'weblogEdit.subtitle.editEntry', markupArg(handle))} /></p>
       {noticeBanner}
+      <SessionExpiryBar />
       <ProblemBanner error={error} />
       <div className="editor-grid">
         <form id="entry" method="post" className="form-stacked editor-form" onSubmit={(e) => { e.preventDefault(); }}>
