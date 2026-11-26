@@ -38,7 +38,6 @@ import java.util.Map;
  */
 public class PressroomViewResolver implements ViewResolver, Ordered {
 
-    private static final String MAINMENU = ".tiles-mainmenupage";
     private static final String TABBED = ".tiles-tabbedpage";
     private static final String SIMPLE = ".tiles-simplepage";
     private static final String LOGIN = ".tiles-loginpage";
@@ -167,7 +166,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         // ---- 7 base layout definitions ----
 
-        addDefinition(MAINMENU,
+        addDefinition(".tiles-mainmenupage",
                 "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp",
                 Map.of(
                         "banner",   "/WEB-INF/jsps/tiles/bannerStatus.jsp",
