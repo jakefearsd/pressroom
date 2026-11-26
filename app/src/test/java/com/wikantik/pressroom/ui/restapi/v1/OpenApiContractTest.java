@@ -89,7 +89,7 @@ class OpenApiContractTest {
             "entriesList", "entriesGet", "entriesGetByAnchor", "entriesListRevisions", "entriesGetRevision",
             "entriesCreate", "entriesUpdate", "entriesRestoreRevision", "entriesKeepRevision",
             "entriesUnkeepRevision", "entriesTrash", "entriesRestore", "entriesDeleteForever", "entriesPreview",
-            "entriesPreviewNew",
+            "entriesPreviewNew", "entriesDuplicate", "entriesSendNewsletter",
             "pagesList", "pagesGet", "pagesCreate", "pagesUpdate", "pagesListRevisions", "pagesGetRevision",
             "pagesRestoreRevision", "pagesKeepRevision", "pagesUnkeepRevision", "pagesReplaceParts", "pagesTrash",
             "pagesRestore", "pagesDeleteForever",

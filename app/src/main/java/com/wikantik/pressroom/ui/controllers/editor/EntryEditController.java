@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.ui.controllers.editor;
 
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
+import com.wikantik.pressroom.ui.controllers.EntryNewsletter;
 import com.wikantik.pressroom.ui.controllers.EntryPinRules;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.StrandChoice;
@@ -410,21 +410,8 @@ public class EntryEditController extends BaseController {
             return "redirect:/pressroom-ui/menu.rol";
         }
 
-        if (!entry.isPublished()) {
-            addError(model, "newsletter.notPublished", request);
-        } else if (entry.getNewsletterSentAt() != null) {
-            addError(model, "newsletter.alreadySent", request);
-        } else {
-            String listUuid = getActionWeblog(request).getNewsletterListUuid();
-            ListmonkClient client = listmonkClient();
-            if (StringUtils.isBlank(listUuid)) {
-                addError(model, "newsletter.noList", request);
-            } else if (!client.isCampaignConfigured()) {
-                addError(model, "newsletter.notConfigured", request);
-            } else {
-                sendNewsletterCampaign(entry, listUuid, client, model, request);
-            }
-        }
+        showNewsletterOutcome(EntryNewsletter.send(weblogger, this::listmonkClient, entry, permalinkOf(entry)),
+                model, request);
 
         EntryBean bean = new EntryBean();
         bean.copyFrom(entry, request.getLocale());
@@ -433,51 +420,17 @@ public class EntryEditController extends BaseController {
         return ".EntryEdit";
     }
 
-    /**
-     * The actual send, isolated so {@link #entryEditSendNewsletter} reads as
-     * the guard sequence it is. Builds the campaign HTML from the same
-     * theme-independent seam feeds use ({@code EntryRenderer.transformedText()}) so the
-     * newsletter body matches what the entry renders as, escapes only the
-     * title (the body is already-sanitized HTML by the time it reaches
-     * here), and stamps {@code newsletterSentAt} strictly after
-     * {@code sendCampaign} returns without throwing.
-     *
-     * <p>The two exception scopes below are deliberately separate, not
-     * merged into one try/catch. Once {@code sendCampaign} returns
-     * successfully the email is irreversibly gone to every subscriber; a
-     * failure recording that -- {@code saveWeblogEntry} or {@code flush}
-     * throwing -- is a completely different situation from the send itself
-     * failing, and must not be reported with the same generic message. That
-     * would leave the button showing (nothing looks stamped) and invite the
-     * author to click it again, which really would send the campaign twice.
-     * {@code newsletter.sentButNotRecorded} says explicitly not to retry.
-     */
-    private void sendNewsletterCampaign(WeblogEntry entry, String listUuid, ListmonkClient client,
-                                        Model model, HttpServletRequest request) {
-        String html = "<h1>" + StringEscapeUtils.escapeHtml4(entry.getTitle()) + "</h1>\n"
-                + weblogger.getEntryRenderer().transformedText(entry)
-                + "\n<p><a href=\"" + permalinkOf(entry) + "\">Read on the site</a></p>";
-        try {
-            client.sendCampaign(listUuid, entry.getTitle(), html);
-        } catch (IOException ex) {
-            log.error("Error sending newsletter campaign for entry {}", entry.getId(), ex);
-            addError(model, "newsletter.sendFailed",
-                    StringEscapeUtils.escapeHtml4(ex.getMessage()), request);
-            return;
-        }
-
-        // The campaign is already sent at this point. Nothing from here on
-        // may be reported as an ordinary, retry-inviting failure.
-        try {
-            entry.setNewsletterSentAt(new Timestamp(System.currentTimeMillis()));
-            weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
-            weblogger.flush();
-            addMessage(model, "newsletter.sent", request);
-        } catch (WebloggerException ex) {
-            log.error("Newsletter campaign for entry {} was sent, but recording newsletterSentAt failed",
-                    entry.getId(), ex);
-            addError(model, "newsletter.sentButNotRecorded",
-                    StringEscapeUtils.escapeHtml4(ex.getMessage()), request);
+    /** The editor's wording for each way {@link EntryNewsletter#send} can end. */
+    private void showNewsletterOutcome(EntryNewsletter.Result result, Model model, HttpServletRequest request) {
+        String escapedDetail = StringEscapeUtils.escapeHtml4(result.detail());
+        switch (result.outcome()) {
+            case SENT -> addMessage(model, "newsletter.sent", request);
+            case NOT_PUBLISHED -> addError(model, "newsletter.notPublished", request);
+            case ALREADY_SENT -> addError(model, "newsletter.alreadySent", request);
+            case NO_LIST -> addError(model, "newsletter.noList", request);
+            case NOT_CONFIGURED -> addError(model, "newsletter.notConfigured", request);
+            case SEND_FAILED -> addError(model, "newsletter.sendFailed", escapedDetail, request);
+            case SENT_NOT_RECORDED -> addError(model, "newsletter.sentButNotRecorded", escapedDetail, request);
         }
     }
 

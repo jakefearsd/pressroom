@@ -60,11 +60,7 @@ class FormBodyParityTest {
                                 "eventStartLocal", "eventStart",
                                 "eventEndLocal", "eventEnd",
                                 "strandPageId", "strand"),
-                        Map.of("id", "The entry's id is the update route's path variable; create assigns one.",
-                                "locale", "A hidden field the editor round-trips unchanged; no surface edits "
-                                        + "an entry's locale.",
-                                "pinnedToMain", "The legacy pin to the main page, which the front page "
-                                        + "ignores; promotion will be designed separately.")),
+                        Map.of("id", "The entry's id is the update route's path variable; create assigns one.")),
                 new Parity("WeblogConfigBean -> weblogSettings", WeblogConfigBean.class,
                         EditableFieldManifest.weblogSettings(),
                         Map.of("frontPageId", "frontPage"),

@@ -22,6 +22,7 @@ import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -79,6 +80,19 @@ public final class ContributorRules {
         } catch (WebloggerException e) {
             log.error("Could not check publish rights on weblog {}; treating the caller as a contributor",
                     weblog.getHandle(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Whether {@code user} is a site administrator, the one who may pin an entry to the main page. A check that
+     * cannot be answered is a no.
+     */
+    public static boolean isSiteAdmin(UserManager users, User user) {
+        try {
+            return users.checkPermission(new GlobalPermission(List.of(GlobalPermission.ADMIN)), user);
+        } catch (WebloggerException e) {
+            log.error("Could not check whether {} is a site administrator; treating them as not", user.getUserName(), e);
             return false;
         }
     }

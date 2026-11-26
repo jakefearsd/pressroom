@@ -157,8 +157,9 @@ class ToolSchemasTest {
         // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
         // (spec 2026-10-24), 20; revisionNote (Wave B), 21; metaTitle and searchDescription (Bing scan), 23;
         // pinned (blog pins), 24; strand (strands), 25; title (plain text in and out), 26; text, canonicalUrl,
-        // noindex and ogImageId (every request-body member described, API contract Task 4), 30.
-        assertEquals(30, described);
+        // noindex and ogImageId (every request-body member described, API contract Task 4), 30; locale and
+        // pinnedToMain (React admin migration, Wave 1), 32.
+        assertEquals(32, described);
     }
 
     /**
