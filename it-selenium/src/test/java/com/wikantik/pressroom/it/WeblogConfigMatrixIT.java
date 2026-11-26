@@ -188,6 +188,8 @@ class WeblogConfigMatrixIT extends PressroomIT {
 
         openSettings(handle);
         $("#weblog_bean_newsletterListUuid").setValue("not-a-uuid");
+        // The refusal is the point: the PATCH answers 400, which the health check would otherwise call broken.
+        BrowserHealth.current().expectRefusal("/api/v1/weblogs/" + handle);
         $("button[type='submit'].btn-primary").should(visible).click();
 
         $("#errors").should(exist);
