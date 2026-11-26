@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { call } from '../../api/client';
 import { ApiError } from '../../api/problem';
 import type { components } from '../../api/schema';
@@ -38,10 +38,9 @@ export function useUser(userName: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['user', userName],
-    enabled: userName !== undefined,
-    queryFn: async () => {
+    queryFn: userName === undefined ? skipToken : async () => {
       try {
-        return await call(api.GET('/v1/admin/users/{userName}', { params: { path: { userName: userName ?? '' } } }));
+        return await call(api.GET('/v1/admin/users/{userName}', { params: { path: { userName } } }));
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           return null;
@@ -57,9 +56,8 @@ export function useUserWeblogs(userName: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['userWeblogs', userName],
-    enabled: userName !== undefined,
-    queryFn: async () => (await call(api.GET('/v1/admin/users/{userName}/weblogs', {
-      params: { path: { userName: userName ?? '' } }
+    queryFn: userName === undefined ? skipToken : async () => (await call(api.GET('/v1/admin/users/{userName}/weblogs', {
+      params: { path: { userName } }
     }))).items
   });
 }
@@ -97,8 +95,7 @@ export function useAgent(userName: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['agent', userName],
-    enabled: userName !== undefined,
-    queryFn: () => call(api.GET('/v1/admin/agents/{userName}', { params: { path: { userName: userName ?? '' } } }))
+    queryFn: userName === undefined ? skipToken : () => call(api.GET('/v1/admin/agents/{userName}', { params: { path: { userName } } }))
   });
 }
 

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { useApi } from '../context';
 import { call } from './client';
 
@@ -19,8 +19,7 @@ export function useWeblog(handle: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['weblog', handle],
-    enabled: handle !== undefined,
-    queryFn: () => call(api.GET('/v1/weblogs/{handle}', { params: { path: { handle: handle ?? '' } } }))
+    queryFn: handle === undefined ? skipToken : () => call(api.GET('/v1/weblogs/{handle}', { params: { path: { handle } } }))
   });
 }
 
@@ -67,10 +66,9 @@ export function useWeblogThemes(handle: string | undefined, siteSpace = false) {
   const api = useApi();
   return useQuery({
     queryKey: ['weblogThemes', handle],
-    enabled: handle !== undefined,
-    queryFn: () => siteSpace
+    queryFn: handle === undefined ? skipToken : () => siteSpace
       ? call(api.GET('/v1/admin/site-theme'))
-      : call(api.GET('/v1/weblogs/{handle}/themes', { params: { path: { handle: handle ?? '' } } }))
+      : call(api.GET('/v1/weblogs/{handle}/themes', { params: { path: { handle } } }))
   });
 }
 
@@ -79,9 +77,8 @@ export function useWeblogBusinesses(handle: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['weblogBusinesses', handle],
-    enabled: handle !== undefined,
-    queryFn: () => call(api.GET('/v1/weblogs/{handle}/businesses', {
-      params: { path: { handle: handle ?? '' }, query: { limit: 200 } }
+    queryFn: handle === undefined ? skipToken : () => call(api.GET('/v1/weblogs/{handle}/businesses', {
+      params: { path: { handle }, query: { limit: 200 } }
     }))
   });
 }
@@ -91,7 +88,6 @@ export function useWeblogPages(handle: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['weblogPages', handle],
-    enabled: handle !== undefined,
-    queryFn: () => call(api.GET('/v1/weblogs/{handle}/pages', { params: { path: { handle: handle ?? '' } } }))
+    queryFn: handle === undefined ? skipToken : () => call(api.GET('/v1/weblogs/{handle}/pages', { params: { path: { handle } } }))
   });
 }

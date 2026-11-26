@@ -218,6 +218,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   const titleBox = useRef<HTMLTextAreaElement>(null);
 
   const entryId = server?.id;
+  const pathId = entryId ?? '';
   const json = JSON.stringify(form);
   const dirty = json !== baseline;
   const keeper = useDraftKeeper(`${handle}:${entryId ?? 'new'}`, json);
@@ -306,14 +307,14 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
 
   const sendNewsletter = () => run(async () => {
     const sent = await call(api.POST('/v1/weblogs/{handle}/entries/{id}/send-newsletter', {
-      params: { path: { handle, id: entryId ?? '' } }
+      params: { path: { handle, id: pathId } }
     }));
     setServer(sent);
     setNotice({ kind: 'newsletter' });
   });
 
   const trash = () => run(async () => {
-    await call(api.DELETE('/v1/weblogs/{handle}/entries/{id}', { params: { path: { handle, id: entryId ?? '' } } }));
+    await call(api.DELETE('/v1/weblogs/{handle}/entries/{id}', { params: { path: { handle, id: pathId } } }));
     keeper.clear();
     setDeleting(false);
     // The list shows the removed message above itself: the one flash channel, router state {message}.
@@ -323,7 +324,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
 
   const compare = async (revisionId: string): Promise<RevisionDiff> => {
     const view = await call(api.GET('/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}', {
-      params: { path: { handle, id: entryId ?? '', revisionId } }
+      params: { path: { handle, id: pathId, revisionId } }
     }));
     return {
       text: view.diff ?? '',
@@ -333,18 +334,18 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   };
   const restore = (revisionId: string) => run(async () => {
     const restored = await call(api.POST('/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore', {
-      params: { path: { handle, id: entryId ?? '', revisionId } },
+      params: { path: { handle, id: pathId, revisionId } },
       body: server?.contentHash === undefined ? {} : { expectedContentHash: server.contentHash }
     }));
     adopt(restored, { kind: 'restored' });
   });
   const keep = (revisionId: string, kept: boolean) => run(async () => {
-    const path = { handle, id: entryId ?? '', revisionId };
+    const path = { handle, id: pathId, revisionId };
     await call(kept
       ? api.POST('/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep', { params: { path } })
       : api.POST('/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/unkeep', { params: { path } }));
     setNotice({ kind: kept ? 'kept' : 'unkept' });
-    await queries.invalidateQueries({ queryKey: revisionsKey(handle, entryId ?? '') });
+    await queries.invalidateQueries({ queryKey: revisionsKey(handle, pathId) });
   });
 
   const saveRef = useLatest(save);
@@ -369,7 +370,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
 
   const settings = RAIL_ENTRIES.find((e) => e.id === 'weblogConfig');
   const settingsHref = settings === undefined ? '#' : entryTarget(settings, contextPath, handle).to;
-  const commentsHref = `/weblogs/${encodeURIComponent(handle)}/comments?entry=${encodeURIComponent(entryId ?? '')}`;
+  const commentsHref = `/weblogs/${encodeURIComponent(handle)}/comments?entry=${encodeURIComponent(pathId)}`;
 
   const pageTitle = t(server === undefined ? 'weblogEdit.title.newEntry' : 'weblogEdit.title.editEntry');
   const title = server?.title ?? '';

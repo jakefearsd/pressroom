@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 // Coverage gate for the React admin (spec A2): ratchet-up-only, a few
-// tenths under measured. main.tsx is the two-line entry that calls mount().
+// tenths under measured (lines 98.5, branches 91.5, functions 96.0, statements 98.2 on 2026-11-26). main.tsx is the two-line entry that calls mount().
 export default defineConfig({
   test: {
     environment: 'jsdom',
@@ -15,7 +15,7 @@ export default defineConfig({
       skipFull: false,
       include: ['src/admin/**/*.{ts,tsx}'],
       exclude: ['src/admin/main.tsx', 'src/admin/api/schema.d.ts'],
-      thresholds: { lines: 90, branches: 80 }
+      thresholds: { lines: 98.2, branches: 91.3, functions: 95.8, statements: 98.0 }
     }
   }
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useBoot } from '../context';
 import { useT } from '../i18n/messages';
 
@@ -16,7 +16,7 @@ const LEAD_SECONDS = 120;
 export function SessionExpiryBar() {
   const t = useT();
   const { sessionTimeoutSeconds } = useBoot();
-  const bar = useRef<HTMLDivElement>(null);
+  const [warning, setWarning] = useState(false);
 
   useEffect(() => {
     if (!(sessionTimeoutSeconds > LEAD_SECONDS + 60)) {
@@ -25,15 +25,9 @@ export function SessionExpiryBar() {
     const warnAfterMs = (sessionTimeoutSeconds - LEAD_SECONDS) * 1000;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const arm = () => {
-      if (bar.current !== null) {
-        bar.current.hidden = true;
-      }
+      setWarning(false);
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (bar.current !== null) {
-          bar.current.hidden = false;
-        }
-      }, warnAfterMs);
+      timer = setTimeout(() => { setWarning(true); }, warnAfterMs);
     };
     const events = ['keydown', 'click', 'input'] as const;
     events.forEach((type) => { document.addEventListener(type, arm, true); });
@@ -45,7 +39,7 @@ export function SessionExpiryBar() {
   }, [sessionTimeoutSeconds]);
 
   return (
-    <div id="sessionExpiringBar" ref={bar} className="draft-bar" hidden role="status" aria-live="polite">
+    <div id="sessionExpiringBar" className="draft-bar" hidden={!warning} role="status" aria-live="polite">
       <span className="draft-bar-text">{t('session.expiringSoon')}</span>
     </div>
   );

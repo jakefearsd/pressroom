@@ -30,7 +30,7 @@ export function StrandParts({ parts, info, candidates, invalid = false, search, 
       return;
     }
     const next = [...parts];
-    next.splice(to, 0, next.splice(from, 1)[0] ?? '');
+    next.splice(to, 0, ...next.splice(from, 1));
     onChange(next);
   };
   const addable = candidates.filter((c) => !parts.includes(c.id));

@@ -51,7 +51,7 @@ export function PagesList() {
       return;
     }
     const next = [...ids];
-    next.splice(to, 0, next.splice(from, 1)[0] ?? '');
+    next.splice(to, 0, ...next.splice(from, 1));
     setOrder(next);
   };
 
