@@ -215,6 +215,35 @@ describe('the entry editor: saving', () => {
   });
 });
 
+describe('the entry editor: publish time and the session', () => {
+  it('empties the publish time by naming pubTime in clear, only when the entry had one', async () => {
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    await userEvent.clear(screen.getByLabelText('Publish time'));
+    await click('Save draft');
+    await screen.findByText('Draft saved');
+    expect(bodyOf('PATCH')['clear']).toEqual(['pubTime']);
+    expect(bodyOf('PATCH')).not.toHaveProperty('pubTime');
+  });
+
+  it('does not clear a publish time the entry never had, and a new entry has nothing to clear', async () => {
+    delete state.entry['pubTime'];
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    await click('Save draft');
+    await screen.findByText('Draft saved');
+    expect(bodyOf('PATCH')).not.toHaveProperty('clear');
+  });
+
+  it('carries the session-expiring-soon bar, armed from the bootstrap timeout', async () => {
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    const bar = document.getElementById('sessionExpiringBar');
+    expect(bar).toHaveAttribute('hidden');
+    expect(bar).toHaveTextContent('Your session expires soon');
+  });
+});
+
 describe('the entry editor: roles', () => {
   it('gives a contributor Submit for review and none of the publisher fields', async () => {
     (state.me as { weblogs: object[] }).weblogs = [{ handle: 'alpha', name: 'Alpha Blog', permission: 'EDIT_DRAFT' }];
@@ -470,7 +499,15 @@ describe('the entry editor: SEO and structured data', () => {
     await loaded();
     await userEvent.click(screen.getByRole('button', { name: 'SEO and sharing' }));
     const link = await screen.findByRole('link', { name: '1 published · 1 awaiting approval' });
-    expect(link).toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/authoring/comments.rol?weblog=alpha&entry=e1');
+    // The counts are the list's own totals (one row asked for, top-level only), not a page counted up to a cap.
+    expect(state.commentReads).toHaveLength(2);
+    for (const query of state.commentReads) {
+      expect(new URLSearchParams(query).get('topLevel')).toBe('true');
+      expect(new URLSearchParams(query).get('limit')).toBe('1');
+      expect(new URLSearchParams(query).get('entryId')).toBe('e1');
+    }
+    // The React comments screen, filtered to this entry (a client-side link, so no .rol and no full page load).
+    expect(link).toHaveAttribute('href', '/weblogs/alpha/comments?entry=e1');
   });
 
   it('hides the comment counts when comments are off for the weblog', async () => {

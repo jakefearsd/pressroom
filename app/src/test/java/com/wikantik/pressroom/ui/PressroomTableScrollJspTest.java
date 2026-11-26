@@ -67,7 +67,7 @@ class PressroomTableScrollJspTest {
                 }
             }
         }
-        assertTrue(tables > 3, "found only " + tables + " list tables; is the scan looking in the right place?");
+        assertTrue(tables > 0, "found only " + tables + " list tables; is the scan looking in the right place?");
         assertTrue(offenders.isEmpty(),
                 "list tables not wrapped in <div class=\"table-responsive\">:\n  " + String.join("\n  ", offenders));
     }

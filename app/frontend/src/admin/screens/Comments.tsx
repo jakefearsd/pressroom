@@ -66,20 +66,25 @@ export function Comments() {
         ))}
       </nav>
       {status === 'HIDDEN' ? null : <p className="form-text">{t('comments.hideVsDelete')}</p>}
-      {list.error !== null ? <ProblemBanner error={list.error} /> : null}
-      {list.data === undefined ? null : (
-        <>
-          <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
-          <CommentRows key={params.toString()} handle={handle} status={status} comments={list.data.items} />
-          <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
-        </>
-      )}
+      <div id="comments-list-marker">
+        {list.error !== null ? <ProblemBanner error={list.error} /> : null}
+        {list.data === undefined ? null : (
+          <>
+            <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
+            <CommentRows key={params.toString()} handle={handle} status={status} comments={list.data.items} />
+            <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />
+          </>
+        )}
+      </div>
     </>
   );
 }
 
-function CommentRows({ handle, status, comments }: { handle: string; status: Tab; comments: CommentView[] }) {
+function CommentRows({ handle, status, comments: listed }: { handle: string; status: Tab; comments: CommentView[] }) {
   const t = useT();
+  // The API lists a reply as a row of its own (with `replyTo`); the screen shows it under its comment.
+  const replyBodies = new Map(listed.flatMap((c) => (c.replyTo === undefined || c.replyTo === '' ? [] : [[c.replyTo, c.body ?? ''] as const])));
+  const comments = listed.filter((c) => c.replyTo === undefined || c.replyTo === '');
   const api = useApi();
   const queries = useQueryClient();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -183,7 +188,7 @@ function CommentRows({ handle, status, comments }: { handle: string; status: Tab
                     {c.reply !== undefined && c.reply !== '' ? (
                       <div className="ms-3 mt-2">
                         <span className="status-pill">{t('comments.author')}</span>{' '}
-                        <span style={{ whiteSpace: 'pre-wrap' }}>{c.reply}</span>
+                        <span style={{ whiteSpace: 'pre-wrap' }}>{replyBodies.get(id) ?? ''}</span>
                       </div>
                     ) : null}
                     {c.status === 'PUBLISHED' && c.replyTo === undefined && (c.reply === undefined || c.reply === '') ? (

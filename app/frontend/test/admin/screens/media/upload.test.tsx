@@ -247,10 +247,11 @@ describe('Media upload success page', () => {
         : file('doc1', { name: 'guide.pdf', contentType: 'application/pdf', length: 77, width: 0, height: 0 });
       return HttpResponse.json({ created: 1, failed: 0, results: [{ status: 'created', file: made }] }, { status: 201 });
     }));
-    open();
+    const rendered = open();
     await choose(png('pic.png'), new File(['x'], 'guide.pdf', { type: 'application/pdf' }));
     await userEvent.click(screen.getByRole('button', { name: 'Upload' }));
     await screen.findByText('Your upload was successful');
+    return rendered;
   };
 
   it('lists images with facts and a copyable link, and other files as plain information', async () => {

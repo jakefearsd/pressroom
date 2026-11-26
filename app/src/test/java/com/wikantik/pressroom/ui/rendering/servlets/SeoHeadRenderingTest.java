@@ -7,7 +7,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,7 +27,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPage;
-import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import com.wikantik.pressroom.util.PressroomMessages;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -654,7 +653,7 @@ class SeoHeadRenderingTest {
     @Test
     void aUiAuthoredTitleIsEscapedExactlyOnceInTheSeoHead() throws Exception {
         WeblogEntry entry = TestUtils.setupWeblogEntry("ampersand-entry", weblog, user);
-        saveTitleThroughTheEditorBean(entry, "Fish & \"Chips\"");
+        saveTitleThroughTheEntryWrite(entry, "Fish & \"Chips\"");
 
         String body = render("/" + HANDLE + "/entry/ampersand-entry");
 
@@ -671,18 +670,13 @@ class SeoHeadRenderingTest {
     }
 
     /**
-     * Saves {@code title} the way the editor does: through {@link EntryBean},
-     * whose copyTo HTML-escapes the title on the way into the database.
+     * Saves {@code title} the way the editor does: through {@link EntryFieldRules#escapeTitle},
+     * the HTML-escape every entry write (the React editor's API call included) applies on the way in.
      */
-    private void saveTitleThroughTheEditorBean(WeblogEntry entry, String title) throws Exception {
+    private void saveTitleThroughTheEntryWrite(WeblogEntry entry, String title) throws Exception {
         WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
         WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
-        EntryBean bean = new EntryBean();
-        bean.copyFrom(managed, Locale.getDefault());
-        bean.setTitle(title);
-        // The bean is pure: the controller resolves the category it posted, so
-        // hand it the one copyFrom just read off the entry.
-        bean.copyTo(managed, managed.getCategory());
+        managed.setTitle(EntryFieldRules.escapeTitle(title));
         mgr.saveWeblogEntry(managed);
         TestUtils.endSession(true);
     }

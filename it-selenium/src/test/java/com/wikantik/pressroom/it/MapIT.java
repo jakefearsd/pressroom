@@ -19,6 +19,7 @@ package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.Selenide;
 import com.wikantik.pressroom.it.support.BrowserHealth;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,10 +63,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MapIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-
     /** Rendered on the edit page only once the entry is actually published. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     @BeforeEach
     void logIn() {
@@ -78,15 +77,15 @@ class MapIT extends PressroomIT {
         String label = "Eiffel Tower " + suffix;
 
         // --- author and publish the map entry -------------------------------
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue("IT Map " + suffix);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue("IT Map " + suffix);
         Editor.setText("<p>Route notes " + suffix + "</p>"
                         + "<p>[map route=\"true\"]"
                         + "[pin lat=\"48.8584\" lng=\"2.2945\" label=\"" + label + "\"]"
                         + "[pin lat=\"48.8606\" lng=\"2.3376\" label=\"Louvre\"]"
                         + "[/map]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);

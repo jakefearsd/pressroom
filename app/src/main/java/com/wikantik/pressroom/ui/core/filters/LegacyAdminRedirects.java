@@ -28,26 +28,19 @@ import java.util.function.UnaryOperator;
  * @param legacyPath the old route, servlet path with no context path
  * @param reactPath the React route under the app, {@code {name}} placeholders allowed
  * @param pathParams placeholder name to the request parameter that supplies it
- * @param carried request parameters copied to the query string, in this order, when present
+ * @param carried request parameters copied to the query string, in this order, when present; an entry
+ *        written {@code old>new} is read as {@code old} and written as {@code new}, for a screen whose
+ *        query names changed (several olds may feed one new, the last one present wins)
  * @param otherwise a placeholder name to the React route used when that placeholder's parameter is missing,
  *                  where the default is the app home (an editor with no id is the "new" page)
- * @param queryNames a carried request parameter to the query name it takes in the React route, where the two
- *                   differ (the library's {@code directoryId} is {@code dir})
  */
 public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
-                                   List<String> carried, Map<String, String> otherwise,
-                                   Map<String, String> queryNames) {
+                                   List<String> carried, Map<String, String> otherwise) {
 
     /** A row that renames nothing and has no alternative route. */
     public LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
                                 List<String> carried) {
-        this(legacyPath, reactPath, pathParams, carried, Map.of(), Map.of());
-    }
-
-    /** A row with alternative routes for a missing placeholder and no renamed query parameters. */
-    public LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
-                                List<String> carried, Map<String, String> otherwise) {
-        this(legacyPath, reactPath, pathParams, carried, otherwise, Map.of());
+        this(legacyPath, reactPath, pathParams, carried, Map.of());
     }
 
     /** Where the React app lives, as a servlet path (spec A1). */
@@ -77,15 +70,13 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/authoring/pages.rol", "/weblogs/{weblog}/pages",
                     Map.of("weblog", "weblog"), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/authoring/pageEdit.rol", "/weblogs/{weblog}/pages/{id}",
-                    Map.of("weblog", "weblog", "id", "id"), List.of(), Map.of("id", "/weblogs/{weblog}/pages/new"),
-                    Map.of()),
+                    Map.of("weblog", "weblog", "id", "id"), List.of(), Map.of("id", "/weblogs/{weblog}/pages/new")),
             new LegacyAdminRedirects("/pressroom-ui/authoring/pagesTrash.rol", "/weblogs/{weblog}/pages/trash",
                     Map.of("weblog", "weblog"), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileView.rol", "/weblogs/{weblog}/media",
-                    Map.of("weblog", "weblog"), List.of("directoryId", "sortBy"), Map.of(),
-                    Map.of("directoryId", "dir", "sortBy", "sort")),
+                    Map.of("weblog", "weblog"), List.of("directoryId>dir", "sortBy>sort")),
             new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileAdd.rol", "/weblogs/{weblog}/media/upload",
-                    Map.of("weblog", "weblog"), List.of("directoryId"), Map.of(), Map.of("directoryId", "dir")),
+                    Map.of("weblog", "weblog"), List.of("directoryId>dir")),
             new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileEdit.rol", "/weblogs/{weblog}/media/{id}",
                     Map.of("weblog", "weblog", "id", "mediaFileId"), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
@@ -123,7 +114,30 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/profile.rol", "/profile", Map.of(), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/profileTokens.rol", "/profile/tokens", Map.of(), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/profileTokens!reveal.rol", "/profile/tokens", Map.of(),
-                    List.of()));
+                    List.of()),
+            // Wave 1 (entries, entry editor, trash, comments, categories). The old bean.* names become the
+            // React screens' plain ones; the old page number is dropped (it needs arithmetic: first page).
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entries.rol", "/weblogs/{weblog}/entries",
+                    Map.of("weblog", "weblog"),
+                    List.of("bean.status>status", "bean.categoryName>category", "bean.tagsAsString>tags",
+                            "bean.text>text", "bean.startDateString>startDate", "bean.endDateString>endDate",
+                            "bean.sortBy>sortBy")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryAdd.rol", "/weblogs/{weblog}/entries/new",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryEdit.rol", "/weblogs/{weblog}/entries/{id}",
+                    Map.of("weblog", "weblog", "id", "bean.id"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryEdit!firstSave.rol",
+                    "/weblogs/{weblog}/entries/{id}", Map.of("weblog", "weblog", "id", "bean.id"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/entryAddWithMediaFile.rol",
+                    "/weblogs/{weblog}/entries/new", Map.of("weblog", "weblog"),
+                    List.of("selectedImages>mediaId", "selectedImage>mediaId")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/trash.rol", "/weblogs/{weblog}/trash",
+                    Map.of("weblog", "weblog"), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/comments.rol", "/weblogs/{weblog}/comments",
+                    Map.of("weblog", "weblog"), List.of("status", "entry")),
+            new LegacyAdminRedirects("/pressroom-ui/authoring/categories.rol", "/weblogs/{weblog}/categories",
+                    Map.of("weblog", "weblog"), List.of()));
+
 
     /** A weblog-scoped screen with no query: {@code authoring/<action>.rol?weblog=h} to {@code /weblogs/h/<screen>}. */
     private static LegacyAdminRedirects weblogScreen(String action, String screen) {
@@ -176,16 +190,25 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
                 route = route.replace(token, encode(value));
             }
         }
-        List<String> query = new ArrayList<>();
+        String query = carriedQuery(param);
+        return query.isEmpty() ? route : route + "?" + query;
+    }
+
+    /** The carried parameters as a query string (no leading mark), renamed where the row says so. */
+    private String carriedQuery(UnaryOperator<String> param) {
         Map<String, String> seen = new LinkedHashMap<>();
-        for (String name : carried) {
-            String value = param.apply(name);
+        for (String spec : carried) {
+            int arrow = spec.indexOf('>');
+            String from = arrow < 0 ? spec : spec.substring(0, arrow);
+            String to = arrow < 0 ? spec : spec.substring(arrow + 1);
+            String value = param.apply(from);
             if (value != null && !value.isEmpty()) {
-                seen.put(queryNames.getOrDefault(name, name), value);
+                seen.put(to, value);
             }
         }
+        List<String> query = new ArrayList<>();
         seen.forEach((name, value) -> query.add(encode(name) + "=" + encode(value)));
-        return query.isEmpty() ? route : route + "?" + String.join("&", query);
+        return String.join("&", query);
     }
 
     private static boolean isBlank(String value) {

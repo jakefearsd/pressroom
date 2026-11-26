@@ -19,6 +19,7 @@ package com.wikantik.pressroom.it;
 
 import java.util.List;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -120,22 +121,16 @@ class StrandPartsIT extends PressroomIT {
     /** A weblog of this test's own on {@code journal}, owned by the admin. */
     private String createWeblog() {
         String handle = "strandit" + nonce();
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Strands " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Strands " + handle, "journal");
         return handle;
     }
 
     private void publishEntryOn(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title + ".");
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
     }
 

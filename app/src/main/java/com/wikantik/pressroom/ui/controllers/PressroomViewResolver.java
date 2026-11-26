@@ -38,7 +38,6 @@ import java.util.Map;
  */
 public class PressroomViewResolver implements ViewResolver, Ordered {
 
-    private static final String TABBED = ".tiles-tabbedpage";
     private static final String SIMPLE = ".tiles-simplepage";
     private static final String LOGIN = ".tiles-loginpage";
     private static final String INSTALL = ".tiles-installpage";
@@ -298,39 +297,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .register();
 
         // ---- weblog editor pages ----
-
-        define(".EntryEdit").on(TABBED)
-                .content("/WEB-INF/jsps/editor/EntryEdit.jsp")
-                .register();
-
-        define(".Entries").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Entries.jsp")
-                .sidebar("/WEB-INF/jsps/editor/EntriesSidebar.jsp")
-                .register();
-
-        define(".Trash").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Trash.jsp")
-                .register();
-
-        define(".Categories").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Categories.jsp")
-                .sidebar("/WEB-INF/jsps/editor/CategoriesSidebar.jsp")
-                .register();
-
-        // .CategoryEdit and .CategoryRemove used to live here. Their content tiles
-        // pointed at empty.jsp because CategoryEdit.jsp and CategoryRemove.jsp were
-        // deleted in 8da2fc0b2 when the forms moved into #category-edit-modal on
-        // Categories.jsp. The definitions survived, so the routes returned a
-        // healthy-looking 200 with no form on the page.
-
-        // ---- weblog admin pages ----
-
-        // Reader-comment moderation: an authoring screen on the editor tabs, so the tabbed chrome. The minimal
-        // tabbed shape: the content tile only, and the base layout's empty menu tile (the tabs come from the
-        // navMenu model attribute, not from a tile).
-        define(".Comments").on(TABBED)
-                .content("/WEB-INF/jsps/editor/Comments.jsp")
-                .register();
 
     }
 

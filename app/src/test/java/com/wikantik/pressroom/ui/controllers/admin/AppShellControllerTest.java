@@ -94,6 +94,26 @@ class AppShellControllerTest {
     }
 
     @Test
+    void theSessionsInactivityTimeoutRidesAlongForTheExpiryWarning() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+        HttpServletRequest request = requestUnder("", jake, "tok-1");
+        jakarta.servlet.http.HttpSession session = org.mockito.Mockito.mock(jakarta.servlet.http.HttpSession.class);
+        when(session.getMaxInactiveInterval()).thenReturn(1800);
+        when(request.getSession(false)).thenReturn(session);
+
+        assertEquals(1800, bootstrapFor(request).get("sessionTimeoutSeconds").asInt());
+    }
+
+    @Test
+    void withoutASessionTheTimeoutIsZeroSoNoWarningIsArmed() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+        HttpServletRequest request = requestUnder("", jake, "tok-1");
+        when(request.getSession(false)).thenReturn(null);
+
+        assertEquals(0, bootstrapFor(request).get("sessionTimeoutSeconds").asInt());
+    }
+
+    @Test
     void anAdminIsAnAdminAndTheRootContextHasNoPrefix() throws Exception {
         when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(true);
 

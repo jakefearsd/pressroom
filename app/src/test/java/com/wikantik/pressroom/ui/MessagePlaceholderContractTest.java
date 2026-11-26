@@ -165,7 +165,7 @@ public class MessagePlaceholderContractTest {
             }
         }
 
-        assertTrue(checked > 500,
+        assertTrue(checked > 200,
                 "Only " + checked + " call sites were checked -- the scan is not looking "
                         + "where it thinks it is.");
 

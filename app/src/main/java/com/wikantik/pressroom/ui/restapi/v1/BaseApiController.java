@@ -116,9 +116,7 @@ public abstract class BaseApiController {
 
     /**
      * The entry with this id, but refusing one that is currently TRASHED --
-     * the API counterpart to {@code BaseController.lookupNonTrashedEntry} on
-     * the JSP side, and to {@code TrashController.trashedEntry}'s converse
-     * check.
+     * the converse of the not-in-trash check the Trash routes make.
      *
      * <p>{@link #requireEntry} carries no status filter, which is exactly
      * right for the three trash-aware endpoints ({@code trash}, {@code

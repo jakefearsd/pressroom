@@ -74,8 +74,8 @@ describe('Frame', () => {
       label: 'Create & edit',
       links: ['New entry', 'Entries', 'Trash', 'Inquiries', 'Comments', 'Categories', 'Pages', 'Media files']
     }]);
-    expect(screen.getByRole('link', { name: 'Entries' }))
-      .toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/authoring/entries.rol?weblog=alpha');
+    expect(screen.getByRole('link', { name: 'Entries' })).toHaveAttribute('href', '/weblogs/alpha/entries');
+    expect(screen.getByRole('link', { name: 'Pages' })).toHaveAttribute('href', '/weblogs/alpha/pages');
     expect(rail().querySelector('.rail-active')).toBeNull();
   });
 
@@ -273,7 +273,7 @@ describe('Banner', () => {
       expect(items.map((i) => i.textContent)).toEqual(['Alpha Blog alpha', 'beta beta']);
       expect(items[0]).toHaveClass('active');
       expect(items[1]).not.toHaveClass('active');
-      expect(items[1]).toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/authoring/entries.rol?weblog=beta');
+      expect(items[1]).toHaveAttribute('href', '/weblogs/beta/entries');
     });
 
     it('labels itself with the prompt where no weblog is in play, and closes on Escape and outside click', async () => {

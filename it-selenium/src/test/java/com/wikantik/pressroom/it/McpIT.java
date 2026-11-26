@@ -209,7 +209,9 @@ class McpIT extends PressroomIT {
 
     @Test
     void aToolCallCostsOneThrottleUnitNotTwo() throws Exception {
-        // 600 per 60 s per user in the IT configuration (120 in production). Counted twice, call 301 would be throttled.
+        // The IT configuration lifts api.throttle.threshold to 100000 (120 per 60 s per user in production), so this
+        // no longer reaches the limit: it checks that tool calls keep answering 200 in volume. That a call costs one
+        // unit, not two, is proved at the production limit by the unit tests of the throttle.
         AdminToken token = AdminToken.mint("McpIT throttle", "READ", null);
         try {
             for (int i = 0; i < 350; i++) {

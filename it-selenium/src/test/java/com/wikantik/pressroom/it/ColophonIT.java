@@ -200,13 +200,7 @@ class ColophonIT extends PressroomIT {
 
     private String createWeblog(String nonce) {
         String handle = "colo" + nonce;
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Colophon " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Colophon " + handle, "journal");
         return handle;
     }
 }

@@ -36,10 +36,7 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPermission;
-import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.ui.core.util.menu.Menu;
@@ -401,131 +398,12 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         redirectAttributes.addFlashAttribute(attrName, list);
     }
 
-    // --- Entry lookup ---
-
-    /**
-     * The entry with this id, but only when it belongs to the action weblog.
-     *
-     * <p>{@code getWeblogEntry} is a global by-id lookup and the id always
-     * arrives as client input, while the permission interceptor only
-     * establishes that the caller may edit the <em>action</em> weblog. Every
-     * caller that resolves an entry id -- read and write alike -- goes through
-     * here: the editor page hangs an entry's share URL (a durable credential
-     * for an unpublished draft) off whatever this resolves, and the list
-     * actions delete and rewrite whatever it returns.
-     *
-     * <p>An unknown id and a foreign one are deliberately indistinguishable to
-     * the caller, so a probe cannot map one weblog's entry ids from another.
-     */
-    protected WeblogEntry lookupEntry(String id, HttpServletRequest request) {
-        return WeblogOwnership.entry(weblogger, id, getActionWeblog(request));
-    }
-
-    /**
-     * The entry with this id, but refusing one that has been trashed -- the
-     * counterpart to {@code TrashController}'s own {@code trashedEntry} check,
-     * which refuses everything that is <em>not</em> trashed. This refuses
-     * everything that <em>is</em>.
-     *
-     * <p>{@link #lookupEntry} carries the ownership check but no status
-     * filter, so without this a bookmarked editor URL, a forged
-     * {@code duplicateId}, or a trashed id slipped into a bulk-action
-     * selection would resolve a trashed entry as if it were live. That
-     * matters because every one of those seams can end in a save: the
-     * editor's Publish button, the duplicate action's copy-and-open, and
-     * bulk actions like {@code bulkPublish} all end up calling
-     * {@code saveWeblogEntry}, which would resurrect the entry to
-     * {@code DRAFT} (or straight to {@code PUBLISHED}) by a side door that
-     * bypasses restore entirely -- and does so while {@code trashedAt} is
-     * still populated on the row.
-     *
-     * <p>An unknown id, a foreign id, and a trashed id are deliberately
-     * indistinguishable to the caller, the same way {@link #lookupEntry}
-     * already keeps an unknown id and a foreign one indistinguishable.
-     */
-    protected WeblogEntry lookupNonTrashedEntry(String id, HttpServletRequest request) {
-        WeblogEntry entry = lookupEntry(id, request);
-        if (entry == null || entry.getStatus() == PubStatus.TRASHED) {
-            return null;
-        }
-        return entry;
-    }
-
-    /**
-     * The entry with this id when the caller may change it (save over it,
-     * restore a revision onto it, trash it): of the action weblog, not
-     * trashed, and -- for a contributor, who holds EDIT_DRAFT but not POST
-     * on the weblog -- their own and still a draft or pending. A contributor
-     * submits work for review and cannot publish, so they cannot rewrite,
-     * demote or trash anyone else's post or any published one either (code
-     * review, 2026-11-03). The rule is {@link ContributorRules#mayChange},
-     * and the POST question {@link ContributorRules#mayPublish}, which the
-     * entries API asks too. Null otherwise, which every caller
-     * answers exactly like an unknown id.
-     */
-    protected WeblogEntry lookupChangeableEntry(String id, HttpServletRequest request) {
-        WeblogEntry entry = lookupNonTrashedEntry(id, request);
-        if (entry == null || ContributorRules.mayPublish(weblogger.getUserManager(), getActionWeblog(request),
-                getAuthenticatedUser(request))) {
-            return entry;
-        }
-        return ContributorRules.mayChange(entry, getAuthenticatedUser(request)) ? entry : null;
-    }
-
-    /**
-     * Moves an entry to the trash, taking it out of everything that indexes
-     * or caches it. This is the authoring UI's single deletion seam -- the
-     * entry list's bulk action and both entry-removal endpoints all call
-     * this, never {@link WeblogEntryManager#trashWeblogEntry} directly.
-     *
-     * <p>The order matters and the steps are not optional, and staying
-     * TRASHED rather than being removed from the database does not make them
-     * unnecessary -- the opposite: the search index holds documents keyed by
-     * entry id, so a TRASHED entry left in it is still findable by site
-     * search and still links to a page that now 404s, exactly the failure a
-     * genuine delete would produce. {@code CacheManager.invalidate} then
-     * clears the rendered pages that contained it.
-     *
-     * <p>Indexing failures are logged and swallowed rather than aborting the
-     * trash: an index that has fallen behind is repairable from the admin
-     * screen, whereas a half-trashed entry is not.
-     *
-     * <p>Delegates to {@link EntryDeletion#trashEntry} (Task 10) so
-     * the automation API's write controller -- which does not extend this
-     * class -- can reach the same seam without inheriting the JSP-only state
-     * ({@code MessageSource}, {@code Model}, flash-message helpers) this
-     * class carries.
-     */
-    protected void trashEntry(WeblogEntry entry) throws WebloggerException {
-        EntryDeletion.trashEntry(weblogger, entry);
-    }
-
-    /**
-     * Permanently deletes an entry -- the "delete forever" action on an
-     * already-trashed entry -- taking it out of everything that indexes or
-     * caches it first.
-     *
-     * <p>Same index/cache steps as {@link #trashEntry} and for the
-     * same reason (see its javadoc); the only difference is the final call,
-     * which here is the actual, irreversible {@link WeblogEntryManager#removeWeblogEntry}
-     * rather than a trash. A trashed entry is normally already out of the
-     * index -- it was de-indexed on the way into the trash -- but this
-     * re-runs the same dance rather than assuming that, since nothing
-     * prevents a caller from reaching this on an entry that never went
-     * through the trash path.
-     *
-     * <p>Delegates to {@link EntryDeletion#deleteEntryForever}, for
-     * the same reason {@link #trashEntry} does.
-     */
-    protected void deleteEntryForever(WeblogEntry entry) throws WebloggerException {
-        EntryDeletion.deleteEntryForever(weblogger, entry);
-    }
+    // --- Template and page lookup ---
 
     /**
      * The template with this id, but only when it belongs to the action weblog.
      *
-     * <p>Exactly the same hazard as {@link #lookupEntry}, and for exactly the
-     * same reason: {@code getTemplate} is a global by-id lookup while the
+     * <p>The by-id hazard, and the reason every lookup goes through {@code WeblogOwnership}: {@code getTemplate} is a global by-id lookup while the
      * permission interceptor only establishes that the caller may edit the
      * <em>action</em> weblog. A template id arrives as client input, so without
      * this an editor on one weblog can read, overwrite and delete another
@@ -539,26 +417,8 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     }
 
     /**
-     * The category with this id, but only when it belongs to the action weblog.
-     *
-     * <p>The third of the same hazard, after {@link #lookupEntry} and
-     * {@link #lookupTemplate}: {@code getWeblogCategory} is a global by-id
-     * lookup, the permission interceptor only establishes that the caller may
-     * edit the <em>action</em> weblog, and the id arrives as client input.
-     * Without this, an editor on one weblog could rename another weblog's
-     * categories, delete them, or name one as the destination for a move --
-     * silently re-filing somebody else's posts.
-     *
-     * <p>An unknown id and a foreign one are deliberately indistinguishable.
-     */
-    protected WeblogCategory lookupCategory(String id, HttpServletRequest request) {
-        return WeblogOwnership.category(weblogger, id, getActionWeblog(request));
-    }
-
-    /**
      * The page named by {@code id}, but only when it belongs to the weblog
-     * this action is scoped to. The fourth of the same hazard, after
-     * {@link #lookupEntry}, {@link #lookupTemplate} and {@link #lookupCategory}:
+     * this action is scoped to. The same by-id hazard as {@link #lookupTemplate}:
      * {@code getPage} is a global by-id lookup, the permission interceptor only
      * vouches for the <em>action</em> weblog, and the id arrives as client
      * input. A blank id is absent, not something to look up.

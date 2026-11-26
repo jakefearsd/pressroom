@@ -69,7 +69,7 @@ export function useRevisions(handle: string, id: string | undefined) {
   });
 }
 
-/** Published and pending top-level comments of the entry, as the counts line shows them. */
+/** Published and pending top-level comments of the entry, as the counts line shows them: the list's own totals. */
 export function useCommentCounts(handle: string, id: string | undefined, enabled: boolean) {
   const api = useApi();
   return useQuery({
@@ -78,9 +78,9 @@ export function useCommentCounts(handle: string, id: string | undefined, enabled
     queryFn: async () => {
       const count = async (status: string) => {
         const page = await call(api.GET('/v1/weblogs/{handle}/comments', {
-          params: { path: { handle }, query: { entryId: id ?? '', status, limit: 200 } }
+          params: { path: { handle }, query: { entryId: id ?? '', status, topLevel: true, limit: 1 } }
         }));
-        return page.items.filter((c) => c.replyTo === undefined || c.replyTo === '').length;
+        return page.total;
       };
       return { published: await count('PUBLISHED'), pending: await count('PENDING') };
     }

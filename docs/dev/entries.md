@@ -1,5 +1,7 @@
 # Entries, trash and pages
 
+> Wave 1 of the React admin migration replaced the entries list, the entry editor and the trash with React screens (docs/dev/admin-ui.md, "Wave 1 screens"). The JSP, controller and form-bean details below describe the code that was deleted; the API, rules and hazards still apply.
+
 Developer notes moved out of `CLAUDE.md` (which is sent with every
 request) so they are read only when this area is being changed. Section
 names are unchanged, so an older "see CLAUDE.md, <section>" pointer

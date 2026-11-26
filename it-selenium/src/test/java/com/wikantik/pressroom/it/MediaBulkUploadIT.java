@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.WebDriverRunner;
 import com.codeborne.selenide.SelenideElement;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -84,7 +85,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class MediaBulkUploadIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
     private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
     private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
 
@@ -180,7 +181,7 @@ class MediaBulkUploadIT extends PressroomIT {
         $("#entry").should(exist);
         $("[name='bean.title']").setValue("IT Alt Image " + suffix);
         Editor.setText("<p>Alt text entry " + suffix + "</p><p>[image id=" + mediaFileId + "]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -214,7 +215,7 @@ class MediaBulkUploadIT extends PressroomIT {
         $("#entry").should(exist);
         $("[name='bean.title']").setValue("IT Gallery Alt " + suffix);
         Editor.setText("<p>Gallery alt entry " + suffix + "</p><p>[gallery dir=\"default\"]</p>");
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);

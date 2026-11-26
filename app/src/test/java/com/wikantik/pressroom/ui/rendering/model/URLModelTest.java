@@ -538,10 +538,8 @@ class URLModelTest {
     @Test
     void editorLinksAreRelativeAndIdentifyTheWeblog() {
         String add = model.getCreateEntry();
-        assertEquals(SITE + "/pressroom-ui/authoring/entryAdd.rol", path(add),
-                "The 'new entry' link points at the authoring UI.");
-        assertEquals(Map.of("weblog", "testblog"), queryParams(add),
-                "The editor needs to know which blog it is posting to.");
+        assertEquals(SITE + "/pressroom-ui/app/weblogs/testblog/entries/new", add,
+                "The 'new entry' link points at the React editor, which knows the blog from the route.");
 
         String settings = model.getEditSettings();
         assertEquals(SITE + "/pressroom-ui/authoring/weblogConfig.rol", path(settings),
@@ -562,11 +560,8 @@ class URLModelTest {
 
         String url = model.editEntry("hello");
 
-        assertEquals(SITE + "/pressroom-ui/authoring/entryEdit.rol", path(url),
-                "The edit link points at the entry editor.");
-        assertEquals(Map.of("weblog", "testblog", "bean.id", "entry-42"),
-                queryParams(url),
-                "The editor is addressed by entry id, resolved from the anchor.");
+        assertEquals(SITE + "/pressroom-ui/app/weblogs/testblog/entries/entry-42", url,
+                "The edit link points at the entry editor, addressed by entry id resolved from the anchor.");
     }
 
     @Test

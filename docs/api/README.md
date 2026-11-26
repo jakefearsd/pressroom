@@ -374,8 +374,9 @@ The clearable fields, per resource:
 
 - **Entry:** `summary`, `metaTitle`, `searchDescription`, `canonicalUrl`,
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
-  `eventStart`, `eventEnd`, `eventLocation` and `strand` (takes the entry out of
-  its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
+  `eventStart`, `eventEnd`, `eventLocation`, `pubTime` (a draft goes back to having
+  none; publishing with none means now, scheduling with none is refused) and
+  `strand` (takes the entry out of its strand). `geoLatitude` and `geoLongitude` clear together, as a pair.
 - **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`,
   `newsletterListUuid`, `businessId`, `frontPage`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
@@ -1872,7 +1873,7 @@ referer, and user-agent for diagnosis.
 ## Comments
 
 ```
-GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&limit=&offset=]
+GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&topLevel=&limit=&offset=]
 GET    /api/v1/weblogs/{handle}/comments/{id}
 PATCH  /api/v1/weblogs/{handle}/comments/{id}
 DELETE /api/v1/weblogs/{handle}/comments/{id}
@@ -1884,7 +1885,10 @@ comments written by signed-in readers. A comment of another weblog, or an id
 that does not exist, answers 404. Moderation keeps working when comments are
 switched off on the weblog, so existing comments stay listable and actionable.
 
-`GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore"}`.
+`GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore", "total"}`;
+`total` counts every comment matching the filters, whatever the page, and
+`topLevel=true` leaves the replies out of both the items and the total (the
+number an entry page's heading shows).
 `status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entryId` is
 an entry id of the same weblog (another weblog's entry is a 404; `entry` is its
 old name and still works); `limit`

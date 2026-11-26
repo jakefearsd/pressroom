@@ -51,6 +51,17 @@ public interface CommentManager {
     List<ReaderComment> getComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry,
                                     int offset, int length) throws WebloggerException;
 
+    /**
+     * As {@link #getComments(Weblog, ReaderComment.Status, WeblogEntry, int, int)}, with
+     * {@code topLevelOnly} leaving the replies out.
+     */
+    List<ReaderComment> getComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry,
+                                    boolean topLevelOnly, int offset, int length) throws WebloggerException;
+
+    /** As {@link #countComments(Weblog, ReaderComment.Status, WeblogEntry)}, replies left out when {@code topLevelOnly}. */
+    long countComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry, boolean topLevelOnly)
+            throws WebloggerException;
+
     /** Comments on the weblog in this status (null = all), replies included. */
     long countComments(Weblog weblog, ReaderComment.Status status) throws WebloggerException;
 

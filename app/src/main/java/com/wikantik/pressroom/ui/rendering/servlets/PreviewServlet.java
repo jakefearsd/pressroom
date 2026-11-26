@@ -272,7 +272,7 @@ public class PreviewServlet extends WeblogRequestServlet<WeblogPreviewRequest> {
     /**
      * The theme's live-preview shell: stylesheet, asset macros and one empty
      * article, which the editor fills over {@code postMessage} with the
-     * fragment {@code entryEdit!preview.rol} rendered.
+     * fragment the entry preview API route rendered.
      *
      * <p>The same two-rung shape as {@code PageServlet}'s {@code _page}
      * lookup, for the same reason. A theme may ship its own {@code _preview}

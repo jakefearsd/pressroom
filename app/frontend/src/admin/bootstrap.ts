@@ -3,6 +3,8 @@ export interface Bootstrap {
   contextPath: string;
   version: string;
   csrf: { headerName: string; token: string };
+  /** The container's session inactivity timeout in seconds (0 = unknown); the editors' expiry warning is armed from it. */
+  sessionTimeoutSeconds: number;
   user: { userName: string; screenName: string; locale: string; globalPermission: 'admin' | 'editor' };
   uiLocale: string;
   messagesUrl: string;
@@ -46,6 +48,9 @@ function isBootstrap(value: unknown): value is Bootstrap {
     return false;
   }
   const { csrf, user, site, colophon } = value;
+  if (typeof value['sessionTimeoutSeconds'] !== 'number') {
+    return false;
+  }
   return (
     isRecord(site) && allStrings(site, ['name', 'shortName', 'siteSpaceHandle']) &&
     isRecord(colophon) && typeof colophon['copyrightYear'] === 'string' &&

@@ -13,7 +13,7 @@ import { useBoot } from '../../context';
 import { useFieldErrors } from '../../forms/useFieldErrors';
 import { useT } from '../../i18n/messages';
 import { useWeblogRights } from '../../lib/permission';
-import { isImage, splitTags, thumbnailUrl } from './shared';
+import { isImage, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 const SORTS = ['name', 'date_uploaded', 'type'] as const;
 const UNIT_BYTES: Record<string, number> = { bytes: 1, kb: 1024, mb: 1024 * 1024 };
@@ -144,8 +144,7 @@ export function MediaLibrary() {
   // The site space has no posts, so it offers no entry to start from files.
   const siteSpace = handle === boot.site.siteSpaceHandle;
   const newEntry = () => {
-    const ids = new URLSearchParams([...selected].map((id): [string, string] => ['mediaId', id]));
-    void navigate(`/weblogs/${encodeURIComponent(handle)}/entries/new?${ids.toString()}`);
+    void navigate(newEntryPath(handle, selected));
   };
   const openFile = (file: MediaView) => { void navigate(`/weblogs/${encodeURIComponent(handle)}/media/${encodeURIComponent(file.id ?? '')}`); };
   const toggle = (id: string) => {

@@ -36,9 +36,6 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
-import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
-import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
@@ -145,21 +142,6 @@ class SiteSpaceAccessTest {
 
         // --- blog screens it does not
         @Bean
-        EntriesController entriesController() {
-            return new EntriesController();
-        }
-
-        @Bean
-        CommentsModerationController commentsModerationController(CommentService comments) {
-            return new CommentsModerationController(comments);
-        }
-
-        @Bean
-        CategoriesController categoriesController() {
-            return new CategoriesController();
-        }
-
-        @Bean
         com.wikantik.pressroom.ui.restapi.v1.MetaApi metaApi() {
             return new com.wikantik.pressroom.ui.restapi.v1.MetaApi();
         }
@@ -246,27 +228,6 @@ class SiteSpaceAccessTest {
     }
 
     // ------------------------------------------------------------ the screens it does not
-
-    @Test
-    void aGlobalAdminIsRefusedEveryOtherBlogScreenAsForAWeblogThatDoesNotExist() throws Exception {
-        siteSpace();
-        signIn(admin);
-
-        for (Function<String, MockHttpServletRequestBuilder> screen : List.<Function<String, MockHttpServletRequestBuilder>>of(
-                h -> get(AUTHORING + "entries.rol").param("weblog", h),
-                h -> get(AUTHORING + "comments.rol").param("weblog", h),
-                h -> get(AUTHORING + "categories.rol").param("weblog", h))) {
-            MvcResult unknown = perform(screen.apply("ssanosuchblog"));
-            MvcResult refused = perform(screen.apply(SITE));
-            String uri = refused.getRequest().getRequestURI();
-
-            assertEquals(302, unknown.getResponse().getStatus(), uri + ": today's unknown-weblog answer");
-            assertEquals(unknown.getResponse().getStatus(), refused.getResponse().getStatus(), uri);
-            assertEquals(unknown.getResponse().getRedirectedUrl(), refused.getResponse().getRedirectedUrl(), uri);
-            assertNull(refused.getRequest().getAttribute("actionWeblog"),
-                    uri + " never sees the site space");
-        }
-    }
 
     // ------------------------------------------------------------ the React admin's session
 

@@ -12,28 +12,6 @@
     head = /WEB-INF/jsps/tiles/head.jsp
     messages = /WEB-INF/jsps/tiles/messages.jsp
     styles = /WEB-INF/jsps/tiles/empty.jsp
-.Categories -> /WEB-INF/jsps/tiles/tiles-tabbedpage.jsp
-    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
-    content = /WEB-INF/jsps/editor/Categories.jsp
-    footer = /WEB-INF/jsps/tiles/footer.jsp
-    head = /WEB-INF/jsps/tiles/head.jsp
-    menu = /WEB-INF/jsps/tiles/empty.jsp
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    sidebar = /WEB-INF/jsps/editor/CategoriesSidebar.jsp
-    sidemenu = /WEB-INF/jsps/tiles/empty.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
-    userStatus = /WEB-INF/jsps/tiles/userStatus.jsp
-.Comments -> /WEB-INF/jsps/tiles/tiles-tabbedpage.jsp
-    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
-    content = /WEB-INF/jsps/editor/Comments.jsp
-    footer = /WEB-INF/jsps/tiles/footer.jsp
-    head = /WEB-INF/jsps/tiles/head.jsp
-    menu = /WEB-INF/jsps/tiles/empty.jsp
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    sidebar = /WEB-INF/jsps/tiles/empty.jsp
-    sidemenu = /WEB-INF/jsps/tiles/empty.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
-    userStatus = /WEB-INF/jsps/tiles/userStatus.jsp
 .CreateDatabase -> /WEB-INF/jsps/tiles/tiles-installpage.jsp
     banner = /WEB-INF/jsps/tiles/bannerInstallation.jsp
     content = /WEB-INF/jsps/core/CreateDatabase.jsp
@@ -48,28 +26,6 @@
     head = /WEB-INF/jsps/tiles/head.jsp
     messages = /WEB-INF/jsps/tiles/messages.jsp
     styles = /WEB-INF/jsps/tiles/empty.jsp
-.Entries -> /WEB-INF/jsps/tiles/tiles-tabbedpage.jsp
-    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
-    content = /WEB-INF/jsps/editor/Entries.jsp
-    footer = /WEB-INF/jsps/tiles/footer.jsp
-    head = /WEB-INF/jsps/tiles/head.jsp
-    menu = /WEB-INF/jsps/tiles/empty.jsp
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    sidebar = /WEB-INF/jsps/editor/EntriesSidebar.jsp
-    sidemenu = /WEB-INF/jsps/tiles/empty.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
-    userStatus = /WEB-INF/jsps/tiles/userStatus.jsp
-.EntryEdit -> /WEB-INF/jsps/tiles/tiles-tabbedpage.jsp
-    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
-    content = /WEB-INF/jsps/editor/EntryEdit.jsp
-    footer = /WEB-INF/jsps/tiles/footer.jsp
-    head = /WEB-INF/jsps/tiles/head.jsp
-    menu = /WEB-INF/jsps/tiles/empty.jsp
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    sidebar = /WEB-INF/jsps/tiles/empty.jsp
-    sidemenu = /WEB-INF/jsps/tiles/empty.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
-    userStatus = /WEB-INF/jsps/tiles/userStatus.jsp
 .ForgotPassword -> /WEB-INF/jsps/tiles/tiles-loginpage.jsp
     banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
     content = /WEB-INF/jsps/core/ForgotPassword.jsp
@@ -105,17 +61,6 @@
     head = /WEB-INF/jsps/tiles/head.jsp
     messages = /WEB-INF/jsps/tiles/messages.jsp
     styles = /WEB-INF/jsps/tiles/empty.jsp
-.Trash -> /WEB-INF/jsps/tiles/tiles-tabbedpage.jsp
-    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
-    content = /WEB-INF/jsps/editor/Trash.jsp
-    footer = /WEB-INF/jsps/tiles/footer.jsp
-    head = /WEB-INF/jsps/tiles/head.jsp
-    menu = /WEB-INF/jsps/tiles/empty.jsp
-    messages = /WEB-INF/jsps/tiles/messages.jsp
-    sidebar = /WEB-INF/jsps/tiles/empty.jsp
-    sidemenu = /WEB-INF/jsps/tiles/empty.jsp
-    styles = /WEB-INF/jsps/tiles/empty.jsp
-    userStatus = /WEB-INF/jsps/tiles/userStatus.jsp
 .UpgradeDatabase -> /WEB-INF/jsps/tiles/tiles-installpage.jsp
     banner = /WEB-INF/jsps/tiles/bannerInstallation.jsp
     content = /WEB-INF/jsps/core/UpgradeDatabase.jsp

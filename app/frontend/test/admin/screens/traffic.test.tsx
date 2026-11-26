@@ -6,7 +6,6 @@ import { appRoutes } from '../../../src/admin/router';
 import { adminBoot, editorBoot, renderRoutes } from '../support';
 
 const API = 'http://pressroom.test/pressroom/api/v1';
-const LEGACY = 'http://pressroom.test/pressroom/pressroom-ui';
 
 const requests: string[] = [];
 let blog: object;
@@ -82,7 +81,7 @@ describe('weblog traffic', () => {
       ['Second', '20', '40', '-20%']
     ]);
     expect(within(table).getByRole('link', { name: 'Tom & Jerry' }))
-      .toHaveAttribute('href', `${LEGACY}/authoring/entryEdit.rol?weblog=alpha&bean.id=e1`);
+      .toHaveAttribute('href', '/weblogs/alpha/entries/e1');
     expect(table.querySelector('span.data')).toHaveTextContent('/alpha/tags/x');
     expect(page().querySelector('th[aria-sort="descending"]')).toHaveTextContent('Views');
     expect(page().querySelector('.traffic-fresh')).toHaveTextContent('Numbers from Umami as of 11:15, refreshed every 15 minutes');

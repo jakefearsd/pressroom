@@ -174,14 +174,7 @@ class SubscribeFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "subscribeit" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Subscribe " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Subscribe " + handle, "journal");
         return handle;
     }
 

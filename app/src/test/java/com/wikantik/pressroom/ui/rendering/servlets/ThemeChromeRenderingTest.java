@@ -260,12 +260,13 @@ class ThemeChromeRenderingTest {
         entry("editable-entry", 1);
 
         String author = render("/" + handle + "/entry/editable-entry", null, user.getUserName());
-        assertTrue(author.contains("entryEdit.rol"), "the author must be offered the editor:\n" + author);
+        assertTrue(author.contains("/pressroom-ui/app/weblogs/" + handle + "/entries/"),
+                "the author must be offered the editor:\n" + author);
         assertTrue(author.contains(">Edit</a>"), author);
 
         RenderingTestSupport.clearRenderCaches();
         String reader = render("/" + handle + "/entry/editable-entry");
-        assertFalse(reader.contains("entryEdit.rol"), "a reader must not:\n" + reader);
+        assertFalse(reader.contains("/pressroom-ui/app/"), "a reader must not:\n" + reader);
         assertTrue(reader.contains("<title>editable-entry — "), reader);
         assertTrue(reader.contains(">editable-entry</h1>"),
                 "the entry's own title is the reading page's h1:\n" + reader);

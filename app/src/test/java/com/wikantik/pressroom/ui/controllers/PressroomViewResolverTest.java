@@ -76,8 +76,6 @@ class PressroomViewResolverTest {
         resolver.init();
 
         // Spot-check several well-known view names from tiles.xml
-        assertNotNull(resolver.resolveViewName(".EntryEdit", Locale.getDefault()),
-                ".EntryEdit should be registered");
         assertNotNull(resolver.resolveViewName(".Login", Locale.getDefault()),
                 ".Login should be registered");
         assertNotNull(resolver.resolveViewName(".denied", Locale.getDefault()),
@@ -116,19 +114,6 @@ class PressroomViewResolverTest {
         assertEquals("/sidebar.jsp", updated.attributes().get("sidebar"));
         assertEquals("/layout.jsp", updated.layout());
     }
-    // --- B9a: two screens that had lost their chrome ---
-
-    @Test
-    void commentsRendersThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        MockHttpServletRequest request = renderAndCapture(".Comments");
-
-        assertEquals("/WEB-INF/jsps/editor/Comments.jsp", request.getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"));
-        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
-    }
-
     /**
      * The reader's account page is a reader's only admin-UI screen, and a
      * reader has nowhere on the rail to go: its account link opens the

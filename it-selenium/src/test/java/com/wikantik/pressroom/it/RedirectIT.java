@@ -150,14 +150,7 @@ class RedirectIT extends PressroomIT {
     private String createWeblog() {
         String handle = "redirit" + Long.toString(System.nanoTime(), 36);
 
-        openPath(CREATE_WEBLOG);
-        $("#name").should(visible).setValue("Redirects " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
+        createWeblogOnTheReactScreen(handle, "Redirects " + handle, "journal");
         return handle;
     }
 

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { call } from '../api/client';
 import type { FieldErrors } from '../forms/useFieldErrors';
 import { DateTime } from '../components/DateTime';
@@ -262,9 +263,9 @@ export function SeoDrawer(p: SeoProps) {
               </label>
             </div>
             {p.commentsEnabled && p.canModerate && p.entry?.id !== undefined && p.commentCounts !== undefined ? (
-              <a className="small" id="entryCommentCounts" href={p.commentsHref}>
+              <Link className="small" id="entryCommentCounts" to={p.commentsHref}>
                 {t('weblogEdit.commentCounts', p.commentCounts.published, p.commentCounts.pending)}
-              </a>
+              </Link>
             ) : null}
           </div>
           <Field id="seo_jsonldType" label={t('weblogEdit.jsonLdType')}>

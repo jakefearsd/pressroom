@@ -17,18 +17,18 @@
  */
 package com.wikantik.pressroom.it;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeborne.selenide.CollectionCondition.sizeGreaterThanOrEqual;
-import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,8 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntryRevisionIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-
     @BeforeEach
     void logIn() {
         loginAsAdmin();
@@ -54,7 +52,7 @@ class EntryRevisionIT extends PressroomIT {
         String firstBody = "The original paragraph " + suffix;
         String secondBody = "The rewritten paragraph " + suffix;
 
-        String entryId = saveDraft("IT Revisions " + suffix, firstBody);
+        saveDraft("IT Revisions " + suffix, firstBody);
 
         // No revisions yet: the first save displaced nothing.
         assertTrue($$("#entryRevisionsCard").isEmpty(),
@@ -71,46 +69,34 @@ class EntryRevisionIT extends PressroomIT {
         $("#revision-diff-modal").shouldBe(visible);
         $("#revisionDiffBody").shouldHave(text(firstBody));
         $("#revisionDiffBody").shouldHave(text(secondBody));
+
         // --- restore puts the original text back ------------------------------
-        // Reload rather than closing the modal and clicking underneath it.
-        // Dismissing a Bootstrap modal is an animation, and waiting for an
-        // animation is how a browser test earns an intermittent failure on a
-        // loaded runner; a fresh page has no modal to get out of the way.
-        openEditorFor(entryId);
-        // Not a wait on #entry: the editor the click came from has one too, and
-        // reading it would report the text the restore is meant to replace.
-        clickAndAwaitNewPage($(".revision-restore-button"));
-        $("#entry").should(exist);
-        String restored = Editor.getText();
-        assertTrue(restored != null && restored.contains(firstBody),
-                "restore did not bring the original text back; the editor holds: " + restored);
+        // Close the comparison first: its backdrop would take the click meant for the card.
+        $("#revision-diff-modal .btn-close").click();
+        $("#revision-diff-modal").should(disappear);
+        $(".revision-restore-button").click();
+        AdminApp.awaitSavedBanner();
+        com.codeborne.selenide.Selenide.Wait().withTimeout(java.time.Duration.ofSeconds(10))
+                .withMessage("restore did not bring the original text back")
+                .until(driver -> {
+                    String restored = Editor.getText();
+                    return restored != null && restored.contains(firstBody);
+                });
     }
 
     /** Saves a draft through the editor and returns its id. */
     private String saveDraft(String title, String body) {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
-
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
-        String id = $("input[name='bean.id']").getValue();
-        assertNotNull(id, "the editor must expose the saved entry's id");
-        return id;
-    }
-
-    /** Opens the editor on a saved entry, with no modal in the way. */
-    private void openEditorFor(String entryId) {
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
-                + "&bean.id=" + entryId);
-        $("#entry").should(exist);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write(title, body);
+        AdminApp.saveDraftButton().click();
+        return AdminApp.savedEntryId();
     }
 
     /** Rewrites the body of the entry currently open in the editor and saves. */
     private void editBodyTo(String body) {
         Editor.setText(body);
-        clickAndAwaitNewPage($("button[formaction$='entryEdit!saveDraft.rol']"));
-        $("#entry").should(exist);
+        AdminApp.saveDraftButton().click();
+        // The click clears the banner and the save's answer brings it back.
+        AdminApp.awaitSavedBanner();
     }
 }

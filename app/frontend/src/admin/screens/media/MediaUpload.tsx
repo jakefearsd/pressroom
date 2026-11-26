@@ -8,7 +8,7 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { PageTitle } from '../../frame/PageTitle';
 import { useBoot } from '../../context';
 import { useT } from '../../i18n/messages';
-import { formatSize, isImage, libraryPath, splitTags, thumbnailUrl } from './shared';
+import { formatSize, isImage, libraryPath, newEntryPath, splitTags, thumbnailUrl } from './shared';
 
 interface Row {
   file: File;
@@ -53,8 +53,7 @@ function Uploaded({ handle, dir, created, onMore }: { handle: string; dir: strin
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const ready = picked.size > 0;
   const startEntry = () => {
-    const ids = new URLSearchParams([...picked].map((id): [string, string] => ['mediaId', id]));
-    void navigate(`/weblogs/${encodeURIComponent(handle)}/entries/new?${ids.toString()}`);
+    void navigate(newEntryPath(handle, picked));
   };
   const card = (children: ReactNode, key?: string) => (
     <div className="card" key={key}><div className="card-body"><div className="row">{children}</div></div></div>

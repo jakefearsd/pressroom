@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 import com.wikantik.pressroom.business.Colophon;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -63,6 +64,7 @@ public class AppShellController extends BaseController {
                 + "&v=" + URLEncoder.encode(version, StandardCharsets.UTF_8);
         AppBootstrap bootstrap = new AppBootstrap(contextPath, version,
                 csrf == null ? "" : csrf.getHeaderName(), csrf == null ? "" : csrf.getToken(),
+                sessionTimeoutSeconds(request),
                 user.getUserName(), user.getScreenName() == null ? "" : user.getScreenName(),
                 user.getLocale() == null ? "" : user.getLocale(),
                 isGlobalAdmin(user) ? "admin" : "editor", uiLocale, messagesUrl,
@@ -72,5 +74,11 @@ public class AppShellController extends BaseController {
         model.addAttribute("bootstrapJson", bootstrap.toJson());
         model.addAttribute("appVersion", version);
         return "app/Shell";
+    }
+
+    /** The container's maxInactiveInterval for this session, 0 when there is none (no warning is armed). */
+    private static int sessionTimeoutSeconds(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        return session == null ? 0 : session.getMaxInactiveInterval();
     }
 }

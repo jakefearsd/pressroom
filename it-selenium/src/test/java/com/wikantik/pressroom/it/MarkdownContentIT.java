@@ -21,6 +21,7 @@ import java.time.Duration;
 
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -208,23 +209,17 @@ class MarkdownContentIT extends PressroomIT {
 
     /** Creates a weblog owned by the seeded admin on the named theme. */
     private String createWeblog(String handle, String themeId) {
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Markdown Content " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue(themeId);
-        $("button[type='submit']").click();
-        $("#messages").should(exist);
+        createWeblogOnTheReactScreen(handle, "Markdown Content " + handle, themeId);
         return handle;
     }
 
     /** Publishes the fixture body on the weblog and returns the entry's permalink. */
     private String publish(String handle, String title) {
         openEditorInWriteMode(handle);
-        $("[name='bean.title']").setValue(title);
+        AdminApp.titleField().setValue(title);
         Editor.setText(BODY);
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
-        String permalink = $("#entry_bean_permalink").should(exist).getAttribute("href");
+        AdminApp.publishButton().click();
+        String permalink = $(AdminApp.PERMALINK).should(exist).getAttribute("href");
         assertNotNull(permalink, "publishing must expose the entry's permalink");
         return permalink;
     }
@@ -235,8 +230,8 @@ class MarkdownContentIT extends PressroomIT {
      * editor is hidden, where {@code Editor.setText} would wait forever.
      */
     private void openEditorInWriteMode(String handle) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
-        $("#entry").should(exist);
+        openPath(AdminApp.newEntry(handle));
+        AdminApp.awaitEditor();
         $(Editor.ROOT).should(exist);
         $(Editor.MODE_WRITE).click();
         $(Editor.ROOT).shouldBe(visible);

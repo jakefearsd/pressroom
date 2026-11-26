@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.codeborne.selenide.Selenide;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -73,7 +74,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class MediaCropIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
     private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
     private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
 
@@ -198,7 +199,7 @@ class MediaCropIT extends PressroomIT {
         $("[name='bean.title']").setValue("IT Crop " + suffix);
         Editor.setText("<p>Cropped image entry " + suffix + " [image id=" + mediaFileId + "]</p>");
 
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);

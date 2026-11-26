@@ -160,7 +160,7 @@ public class RouteCoverageTest {
                 "Scanned " + CONTROLLER_PACKAGE + " and found no @GetMapping at all. The "
                         + "package was probably renamed, or the module was not compiled before "
                         + "the tests ran.");
-        assertTrue(declared.size() > 20,
+        assertTrue(declared.size() > 10,
                 "Only " + declared.size() + " GET routes were discovered, which is far fewer "
                         + "than Pressroom's admin UI has. The component scan is probably matching "
                         + "a subset of the controllers: " + declared);

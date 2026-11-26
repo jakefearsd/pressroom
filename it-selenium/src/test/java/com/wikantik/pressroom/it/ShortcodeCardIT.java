@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import com.codeborne.selenide.SelenideElement;
 
 import static com.codeborne.selenide.CollectionCondition.exactTexts;
-import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
@@ -47,8 +47,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * author with {@code [gallery dir=&quot;default&quot;]} in their post.
  */
 class ShortcodeCardIT extends PressroomIT {
-
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     @BeforeEach
     void logIn() {
@@ -143,8 +141,8 @@ class ShortcodeCardIT extends PressroomIT {
     }
 
     private void openEditor() {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
         Editor.root();
     }
 }

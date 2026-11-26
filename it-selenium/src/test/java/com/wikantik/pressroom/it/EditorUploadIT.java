@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.time.Duration;
 
 import com.codeborne.selenide.Selenide;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 })
 class EditorUploadIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
 
     /** A 1x1 PNG -- the smallest real image the upload pipeline accepts. */
     private static final String TINY_PNG_BASE64 =

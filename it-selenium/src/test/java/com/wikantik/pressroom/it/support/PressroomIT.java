@@ -352,6 +352,25 @@ public abstract class PressroomIT {
     }
 
     /**
+     * Creates a weblog through the React create-weblog screen (the one a browser test has) and returns once
+     * the app home is showing the created flash. Every IT that needs a fresh weblog calls this one helper.
+     *
+     * @param handle the new weblog's handle
+     * @param name the new weblog's name
+     * @param themeId the shared theme to start from
+     */
+    protected void createWeblogOnTheReactScreen(String handle, String name, String themeId) {
+        openPath("/pressroom-ui/app/weblogs/new");
+        $("#name").should(com.codeborne.selenide.Condition.visible).setValue(name);
+        $("#handle").setValue(handle);
+        $("#emailAddress").setValue(handle + "@example.invalid");
+        $("select[name='theme']").selectOptionByValue(themeId);
+        $("button[type='submit']").click();
+        // The screen navigates home with the created message in router state; the frame shows it as #messages.
+        $("#messages").should(exist);
+    }
+
+    /**
      * Presses the confirming button of the React admin's confirmation modal (its last button: Cancel comes
      * first) and returns once the modal is gone. The modal replaces the JSPs' native {@code data-confirm}
      * dialogs, so there is no {@code Selenide.confirm()}; whatever the confirmed action does next is the

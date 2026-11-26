@@ -25,5 +25,9 @@ export function formatSize(bytes: number): string {
 export const libraryPath = (handle: string, directoryId?: string): string =>
   `/weblogs/${encodeURIComponent(handle)}/media${directoryId === undefined || directoryId === '' ? '' : `?dir=${encodeURIComponent(directoryId)}`}`;
 
+/** A new entry seeded from these media files: the React editor reads `mediaId` (what entryAddWithMediaFile.rol took as selectedImages). */
+export const newEntryPath = (handle: string, mediaIds: Iterable<string>): string =>
+  `/weblogs/${encodeURIComponent(handle)}/entries/new${[...mediaIds].map((id, i) => `${i === 0 ? '?' : '&'}mediaId=${encodeURIComponent(id)}`).join('')}`;
+
 /** Splits a tags field on spaces and commas, as the edit form's do. */
 export const splitTags = (value: string): string[] => value.split(/[\s,]+/).filter((tag) => tag !== '');

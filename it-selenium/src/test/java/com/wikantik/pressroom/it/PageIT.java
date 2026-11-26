@@ -402,14 +402,7 @@ class PageIT extends PressroomIT {
     private String createWeblog() {
         String handle = "pageit" + nonce();
 
-        openPath(CREATE_WEBLOG);
-        $("#name").should(visible).setValue("Pages " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("portfolio");
-        $("button[type='submit']").click();
-
-        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
+        createWeblogOnTheReactScreen(handle, "Pages " + handle, "portfolio");
         return handle;
     }
 

@@ -20,6 +20,7 @@ package com.wikantik.pressroom.it;
 import java.net.URI;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -38,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Local draft recovery, end to end, in a real browser.
  *
- * <p>{@code pressroom-draft.js} (unit-tested for its JSP wiring already) is
+ * <p>The React editor's draft keeper (and, for the page editor, {@code pressroom-draft.js}) is
  * exercised here the way an author actually meets it: type something,
  * abandon the page, come back. Four cases: a snapshot is offered back, a
  * properly saved draft offers nothing (the content-comparison rule, not a
@@ -47,14 +48,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntryAutosaveIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
     private static final String PAGE_ADD = com.wikantik.pressroom.it.support.PagesMediaApp.newPage(WEBLOG_HANDLE);
 
     private static final String DRAFT_BAR = "#draftRecoveryBar";
     private static final String DRAFT_RESTORE = ".draft-bar-restore";
     private static final String DRAFT_DISCARD = ".draft-bar-discard";
 
+    /** The page editor's (JSP) keys: this prefix, the context path, the user id. */
     private static final String DRAFT_PREFIX = "pressroom.draft.v1:";
+
+    /** The React entry editor's keys: this prefix, the user name, then {@code <handle>:<entry id or new>}. */
+    private static final String APP_DRAFT_PREFIX = "pressroom.appdraft.v1:";
 
     /**
      * The debounce inside pressroom-draft.js is 2 seconds; this is how long a
@@ -95,12 +100,10 @@ class EntryAutosaveIT extends PressroomIT {
         String suffix = nonce();
         String body = "A paragraph nobody saved yet " + suffix;
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue("IT Autosave " + suffix);
-        Editor.setText(body);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write("IT Autosave " + suffix, body);
 
-        waitForDraftSnapshot(entryDraftKey("entryAdd", "new"));
+        waitForEntryDraftSnapshot(entryDraftKey("new"));
         reloadWithoutLeaveWarning();
 
         $("#entry").should(exist);
@@ -117,77 +120,54 @@ class EntryAutosaveIT extends PressroomIT {
         String suffix = nonce();
         String body = "A paragraph that gets saved properly " + suffix;
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue("IT Autosave Saved " + suffix);
-        Editor.setText(body);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write("IT Autosave Saved " + suffix, body);
 
-        String newDraftKey = entryDraftKey("entryAdd", "new");
-        waitForDraftSnapshot(newDraftKey);
+        String newDraftKey = entryDraftKey("new");
+        waitForEntryDraftSnapshot(newDraftKey);
 
-        // A real save: the submit handler flushes the pending snapshot and
-        // the page lands on entryEdit!firstSave with a real bean.id.
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
+        // A real save: the route moves to the saved entry and the keeper clears what it held.
+        AdminApp.saveDraftButton().click();
+        AdminApp.savedEntryId();
 
-        // This is the stale-detection rule: the entryAdd:new snapshot is
-        // still sitting in storage (nothing has cleared it yet), but its
-        // content now matches exactly what the server just rendered. If the
-        // comparison ever regressed from content to a timestamp, this
-        // snapshot -- saved seconds ago -- would look "recent" and get
-        // offered anyway.
+        // The new-entry snapshot must not survive a save, and a reload of the saved entry offers nothing:
+        // what the server holds is what the editor shows. (If the rule regressed from "a save clears the
+        // draft" to a timestamp, this snapshot -- written seconds ago -- would be offered anyway.)
         reloadWithoutLeaveWarning();
 
         $("#entry").should(exist);
         $(DRAFT_BAR).shouldNotBe(visible);
-        assertTrue(!storageHasKey(newDraftKey),
+        assertTrue(!entryStorageHasKey(newDraftKey),
                 "a snapshot matching the saved content must not survive in storage");
     }
 
     @Test
     void publishingAnExistingEntryOffersNothingAfterwards() {
-        // The case that exercises differs()' DROP branch -- the wave's headline
-        // invariant ("a snapshot matching what the server just rendered is one
-        // whose save went through") -- against the PRIMARY key. Every other
-        // case here either offers a bar or is satisfied by the staleKeys
-        // branch, so without this one differs() could be rewritten to
-        // `return true` and the whole suite would stay green.
-        //
-        // It is also a status CHANGE on purpose. doEntryEditSave mutates
-        // bean.status and forwards, so the page rendered right after a
-        // successful Post carries PUBLISHED while the snapshot taken at submit
-        // holds DRAFT. That difference used to raise a phantom "unsaved
-        // changes" bar over a save that had just succeeded, and kept raising it
-        // on every later visit -- an offer of stale text the author could act
-        // on. bean.status is excluded from the entry snapshot for this reason.
+        // A save of an existing entry clears its draft: the editor shows what the server holds, so a
+        // snapshot of it is no unsaved edit. It is also a status CHANGE on purpose: a draft that became
+        // published must not raise a phantom "unsaved changes" bar over a save that just succeeded.
         String suffix = nonce();
         String body = "A paragraph that gets published " + suffix;
 
         String entryId = saveDraftFromAddForm("IT Autosave Publish " + suffix, body);
 
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
-                + "&bean.id=" + entryId);
-        $("#entry").should(exist);
+        openPath(AdminApp.entry(WEBLOG_HANDLE, entryId));
+        AdminApp.awaitEditor();
         Editor.setText(body + " (revised)");
 
-        String editKey = entryDraftKey("entryEdit", entryId);
-        waitForDraftSnapshot(editKey);
+        String editKey = entryDraftKey(entryId);
+        waitForEntryDraftSnapshot(editKey);
 
-        $("button[formaction$='entryEdit!publish.rol']").click();
+        AdminApp.publishButton().click();
 
-        // Wait for the PUBLISHED page, not merely for an #entry -- the page we
-        // are leaving has one of those too, so `should(exist)` was satisfied
-        // instantly by the OLD document and the reload below then raced the
-        // publish POST still in flight ("aborted by navigation: Not attached to
-        // an active page"). The hidden status input is the right thing to wait
-        // on twice over: it is only PUBLISHED once the save has round-tripped,
-        // and the status change is the very thing this test is about.
-        $("input[name='bean.status'][value='PUBLISHED']").should(exist);
+        // Wait for the PUBLISHED status: it is only Published once the save has round-tripped, and the
+        // reload below must not race the publish call still in flight.
+        AdminApp.awaitStatus("Published");
 
         reloadWithoutLeaveWarning();
         $("#entry").should(exist);
         $(DRAFT_BAR).shouldNotBe(visible);
-        assertTrue(!storageHasKey(editKey),
+        assertTrue(!entryStorageHasKey(editKey),
                 "a snapshot matching the just-published content must not survive; "
                         + "a status change is not an unsaved edit");
     }
@@ -197,12 +177,10 @@ class EntryAutosaveIT extends PressroomIT {
         String suffix = nonce();
         String body = "A paragraph nobody wants recovered " + suffix;
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue("IT Autosave Discard " + suffix);
-        Editor.setText(body);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write("IT Autosave Discard " + suffix, body);
 
-        waitForDraftSnapshot(entryDraftKey("entryAdd", "new"));
+        waitForEntryDraftSnapshot(entryDraftKey("new"));
         reloadWithoutLeaveWarning();
 
         $("#entry").should(exist);
@@ -227,17 +205,17 @@ class EntryAutosaveIT extends PressroomIT {
     void typingUpdatesTheWordCountAndSaveStatus() {
         String suffix = nonce();
 
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.awaitEditor();
         $("#editorStatusSave").shouldHave(text("Saved"));
 
-        $("[name='bean.title']").setValue("Status Line " + suffix);
+        AdminApp.titleField().setValue("Status Line " + suffix);
         Editor.setText("one two three four five");
 
         $("#editorStatusWords").shouldHave(text("5 words"));
         $("#editorStatusSave").shouldHave(text("Unsaved changes"));
 
-        waitForDraftSnapshot(entryDraftKey("entryAdd", "new"));
+        waitForEntryDraftSnapshot(entryDraftKey("new"));
         $("#editorStatusSave").shouldHave(text("Draft saved locally"));
     }
 
@@ -264,15 +242,12 @@ class EntryAutosaveIT extends PressroomIT {
 
     // ---------------------------------------------------------------- helpers
 
-    /** Creates an entry through the add form and returns its id. */
+    /** Creates an entry through the new-entry editor and returns its id. */
     private String saveDraftFromAddForm(String title, String body) {
-        openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
-        $("button[formaction$='entryAdd!saveDraft.rol']").click();
-        $("input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue(""));
-        return $("input[name='bean.id']").getValue();
+        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        AdminApp.write(title, body);
+        AdminApp.saveDraftButton().click();
+        return AdminApp.savedEntryId();
     }
 
     /**
@@ -281,13 +256,14 @@ class EntryAutosaveIT extends PressroomIT {
      *
      * <p>Typing anything installs that handler, and an unhandled Chrome
      * beforeunload dialog blocks the whole WebDriver session -- every
-     * command after it fails, not just this one navigation. Clearing it
-     * here tests draft recovery rather than the leave-warning, which has no
-     * coverage today and gains none here.
+     * command after it fails, not just this one navigation. A capturing listener of our own, added after
+     * the editor's, runs first at the window and stops the rest, which tests draft recovery rather than
+     * the leave-warning (which Vitest covers).
      */
     private void reloadWithoutLeaveWarning() {
         executeJavaScript(
                 "window.onbeforeunload = null;"
+                + "window.addEventListener('beforeunload', function (e) { e.stopImmediatePropagation(); }, true);"
                 + "if (window.jQuery) { jQuery(window).off('beforeunload'); }");
         Selenide.refresh();
         BrowserHealth.current().settle();
@@ -305,7 +281,27 @@ class EntryAutosaveIT extends PressroomIT {
                         + "return false;", key)));
     }
 
-    /** Waits, on the actual condition, for the debounced snapshot to land in storage. */
+    /** Waits for the React editor's debounced snapshot of {@code <handle>:<id or new>} to land in storage. */
+    private void waitForEntryDraftSnapshot(String key) {
+        Selenide.Wait().withTimeout(SNAPSHOT_TIMEOUT)
+                .withMessage(() -> "no draft snapshot was ever written for key " + key)
+                .until(d -> entryStorageHasKey(key));
+    }
+
+    /** Whether the React editor's draft {@code <handle>:<id or new>} is in storage, under any user name. */
+    private boolean entryStorageHasKey(String key) {
+        return Boolean.TRUE.equals(executeJavaScript(
+                "var head = arguments[0], tail = ':' + arguments[1];"
+                + "for (var i = 0; i < window.localStorage.length; i++) {"
+                + "  var k = window.localStorage.key(i);"
+                + "  if (k && k.indexOf(head) === 0 && k.slice(-tail.length) === tail"
+                + "      && window.localStorage.getItem(k) !== null) { return true; }"
+                + "}"
+                + "return false;",
+                APP_DRAFT_PREFIX, key));
+    }
+
+    /** Waits, on the actual condition, for the debounced snapshot to land in storage (the page editor's). */
     private void waitForDraftSnapshot(String key) {
         Selenide.Wait().withTimeout(SNAPSHOT_TIMEOUT)
                 .withMessage(() -> "no draft snapshot was ever written for key " + key)
@@ -334,22 +330,19 @@ class EntryAutosaveIT extends PressroomIT {
 
     private void clearStoredDrafts() {
         executeJavaScript(
-                "var prefix = arguments[0];"
+                "var prefixes = [arguments[0], arguments[1]];"
                 + "var doomed = [];"
                 + "for (var i = 0; i < window.localStorage.length; i++) {"
                 + "  var k = window.localStorage.key(i);"
-                + "  if (k && k.indexOf(prefix) === 0) { doomed.push(k); }"
+                + "  if (k && (k.indexOf(prefixes[0]) === 0 || k.indexOf(prefixes[1]) === 0)) { doomed.push(k); }"
                 + "}"
                 + "for (var j = 0; j < doomed.length; j++) { window.localStorage.removeItem(doomed[j]); }",
-                DRAFT_PREFIX);
+                DRAFT_PREFIX, APP_DRAFT_PREFIX);
     }
 
-    /**
-     * The part of a draft key after {@code pressroom.draft.v1:<context path>:<user id>:};
-     * {@link #storageHasKey} supplies the rest.
-     */
-    private String entryDraftKey(String action, String id) {
-        return WEBLOG_HANDLE + ":" + action + ":" + id;
+    /** The part of a React entry draft key after {@code pressroom.appdraft.v1:<user name>:}. */
+    private String entryDraftKey(String id) {
+        return WEBLOG_HANDLE + ":" + id;
     }
 
     private String pageDraftKey(String id) {

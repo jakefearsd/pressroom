@@ -10,7 +10,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * The one JSON block the React admin's shell carries
  * ({@code <script type="application/json" id="pressroom-bootstrap">}): context
- * path, application version, the CSRF header and token, the signed-in user, the
+ * path, application version, the CSRF header and token, the session's inactivity timeout (for the
+ * editors' expiry warning), the signed-in user, the
  * UI locale, the site's names and the footer's colophon facts.
  *
  * <p>The block sits inside a script element, and a screen name is typed by a
@@ -19,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
  * JSON to a parser and can never contain {@code </script>} or {@code <!--}.
  */
 record AppBootstrap(String contextPath, String version, String csrfHeaderName, String csrfToken,
+                    int sessionTimeoutSeconds,
                     String userName, String screenName, String userLocale, String globalPermission,
                     String uiLocale, String messagesUrl, Site site, Colophon colophon) {
 
@@ -56,6 +58,7 @@ record AppBootstrap(String contextPath, String version, String csrfHeaderName, S
         all.put("contextPath", contextPath);
         all.put("version", version);
         all.put("csrf", csrf);
+        all.put("sessionTimeoutSeconds", sessionTimeoutSeconds);
         all.put("user", user);
         all.put("uiLocale", uiLocale);
         all.put("messagesUrl", messagesUrl);

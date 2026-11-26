@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PagesMediaApp;
 import com.wikantik.pressroom.it.support.Editor;
@@ -119,21 +120,15 @@ class FrontDoorIT extends PressroomIT {
     }
 
     private void createWeblog(String handle) {
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("Front " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("portfolio");
-        $("button[type='submit']").click();
-        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
+        createWeblogOnTheReactScreen(handle, "Front " + handle, "portfolio");
     }
 
     private void publishPost(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title + ".");
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
     }
 

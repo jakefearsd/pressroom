@@ -62,11 +62,10 @@ resolves through the index at the end of `CLAUDE.md`.
 - **`.empty-state`/`.empty-state-title`/`.empty-state-body`** are the
   "invitations, not shrugs" signature (600/16px title, one `--ink-soft`
   sentence, at most one primary action, icon-free) on Entries/Pages/
-  MediaFileView (and the React inbox). **`Categories.jsp` renders it INSIDE the table**
-  as the lone `<tr>` of an empty tbody, making its `<td>` the tbody's
-  first-child (the hook the header's caps-label rule keys off), so
-  `.empty-state`'s `font-weight`/`text-transform`/`letter-spacing` resets are
-  load-bearing. `Pages.jsp` renders it as a sibling of the
+  Submissions/MediaFileView (Categories moved to React in wave 1, where
+  `screens/Categories.tsx` renders it BESIDE the table, as a sibling, not
+  inside it, so the caps-label rule's first-child hook is not involved).
+  `Pages.jsp`/`Submissions.jsp` render it as a sibling of the
   table in a `<c:otherwise>`; check the caller.
 - **Admin → Users is a list, not a search box** (2026-10-13): every account,
   All / People / Agents tabs and a `q` filter the server applies
@@ -320,11 +319,9 @@ a password manager filled in and whether a new password was typed the same twice
   `MediaFile.weblog` and could disagree). A lookup that throws reads as
   absent: the id is skipped and counted out, never acted on, and the raw
   id is never logged. `MediaFileBase`/`MediaUploads` still check by hand.
-- **Modal JS binds by control NAME, not id.** Struts-generated ids
-  (`#categoryEditForm_bean_name`) never survived the JSP migration, so
-  add/edit/delete silently did nothing; names are what the server binds.
-- **Add and edit are different endpoints** (`categoryAdd!save.rol` /
-  `categoryEdit!save.rol`); the shared modal picks by whether `bean.id` is set.
+- **The category dialogs are React (wave 1)**: add and edit are one `CategoryDialog` (POST or PATCH by whether it
+  holds a category), delete is `RemoveDialog` (a category in use needs a `moveTo` target; the category itself is not
+  offered). The old JSP-modal notes (control-NAME binding, `categoryAdd!save.rol`) went with the JSP.
 - The Blogger XML-RPC API and `weblog.bloggercatid` (a raw id with no
   cascade; deleting its category left the weblog's settings unsaveable) are
   gone (W2, `V023__drop_w2_fossils.sql`); `removeWeblogCategory` has nothing
@@ -492,6 +489,35 @@ traffic) are the worked example: `LegacyAdminRedirects`, `LegacyAdminRedirectsTe
 7. **Hazards**: a session read of `/api` needs no CSRF header, a write does (the client sets it); the shell
    is served for any path under `/pressroom-ui/app/`, so a React route needs no server mapping; an
    unauthenticated SPA call is a 401 the session-expired bar handles.
+### Wave 1 screens (entries, editor, trash, comments, categories): cut over
+
+`Entries`, `EntryEditor`, `Trash`, `Comments` and `Categories` (`screens/`, `editor/`) replaced `Entries.jsp`,
+`EntryEdit.jsp`/`EntryEditor.jsp`, `Trash.jsp`, `Comments.jsp`, `Categories.jsp`, their sidebars, view models and
+nine controllers. Routes: `/weblogs/:handle/entries` (filters `status category tags text startDate endDate sortBy
+offset`), `.../entries/new` (`?mediaId=` seeds it from media files), `.../entries/:id`, `.../trash`,
+`.../comments` (`?status=PENDING|PUBLISHED|HIDDEN`, `?entry=<id>`, `offset`), `.../categories`. Every old GET `.rol`
+route (`entries`, `entryAdd`, `entryEdit`, `entryEdit!firstSave`, `entryAddWithMediaFile`, `trash`, `comments`,
+`categories`) is a `LegacyAdminRedirects` row; a `carried` entry written `old>new` renames a query parameter
+(`bean.status>status`). The old `page` number is dropped (first page).
+
+- **Flash**: a screen hands the next one a message with router state `{message}` (`session/flash.ts`); the editor's
+  Delete does so for the list ("Entry ... moved to Trash"), the list's Duplicate for the editor.
+- **Session expiry**: the bootstrap carries `sessionTimeoutSeconds` (the container's `maxInactiveInterval`);
+  `SessionExpiryBar` (`#sessionExpiringBar`) warns two minutes before it, restarting on input, and never for a
+  session of three minutes or less. The signed-out bar (`SessionExpiredBar`, `#sessionExpiryBar`) is the 401 half.
+  `SessionExpiryBar.jsp` stays until the template and stylesheet JSPs (its last users) go.
+- **Counts**: `GET .../comments` returns `total` (what matches, replies included) and takes `topLevel=true` (replies
+  left out of items and total); the editor's "N published, M awaiting" line asks `limit=1&topLevel=true` per status.
+- **Emptying the publish time**: the editor sends `clear: ["pubTime"]` (a draft goes back to having none; Publish
+  means now; Schedule with none is refused).
+- **Browser-suite seams** (production code the ITs name, `it/support/Editor.java`): `pressroomGetEntryText`,
+  `pressroomSetEntryText` (`CodeMirrorField`) and `pressroomUploadImages` (`EditorSurface`), the names the JSP
+  editors' script gave them. `it/support/AdminApp.java` names the screens' routes and controls for the ITs.
+- **`editor.mode.*`** labels are composed; the keys are listed in `EditorSurface.tsx`'s header for `MessageKeyTest`.
+- **Left for later passes**: `EditorSurface.jsp`/`EditorScript.jsp`/`StatusPill.jsp` (the page editor and Pages list
+  still include them), `SessionExpiryBar.jsp`, the menu XML `subactions` of the removed controllers.
+
+
 ### Pages and media screens (`screens/pages`, `screens/media`, wave 2, cut over)
 
 Routes `/weblogs/:handle/pages` (+ `/new`, `/trash`, `/:id`) and `/weblogs/:handle/media`
@@ -500,7 +526,7 @@ Routes `/weblogs/:handle/pages` (+ `/new`, `/trash`, `/:id`) and `/weblogs/:hand
 new page), `pagesTrash.rol`, `mediaFileView.rol` (`directoryId` is `dir`, `sortBy` is `sort`), `mediaFileAdd.rol`,
 `mediaFileEdit.rol`, and the image chooser overlay, which has no page of its own and opens the library); the JSPs,
 controllers, beans and POST actions are gone. The table gained two optional parts for this: an alternative route when
-a path parameter is missing (`otherwise`) and query-name renames (`queryNames`).
+a path parameter is missing (`otherwise`); a query rename is written `old>new` in a carried entry.
 
 - **The page editor writes on the shared `EditorSurface`** (`kind="page"` picks the page preview routes): toolbar,
   write/split/preview with the weblog's theme in the frame, media insert, shortcodes. A page has one save, so

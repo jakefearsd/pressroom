@@ -147,41 +147,6 @@ class AdminChromeJspTest {
     }
 
     /**
-     * Row-level edit and delete looked different on every list (labelled
-     * Edit/Remove columns, red text links, outline buttons). One pattern now:
-     * icon buttons in one unlabelled, right-aligned {@code td.row-actions}.
-     */
-    @Test
-    void theListScreensShareOneRowActionPattern() {
-        for (String screen : java.util.List.of("editor/Categories.jsp")) {
-            String src = jsp(screen);
-            assertTrue(src.contains("<td class=\"row-actions\">"), screen + " has no td.row-actions");
-            assertTrue(src.contains("row-action row-action-danger"), screen + "'s delete is not a .row-action");
-            assertFalse(src.contains("text-danger"), screen + " still has a red text-link action");
-            assertTrue(src.contains("class=\"list-actions\""), screen + "'s New action is not in the card's strip");
-        }
-        assertFalse(jsp("editor/CategoriesSidebar.jsp").contains("addCategoryButton"),
-                "Add category moved into the card; the sidebar must not carry a second one");
-    }
-
-    /**
-     * A message inside a JS string literal must be JS-escaped: one apostrophe
-     * in a translation is a SyntaxError that takes category add, edit and
-     * delete down with the whole script block.
-     */
-    @Test
-    void categoriesEscapeEveryMessageInAJsString() {
-        String src = jsp("editor/Categories.jsp");
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("'<spring:message [^>]*/>'").matcher(src);
-        int seen = 0;
-        while (m.find()) {
-            seen++;
-            assertTrue(m.group().contains("javaScriptEscape=\"true\""), "not JS-escaped: " + m.group());
-        }
-        assertTrue(seen > 0, "the scan found no JS-string messages at all");
-    }
-
-    /**
      * Every other layout puts the page title inside the content card; the
      * simple page (Create weblog, Account, the site directory) left it
      * floating above.

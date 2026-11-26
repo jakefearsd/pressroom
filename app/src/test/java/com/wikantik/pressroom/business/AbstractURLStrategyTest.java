@@ -86,16 +86,16 @@ class AbstractURLStrategyTest {
 
     @Test
     void authoringLinksAreRelativeOrAbsoluteAsAsked() {
-        assertEquals("/ctx/pressroom-ui/authoring/entryAdd.rol?weblog=blog", strategy.getEntryAddURL("blog", false));
-        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/entryAdd.rol?weblog=blog",
+        // The React admin's routes (a handle and an id are each one encoded path segment).
+        assertEquals("/ctx/pressroom-ui/app/weblogs/blog/entries/new", strategy.getEntryAddURL("blog", false));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/app/weblogs/blog/entries/new",
                 strategy.getEntryAddURL("blog", true));
+        assertEquals("/ctx/pressroom-ui/app/weblogs/a%20b/entries/new", strategy.getEntryAddURL("a b", false));
 
-        String relative = strategy.getEntryEditURL("blog", "id-1", false);
-        String absoluteUrl = strategy.getEntryEditURL("blog", "id-1", true);
-        assertEquals("/ctx/pressroom-ui/authoring/entryEdit.rol", relative.substring(0, relative.indexOf('?')));
-        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/entryEdit.rol",
-                absoluteUrl.substring(0, absoluteUrl.indexOf('?')));
-        assertTrue(absoluteUrl.contains("weblog=blog") && absoluteUrl.contains("bean.id=id-1"), absoluteUrl);
+        assertEquals("/ctx/pressroom-ui/app/weblogs/blog/entries/id-1", strategy.getEntryEditURL("blog", "id-1", false));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/app/weblogs/blog/entries/id-1",
+                strategy.getEntryEditURL("blog", "id-1", true));
+        assertEquals("/ctx/pressroom-ui/app/weblogs/blog/entries/a%2Fb", strategy.getEntryEditURL("blog", "a/b", false));
 
         assertEquals("/ctx/pressroom-ui/authoring/weblogConfig.rol?weblog=blog",
                 strategy.getWeblogConfigURL("blog", false));

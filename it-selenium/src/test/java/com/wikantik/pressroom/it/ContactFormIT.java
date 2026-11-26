@@ -159,14 +159,7 @@ class ContactFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "contactit" + nonce();
 
-        openPath("/pressroom-ui/app/weblogs/new");
-        $("#name").should(visible).setValue("CFIT Weblog " + handle);
-        $("#handle").setValue(handle);
-        $("#emailAddress").setValue(handle + "@example.invalid");
-        $("select[name='theme']").selectOptionByValue("journal");
-        $("button[type='submit']").click();
-
-        $("h2.mm_weblog_name").should(exist); // created: the app home lists the weblogs
+        createWeblogOnTheReactScreen(handle, "CFIT Weblog " + handle, "journal");
         return handle;
     }
 
