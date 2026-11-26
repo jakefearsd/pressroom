@@ -3,14 +3,19 @@ package com.wikantik.pressroom.ui.restapi;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.SpecVersion;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.parameters.PathParameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.stereotype.Component;
@@ -29,6 +34,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ApiDocumentCustomizer implements OpenApiCustomizer {
+
+    private static final Pattern PATH_VARIABLE = Pattern.compile("\\{([^}/]+)}");
 
     static final String PROBLEM_SCHEMA = "ApiProblem";
 
@@ -56,8 +63,28 @@ public class ApiDocumentCustomizer implements OpenApiCustomizer {
         if (openApi.getPaths() == null) {
             return;
         }
-        openApi.getPaths().values().forEach(item -> item.readOperations().forEach(operation ->
-                operation.getResponses().addApiResponse("default", problemResponse())));
+        openApi.getPaths().forEach((path, item) -> item.readOperations().forEach(operation -> {
+            operation.getResponses().addApiResponse("default", problemResponse());
+            declareTemplatePathParameters(path, operation);
+        }));
+    }
+
+    /**
+     * Declares every {@code {name}} of the path that no handler parameter
+     * does. The action weblog's {@code {handle}} sits in a class-level
+     * mapping and is resolved by the handler interceptor, so no method binds it
+     * and springdoc cannot see it; a typed client needs it. All are strings.
+     */
+    private static void declareTemplatePathParameters(String path, Operation operation) {
+        Matcher matcher = PATH_VARIABLE.matcher(path);
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            boolean declared = operation.getParameters() != null && operation.getParameters().stream()
+                    .anyMatch(p -> "path".equals(p.getIn()) && name.equals(p.getName()));
+            if (!declared) {
+                operation.addParametersItem(new PathParameter().name(name).required(true).schema(new StringSchema()));
+            }
+        }
     }
 
     /**

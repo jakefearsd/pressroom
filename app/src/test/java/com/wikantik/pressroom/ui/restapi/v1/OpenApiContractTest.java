@@ -262,6 +262,41 @@ class OpenApiContractTest {
         }
     }
 
+    private static final Pattern PATH_TEMPLATE = Pattern.compile("\\{([^}/]+)}");
+
+    /**
+     * A typed client reads path parameters from the document: each {@code
+     * {name}} of a path declares exactly one required {@code in: path}
+     * parameter with a schema, and none is declared that the path lacks. The
+     * action weblog's {@code {handle}} is resolved by an interceptor, not bound
+     * to a method parameter, so springdoc cannot see it by itself.
+     */
+    @Test
+    void everyPathTemplateVariableIsADeclaredRequiredPathParameter() {
+        List<String> offenders = new ArrayList<>();
+        operations().forEach((name, operation) -> {
+            List<String> expected = new ArrayList<>();
+            var matcher = PATH_TEMPLATE.matcher(name.substring(name.indexOf(' ') + 1));
+            while (matcher.find()) {
+                expected.add(matcher.group(1));
+            }
+            List<String> declared = new ArrayList<>();
+            for (JsonNode parameter : operation.path("parameters")) {
+                if ("path".equals(parameter.path("in").asString())) {
+                    declared.add(parameter.path("name").asString());
+                    if (!parameter.path("required").asBoolean(false) || !parameter.has("schema")
+                            || !"string".equals(parameter.path("schema").path("type").asString())) {
+                        offenders.add(name + ": " + parameter + " is not a required string path parameter");
+                    }
+                }
+            }
+            if (!new TreeSet<>(expected).equals(new TreeSet<>(declared)) || declared.size() != expected.size()) {
+                offenders.add(name + ": template " + expected + " but declares " + declared);
+            }
+        });
+        assertTrue(offenders.isEmpty(), offenders.size() + " offenders: " + offenders);
+    }
+
     private static boolean isRef(JsonNode schema) {
         return schema != null && schema.path("$ref").asString("").startsWith("#/components/schemas/");
     }
