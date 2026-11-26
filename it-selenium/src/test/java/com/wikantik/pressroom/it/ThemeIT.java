@@ -249,6 +249,7 @@ class ThemeIT extends PressroomIT {
     private int postCustomThemeSwitch(String handle) {
         openPath(themeEditPath(handle));
         $(".theme-cards").should(exist);
+        BrowserHealth.current().expectRefusal("/themes/custom");
         Object status = executeAsyncJavaScript(
                 "var done = arguments[arguments.length - 1];"
                         + "var boot = JSON.parse(document.getElementById('pressroom-bootstrap').textContent);"
