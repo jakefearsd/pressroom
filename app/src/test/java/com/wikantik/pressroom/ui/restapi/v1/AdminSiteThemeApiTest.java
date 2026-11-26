@@ -108,4 +108,21 @@ class AdminSiteThemeApiTest {
         assertEquals("frontpage", t.weblog.getEditorTheme());
         verify(t.tier.weblogManager(), never()).saveWeblog(t.weblog);
     }
+
+    /** Rendered pages expire only through the weblog's invalidation, which every cache handler hears. */
+    @Test
+    void switchingInvalidatesTheSiteSpaceInTheCaches() throws Exception {
+        java.util.List<com.wikantik.pressroom.pojos.Weblog> heard = new java.util.concurrent.CopyOnWriteArrayList<>();
+        com.wikantik.pressroom.util.cache.CacheManager.registerHandler(
+                new com.wikantik.pressroom.util.cache.CacheHandler() {
+                    @Override
+                    public void invalidate(com.wikantik.pressroom.pojos.Weblog website) {
+                        heard.add(website);
+                    }
+                });
+
+        t.send(put(URL), "{\"theme\":\"journal\"}");
+
+        assertTrue(heard.contains(t.weblog));
+    }
 }

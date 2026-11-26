@@ -190,6 +190,17 @@ class AccountRulesTest {
         }
     }
 
+    /** The column holds 255, so an address of exactly 255 is the longest accepted, not the first refused. */
+    @Test
+    void anAddressOfExactlyTheColumnWidthIsAccepted() {
+        String exact = "a".repeat(64) + "@" + ("b".repeat(63) + ".").repeat(2) + "c".repeat(58) + ".com";
+        assertEquals(255, exact.length());
+
+        for (AccountRules.EmailUse use : AccountRules.EmailUse.values()) {
+            assertNull(AccountRules.emailProblem(exact, use), use.name());
+        }
+    }
+
     // --- screen name ---
 
     @Test

@@ -221,4 +221,22 @@ class MeProfileApiTest {
                 "{\"currentPassword\":\"old password\",\"newPassword\":\"a brand new one\"}"), 400, "user.notAPerson",
                 "newPassword");
     }
+
+    /** The session that changed the password stays signed in: its credential stamp is renewed to the new hash. */
+    @Test
+    void aPasswordChangeRenewsTheChangingSessionsCredentialStamp() throws Exception {
+        String stampKey = com.wikantik.pressroom.ui.core.security.CredentialStampFilter.class.getName() + ".stamp";
+        org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute(stampKey, "stamp-of-the-old-password");
+
+        mvc.perform(put("/v1/me/password").session(session).requestAttr("authenticatedUser", me)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old password\",\"newPassword\":\"a brand new one\"}"))
+                .andReturn();
+
+        Object stamp = session.getAttribute(stampKey);
+        assertNotEquals("stamp-of-the-old-password", stamp);
+        assertEquals(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(me.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8))), stamp);
+    }
 }

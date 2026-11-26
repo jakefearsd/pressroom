@@ -437,4 +437,64 @@ class AdminUsersSessionOnlyApiTest {
 
         verify(comments, never()).expireWhereShown(any());
     }
+
+    // --- the admin log and the login-session cache
+
+    @Test
+    void creatingAnAdministratorIsLoggedAndCreatingAnOrdinaryAccountIsNot() throws Exception {
+        asSession();
+        when(users.getUserByUserName(any(), eq(null))).thenReturn(null);
+        try (com.wikantik.pressroom.testing.AdminLogCapture log = com.wikantik.pressroom.testing.AdminLogCapture.start()) {
+            send(post("/v1/admin/users"), "{\"userName\":\"erin\",\"emailAddress\":\"erin@example.com\","
+                    + "\"password\":\"long enough password\"}");
+            assertEquals(List.of(), log.lines(), "an ordinary account is not a site-admin event");
+
+            send(post("/v1/admin/users"), "{\"userName\":\"dave\",\"emailAddress\":\"dave@example.com\","
+                    + "\"password\":\"long enough password\",\"administrator\":true}");
+            assertEquals(List.of("siteAdmin.granted account=dave by=boss"), log.lines());
+        }
+    }
+
+    @Test
+    void grantingAndRevokingTheAdministratorRoleAreLoggedWithWhoDidIt() throws Exception {
+        User carol = stored(person("carol"));
+        holdsAdmin(carol, false);
+        asSession();
+        try (com.wikantik.pressroom.testing.AdminLogCapture log = com.wikantik.pressroom.testing.AdminLogCapture.start()) {
+            send(patch("/v1/admin/users/carol"), "{\"administrator\":true}");
+            assertEquals(List.of("siteAdmin.granted account=carol by=boss"), log.lines());
+        }
+        holdsAdmin(carol, true);
+        try (com.wikantik.pressroom.testing.AdminLogCapture log = com.wikantik.pressroom.testing.AdminLogCapture.start()) {
+            send(patch("/v1/admin/users/carol"), "{\"administrator\":false}");
+            assertEquals(List.of("siteAdmin.removed account=carol by=boss"), log.lines());
+        }
+    }
+
+    @Test
+    void anotherAccountsCachedLoginIsDroppedOnlyWhenItsPasswordChangesOrItIsDisabled() throws Exception {
+        User carol = stored(person("carol"));
+        holdsAdmin(carol, false);
+        asSession();
+        com.wikantik.pressroom.ui.core.PressroomLoginSessionManager manager =
+                mock(com.wikantik.pressroom.ui.core.PressroomLoginSessionManager.class);
+        try (MockedStatic<com.wikantik.pressroom.ui.core.PressroomLoginSessionManager> sessions =
+                     mockStatic(com.wikantik.pressroom.ui.core.PressroomLoginSessionManager.class)) {
+            sessions.when(com.wikantik.pressroom.ui.core.PressroomLoginSessionManager::getInstance).thenReturn(manager);
+
+            send(patch("/v1/admin/users/carol"), "{\"fullName\":\"Carol C\"}");
+            verify(manager, never()).invalidate(any(String.class));
+
+            send(patch("/v1/admin/users/carol"), "{\"password\":\"long enough password\"}");
+            verify(manager).invalidate("carol");
+
+            org.mockito.Mockito.clearInvocations(manager);
+            send(patch("/v1/admin/users/carol"), "{\"enabled\":false}");
+            verify(manager).invalidate("carol");
+
+            org.mockito.Mockito.clearInvocations(manager);
+            send(patch("/v1/admin/users/carol"), "{\"enabled\":true}");
+            verify(manager, never()).invalidate(any(String.class));
+        }
+    }
 }
