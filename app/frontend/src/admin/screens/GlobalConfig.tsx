@@ -1,10 +1,10 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { useAllWeblogs, useConfig, useConfigDefinitions, useSaveConfig, useSitePages, type ConfigPropertyDefinition } from '../api/siteQueries';
 import { ProblemBanner } from '../components/ProblemBanner';
 import { Markup } from '../components/Markup';
 import { useFieldErrors } from '../forms/useFieldErrors';
 import { PageTitle } from '../frame/PageTitle';
-import { useBoot } from '../context';
 import { useT } from '../i18n/messages';
 
 const FRONT_BLOG = 'site.frontpage.weblog.handle';
@@ -60,7 +60,6 @@ function changes(form: Values, start: Values, types: Record<string, string>): Re
 /** GlobalConfig.jsp: every runtime property of the definitions, grouped, with a section index and Save in the rail. */
 export function GlobalConfig() {
   const t = useT();
-  const boot = useBoot();
   const definitions = useConfigDefinitions();
   const config = useConfig();
   const weblogs = useAllWeblogs();
@@ -128,7 +127,7 @@ export function GlobalConfig() {
       {publishedPages.length > 0 ? null : (
         <div className="form-text">
           {t('configForm.frontpageNoSitePages')}{' '}
-          <a href={`${boot.contextPath}/pressroom-ui/authoring/pages.rol?weblog=${SITE_SPACE}`}>{t('configForm.frontpageSitePagesLink')}</a>
+          <Link to={`/weblogs/${SITE_SPACE}/pages`}>{t('configForm.frontpageSitePagesLink')}</Link>
         </div>
       )}
     </>

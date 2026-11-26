@@ -158,10 +158,15 @@ Details and history: `docs/dev/quality-gates.md`, `docs/dev/build-and-ci.md`.
 - **No static service locator.** Container-managed classes take
   `@Lazy Weblogger` in the constructor (the `@Lazy` is load-bearing);
   entities under `pojos/` import no business-tier type.
-- **One authorization path**: `PressroomHandlerInterceptor`, shared by the JSP
-  UI and `/api/v1`; it vouches only for the action weblog, so every by-id
-  lookup goes through `WeblogOwnership` / `BaseController.lookup*`. The API
+- **One authorization path**: `PressroomHandlerInterceptor`, shared by the
+  remaining JSP controllers and `/api/v1`; it vouches only for the action
+  weblog, so every by-id lookup goes through `WeblogOwnership`. The API
   answers 404, never 403, for anything the caller may not see.
+- **The admin is a React app** (`app/frontend/src/admin`, served by one JSP
+  shell at `/pressroom-ui/app/`); only login, password reset, the installer,
+  `GenericError`, `SiteDirectory` and the reader `Account` page are JSP
+  (`docs/dev/admin-ui.md`). Old `.rol` admin URLs live on as
+  `LegacyAdminRedirects` rows: never delete them.
 - **Content**: shortcodes expand, then commonmark, then `HTMLSanitizer` —
   the only content boundary.
 - **Schema**: every schema change adds `bin/db/migrations/V<NNN>__*.sql`
@@ -183,25 +188,41 @@ done.
   `/* */` alike): write "the showX macro", never `#showX`.
 - **A JSP tag with an undeclared prefix renders as literal text.**
 - **Escaping**: entry titles are stored escaped (emit `$entry.title` bare);
-  page titles are raw (always `$utils.escapeHTML`). `<spring:message
-  arguments>` and `tiles/messages.jsp` do **not** escape, so controllers
-  escape user-typed arguments (`MessageArgumentEscapingTest`). Author-controlled
-  EL in JSPs goes through `fn:escapeXml`, `bean.*` form fields included
-  (`EditorJspEscapingTest`). An expression-built `href` is `fn:escapeXml`'d,
-  a `<c:url>`, or a bare `urls.*` call.
+  page titles are raw (always `$utils.escapeHTML`). On the remaining JSPs
+  `<spring:message arguments>` and `tiles/messages.jsp` do **not** escape, so
+  controllers escape user-typed arguments (`MessageArgumentEscapingTest`),
+  author-controlled EL goes through `fn:escapeXml`, and an expression-built
+  `href` is `fn:escapeXml`'d, a `<c:url>`, or a bare `urls.*` call
+  (`JspConsistencyTest`). React renders bundle markup only through `Markup`.
 - **Name every `@RequestParam`/`@PathVariable`**: the build has no
   `-parameters`, so a bare one passes unit tests and throws at runtime.
 - **Rendered pages expire only through `weblog.lastModified`**;
   `CacheManager.invalidate` never reaches `WeblogPageCache`/`WeblogFeedCache`.
-- **Confirmations are `data-confirm`**, never inline `onclick="return
-  confirm(...)"` (one apostrophe and it fails open).
-- **Never restyle an admin page by renaming a selector**: `Routes` pins a CSS
+- **Confirmations on the remaining JSPs are `data-confirm`**, never inline
+  `onclick="return confirm(...)"` (one apostrophe and it fails open). React
+  screens use `ConfirmDialog`.
+- **Never restyle an admin screen by renaming a selector**: `Routes` pins a CSS
   marker per route; update both in one commit.
 - **XML/ruleset traps**: a bare `--` in an XML comment breaks
   `runtimeConfigDefs.xml` silently; a literal `{}` anywhere in
   `config/pmd/ruleset.xml` breaks PMD's ruleset merge.
 - **No code may assume a context path**: routing changes run the browser
   suite at both `/` and `-Dit.context.path=pressroom`.
+
+### React admin hazards
+
+- **The API chain must not rotate the session id** (`sessionFixation` is
+  `none` there): the SPA's CSRF token and its other tabs hold the old id.
+- **The IT `api.throttle.threshold` is lifted** (`pressroom-it.properties`):
+  parallel IT classes share one admin account, so the production throttle
+  would trip across classes.
+- **Selenide `setValue("")` fires no React input event**: clear a React field
+  with `PressroomIT.replaceText` (key presses), or the form keeps its value.
+- **`window.pressroomGetEntryText` / `pressroomSetEntryText` /
+  `pressroomUploadImages` are production test seams** the ITs call; do not
+  remove or rename them.
+- **Vitest times out under heavy build load** (a parallel `mvn` or IT run):
+  re-run the file alone before treating a timeout as a bug.
 
 ## Module Organization
 
@@ -230,7 +251,7 @@ here.
 | SEO; Travel; Plugin System; Shortcodes | `docs/dev/content-features.md` |
 | Configuration Files; Development vs Production; Configuration scope | `docs/dev/configuration.md` |
 | Passwords; The admin account tool (first admin, lost password) | `docs/dev/passwords.md` |
-| Admin UI; Categories | `docs/dev/admin-ui.md` |
+| Admin UI (React structure, routes, shared components, cutover checklist, what stays JSP); Categories | `docs/dev/admin-ui.md` |
 | Comments; Entry editing; Trash; Pages | `docs/dev/entries.md` |
 | Redirects; Virtual hosts | `docs/dev/routing.md` |
 | Comments (reader) | `docs/dev/comments.md` |

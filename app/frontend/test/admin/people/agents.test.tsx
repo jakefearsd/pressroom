@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { editorBoot } from '../support';
-import { API, cacheText, fakeServer, handlers, problem, recording, renderPeople, renderPeopleWithCache, seen, server } from './harnessAdmin';
+import { API, cacheText, fakeServer, handlers, problem, recording, renderPeople, renderPeopleWithCache, seen, server } from './harness';
 
 const { http, HttpResponse } = handlers;
 const SECRET = 'prtk_AGENT-SECRET-456';

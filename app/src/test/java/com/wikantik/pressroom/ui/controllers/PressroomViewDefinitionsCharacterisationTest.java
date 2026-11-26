@@ -67,7 +67,7 @@ class PressroomViewDefinitionsCharacterisationTest {
         PressroomViewResolver resolver = new PressroomViewResolver();
         resolver.init();
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> resolver.define(".X").on(".tiles-tabbedpage")
+                () -> resolver.define(".X").on(".tiles-simplepage")
                         .styles("/WEB-INF/jsps/tiles/empty.jsp").register());
         assertTrue(e.getMessage().contains("styles"));
         assertThrows(IllegalArgumentException.class,

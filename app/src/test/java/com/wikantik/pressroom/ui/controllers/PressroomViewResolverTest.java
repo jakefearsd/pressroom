@@ -80,8 +80,8 @@ class PressroomViewResolverTest {
                 ".Login should be registered");
         assertNotNull(resolver.resolveViewName(".denied", Locale.getDefault()),
                 ".denied should be registered");
-        assertNotNull(resolver.resolveViewName(".tiles-tabbedpage", Locale.getDefault()),
-                ".tiles-tabbedpage should be registered");
+        assertNotNull(resolver.resolveViewName(".tiles-simplepage", Locale.getDefault()),
+                ".tiles-simplepage should be registered");
     }
 
     @Test
@@ -152,7 +152,6 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);

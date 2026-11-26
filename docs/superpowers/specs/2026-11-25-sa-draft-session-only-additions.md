@@ -1,4 +1,4 @@
-# Decision-log entry (draft, not posted): send-newsletter and the writer role grant join SA-18
+# Decision-log entry (draft, not posted): send-newsletter, the writer role grant and the site-space routes join SA-18
 
 Drafted 2026-11-25 for `SimpleAgilityDecisionLog` on Wikantik. **Not posted anywhere**: the SA number is the next
 free one when it is posted, at Jake's instruction. Both decisions below were made as the owner's proxy overnight
@@ -7,7 +7,7 @@ he posts or discards this entry. Supersede SA-18's list, never rewrite it: SA-18
 
 Date: 2026-11-25. Follows the format of `2026-11-21-session-only-policy-decision.md`.
 
-**SA-<n> (draft): send-newsletter and the writer role grant join SA-18's session-only list.**
+**SA-<n> (draft): send-newsletter, the writer role grant and the site-space routes join SA-18's session-only list.**
 
 **Context.** SA-18 named the Pressroom API resources that only an interactive session may use, so that a stolen or
 over-shared bearer token, or an agent acting on text written by strangers, cannot reach them. Two token-reachable
@@ -15,7 +15,9 @@ operations were left off that list when it was written: `POST /api/v1/weblogs/{h
 (added in wave 1 of the admin migration, at `POST` level) and the `writer` field on
 `PATCH /api/v1/admin/users/{userName}` (the single-sign-on account's editor role, settable by an ADMIN token).
 Wave 4 brought the rest of SA-18's resources behind `@SessionOnly` and the field-level session checks, and these
-two were the only gaps left between the policy's reasoning and the code.
+two were the only gaps left between the policy's reasoning and the code. Wave 5 (the retirement of the server-rendered
+admin) adds the routes the React admin needs for the **site space**, the hidden weblog that owns the site's pages;
+they are recorded below as built, so that the entry states what the code does and Jake can reverse any of it.
 
 **Decision.**
 
@@ -27,6 +29,24 @@ two were the only gaps left between the policy's reasoning and the code.
    a `writer` value differing from the stored one gets 403 `auth.sessionOnly` before anything is applied; resending
    the stored value passes (the pattern of the email rule, SA-18's "another user's email change"). A session grants
    and revokes it as before; only a single-sign-on account has the role to edit.
+3. **`GET` and `PUT /v1/admin/site-theme` are session-only, as built.** The class carries `@SessionOnly` (and the
+   site-admin requirement): every token, password, anonymous and unrecognised caller gets 403 `auth.sessionOnly`.
+   The React Theme screen reads and switches the site space's theme through these two routes because the weblog
+   routes withhold the site space. They are MCP exclusions (session-only).
+4. **`GET /v1/admin/site-pages` is NOT session-only, as built.** It sits on `AdminApi`, which is `@AdminScoped` and
+   not `@SessionOnly`: an ADMIN-scope token reads it, a session reads it, a non-admin gets 403. It is read-only and
+   returns each site page's slug, title and status (the Global Config front-door choices), nothing a token cannot
+   already learn from the public site except drafts' titles. **Decision needed from Jake**: leave it (reversible
+   cost: an admin token sees draft site-page titles) or add `@SessionOnly` to this one method (a one-line change plus
+   the matrix row's flag); this draft keeps it as built.
+5. **The site space is offered to a global admin's session only, on the Pages and Media API routes.**
+   `PressroomHandlerInterceptor.siteSpaceOffered` withholds the site space (answering 404, as for an unknown weblog)
+   from every token, HTTP Basic password, anonymous and unrecognised caller, and from a non-admin session, on every
+   route; it offers it to a signed-in global admin's interactive session (form login, remember-me or reader SSO
+   sign-in, which all resolve to `Caller.Kind.SESSION`) only on `/v1/weblogs/{handle}/pages` and `/media`, reads
+   and writes alike (create, update, trash and restore pages; create and delete folders; uploads). Its entries,
+   settings, comments and traffic routes still withhold it; its traffic is read through the admin route
+   `GET /v1/admin/traffic/{handle}`. Pinned by `SiteSpaceAccessTest`.
 
 **Why.**
 
@@ -40,6 +60,12 @@ two were the only gaps left between the policy's reasoning and the code.
   that account able to author posts after the token is revoked, the same reasoning that put memberships and the
   admin flag on SA-18's list. A role granted to another account is not undone by revoking the credential that
   granted it.
+
+- *the site-space routes.* The site space holds the pages that front the whole site (the home page, the privacy
+  page): an automation token or agent that could write them could rewrite what every visitor sees under the site's
+  name, from text strangers wrote. Pages and media are edited by a person in the admin app, so the same
+  session-only reasoning applies; reading `site-pages` stays a token-reachable admin read because it exposes
+  nothing a visitor cannot see beyond draft titles (decision 4 flags that).
 
 **Consequences.**
 

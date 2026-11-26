@@ -139,7 +139,7 @@ describe('Global config', () => {
     await openScreen();
     expect(screen.getByText(/No published site pages yet\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Write one' })).toHaveAttribute('href',
-      'http://pressroom.test/pressroom/pressroom-ui/authoring/pages.rol?weblog=site-space');
+      '/weblogs/site-space/pages');
   });
 
   it('selects the stored blog, or the stored page, and keeps an unpublished stored page as its own option', async () => {

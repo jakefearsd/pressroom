@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { appRoutes } from '../../../src/admin/router';
 import { adminBoot, editorBoot, renderRoutes } from '../support';
-import { API, fakeServer, handlers, seen, server } from './harnessAdmin';
+import { API, fakeServer, handlers, seen, server } from './harness';
 
 const { http, HttpResponse } = handlers;
 

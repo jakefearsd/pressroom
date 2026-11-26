@@ -75,7 +75,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
     }
 
     /**
-     * Starts a fluent definition: {@code define(".X").on(TABBED).content(jsp).register()}.
+     * Starts a fluent definition: {@code define(".X").on(SIMPLE).content(jsp).register()}.
      * Only what differs from the base is stated; {@link ViewBuilder#register}
      * rejects an override that repeats the base's own value.
      */
@@ -161,34 +161,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
      */
     public void init() {
 
-        // ---- 7 base layout definitions ----
-
-        addDefinition(".tiles-mainmenupage",
-                "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp",
-                Map.of(
-                        "banner",   "/WEB-INF/jsps/tiles/bannerStatus.jsp",
-                        "head",     "/WEB-INF/jsps/tiles/head.jsp",
-                        "styles",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "messages", "/WEB-INF/jsps/tiles/messages.jsp",
-                        "content",  "${content}",
-                        "sidebar",  "/WEB-INF/jsps/tiles/empty.jsp",
-                        "footer",   "/WEB-INF/jsps/tiles/footer.jsp"
-                ));
-
-        addDefinition(".tiles-tabbedpage",
-                "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp",
-                mapOf10(
-                        "banner",     "/WEB-INF/jsps/tiles/bannerStatus.jsp",
-                        "userStatus", "/WEB-INF/jsps/tiles/userStatus.jsp",
-                        "head",       "/WEB-INF/jsps/tiles/head.jsp",
-                        "styles",     "/WEB-INF/jsps/tiles/empty.jsp",
-                        "menu",       "/WEB-INF/jsps/tiles/empty.jsp",
-                        "sidemenu",   "/WEB-INF/jsps/tiles/empty.jsp",
-                        "messages",   "/WEB-INF/jsps/tiles/messages.jsp",
-                        "content",    "${content}",
-                        "sidebar",    "/WEB-INF/jsps/tiles/empty.jsp",
-                        "footer",     "/WEB-INF/jsps/tiles/footer.jsp"
-                ));
+        // ---- base layout definitions ----
 
         addDefinition(".tiles-simplepage",
                 "/WEB-INF/jsps/tiles/tiles-simplepage.jsp",
@@ -296,35 +269,9 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
                 .register();
 
-        // ---- weblog editor pages ----
-
     }
 
     // ---------------------------------------------------------- helper
-
-    /**
-     * Convenience factory for maps with more than 10 entries
-     * (Map.of() supports at most 10 key-value pairs).
-     */
-    private static Map<String, String> mapOf10(
-            String k1, String v1, String k2, String v2,
-            String k3, String v3, String k4, String v4,
-            String k5, String v5, String k6, String v6,
-            String k7, String v7, String k8, String v8,
-            String k9, String v9, String k10, String v10) {
-        var map = new HashMap<String, String>(16);
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        map.put(k5, v5);
-        map.put(k6, v6);
-        map.put(k7, v7);
-        map.put(k8, v8);
-        map.put(k9, v9);
-        map.put(k10, v10);
-        return Map.copyOf(map);
-    }
 
     // ----------------------------------------------------- inner view
 

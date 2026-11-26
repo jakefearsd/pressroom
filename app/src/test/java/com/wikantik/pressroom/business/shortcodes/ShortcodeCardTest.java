@@ -131,30 +131,6 @@ class ShortcodeCardTest {
     }
 
     /**
-     * The menu must stay generated. Hand-listing the items in the JSP is the
-     * one change that would let the editor and the registry drift apart again,
-     * and it would not fail any other test here.
-     *
-     * <p>The menu lives in {@code EditorSurface.jsp} now -- the writing
-     * surface the entry editor and the page editor share -- rather than in
-     * {@code EntryEditor.jsp}, which is the entry-shaped wrapper around it.
-     */
-    @Test
-    void theEditorBuildsItsMenuFromTheRegistry() throws IOException {
-        Path jsp = Paths.get("src/main/webapp/WEB-INF/jsps/editor/EditorSurface.jsp");
-        assertTrue(Files.exists(jsp), "Expected " + jsp.toAbsolutePath());
-        String source = Files.readString(jsp, StandardCharsets.UTF_8);
-
-        assertTrue(source.contains("${shortcodeCards}"),
-                jsp + " no longer loops over the registry's cards; the insert menu must "
-                        + "be generated, not hand-listed.");
-        for (ShortcodeCard card : cards) {
-            assertFalse(source.contains(card.snippet()) && !card.snippet().isEmpty(),
-                    jsp + " hard-codes " + card.name() + "'s snippet; it belongs to the handler.");
-        }
-    }
-
-    /**
      * An expander whose only handler answers to {@code name} and records that
      * it was called. Child tags inside the body ([pin], [q], [a]) are not
      * registered anywhere, so they reach the handler as body text exactly as

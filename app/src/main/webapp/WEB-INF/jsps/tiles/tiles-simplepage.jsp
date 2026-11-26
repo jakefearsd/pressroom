@@ -30,7 +30,7 @@
         <jsp:include page="${tile_styles}" />
     </style>
 </head>
-<body<c:if test="${not empty invalidFieldIds}"> data-invalid-fields="${fn:escapeXml(invalidFieldIds)}"</c:if>>
+<body>
 
 <jsp:include page="${tile_banner}"/>
 

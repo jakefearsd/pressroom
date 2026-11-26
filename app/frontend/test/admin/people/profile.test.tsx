@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { editorBoot } from '../support';
-import { API, fakeServer, handlers, problem, recording, renderPeople, seen, server } from './harnessAdmin';
+import { API, fakeServer, handlers, problem, recording, renderPeople, seen, server } from './harness';
 
 const { http, HttpResponse } = handlers;
 const profile = { userName: 'jake', screenName: 'Jake', fullName: 'Jake Fear', emailAddress: 'jake@example.com',

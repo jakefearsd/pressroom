@@ -1,4 +1,4 @@
-/* Bundles the editor into the webapp root -- the ONE static location this
+/* Bundles the admin and reader scripts into the webapp root -- the ONE static location this
    deployment actually serves, and NOT a classpath one.
 
    DispatcherServlet is mapped to *.rol only (application.properties), so
@@ -16,10 +16,10 @@
    src/main/webapp as the document root directly. The files themselves are
    build outputs and are git-ignored; EditorBundlePomTest pins that.
 
-   Three bundles. admin.js (src/admin/main.tsx, the React admin) lands in
+   Two bundles. admin.js (src/admin/main.tsx, the React admin) lands in
    pressroom-ui/app/ beside the .rol shell route, unhashed and with ?v= cache
    busting like the others; `node build.mjs --watch` rebuilds only it, and
-   unminified with a source map, for the dev loop. pressroom-editor.js serves the two login-gated editors.
+   unminified with a source map, for the dev loop.
    pressroom-content.js serves READERS: weblog.vm's content-asset macro injects it
    on a public page that has a code block or a content heading to enhance
    (highlighting, copy buttons, line numbers, heading anchors). Being public,
@@ -56,16 +56,6 @@ const common = {
   logLevel: 'info'
 };
 
-await build({
-  ...common,
-  entryPoints: ['src/editor.js'],
-  globalName: 'PressroomEditor',
-  outfile: '../src/main/webapp/pressroom-ui/scripts/pressroom-editor.js'
-});
-
-// highlight.js is BSD-3-Clause, whose notice a redistribution must carry,
-// and every reader's browser receives this file; legalComments 'none'
-// strips the library's own comments, so the notice is stated here.
 const hljsVersion = JSON.parse(readFileSync('node_modules/highlight.js/package.json', 'utf8')).version;
 
 await build({

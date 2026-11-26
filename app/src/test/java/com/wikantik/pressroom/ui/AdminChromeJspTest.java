@@ -86,7 +86,7 @@ class AdminChromeJspTest {
                         "." + name + " must map footer to tiles/footer.jsp");
             }
         }
-        assertEquals(6, checked, "the full-page layouts: mainmenu, tabbed, simple, login, install, error");
+        assertEquals(4, checked, "the full-page layouts: simple, login, install, error");
     }
 
     /** The footer renders the Colophon through the shared footer.* keys, escaped. */
@@ -194,27 +194,6 @@ class AdminChromeJspTest {
     }
 
     /**
-     * At phone width the whole left column (the rail, then the page's
-     * sidebar forms) rendered above the content: on the entry editor the
-     * title field started at y=1327. Below md the column folds behind a
-     * Menu button; from md up it is always shown, so desktop is unchanged.
-     */
-    @Test
-    void theLeftColumnFoldsBehindAMenuButtonAtPhoneWidth() {
-        for (String layout : java.util.List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
-            String src = jsp(layout);
-            assertTrue(src.contains("<div class=\"collapse d-md-block\" id=\"adminRailColumn\">"),
-                    layout + ": the rail and sidebar are not in the narrow-width collapse");
-            assertTrue(src.contains("data-bs-target=\"#adminRailColumn\"")
-                            && src.contains("class=\"btn btn-secondary btn-sm d-md-none rail-toggle\""),
-                    layout + ": no Menu button for the folded column");
-            int fold = src.indexOf("id=\"adminRailColumn\"");
-            assertTrue(fold >= 0 && src.indexOf("id=\"adminRail\"") > fold && src.indexOf("<main") > fold,
-                    layout + ": the rail must sit inside the fold");
-        }
-    }
-
-    /**
      * A JSP with the default {@code session="true"} calls
      * {@code request.getSession()} just to render, so the public site root
      * set a JSESSIONID on every anonymous reader and crawler. Every JSP the
@@ -227,20 +206,6 @@ class AdminChromeJspTest {
                 "tiles/empty.jsp")) {
             assertTrue(jsp(page).contains("<%@ page session=\"false\" %>"), page + " creates a session");
         }
-    }
-
-    /**
-     * The editor bundle's URL is unversioned by name, and a cached bundle from
-     * before the PressroomEditor rename defines the wrong global, so head.jsp
-     * appends the application version (the Colophon's, the one the footer
-     * shows) as a query string, escaped.
-     */
-    @Test
-    void theEditorBundleUrlCarriesTheApplicationVersion() {
-        String src = jsp("tiles/head.jsp");
-        assertTrue(src.contains("Colophon.of("), "the version comes from the Colophon");
-        assertTrue(src.contains("<c:param name='v' value='${editorBundleVersion}'/>"),
-                "the editor bundle URL carries ?v=<version>, encoded by c:param");
     }
 
     /**

@@ -49,45 +49,13 @@ function clickOn(href) {
   };
 }
 
-test('isValidUrl accepts any http(s) URL a browser can load', () => {
-  const { isValidUrl } = load(memoryStorage({}));
-  for (const url of [
-    'https://cdn.site.photography/x.jpg',
-    'http://example.com',
-    'https://example.travel:8443/a/b?c=d#e',
-    'http://192.168.1.10/logo.png',
-    'http://[2001:db8::1]/logo.png',
-    'http://localhost:8083/media/x.png',
-    'HTTPS://EXAMPLE.COM/X.PNG',
-    '  https://example.com/padded.png  '
-  ]) {
-    assert.equal(isValidUrl(url), true, url);
-  }
-});
-
-test('isValidUrl refuses what is not an http(s) URL', () => {
-  const { isValidUrl } = load(memoryStorage({}));
-  for (const url of [
-    '',
-    'example.com/x.jpg',
-    '/relative/x.jpg',
-    'javascript:alert(1)',
-    'data:image/png;base64,AAAA',
-    'ftp://example.com/x.jpg',
-    'http://',
-    'https:/example.com',
-    'http:example.com',
-    'not a url'
-  ]) {
-    assert.equal(isValidUrl(url), false, url);
-  }
-});
-
-test('the dead helpers are gone: isblank looped forever, toggleControl clobbered toggle', () => {
+test('the retired admin helpers are gone', () => {
   const context = load(memoryStorage({}));
-  assert.equal(typeof context.isblank, 'undefined');
-  assert.equal(typeof context.toggleControl, 'undefined');
-  assert.equal(typeof context.toggle, 'function');
+  for (const name of ['isblank', 'toggleControl', 'toggle', 'toggleFolder', 'togglePlusMinus',
+    'folderPreference', 'toggleNextRow', 'toggleFunction', 'toggleFunctionAll', 'isValidUrl', 'validateEmail']) {
+    assert.equal(typeof context[name], 'undefined', name);
+  }
+  assert.equal(typeof context.getCookie, 'function', 'the sign-in page still remembers the user name');
 });
 
 test('signing out clears every autosaved draft and nothing else', () => {

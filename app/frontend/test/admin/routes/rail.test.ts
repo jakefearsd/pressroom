@@ -96,11 +96,12 @@ describe('the rail table against admin-menu.xml', () => {
 });
 
 describe('the switcher set', () => {
-  it('is BaseController.SWITCHER_ACTIONS', () => {
-    const java = readFileSync('../src/main/java/com/wikantik/pressroom/ui/controllers/BaseController.java', 'utf8');
-    const block = /SWITCHER_ACTIONS = Set\.of\(([^)]*)\)/s.exec(java)?.[1] ?? '';
-    const actions = [...block.matchAll(/"(\w+)"/g)].map((m) => m[1]).sort();
-    expect(RAIL_ENTRIES.filter((e) => e.switchable === true).map((e) => e.id).sort()).toEqual(actions);
+  /** The screens the top-bar weblog switcher keeps when the reader picks another weblog (the rail's own tabs). */
+  it('is the weblog-scoped rail tabs', () => {
+    expect(RAIL_ENTRIES.filter((e) => e.switchable === true).map((e) => e.id).sort()).toEqual([
+      'categories', 'comments', 'entries', 'mediaFileView', 'members', 'pages', 'submissions', 'themeEdit',
+      'traffic', 'trash', 'weblogConfig'
+    ]);
   });
 });
 

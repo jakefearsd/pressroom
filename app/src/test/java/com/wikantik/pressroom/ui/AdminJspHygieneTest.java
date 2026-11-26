@@ -225,7 +225,7 @@ class AdminJspHygieneTest {
     @Test
     void bothChromeLayoutsPutTheTitleBeforeTheMessages() {
         List<String> wrong = new ArrayList<>();
-        for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
+        for (String layout : List.of("tiles/tiles-simplepage.jsp")) {
             String src = jsp(layout);
             int title = src.indexOf("pressroom-page-title");
             int messages = src.indexOf("${tile_messages}");
@@ -242,15 +242,12 @@ class AdminJspHygieneTest {
             "tiles/tiles-errorpage.jsp",
             "tiles/tiles-installpage.jsp",
             "tiles/tiles-loginpage.jsp",
-            "tiles/tiles-mainmenupage.jsp",
-            "tiles/tiles-simplepage.jsp",
-            "tiles/tiles-tabbedpage.jsp");
+            "tiles/tiles-simplepage.jsp");
 
     /**
      * Without a document language a screen reader picks its own -- usually the
      * user's OS locale -- and reads English admin copy with, say, German
-     * phonemes. Six layouts, so one missing declaration hides in five
-     * correct ones.
+     * phonemes. One missing declaration is a screen reader reading with the wrong voice.
      */
     @Test
     void everyLayoutDeclaresADocumentLanguage() {
@@ -283,7 +280,7 @@ class AdminJspHygieneTest {
     @Test
     void thePageTitleIsTheDocumentHeading() {
         List<String> wrong = new ArrayList<>();
-        for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
+        for (String layout : List.of("tiles/tiles-simplepage.jsp")) {
             if (!jsp(layout).contains("<h1 class=\"pressroom-page-title\"")) {
                 wrong.add(layout);
             }
@@ -295,8 +292,7 @@ class AdminJspHygieneTest {
     @Test
     void contentColumnsAreMainLandmarks() {
         List<String> missing = new ArrayList<>();
-        for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp",
-                "tiles/tiles-simplepage.jsp", "tiles/tiles-loginpage.jsp")) {
+        for (String layout : List.of("tiles/tiles-simplepage.jsp", "tiles/tiles-loginpage.jsp")) {
             String src = jsp(layout);
             if (!src.contains("<main ") || !src.contains("</main>")) {
                 missing.add(layout);
@@ -316,7 +312,7 @@ class AdminJspHygieneTest {
     @Test
     void everyDataTableScopesItsHeaders() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("core", "editor", "tiles")) {
+        for (String dir : List.of("core", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -345,7 +341,7 @@ class AdminJspHygieneTest {
     @Test
     void everyModalIsAnAccessibleDialog() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("core", "editor", "tiles")) {
+        for (String dir : List.of("core", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -576,25 +572,6 @@ class AdminJspHygieneTest {
         assertTrue(head[4] > 0, "favicon.ico declares no images");
     }
 
-    /**
-     * An admin with four weblogs open had four tabs reading "Pressroom: Entries".
-     * Only the layouts whose model actually carries actionWeblog append it --
-     * these same layouts serve un-scoped screens (Global Config, User Admin).
-     */
-    @Test
-    void weblogScopedLayoutsNameTheirWeblogInTheTitle() {
-        List<String> missing = new ArrayList<>();
-        for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
-            String src = jsp(layout);
-            int title = src.indexOf("<title>");
-            int end = src.indexOf("</title>", title);
-            if (title < 0 || !src.substring(title, end).contains("actionWeblog.handle")) {
-                missing.add(layout);
-            }
-        }
-        assertTrue(missing.isEmpty(), "layouts whose <title> omits the weblog handle: " + missing);
-    }
-
     // ------------------------------------------------- Review fix round 1
 
     /**
@@ -636,7 +613,7 @@ class AdminJspHygieneTest {
         Pattern unescapedMessageInSingleQuotedConfirm = Pattern.compile(
                 "confirm\\(\\s*'[^']*<spring:message\\b((?:(?!/>).)*?)/>");
         List<String> found = new ArrayList<>();
-        for (String dir : List.of("core", "tiles", "editor")) {
+        for (String dir : List.of("core", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String src = read(f);

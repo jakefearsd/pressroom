@@ -28,7 +28,7 @@ then [architecture.md](architecture.md).
 | [themes-and-templates.md](themes-and-templates.md) | Theme system, the built-in themes, templates and render-cache expiry, colophon, byline, search results, content assets |
 | [media.md](media.md) | Uploads, renditions, `cwebp`, galleries |
 | [content-features.md](content-features.md) | SEO and structured data, breadcrumbs, travel, plugins, shortcodes |
-| [admin-ui.md](admin-ui.md) | Admin UI conventions, route markers, categories |
+| [admin-ui.md](admin-ui.md) | The React admin: structure, routes, shared components, cutover checklist, what stays JSP |
 | [comments.md](comments.md) | Reader comments, moderation, the rulings that amend the spec |
 | [sso.md](sso.md) | Reader sign-in with Google/OIDC |
 | [passwords.md](passwords.md) | Password hashing, the dev credential, the admin account tool |
