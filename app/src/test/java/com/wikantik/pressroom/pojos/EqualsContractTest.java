@@ -180,14 +180,6 @@ class EqualsContractTest {
                         new RuntimeConfigProperty("site.name", "Something else"),
                         new RuntimeConfigProperty("site.shortName", "Pressroom")),
 
-                new Specimen("StatCount (keyed on subjectId + typeKey) -- differing type",
-                        statCount("blog-a", "hits"), statCount("blog-a", "hits"),
-                        statCount("blog-a", "comments")),
-
-                new Specimen("StatCount (keyed on subjectId + typeKey) -- differing subject",
-                        statCount("blog-a", "hits"), statCount("blog-a", "hits"),
-                        statCount("blog-b", "hits")),
-
                 new Specimen("CustomTemplateRendition (keyed on template id + body) -- differing template",
                         rendition(templateA, "$body"), rendition(templateA, "$body"),
                         rendition(templateB, "$body")),
@@ -356,12 +348,6 @@ class EqualsContractTest {
         TaskLock lock = new TaskLock();
         lock.setName(name);
         return lock;
-    }
-
-    private static StatCount statCount(String subjectId, String typeKey) {
-        StatCount count = new StatCount(subjectId, "short", "long", typeKey, 42L);
-        count.setWeblogHandle(subjectId);
-        return count;
     }
 
     @TestFactory

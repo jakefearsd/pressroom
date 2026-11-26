@@ -57,7 +57,6 @@ app/frontend/node/
 # The editor and reader bundles: build outputs that have to sit under the
 # webapp root, because that is the only static location this deployment
 # serves (see app/frontend/build.mjs).
-app/src/main/webapp/pressroom-ui/scripts/pressroom-editor.js
 app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js
 # React admin bundle (app/frontend/build.mjs) and the types generated from its API snapshot.
 app/src/main/webapp/pressroom-ui/app/admin.js

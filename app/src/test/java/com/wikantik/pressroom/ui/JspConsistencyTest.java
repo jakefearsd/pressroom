@@ -73,30 +73,6 @@ class JspConsistencyTest {
         }
     }
 
-    @Test
-    void statusIsAlwaysAStatusPill() throws IOException {
-        List<Path> editorJsps = jsps().stream()
-                .filter(p -> p.toString().contains("/editor/"))
-                .toList();
-        assertTrue(editorJsps.size() > 1,
-                "Found too few editor JSPs -- the scan is not looking where it thinks it is.");
-
-        for (Path jsp : editorJsps) {
-            String src = Files.readString(jsp, StandardCharsets.UTF_8);
-            assertFalse(src.contains("badge bg-success") || src.contains("badge bg-info")
-                    || src.contains("badge bg-warning") || src.contains("badge bg-danger")
-                    || src.contains("badge bg-primary"), jsp + " uses a Bootstrap badge for status; use .status-pill");
-            assertFalse(src.contains("EntryBox"), jsp + " renders the old status legend");
-            assertFalse(src.contains("class=\"draftentry\"") || src.contains("class=\"pendingentry\""),
-                    jsp + " tints rows by status");
-        }
-
-        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        for (String s : List.of("published", "draft", "pending", "scheduled", "trashed")) {
-            assertTrue(css.contains(".status-pill.status-" + s), "pressroom.css lacks .status-pill.status-" + s);
-        }
-    }
-
     /**
      * Task B2: every button in the admin UI is one of exactly three buckets --
      * primary (one per screen, the one recommended action), destructive
@@ -369,67 +345,7 @@ class JspConsistencyTest {
         assertTrue(violations.isEmpty(), String.join("\n", violations));
     }
 
-    /**
-     * The three layouts an admin form can render through must all put the
-     * joined ids on {@code <body>}; {@code pressroom.js} reads them from nowhere
-     * else. Miss one and every form on it silently loses the marker --
-     * {@code .Profile} and {@code .CreateWeblog} are simplepage, the editor
-     * screens are tabbedpage, and {@code .ProfileTokens} is mainmenupage.
-     */
-    @Test
-    void layoutsRenderInvalidFieldIds() throws IOException {
-        for (String layout : List.of("tiles-tabbedpage.jsp", "tiles-simplepage.jsp",
-                "tiles-mainmenupage.jsp")) {
-            String src = Files.readString(JSPS.resolve("tiles").resolve(layout),
-                    StandardCharsets.UTF_8);
-            assertTrue(src.contains("data-invalid-fields=\"${fn:escapeXml(invalidFieldIds)}\""),
-                    layout + " does not render data-invalid-fields on <body>");
-            assertTrue(src.contains("${not empty invalidFieldIds}"),
-                    layout + " emits the attribute unconditionally; a form with nothing "
-                            + "wrong must carry no attribute at all");
-            assertFalse(src.contains("<body>"),
-                    layout + " still has a bare <body> tag -- the conditional attribute "
-                            + "replaced it, so two body tags means the edit went to the "
-                            + "wrong place");
-        }
-
-        String js = Files.readString(
-                Path.of("src/main/webapp/theme/scripts/pressroom.js"), StandardCharsets.UTF_8);
-        assertTrue(js.contains("invalidFields"),
-                "pressroom.js does not read document.body.dataset.invalidFields, so nothing "
-                        + "consumes what the layouts render");
-        assertTrue(js.contains("is-invalid") && js.contains("aria-invalid"),
-                "pressroom.js must set both the visual class and the accessible state");
-    }
-
     // --- B9a: Global Config gets the settings rail ---
-
-    // --- B10: the weblog switcher in the top bar ---
-
-    /**
-     * Task B10: the top bar's brand now carries a {@code .weblog-switcher}
-     * dropdown when the signed-in user holds more than one weblog
-     * ({@code BaseController.populateCommonModel} adds {@code userWeblogs}
-     * only in that case, so the {@code <c:if>} around this markup is what
-     * keeps a one-weblog session's top bar unchanged). The confirm-idiom
-     * rule applies here too: this is a navigation control, not a destructive
-     * one, so it needs no {@code data-confirm} -- but it must not regress to
-     * the inline {@code onclick} idiom {@code oneConfirmIdiomAndOneModalShape}
-     * already bans on every other admin screen.
-     */
-    @Test
-    void theTopBarCarriesTheSwitcher() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("tiles/bannerStatus.jsp"), StandardCharsets.UTF_8));
-
-        assertTrue(markup.contains("weblog-switcher"),
-                "bannerStatus.jsp must render the .weblog-switcher dropdown");
-        assertFalse(markup.contains("onclick="),
-                "the switcher is a nav control -- no inline onclick, ever");
-
-        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        assertTrue(css.contains(".weblog-switcher"), "pressroom.css lacks .weblog-switcher");
-    }
 
     /**
      * The top bar's "Main Menu" link is for someone who can use it: anonymous
@@ -616,7 +532,7 @@ class JspConsistencyTest {
     private static List<Path> everyServedJsp() throws IOException {
         try (Stream<Path> walk = Files.walk(WEBAPP)) {
             List<Path> all = walk.filter(p -> p.toString().endsWith(".jsp")).sorted().toList();
-            assertTrue(all.size() > 40, "found only " + all.size() + " JSPs under " + WEBAPP);
+            assertTrue(all.size() > 25, "found only " + all.size() + " JSPs under " + WEBAPP);
             return all;
         }
     }
@@ -790,7 +706,7 @@ class JspConsistencyTest {
             }
         }
 
-        assertTrue(hrefsChecked >= 5,
+        assertTrue(hrefsChecked >= 3,
                 "Only " + hrefsChecked + " EL-valued hrefs found -- the scan is not "
                         + "looking where it thinks it is.");
         assertTrue(violations.isEmpty(),
@@ -895,8 +811,6 @@ class JspConsistencyTest {
             "bootstrapJson",
             // Controller constants: action names and URL fragments.
             "mainAction", "deleteAction", "actionName", "editorFieldName",
-            // EditorSurface.jsp's contract: the caller fn:escapeXml'd it (PageEdit/EntryEdit).
-            "editorFieldValue",
             // Entity ids the controller put in the model after a lookup.
             "directoryId", "categoryId",
             // Build constants.

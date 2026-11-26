@@ -51,8 +51,8 @@ class EditorBundlePomTest {
     }
 
     /**
-     * The outfile must be the webapp root, not a classpath location, and the
-     * difference is the whole difference between a working editor and a 404
+     * The outfiles must be the webapp root, not a classpath location, and the
+     * difference is the whole difference between a working bundle and a 404
      * nobody notices until someone opens the page.
      *
      * <p>{@code DispatcherServlet} is mapped to {@code *.rol} only, so Spring
@@ -64,22 +64,22 @@ class EditorBundlePomTest {
      * were tried and both 404'd; the browser suite is what said so.
      */
     @Test
-    void theBundleLandsWhereHeadJspLoadsIt() throws IOException {
+    void theBundlesLandWhereTheShellLoadsThem() throws IOException {
         String build = Files.readString(Path.of("frontend", "build.mjs"));
-        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/pressroom-editor.js"),
+        assertTrue(build.contains("src/main/webapp/pressroom-ui/app/admin.js")
+                        || build.contains("../src/main/webapp/pressroom-ui/app/admin.js"),
                 "esbuild outfile must be the webapp root, the only static location this "
                         + "deployment serves");
         assertFalse(build.contains("target/classes/"),
                 "no classpath location is served here -- DispatcherServlet is mapped to *.rol "
                         + "only, and WEB-INF/classes is nested inside the executable WAR");
-        String head = Files.readString(HEAD_JSP);
-        assertTrue(head.contains("/pressroom-ui/scripts/pressroom-editor.js"),
-                "head.jsp must load the bundle");
+        assertFalse(build.contains("pressroom-editor.js"),
+                "the standalone editor bundle is retired: the React admin bundles the editor");
     }
 
     /**
      * The reader's bundle (code highlighting, copy buttons, heading anchors) is
-     * the editor bundle's twin: same build, same webapp-root location, for the
+     * the admin bundle's twin: same build, same webapp-root location, for the
      * same reason -- it is the one static location this deployment serves. It
      * is loaded by the content-asset macro in {@code weblog.vm}, not by a JSP,
      * because it serves public pages.
@@ -89,7 +89,7 @@ class EditorBundlePomTest {
         String build = Files.readString(Path.of("frontend", "build.mjs"));
         assertTrue(build.contains("src/content.js"), "build.mjs must bundle the reader entry");
         assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/pressroom-content.js"),
-                "the reader bundle must land in the webapp root beside pressroom-editor.js");
+                "the reader bundle must land in the webapp root beside the admin bundle");
         assertTrue(build.contains("globalName: 'PressroomContent'"),
                 "the macro calls window.PressroomContent.enhance, so the IIFE must expose it");
         String weblogVm = Files.readString(WEBLOG_VM);
@@ -136,10 +136,8 @@ class EditorBundlePomTest {
         // The bundle has to live under the webapp root to be served at all
         // (see above), which puts a build output inside src/. Ignoring it is
         // what keeps it from being committed by the next `git add -A`.
-        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-editor.js"),
-                "the built bundle must be git-ignored: it lives under src/main/webapp");
         assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js"),
-                "the reader bundle must be git-ignored too: it lives beside the editor's");
+                "the reader bundle must be git-ignored too: it lives under src/main/webapp too");
         assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/app/admin.js\n"),
                 "the React admin bundle must be git-ignored: it lives under src/main/webapp");
         assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/app/admin.css"));

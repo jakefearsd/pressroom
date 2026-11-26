@@ -71,29 +71,12 @@ public class StoredTextRenderingTest {
     }
 
     @Test
-    void anUntitledEntrysTitleIsTextInTheBrowserTab() throws IOException {
-        for (String layout : new String[] {"tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp"}) {
-            Map<String, Object> beans = new HashMap<>();
-            beans.put("tabTitle", PAYLOAD + " — Edit entry");
-            beans.put("pageTitle", "weblogEdit.title.editEntry");
-            beans.put("actionWeblog", Map.of("handle", "blog"));
-            PROPS.put("site.shortName", "Site");
-
-            String title = render(layout, "<title>", beans);
-
-            assertRendersAsText(title);
-            assertTrue(title.contains("&lt;img"), layout + ": the title text is missing from " + title);
-        }
-    }
-
-    @Test
     void theSiteNamesAreTextInTheBannerAndTheBrowserTab() throws IOException {
         PROPS.put("site.name", PAYLOAD);
         PROPS.put("site.shortName", PAYLOAD);
 
         assertRendersAsText(render("tiles/bannerStatus.jsp", "navbar-brand", new HashMap<>()));
-        for (String layout : new String[] {"tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp",
-                "tiles/tiles-loginpage.jsp", "tiles/tiles-simplepage.jsp",
+        for (String layout : new String[] {"tiles/tiles-loginpage.jsp", "tiles/tiles-simplepage.jsp",
                 "tiles/tiles-errorpage.jsp"}) {
             Map<String, Object> beans = new HashMap<>();
             beans.put("pageTitle", "title");
@@ -102,14 +85,6 @@ public class StoredTextRenderingTest {
             String title = render(layout, "<title>", beans);
             assertTrue(title.contains("&lt;img"), layout + ": the short name is not rendered as text: " + title);
         }
-    }
-
-    @Test
-    void theSignedInUserNameIsText() throws IOException {
-        Map<String, Object> beans = new HashMap<>();
-        beans.put("authenticatedUser", Map.of("userName", PAYLOAD));
-
-        assertRendersAsText(render("tiles/userStatus.jsp", "authenticatedUser.userName", beans));
     }
 
     // ------------------------------------------------------------------

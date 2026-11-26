@@ -29,10 +29,6 @@ class BaseControllerHelpersTest {
             return getProp(key);
         }
 
-        boolean bool(String key) {
-            return getBooleanProp(key);
-        }
-
         void flashMessage(RedirectAttributesModelMap redirect, String key, String param, MockHttpServletRequest request) {
             addFlashMessage(redirect, key, param, request);
         }
@@ -46,7 +42,7 @@ class BaseControllerHelpersTest {
         }
 
         void violation(ExtendedModelMap model, RuleViolation violation, MockHttpServletRequest request) {
-            addFieldError(model, "bean_f", violation, request);
+            addError(model, violation, request);
         }
     }
 
@@ -77,23 +73,6 @@ class BaseControllerHelpersTest {
 
             assertEquals("from-db", probe().prop("only.runtime"));
             assertEquals("nowhere", probe().prop("nowhere"));
-        }
-    }
-
-    @Test
-    void aBooleanSettingFollowsTheSamePrecedenceAndUnknownMeansFalse() {
-        try (MockedStatic<WebloggerConfig> staticConfig = mockStatic(WebloggerConfig.class);
-                MockedStatic<WebloggerRuntimeConfig> runtime = mockStatic(WebloggerRuntimeConfig.class)) {
-            staticConfig.when(() -> WebloggerConfig.getProperty("static.off")).thenReturn("false");
-            runtime.when(() -> WebloggerRuntimeConfig.getProperty("static.off")).thenReturn("true");
-            runtime.when(() -> WebloggerRuntimeConfig.getProperty("runtime.on")).thenReturn("TRUE");
-            runtime.when(() -> WebloggerRuntimeConfig.getProperty("runtime.junk")).thenReturn("yes please");
-
-            Probe probe = probe();
-            assertFalse(probe.bool("static.off"), "the static false must not be overridden by the runtime true");
-            assertTrue(probe.bool("runtime.on"));
-            assertFalse(probe.bool("runtime.junk"), "anything but true is false");
-            assertFalse(probe.bool("unknown"));
         }
     }
 

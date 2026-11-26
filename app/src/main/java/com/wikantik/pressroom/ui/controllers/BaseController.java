@@ -73,30 +73,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     protected Weblogger weblogger;
 
     /**
-     * Allow form parameters prefixed with "bean." to bind to @ModelAttribute("bean").
-     * This preserves the Struts2 convention where form fields were named bean.title, bean.id, etc.
-     * Controllers using Spring form:form tags (which don't use the prefix) should override
-     * this method with a no-op.
-     *
-     * <p><strong>Checkbox field markers ("_xxx" hidden inputs) must name the
-     * bean's real property path, not the "bean."-prefixed one.</strong>
-     * {@code WebDataBinder.doBind} runs {@code checkFieldDefaults} (which
-     * strips this "bean." prefix) BEFORE {@code checkFieldMarkers}, and
-     * {@code checkFieldDefaults} only rewrites parameters that literally
-     * start with "bean." -- a marker named e.g. {@code "_bean.showInNav"}
-     * starts with {@code "_"}, so it is left alone, and
-     * {@code checkFieldMarkers} then looks for a writable property literally
-     * named {@code "bean.showInNav"}, which does not exist, so the marker is
-     * silently discarded and an unchecked box never binds to {@code false}.
-     * The marker must be named {@code "_showInNav"} (see PageEdit.jsp).
-     */
-    @InitBinder("bean")
-    public void initBeanBinder(WebDataBinder binder) {
-        binder.setFieldDefaultPrefix("bean.");
-    }
-
-    /**
-     * The one place the admin JSPs build weblog-content urls:
+     * The one place the server-rendered JSPs build weblog-content urls:
      * {@code ${urls.weblogAbsolute(actionWeblog)}}, {@code ${urls.entry(post)}},
      * {@code ${urls.media(f)}} and so on -- the replacement for the url getters
      * the JPA entities used to reach the {@code URLStrategy} through. It is a
@@ -206,53 +183,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     }
 
     /**
-     * The ordered set of DOM ids naming the form controls a validation
-     * refused. Read by tests; the page reads {@link #INVALID_FIELD_IDS}.
-     */
-    public static final String INVALID_FIELDS = "invalidFields";
-
-    /**
-     * The same ids, space-joined, which is the form the three layouts render
-     * into {@code <body data-invalid-fields>}. Joined here rather than in the
-     * page because JSTL's {@code fn:join} only accepts a {@code String[]}.
-     */
-    public static final String INVALID_FIELD_IDS = "invalidFieldIds";
-
-    /**
-     * An error message, plus the DOM id of the control it is about.
-     *
-     * <p>Identical to {@link #addError(Model, String, HttpServletRequest)} in
-     * every respect the caller's {@code hasErrors} gate can see -- the message
-     * lands in the same list and refuses the save the same way. The addition
-     * is the id, which travels to the page as {@code
-     * <body data-invalid-fields>} and lets {@code pressroom.js} put
-     * {@code .is-invalid} and {@code aria-invalid} on the control and focus
-     * the first one. A banner at the top of a long settings form says
-     * <em>that</em> something was refused; only the marker says <em>which</em>
-     * of thirty fields.
-     *
-     * <p>The id must be the control's real {@code id} attribute in the JSP
-     * this controller renders -- {@code JspConsistencyTest} checks every id
-     * named here against that file, so a renamed field fails the build rather
-     * than silently marking nothing.
-     */
-    protected void addFieldError(Model model, String fieldId, String key, HttpServletRequest request) {
-        addError(model, key, request);
-        markInvalidField(model, fieldId);
-    }
-
-    /**
-     * The {@link #addError(Model, String, Object[], HttpServletRequest)}
-     * counterpart of {@link #addFieldError(Model, String, String,
-     * HttpServletRequest)}, for a message whose text names the offending value.
-     */
-    protected void addFieldError(Model model, String fieldId, String key, Object[] args,
-                                 HttpServletRequest request) {
-        addError(model, key, args, request);
-        markInvalidField(model, fieldId);
-    }
-
-    /**
      * Shows a rule's violation (no control marked): its message key with
      * every argument HTML-escaped, because they are raw values, user input
      * among them, and {@code tiles/messages.jsp} does not escape. Two
@@ -271,28 +201,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
                             : arg instanceof Number ? arg
                             : StringEscapeUtils.escapeHtml4(String.valueOf(arg))).toArray(), request);
         }
-    }
-
-    /** As {@link #addError(Model, RuleViolation, HttpServletRequest)}, marking {@code fieldId}'s control. */
-    protected void addFieldError(Model model, String fieldId, RuleViolation violation, HttpServletRequest request) {
-        addError(model, violation, request);
-        markInvalidField(model, fieldId);
-    }
-
-    /**
-     * A {@link LinkedHashSet}, so two complaints about one control mark it
-     * once and the joined string is deterministic (the first id named is the
-     * one the page focuses).
-     */
-    @SuppressWarnings("unchecked")
-    private void markInvalidField(Model model, String fieldId) {
-        Set<String> fields = (Set<String>) model.getAttribute(INVALID_FIELDS);
-        if (fields == null) {
-            fields = new LinkedHashSet<>();
-            model.addAttribute(INVALID_FIELDS, fields);
-        }
-        fields.add(fieldId);
-        model.addAttribute(INVALID_FIELD_IDS, String.join(" ", fields));
     }
 
     /**
@@ -348,36 +256,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         addToFlash(redirectAttributes, "errors", getText(key, new Object[]{param}, request));
     }
 
-    /** The mutation a {@link #flashAction} runs; returns the success message to flash. */
-    @FunctionalInterface
-    protected interface FlashOp {
-        // Broad on purpose: flashAction turns anything the op throws into the generic error flash.
-        @SuppressWarnings("PMD.SignatureDeclareThrowsException")
-        @SuppressFBWarnings(
-                value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
-                justification = "flashAction turns anything an op throws into the generic error flash")
-        Flash run() throws Exception;
-    }
-
-    /**
-     * The tail every flash-and-redirect action shares: run {@code op}, flash
-     * the {@link Flash} it returns, or log and flash {@code generic.error.check.logs}
-     * when it throws; then redirect. The by-id lookup and its null check stay
-     * at the call site (the one authorization path is {@code lookup*}), and
-     * the op does its own flush. {@code what} names the action in the log.
-     */
-    protected String flashAction(HttpServletRequest request, RedirectAttributes redirectAttributes,
-                                 String redirect, String what, FlashOp op) {
-        try {
-            Flash done = op.run();
-            addToFlash(redirectAttributes, "messages", getText(done.key(), done.args(), request));
-        } catch (Exception e) {
-            log.error("Error {}", what, e);
-            addFlashError(redirectAttributes, "generic.error.check.logs", request);
-        }
-        return redirect;
-    }
-
     @SuppressWarnings("unchecked")
     private void addToModel(Model model, String attrName, String text) {
         List<String> list = (List<String>) model.getAttribute(attrName);
@@ -398,103 +276,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         redirectAttributes.addFlashAttribute(attrName, list);
     }
 
-    // --- Template and page lookup ---
-
-    /**
-     * The template with this id, but only when it belongs to the action weblog.
-     *
-     * <p>The by-id hazard, and the reason every lookup goes through {@code WeblogOwnership}: {@code getTemplate} is a global by-id lookup while the
-     * permission interceptor only establishes that the caller may edit the
-     * <em>action</em> weblog. A template id arrives as client input, so without
-     * this an editor on one weblog can read, overwrite and delete another
-     * weblog's theme templates -- which on a shared install means writing
-     * arbitrary markup into somebody else's public pages.
-     *
-     * <p>An unknown id and a foreign one are deliberately indistinguishable.
-     */
-    protected WeblogTemplate lookupTemplate(String id, HttpServletRequest request) {
-        return WeblogOwnership.template(weblogger, id, getActionWeblog(request));
-    }
-
-    /**
-     * The page named by {@code id}, but only when it belongs to the weblog
-     * this action is scoped to. The same by-id hazard as {@link #lookupTemplate}:
-     * {@code getPage} is a global by-id lookup, the permission interceptor only
-     * vouches for the <em>action</em> weblog, and the id arrives as client
-     * input. A blank id is absent, not something to look up.
-     *
-     * <p>Public rather than {@code protected} like its three siblings, so that
-     * {@code PageEditControllerTest} -- in a different package -- can pin the
-     * blank-id guard directly, the same way the ownership check itself is
-     * pinned through the controller's own {@code edit}/{@code save} methods.
-     */
-    public WeblogPage lookupPage(String id, HttpServletRequest request) {
-        return WeblogOwnership.page(weblogger, id, getActionWeblog(request));
-    }
-
-    /**
-     * The trashed page named by {@code id}, when it belongs to the weblog
-     * this action is scoped to. {@link #lookupPage} refuses trash; this
-     * refuses everything else, and serves only the page trash's own routes.
-     */
-    public WeblogPage lookupTrashedPage(String id, HttpServletRequest request) {
-        return WeblogOwnership.trashedPage(weblogger, id, getActionWeblog(request));
-    }
-
-    /**
-     * Refuses a picked featured or social image that is not an image readers
-     * of the action weblog can load ({@link WeblogOwnership#publicImage}),
-     * adding {@code errorKey} so the caller's {@code hasErrors} gate blocks
-     * the save. A blank id (the picker cleared) is accepted, and so is the
-     * value already stored: a form sent back as it was loaded must save even
-     * when its image has been deleted or made private since, the same
-     * allowance the API makes. A lookup that fails reads as refused.
-     */
-    protected void checkPickedImage(Model model, String errorKey, String posted, String stored,
-                                    HttpServletRequest request) {
-        if (StringUtils.isBlank(posted) || posted.equals(stored)) {
-            return;
-        }
-        if (WeblogOwnership.publicImage(weblogger, posted, getActionWeblog(request)) == null) {
-            addError(model, errorKey, request);
-        }
-    }
-
-    /**
-     * The thumbnail URL the editors show for a picked image, or null when the
-     * id is blank, unknown, not the action weblog's ({@link
-     * WeblogOwnership#mediaFile}: a file's weblog is its directory's) or could
-     * not be looked up. A display path: a dangling id renders no preview
-     * rather than a broken editor.
-     */
-    protected String pickedImageThumbnailURL(String mediaFileId, HttpServletRequest request) {
-        Weblog weblog = getActionWeblog(request);
-        MediaFile file = WeblogOwnership.mediaFile(weblogger, mediaFileId, weblog);
-        return file == null ? null : weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblog, file.getId(), true);
-    }
-
-    /**
-     * Where the editor's split/preview panes point their iframe: the weblog's
-     * own theme with one empty article for the rendered fragment to land in
-     * ({@code PreviewServlet}'s {@code ?shell=true} branch).
-     *
-     * <p>Built from the parts rather than asked of the preview URL strategy,
-     * because the strategy answers with the weblog's <em>root</em> and this is
-     * that root plus a query parameter -- one string, versus a strategy
-     * contract that does not cover it. The context path has to be on the
-     * front or an iframe under a servlet prefix loads the site root instead;
-     * that is the trap {@code ContactShortcode} already hit (see CLAUDE.md,
-     * Audience).
-     *
-     * <p>Shared by the entry editor and the page editor, which run the same
-     * surface: two copies of one string is exactly how the two screens'
-     * previews would come to frame different documents.
-     */
-    protected String previewShellURL(Weblog weblog) {
-        return StringUtils.defaultString(WebloggerRuntimeConfig.getRelativeContextURL())
-                + "/pressroom-ui/authoring/preview/" + weblog.getHandle() + "/?shell=true";
-    }
-
     // --- Configuration property helpers ---
 
     /**
@@ -507,18 +288,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
             value = WebloggerRuntimeConfig.getProperty(key);
         }
         return (value == null) ? key : value;
-    }
-
-    /**
-     * Get a boolean configuration property value. Checks static config first,
-     * then runtime config. Returns false if not found.
-     */
-    protected boolean getBooleanProp(String key) {
-        String value = WebloggerConfig.getProperty(key);
-        if (value == null) {
-            value = WebloggerRuntimeConfig.getProperty(key);
-        }
-        return (value != null) && Boolean.parseBoolean(value);
     }
 
     // --- Permission checks ---
@@ -559,64 +328,20 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     // --- Common model population ---
 
     /**
-     * The rail's own tab actions -- the only {@code actionName} values a
-     * weblog-scoped screen can be showing. The top-bar switcher keeps the
-     * current screen when the reader picks a different weblog; anything else
-     * (an entry editor, a global admin screen reached without a weblog in
-     * play, ...) has no equivalent on the target weblog, so it falls back to
-     * {@code entries} instead. Kept here, rather than inlined in the JSP, so
-     * {@link BaseControllerTest} can pin it against a real
-     * {@code populateCommonModel} call.
-     */
-    protected static final Set<String> SWITCHER_ACTIONS = Set.of(
-            "entries", "trash", "submissions", "comments", "categories", "pages",
-            "mediaFileView", "themeEdit", "weblogConfig", "members", "traffic");
-
-    /**
-     * What a screen is called: its menu action (selects the rail item, and
-     * the switcher) and the {@code pageTitle} model value, as its page expects
-     * it (a message key for some, resolved text for others). Handed to
-     * {@link #populateCommonModel(HttpServletRequest, Model, Screen)} so the
-     * menu, switcher and model are all built from the one value.
-     */
-    public record Screen(String actionName, String pageTitle) {
-    }
-
-    /** {@link #populateCommonModel(HttpServletRequest, Model, Screen)} for the controller's own action and title. */
-    protected void populateCommonModel(HttpServletRequest request, Model model) {
-        populateCommonModel(request, model, new Screen(getActionName(), getPageTitle()));
-    }
-
-    /**
      * Populate common model attributes used across all pages:
      * authenticatedUser, userIsAuthor, actionWeblog, pageTitle, siteURL,
-     * absoluteSiteURL, menu. A controller with several actions passes the
-     * {@link Screen} of the one it is serving.
+     * absoluteSiteURL.
      */
-    protected void populateCommonModel(HttpServletRequest request, Model model, Screen screen) {
+    protected void populateCommonModel(HttpServletRequest request, Model model) {
         User user = getAuthenticatedUser(request);
         Weblog weblog = getActionWeblog(request);
-        String actionName = screen.actionName();
 
         model.addAttribute("authenticatedUser", user);
         model.addAttribute("userIsAuthor", isAuthor(user));
         model.addAttribute("actionWeblog", weblog);
-        model.addAttribute("pageTitle", screen.pageTitle());
+        model.addAttribute("pageTitle", getPageTitle());
         model.addAttribute("siteURL", WebloggerRuntimeConfig.getRelativeContextURL());
         model.addAttribute("absoluteSiteURL", WebloggerRuntimeConfig.getAbsoluteContextURL());
-        model.addAttribute("actionName", actionName);
-        model.addAttribute("desiredMenu", getDesiredMenu());
-        model.addAttribute("switcherAction",
-                actionName != null && SWITCHER_ACTIONS.contains(actionName) ? actionName : "entries");
-
-        // build menu if applicable
-        Menu menu = MenuHelper.getMenu(getDesiredMenu(), actionName, user, weblog,
-                weblogger.getUserManager());
-        if (menu != null) {
-            model.addAttribute("menu", menu);
-        }
-
-        addUserWeblogsForSwitcher(user, model);
     }
 
     /**
@@ -639,48 +364,6 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         }
     }
 
-    /**
-     * The top-bar weblog switcher's options: every weblog {@code user} holds a
-     * permission on, sorted by handle, added ONLY when there are two or more --
-     * with one weblog (or none) there is nothing to switch to, and the JSP
-     * renders the switcher only when {@code userWeblogs} is present.
-     *
-     * <p>This is a display path, not a decision path (see CLAUDE.md): a
-     * weblog the user can no longer reach, or a store that cannot answer the
-     * permission query at all, simply leaves the switcher off the page. The
-     * page underneath -- built from {@code actionWeblog}, resolved
-     * separately by the interceptor -- renders exactly as it would have
-     * before this method existed.
-     */
-    private void addUserWeblogsForSwitcher(User user, Model model) {
-        if (user == null) {
-            return;
-        }
-        try {
-            Set<String> handles = new TreeSet<>();
-            for (WeblogPermission permission : weblogger.getUserManager().getWeblogPermissions(user)) {
-                if (permission.getObjectId() != null) {
-                    handles.add(permission.getObjectId());
-                }
-            }
-            if (handles.size() < 2) {
-                return;
-            }
-            List<Weblog> weblogs = new ArrayList<>();
-            for (String handle : handles) {
-                Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle, null);
-                if (weblog != null) {
-                    weblogs.add(weblog);
-                }
-            }
-            if (weblogs.size() > 1) {
-                model.addAttribute("userWeblogs", weblogs);
-            }
-        } catch (WebloggerException ex) {
-            log.error("Error loading weblogs for the top-bar switcher", ex);
-        }
-    }
-
     // --- Overridable metadata ---
 
     /**
@@ -691,17 +374,4 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         return "";
     }
 
-    /**
-     * Returns the name of the menu this action wants to display, or null for no menu.
-     */
-    public String getDesiredMenu() {
-        return null;
-    }
-
-    /**
-     * Returns the action name used for menu highlighting. Subclasses should override.
-     */
-    public String getActionName() {
-        return null;
-    }
 }

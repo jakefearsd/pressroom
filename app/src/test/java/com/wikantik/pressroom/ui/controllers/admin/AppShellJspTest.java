@@ -27,8 +27,14 @@ class AppShellJspTest {
         return at;
     }
 
+    /**
+     * The shell loads the stylesheets the server-rendered pages load, plus the
+     * editor surface's: head.jsp used to add pressroom-editor.css only on the
+     * two editor screens, and every React screen shares the one shell, so it is
+     * here for all of them. Without it the writing surface lost its layout.
+     */
     @Test
-    void theStylesheetsAreHeadJspsInHeadJspsOrder() throws IOException {
+    void theShellLoadsTheSharedStylesheetsInOrderThenTheEditorSurface() throws IOException {
         String shell = Files.readString(SHELL);
         String head = Files.readString(HEAD);
         String[] sheets = {"/webjars/bootstrap/5.3.8/css/bootstrap.min.css",
@@ -42,6 +48,8 @@ class AppShellJspTest {
             shellAt = shell.indexOf(sheet);
             headAt = head.indexOf(sheet);
         }
+        assertTrue(indexIn(shell, "/pressroom-ui/styles/pressroom-editor.css") > shellAt,
+                "the editor surface's stylesheet must follow pressroom.css in the shell");
     }
 
     @Test

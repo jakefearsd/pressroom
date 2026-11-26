@@ -18,7 +18,6 @@
 package com.wikantik.pressroom.pojos;
 
 import com.wikantik.pressroom.pojos.MediaFileComparator.MediaFileComparatorType;
-import com.wikantik.pressroom.pojos.MediaFileDirectoryComparator.DirectoryComparatorType;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Timestamp;
@@ -95,19 +94,6 @@ class PojoComparatorTest {
         assertTrue(byDate.compare(older, newer) > 0);
     }
 
-    @Test
-    void mediaFileDirectoriesSortByName() {
-        MediaFileDirectoryComparator byName =
-                new MediaFileDirectoryComparator(DirectoryComparatorType.NAME);
-        MediaFileDirectory archive = new MediaFileDirectory();
-        archive.setName("archive");
-        MediaFileDirectory photos = new MediaFileDirectory();
-        photos.setName("photos");
-
-        assertTrue(byName.compare(archive, photos) < 0);
-        assertTrue(byName.compare(photos, archive) > 0);
-    }
-
     // ------------------------------------------------------------------- tags
 
     @Test
@@ -123,36 +109,6 @@ class PojoComparatorTest {
         assertEquals(0, byName.compare(apple, apple));
     }
 
-    @Test
-    void wrappedEntriesSortNewestFirstThenByTitle() {
-        // This is what orders the entries on a blog's front page. The direction
-        // is the opposite of the natural date order, and the title tie-break is
-        // what stops two posts published in the same second from swapping
-        // places between renders.
-        WeblogEntryWrapperComparator comparator = new WeblogEntryWrapperComparator();
-        Timestamp earlier = Timestamp.valueOf("2024-01-01 10:00:00");
-        Timestamp later = Timestamp.valueOf("2024-06-01 10:00:00");
-
-        assertTrue(comparator.compare(wrappedEntry(later, "b"), wrappedEntry(earlier, "a")) < 0,
-                "The more recent post sorts first, even though its title sorts later");
-        assertTrue(comparator.compare(wrappedEntry(earlier, "a"), wrappedEntry(later, "b")) > 0);
-
-        assertTrue(comparator.compare(wrappedEntry(later, "apple"), wrappedEntry(later, "pear")) < 0,
-                "Posts published at the same instant fall back to the title");
-        assertTrue(comparator.compare(wrappedEntry(later, "pear"), wrappedEntry(later, "apple")) > 0);
-        assertEquals(0, comparator.compare(wrappedEntry(later, "a"), wrappedEntry(later, "a")));
-    }
-
-    private static com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper wrappedEntry(
-            Timestamp pubTime, String title) {
-        Weblog weblog = new Weblog();
-        weblog.setHandle("testblog");
-        WeblogEntry entry = new WeblogEntry();
-        entry.setWebsite(weblog);
-        entry.setPubTime(pubTime);
-        entry.setTitle(title);
-        return com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper.wrap(entry, null, null);
-    }
 
     @Test
     void tagStatsSortByNameIgnoringCase() {
@@ -186,55 +142,6 @@ class PojoComparatorTest {
         assertSame(TagStatCountComparator.getInstance(), TagStatCountComparator.getInstance(),
                 "getInstance() must hand back the same stateless comparator each time "
                         + "rather than allocating one per sort");
-    }
-
-    // -------------------------------------------------------------- stat counts
-
-    @Test
-    void statCountsSortByCountThenSubjectThenType() {
-        StatCountCountComparator byCount = StatCountCountComparator.getInstance();
-        // The subject ids run the opposite way to the counts, so a comparator
-        // that ignored the count and fell straight to the tie-break would give
-        // the wrong answer rather than accidentally the right one.
-        StatCount few = new StatCount("blog-z", "short", "long", "comments", 1L);
-        StatCount many = new StatCount("blog-a", "short", "long", "comments", 99L);
-
-        assertTrue(byCount.compare(few, many) < 0);
-        assertTrue(byCount.compare(many, few) > 0);
-
-        StatCount blogA = new StatCount("blog-a", "short", "long", "comments", 5L);
-        StatCount blogB = new StatCount("blog-b", "short", "long", "comments", 5L);
-        assertTrue(byCount.compare(blogA, blogB) < 0,
-                "Equal counts fall back to the subject, which is what keeps the admin "
-                        + "statistics table in a stable order");
-        assertTrue(byCount.compare(blogB, blogA) > 0);
-
-        StatCount comments = new StatCount("blog-a", "short", "long", "comments", 5L);
-        StatCount entries = new StatCount("blog-a", "short", "long", "entries", 5L);
-        assertTrue(byCount.compare(comments, entries) < 0,
-                "The same subject with the same count still has to order deterministically, "
-                        + "so the statistic type is the last tie-break");
-        assertEquals(0, byCount.compare(comments, comments));
-    }
-
-    @Test
-    void statCountComparatorIsAReusableSingleton() {
-        assertSame(StatCountCountComparator.getInstance(), StatCountCountComparator.getInstance());
-    }
-
-    @Test
-    void aStatCountNamesTheWeblogItCountsAndItsValue() {
-        // These rows are rendered in the site-wide statistics table and logged
-        // when a count looks wrong, so the description has to identify which
-        // blog and how many.
-        StatCount count = new StatCount("blog-a", "Blog A", "Blog A, the first one",
-                "statCount.weblogEntryCountType", 42L);
-        count.setWeblogHandle("blog-a");
-
-        assertTrue(count.toString().contains("blog-a"),
-                "The rendered form must name the weblog: " + count);
-        assertTrue(count.toString().contains("42"),
-                "and the number being reported: " + count);
     }
 
     @Test

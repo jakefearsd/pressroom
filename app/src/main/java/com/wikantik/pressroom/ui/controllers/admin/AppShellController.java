@@ -41,11 +41,6 @@ public class AppShellController extends BaseController {
         return List.of(GlobalPermission.LOGIN);
     }
 
-    @Override
-    public String getActionName() {
-        return "app";
-    }
-
     /** A site setting as the tiles layouts print it; the product name when it is not set. */
     private static String siteProperty(String name) {
         String value = WebloggerRuntimeConfig.getProperty(name);
