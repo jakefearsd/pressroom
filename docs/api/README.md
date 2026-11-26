@@ -2196,6 +2196,7 @@ POST  /api/v1/admin/users/{userName}/password-link   email the person a set-pass
 GET   /api/v1/admin/users/{userName}/weblogs         the weblogs the account belongs to
 
 GET   /api/v1/admin/config
+GET   /api/v1/admin/site-pages          the site space's pages (slug, title, status), for the front-door choices; not an MCP tool
 GET   /api/v1/admin/config/definitions   the display groups and each property's message key, type and default (what the Global Config screen draws)
 PATCH /api/v1/admin/config
 GET   /api/v1/admin/revisions          what the revision store holds

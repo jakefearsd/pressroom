@@ -85,6 +85,18 @@ public final class AdminDtos {
                             Instant lastActive) {
     }
 
+    /** One page of the site space, as the Global Config front-door choices list it. */
+    public record SitePageChoice(
+            @Schema(description = "The page's slug: what the front-door setting stores after page:.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String slug,
+            @Schema(description = "The page's title.", requiredMode = Schema.RequiredMode.REQUIRED)
+            String title,
+            @Schema(description = "PUBLISHED, DRAFT or SCHEDULED: only a published page can be the front door.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String status) {
+    }
+
     /** One weblog an account belongs to, and what it may do there. */
     public record UserWeblogsPage(
             @Schema(description = "The weblogs the account holds a permission on, by handle.",

@@ -5584,6 +5584,38 @@
         }
       }
     },
+    "/v1/admin/site-pages" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "summary" : "The site space's pages, for the front-door choices.",
+        "operationId" : "sitePagesList",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SitePageChoice"
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/revisions" : {
       "get" : {
         "tags" : [ "Site administration" ],
@@ -9081,6 +9113,24 @@
           }
         },
         "required" : [ "id", "live", "owner", "ownerKind" ]
+      },
+      "SitePageChoice" : {
+        "type" : "object",
+        "properties" : {
+          "slug" : {
+            "type" : "string",
+            "description" : "The page's slug: what the front-door setting stores after page:."
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "The page's title."
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "PUBLISHED, DRAFT or SCHEDULED: only a published page can be the front door."
+          }
+        },
+        "required" : [ "slug", "status", "title" ]
       },
       "ItemCount" : {
         "type" : "object",

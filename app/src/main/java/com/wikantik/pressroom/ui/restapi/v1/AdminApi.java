@@ -449,6 +449,24 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         return new AdminDtos.UserWeblogsPage(items);
     }
 
+    /**
+     * The site space's pages: the Global Config front-door choices. The site space is withheld from every route
+     * that names it ({@code PressroomHandlerInterceptor}), so the pages come from here, for a site admin; an empty
+     * list while no site space exists (it is created by the first admin read of the main menu).
+     */
+    @Operation(operationId = "sitePagesList", summary = "The site space's pages, for the front-door choices.")
+    @GetMapping("/site-pages")
+    public List<AdminDtos.SitePageChoice> sitePages() throws WebloggerException {
+        com.wikantik.pressroom.pojos.Weblog site = weblogger.getWeblogManager().getSiteSpace();
+        List<AdminDtos.SitePageChoice> choices = new ArrayList<>();
+        if (site != null) {
+            for (com.wikantik.pressroom.pojos.WeblogPage page : weblogger.getWeblogPageManager().getPages(site)) {
+                choices.add(new AdminDtos.SitePageChoice(page.getSlug(), page.getTitle(), page.getStatus().name()));
+            }
+        }
+        return choices;
+    }
+
     /** One account, as the list shows it: the person page loads it by name instead of searching. */
     @Operation(operationId = "usersGet")
     @GetMapping("/users/{userName}")

@@ -101,6 +101,34 @@ class AdminUsersReadApiTest {
         return JSON.readTree(response.getContentAsString());
     }
 
+    /**
+     * The site space is withheld from every API route that names it, so the Global Config front-door choices
+     * come from this admin route: the site space's pages by slug, title and status; none while no site space exists.
+     */
+    @Test
+    void sitePagesListsTheSiteSpacesPagesAndIsEmptyWithoutASiteSpace() throws Exception {
+        var weblogs = mock(com.wikantik.pressroom.business.WeblogManager.class);
+        var pages = mock(com.wikantik.pressroom.business.WeblogPageManager.class);
+        when(weblogger.getWeblogManager()).thenReturn(weblogs);
+        when(weblogger.getWeblogPageManager()).thenReturn(pages);
+
+        assertEquals(0, getJson("/v1/admin/site-pages", 200).size());
+
+        var site = new com.wikantik.pressroom.pojos.Weblog();
+        when(weblogs.getSiteSpace()).thenReturn(site);
+        var welcome = new com.wikantik.pressroom.pojos.WeblogPage();
+        welcome.setSlug("welcome");
+        welcome.setTitle("Welcome");
+        welcome.setStatus(com.wikantik.pressroom.pojos.WeblogPage.PubStatus.PUBLISHED);
+        when(pages.getPages(site)).thenReturn(List.of(welcome));
+
+        JsonNode body = getJson("/v1/admin/site-pages", 200);
+        assertEquals(1, body.size());
+        assertEquals("welcome", body.get(0).get("slug").asString());
+        assertEquals("Welcome", body.get(0).get("title").asString());
+        assertEquals("PUBLISHED", body.get(0).get("status").asString());
+    }
+
     @Test
     void readOneReturnsTheAccountWithItsWeblogCountAndLastSignIn() throws Exception {
         User carol = account("carol", User.Kind.PERSON);

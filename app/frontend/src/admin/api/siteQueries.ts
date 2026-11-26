@@ -149,22 +149,15 @@ export function useConfig() {
 }
 
 /**
- * The site space's pages (the front-door choices); none when there is no site space. The site space is
- * hidden from the weblog list, so its handle comes from the caller's own weblogs (`siteSpace`, which a site
- * admin's read creates), and nothing is asked of a site space that does not exist (a 404 the browser reports).
+ * The site space's pages (the front-door choices); none while there is no site space. The API withholds the
+ * site space from every route that names it, so a site admin reads them from `GET /v1/admin/site-pages`.
  */
 export function useSitePages() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'sitePages'],
     retry: false,
-    queryFn: async () => {
-      const mine = await call(api.GET('/v1/me/weblogs'));
-      if (mine.siteSpace === undefined) {
-        return [];
-      }
-      return call(api.GET('/v1/weblogs/{handle}/pages', { params: { path: { handle: mine.siteSpace } } }));
-    }
+    queryFn: () => call(api.GET('/v1/admin/site-pages'))
   });
 }
 
