@@ -125,4 +125,15 @@ class AdminSiteThemeApiTest {
 
         assertTrue(heard.contains(t.weblog));
     }
+
+    /** What the interceptor enforces: a signed-in site administrator, and no weblog to name. */
+    @Test
+    void theRouteAsksForASiteAdministratorAndNoWeblog() {
+        AdminSiteThemeApi api = new AdminSiteThemeApi();
+
+        assertTrue(api.isUserRequired());
+        assertFalse(api.isWeblogRequired());
+        assertEquals(List.of(), api.requiredWeblogPermissionActions());
+        assertEquals(List.of(com.wikantik.pressroom.pojos.GlobalPermission.ADMIN), api.requiredGlobalPermissionActions());
+    }
 }

@@ -253,4 +253,11 @@ class EntryActionsApiTest {
         assertEquals("newsletter.sendFailed", problem.get("code").asString());
         assertFalse(problem.get("detail").asString().contains("null"), problem.toString());
     }
+
+    @Test
+    void theRoutesNeedASignedInUserAndNoGlobalPermission() {
+        assertTrue(api.isUserRequired());
+        assertTrue(api.isWeblogRequired());
+        assertEquals(List.of(), api.requiredGlobalPermissionActions());
+    }
 }
