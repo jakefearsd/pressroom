@@ -6,7 +6,6 @@ import { appRoutes } from '../../../src/admin/router';
 import { adminBoot, editorBoot, renderRoutes } from '../support';
 
 const API = 'http://pressroom.test/pressroom/api/v1';
-const LEGACY = 'http://pressroom.test/pressroom/pressroom-ui';
 
 const requests: string[] = [];
 let blog: object;
