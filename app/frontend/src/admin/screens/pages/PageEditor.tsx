@@ -41,7 +41,7 @@ export interface FormState {
 }
 
 const EMPTY: FormState = {
-  title: '', slug: '', status: 'DRAFT', text: '', showInNav: false, navOrder: '0', strand: false, parts: [],
+  title: '', slug: '', status: 'DRAFT', text: '', showInNav: true, navOrder: '0', strand: false, parts: [],
   metaTitle: '', searchDescription: '', canonicalUrl: '', noindex: false, ogImageId: ''
 };
 
@@ -109,6 +109,8 @@ export function PageEditor() {
   const onSaved = ({ page: saved, messages: said, errors: failed }: Saved) => {
     queries.setQueryData(['page', handle, saved.id], saved);
     void queries.invalidateQueries({ queryKey: ['pages', handle] });
+    // A save that changed the text left a revision: the panel lists it without a reload.
+    void queries.invalidateQueries({ queryKey: ['page-revisions', handle, saved.id] });
     setMessages(said);
     setErrors(failed);
   };

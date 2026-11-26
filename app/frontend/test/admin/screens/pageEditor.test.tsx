@@ -28,6 +28,7 @@ describe('PageEditor: a new page', () => {
     await waitFor(() => { expect(document.querySelector('.editor-slug-prefix')).toHaveTextContent('https://blog.example.com/alpha/'); });
     expect(input('page_bean_status')).toHaveValue('DRAFT');
     expect(input('page_bean_navOrder')).toHaveValue(0);
+    expect(screen.getByLabelText('Show in navigation')).toBeChecked();
     expect(document.getElementById('deletePageButton')).toBeNull();
     expect(document.getElementById('pageRevisionsCard')).toBeNull();
     expect(document.querySelector('.editor-preview-link')).toBeNull();
@@ -42,7 +43,7 @@ describe('PageEditor: a new page', () => {
     await screen.findByLabelText('Title');
     await user.type(input('page_bean_title'), 'Contact');
     await user.selectOptions(input('page_bean_status'), 'PUBLISHED');
-    await user.click(screen.getByLabelText('Show in navigation'));
+    expect(screen.getByLabelText('Show in navigation')).toBeChecked();
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/weblogs/alpha/pages/p9'); });
@@ -472,6 +473,22 @@ describe('PageEditor: revisions', () => {
     await screen.findByText('Revisions');
     await user.click(within(document.getElementById('pageRevisionsTable') as HTMLElement).getByRole('button', { name: 'Keep' }));
     expect(await screen.findByText(/at most 10 kept revisions/)).toBeInTheDocument();
+  });
+});
+
+describe('PageEditor: revisions after a save', () => {
+  it('lists the revision a save just made, without a reload', async () => {
+    withPage();
+    let stored = 0;
+    server.use(
+      http.get(`${API}/weblogs/:handle/pages/p2/revisions`, () => HttpResponse.json(stored === 0 ? [] : [
+        { id: 'r1', savedAt: '2026-11-20T10:00:00Z', savedBy: 'jake', title: 'About us', kept: false }])),
+      writing('patch', '/weblogs/alpha/pages/p2', () => { stored = 1; return HttpResponse.json(page({ contentHash: 'h2' })); }));
+    const { user } = await open('/weblogs/alpha/pages/p2');
+    await screen.findByDisplayValue('About us');
+    expect(document.getElementById('pageRevisionsCard')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(document.getElementById('pageRevisionsTable')).not.toBeNull(); });
   });
 });
 

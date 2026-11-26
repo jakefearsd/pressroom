@@ -237,6 +237,8 @@ class PageIT extends PressroomIT {
         $("#page_bean_slug").setValue("terms");
         $("#page_bean_title").setValue("Terms again");
         Editor.setText("Other terms.");
+        // The API refuses the save with a 409 (the address is held): declared, so the health check stays on.
+        BrowserHealth.current().expectRefusal("/pages");
         $("#pageSaveButton").click();
         $("#errors").shouldHave(text("trash"));
         BrowserHealth.current().settle();
