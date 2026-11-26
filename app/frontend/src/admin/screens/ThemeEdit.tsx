@@ -9,7 +9,7 @@ import { Rich, escapeArg } from '../components/Rich';
 import { useApi, useBoot } from '../context';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
-import { useCanAdminister } from '../routes/access';
+import { useSiteAdminOrWeblogAdmin } from '../routes/access';
 
 type WeblogThemes = components['schemas']['WeblogThemes'];
 type Type = 'shared' | 'custom';
@@ -18,25 +18,27 @@ type Type = 'shared' | 'custom';
 export function ThemeEdit() {
   const t = useT();
   const handle = useParams()['handle'];
-  const allowed = useCanAdminister(handle);
-  const themes = useWeblogThemes(handle);
+  const boot = useBoot();
+  const siteSpace = handle !== undefined && handle === boot.site.siteSpaceHandle;
+  const allowed = useSiteAdminOrWeblogAdmin(handle, siteSpace);
+  const themes = useWeblogThemes(handle, siteSpace);
   return (
     <>
       <PageTitle>{t('themeEditor.title')}</PageTitle>
       {allowed === false ? <ProblemBanner errors={[t('api.problem.auth.forbidden')]} /> : null}
       {allowed === true && themes.error !== null ? <ProblemBanner error={themes.error} /> : null}
       {allowed === true && themes.data !== undefined && handle !== undefined
-        ? <ThemeForm key={handle} handle={handle} data={themes.data} /> : null}
+        ? <ThemeForm key={handle} handle={handle} data={themes.data} siteSpace={siteSpace} /> : null}
     </>
   );
 }
 
-function ThemeForm({ handle, data }: { handle: string; data: WeblogThemes }) {
+function ThemeForm({ handle, data, siteSpace }: { handle: string; data: WeblogThemes; siteSpace: boolean }) {
   const t = useT();
   const api = useApi();
   const { contextPath } = useBoot();
   const queries = useQueryClient();
-  const weblog = useWeblog(handle);
+  const weblog = useWeblog(siteSpace ? undefined : handle);
   const originalType: Type = data.custom ? 'custom' : 'shared';
   const originalThemeId = data.custom ? '' : (data.current ?? '');
   const cards = data.themes;
@@ -76,7 +78,11 @@ function ThemeForm({ handle, data }: { handle: string; data: WeblogThemes }) {
           t('themeEditor.setCustomTheme.enabled'), t('themeEditor.setCustomTheme.instructions')
         ];
       }
-      await call(api.PATCH('/v1/weblogs/{handle}', { params: { path: { handle } }, body: { theme: selected } }));
+      if (siteSpace) {
+        await call(api.PUT('/v1/admin/site-theme', { body: { theme: selected } }));
+      } else {
+        await call(api.PATCH('/v1/weblogs/{handle}', { params: { path: { handle } }, body: { theme: selected } }));
+      }
       return selected === data.current && !data.custom ? [] : [t('themeEditor.setTheme.success', nameOf(selected))];
     },
     onSuccess: async (done) => {
