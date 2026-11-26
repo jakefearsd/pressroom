@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { editorBoot } from '../support';
-import { API, handlers, heading, problem, recording, renderPeople, seen, server, fakeServer } from './harnessAdmin';
+import { API, handlers, heading, problem, recording, renderPeople, seen, server, fakeServer } from './harness';
 
 const { http, HttpResponse } = handlers;
 

@@ -5,7 +5,6 @@ import { appRoutes } from '../../../src/admin/router';
 import { adminBoot, editorBoot, renderRoutes } from '../support';
 
 const API = 'http://pressroom.test/pressroom/api/v1';
-const LEGACY = 'http://pressroom.test/pressroom/pressroom-ui';
 
 let home: object;
 let features: object;
@@ -106,7 +105,7 @@ describe('Home (the main menu)', () => {
     await screen.findByText('No weblog yet.');
     expect(document.querySelector('.empty-state-title')).toHaveTextContent('No weblog yet.');
     expect(document.querySelector('.empty-state-body')).toHaveTextContent('A weblog is where your writing lives.');
-    expect(document.getElementById('createWeblogLink')).toHaveAttribute('href', `${LEGACY}/createWeblog.rol`);
+    expect(document.getElementById('createWeblogLink')).toHaveAttribute('href', '/weblogs/new');
     expect(document.getElementById('createWeblogLink')).toHaveClass('btn', 'btn-primary');
     expect(document.querySelector('.subtitle')).toBeNull();
   });
@@ -138,11 +137,11 @@ describe('Home (the main menu)', () => {
 describe('Home sidebar', () => {
   const sidebar = () => document.getElementById('adminSidebar') as HTMLElement;
 
-  it('offers a plain editor their profile only, linked to the legacy page', async () => {
+  it('offers a plain editor their profile only', async () => {
     features = { ...features, groupBlogging: false };
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     const profile = await screen.findByRole('link', { name: 'Your profile' });
-    expect(profile).toHaveAttribute('href', `${LEGACY}/profile.rol`);
+    expect(profile).toHaveAttribute('href', '/profile');
     await screen.findByText('Author Blog');
     expect(sidebar().querySelectorAll('.sidebar-group')).toHaveLength(1);
     expect(sidebar().querySelector('.bi-person')).not.toBeNull();
@@ -151,7 +150,7 @@ describe('Home sidebar', () => {
   it('offers weblog creation when users may create them and group blogging is on, even with weblogs', async () => {
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     const create = await screen.findByRole('link', { name: 'Create a weblog' });
-    expect(create).toHaveAttribute('href', `${LEGACY}/createWeblog.rol`);
+    expect(create).toHaveAttribute('href', '/weblogs/new');
   });
 
   it('offers creation to a user with no weblog without group blogging, but not to one with a weblog', async () => {
@@ -177,7 +176,7 @@ describe('Home sidebar', () => {
   it('gives a site admin the server administration group, and nobody else', async () => {
     renderRoutes(appRoutes, '/', { boot: adminBoot });
     expect(await screen.findByRole('link', { name: 'Server administration' }))
-      .toHaveAttribute('href', `${LEGACY}/admin/globalConfig.rol`);
+      .toHaveAttribute('href', '/admin/config');
     expect(sidebar().querySelector('.bi-wrench')).not.toBeNull();
   });
 

@@ -21,8 +21,8 @@ function authoring(contextPath: string, action: string, handle: string): LinkTar
   return { kind: 'legacy', to: `${contextPath}/pressroom-ui/authoring/${action}.rol?weblog=${encodeURIComponent(handle)}` };
 }
 
-function legacy(contextPath: string, path: string): LinkTarget {
-  return { kind: 'legacy', to: `${contextPath}/pressroom-ui/${path}` };
+function react(to: string): LinkTarget {
+  return { kind: 'react', to };
 }
 
 /** "Admin, Author": the permission actions the member's row holds, humanised (inviteMember.*). */
@@ -106,7 +106,6 @@ function SiteRow({ handle }: { handle: string }) {
 /** The app home, the main menu's replacement: the weblogs the signed-in user can act on. */
 export function Home() {
   const t = useT();
-  const { contextPath } = useBoot();
   const mine = useMyWeblogs();
   const meta = useMeta();
   const weblogs = mine.data?.weblogs;
@@ -118,7 +117,7 @@ export function Home() {
         <div className="empty-state">
           <p className="empty-state-title">{t('empty.weblogs.title')}</p>
           <p className="empty-state-body">{t('empty.weblogs.body')}</p>
-          <AppLink id="createWeblogLink" className="btn btn-primary" target={legacy(contextPath, 'createWeblog.rol')}>
+          <AppLink id="createWeblogLink" className="btn btn-primary" target={react('/weblogs/new')}>
             {t('empty.weblogs.action')}
           </AppLink>
         </div>
@@ -138,7 +137,7 @@ export function Home() {
 /** The page's sidebar (MainMenuSidebar.jsp): profile, create a weblog, and a site admin's settings. */
 export function HomeSidebar() {
   const t = useT();
-  const { contextPath, user } = useBoot();
+  const { user } = useBoot();
   const mine = useMyWeblogs();
   const meta = useMeta();
   const features = meta.data?.features;
@@ -154,11 +153,11 @@ export function HomeSidebar() {
   );
   return (
     <>
-      {group('bi-person', legacy(contextPath, 'profile.rol'), t('yourWebsites.editProfile'), t('yourWebsites.editProfile.desc'))}
-      {creation ? group('bi-plus-lg', legacy(contextPath, 'createWeblog.rol'), t('yourWebsites.createWeblog'),
+      {group('bi-person', react('/profile'), t('yourWebsites.editProfile'), t('yourWebsites.editProfile.desc'))}
+      {creation ? group('bi-plus-lg', react('/weblogs/new'), t('yourWebsites.createWeblog'),
         t('yourWebsites.createWeblog.desc')) : null}
       {user.globalPermission === 'admin'
-        ? group('bi-wrench', legacy(contextPath, 'admin/globalConfig.rol'), t('yourWebsites.globalAdmin'), t('yourWebsites.globalAdmin.desc'))
+        ? group('bi-wrench', react('/admin/config'), t('yourWebsites.globalAdmin'), t('yourWebsites.globalAdmin.desc'))
         : null}
     </>
   );
