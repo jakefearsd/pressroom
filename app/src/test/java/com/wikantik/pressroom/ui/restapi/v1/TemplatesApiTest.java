@@ -252,4 +252,20 @@ class TemplatesApiTest {
 
         assertEquals(List.of("CUSTOM", "PERMALINK", "SEARCH", "TAGSINDEX"), offered);
     }
+
+    /** The column's own guard answers first: a long name is refused as long even when the action is also wrong. */
+    @Test
+    void anOverlongNameIsRefusedBeforeTheActionIsJudged() throws Exception {
+        refused(t.send(post(URL), "{\"name\":\"" + "n".repeat(256) + "\",\"action\":\"BOGUS\"}"), 400,
+                "field.tooLong");
+        verify(weblogs, never()).saveTemplate(any());
+    }
+
+    @Test
+    void anUpdateAnswersWithTheTemplateAsStoredMarkupIncluded() throws Exception {
+        var view = body(t.send(patch(URL + "/tpl-1"), "{\"name\":\"About us\",\"contents\":\"<p>new</p>\"}"));
+
+        assertEquals("About us", view.path("name").asString());
+        assertEquals("<p>new</p>", view.path("contents").asString());
+    }
 }

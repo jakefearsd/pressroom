@@ -212,4 +212,13 @@ class MediaCropApiTest {
         problem(unknownBody, "media.notFound", "No such media file.");
         neverCropped();
     }
+
+    @Test
+    void aOneByOneRectangleIsTheSmallestCropAndIsNotRefusedAsTooSmall() throws Exception {
+        managerCropsTo(1, 1);
+
+        crop("hawk-id", "{\"x\":0,\"y\":0,\"width\":1,\"height\":1}").andExpect(status().isOk());
+
+        verify(files).cropMediaFile(weblog, file, 0, 0, 1, 1);
+    }
 }

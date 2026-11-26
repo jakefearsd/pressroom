@@ -280,4 +280,34 @@ class PageProblemCodesTest {
         oneField(update("{\"strand\":false}"), "strand", "strand.hasParts",
                 "This strand has 2 posts. Take them out first: PUT .../pages/{id}/parts with an empty entries list.");
     }
+
+    @Test
+    void aSlugIsStoredTrimmedNotAsTyped() throws Exception {
+        answer(status().isOk(), patch(P1).content("{\"slug\":\"  new-slug  \"}"));
+
+        assertEquals("new-slug", page.getSlug());
+    }
+
+    @Test
+    void aPreviewWhoseEditsDoNotApplyIsRefusedNotRenderedFromWhatLeftOver() throws Exception {
+        page.setContent("The stored text.");
+
+        JsonNode problem = refused(post(P1 + "/preview")
+                .content("{\"edits\":[{\"find\":\"absent\",\"replace\":\"x\"}]}"));
+
+        assertEquals(List.of("edits[0]=edits.findNotMatched"), fieldCodes(problem));
+    }
+
+    /** The cap is 500 parts: 500 are judged one by one, 501 are refused whole. */
+    @Test
+    void exactlyTheCapOfPartsIsJudgedPartByPartNotRefusedAsTooMany() throws Exception {
+        page.setStrand(true);
+
+        JsonNode problem = putParts("{\"entries\":[" + "\"x\",".repeat(PagesApi.MAX_PARTS - 1) + "\"x\"]}");
+
+        org.junit.jupiter.api.Assertions.assertFalse(fieldCodes(problem).contains("entries=strand.tooMany"),
+                fieldCodes(problem).toString());
+        org.junit.jupiter.api.Assertions.assertTrue(fieldCodes(problem).contains("entries=strand.postUnknown"),
+                fieldCodes(problem).toString());
+    }
 }

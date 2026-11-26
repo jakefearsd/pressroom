@@ -474,4 +474,19 @@ class CommentsApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("status"));
     }
+
+    /** Exactly a page's worth of rows is the last page: only a row past it says there is more. */
+    @Test
+    void aFullLastPageHasNoMore() throws Exception {
+        ReaderComment a = aComment("c1", entry, Status.PENDING, "first");
+        ReaderComment b = aComment("c2", entry, Status.PENDING, "second");
+        when(entries.getWeblogEntry("e1")).thenReturn(entry);
+        when(comments.getComments(weblog, Status.PENDING, entry, 10, 3)).thenReturn(List.of(a, b));
+
+        JsonNode page = json(ok(get(BASE).requestAttr("actionWeblog", weblog)
+                .param("status", "pending").param("entry", "e1").param("limit", "2").param("offset", "10")));
+
+        assertEquals(2, page.get("items").size());
+        assertFalse(page.get("hasMore").asBoolean());
+    }
 }

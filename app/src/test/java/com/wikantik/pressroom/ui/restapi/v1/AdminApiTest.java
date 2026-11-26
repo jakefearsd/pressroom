@@ -1248,4 +1248,31 @@ class AdminApiTest {
         verify(weblogger.getWeblogEntryManager()).sweepRevisions(false);
         assertEquals(5, new tools.jackson.databind.ObjectMapper().readTree(body).get("byCount").asLong());
     }
+
+    /** With no row ever saved a property reads as its declared default, not as nothing. */
+    @Test
+    void anUnsavedPropertyReadsAsItsDeclaredDefault() throws Exception {
+        Weblogger weblogger = mockedConfigWeblogger();
+        when(weblogger.getPropertiesManager().getProperty(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(null);
+        java.util.Map<String, String> declared = new java.util.HashMap<>();
+        for (var configDef : com.wikantik.pressroom.config.WebloggerRuntimeConfig.getRuntimeConfigDefs().getConfigDefs()) {
+            for (var group : configDef.getDisplayGroups()) {
+                for (var def : group.getPropertyDefs()) {
+                    declared.put(def.getName(), def.getDefaultValue());
+                }
+            }
+        }
+        assertTrue(declared.values().stream().anyMatch(v -> v != null && !v.isEmpty()), "some default is set");
+
+        String body = mockMvc(controllerFor(weblogger)).perform(get("/v1/admin/config"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        for (int i = 0; i < json.size(); i++) {
+            String name = json.get(i).get("name").asString();
+            assertEquals(declared.get(name), json.get(i).path("value").isMissingNode()
+                    || json.get(i).get("value").isNull() ? null : json.get(i).get("value").asString(), name);
+        }
+    }
 }

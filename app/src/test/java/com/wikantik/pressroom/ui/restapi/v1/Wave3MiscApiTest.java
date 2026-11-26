@@ -104,4 +104,20 @@ class Wave3MiscApiTest {
             t.detach();
         }
     }
+
+    @Test
+    void eachLocaleOnOfferCarriesItsIdAndItsDisplayName() throws Exception {
+        try (org.mockito.MockedStatic<UIUtils> ui = org.mockito.Mockito.mockStatic(UIUtils.class)) {
+            ui.when(UIUtils::getLocales).thenReturn(List.of(java.util.Locale.GERMANY, java.util.Locale.FRENCH));
+            ui.when(UIUtils::getTimeZones).thenReturn(List.of("UTC"));
+
+            var result = metaMvc().perform(get("/v1/meta/weblog-options").requestAttr("authenticatedUser", new User()));
+
+            JsonNode options = JSON.readTree(result.andReturn().getResponse().getContentAsString());
+            assertEquals(2, options.path("locales").size());
+            assertEquals("de_DE", options.path("locales").path(0).path("id").asString());
+            assertEquals(java.util.Locale.GERMANY.getDisplayName(), options.path("locales").path(0).path("name").asString());
+            assertEquals("fr", options.path("locales").path(1).path("id").asString());
+        }
+    }
 }

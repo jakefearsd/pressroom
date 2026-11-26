@@ -194,4 +194,16 @@ class UserWeblogsApiTest {
     void removeOfANonMemberIs404() throws Exception {
         refused(send(delete(URL + "/myblog"), null), 404, "member.notFound");
     }
+
+    @Test
+    void aChangeIsCommittedAndAnswersWithTheWeblogAndTheLevelNow() throws Exception {
+        when(users.getWeblogPermission(blog, carol)).thenReturn(holds("carol", "post"),
+                holds("carol", "edit_draft"));
+
+        ResultActions result = send(patch(URL + "/myblog"), "{\"permission\":\"EDIT_DRAFT\"}");
+
+        verify(support.tier.weblogger()).flush();
+        assertEquals("myblog", SessionOnlyApiSupport.body(result).path("handle").asString());
+        assertEquals("EDIT_DRAFT", SessionOnlyApiSupport.body(result).path("permission").asString());
+    }
 }

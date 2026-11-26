@@ -298,4 +298,21 @@ class RedirectsApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("target"));
     }
+
+    @Test
+    void aTargetLongerThanItsColumnIsRefusedOnTheTargetField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/redirects")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"source\":\"/old\",\"target\":\"/" + "a".repeat(255) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(body.contains("field.tooLong") && body.contains("target"), body);
+        verify(weblogger.getWeblogRedirectManager(), never()).saveRedirect(any());
+    }
 }
