@@ -5,6 +5,10 @@ import { Home, HomeSidebar } from './screens/Home';
 import { SiteTraffic } from './screens/traffic/SiteTraffic';
 import { WeblogTraffic } from './screens/traffic/WeblogTraffic';
 import { NotFound } from './screens/NotFound';
+import { Categories } from './screens/Categories';
+import { Comments } from './screens/Comments';
+import { Entries } from './screens/Entries';
+import { Trash } from './screens/Trash';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -20,6 +24,10 @@ export const appRoutes: RouteObject[] = [{
     { index: true, element: <Home />, ...scoped('none', HomeSidebar) },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
     { path: 'weblogs/:handle/traffic', element: <WeblogTraffic />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/entries', element: <Entries />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/trash', element: <Trash />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/comments', element: <Comments />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/categories', element: <Categories />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }

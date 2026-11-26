@@ -1616,6 +1616,14 @@
             "type" : "string"
           }
         }, {
+          "name" : "sortBy",
+          "in" : "query",
+          "description" : "PUBLICATION_TIME or UPDATE_TIME: what the list is ordered by, newest first. Without one, the publication time.",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "name" : "offset",
           "in" : "query",
           "required" : false,
@@ -6820,6 +6828,16 @@
             "type" : "string",
             "format" : "date-time",
             "description" : "When the entry was sent as a newsletter; absent until it has been (see POST .../entries/{id}/send-newsletter)."
+          },
+          "trashedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the entry was moved to the trash; absent for an entry that is not in it. Trashed entries are listed only by GET .../entries?status=TRASHED."
+          },
+          "views30d" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Page views over the last 30 days, as the entries page's Views (30d) column. Only a list asked for it with fields=views30d carries it (it costs one analytics read per list), and only when analytics is configured and the count is known: an entry with no recorded views is a known 0 once the blog has a complete snapshot, and absent before that."
           }
         }
       },
@@ -8506,9 +8524,14 @@
           "limits" : {
             "$ref" : "#/components/schemas/Limits",
             "description" : "Sizes the API holds every caller to."
+          },
+          "trashRetentionDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many days a trashed entry is kept before the nightly sweep deletes it for good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request: a site admin can change it."
           }
         },
-        "required" : [ "features", "limits" ]
+        "required" : [ "features", "limits", "trashRetentionDays" ]
       },
       "LocaleChoice" : {
         "type" : "object",

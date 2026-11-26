@@ -457,6 +457,17 @@ class MetaApiTest {
         assertEquals(200, Paging.MAX_LIMIT);
     }
 
+    /** The trash page's retention sentence needs the runtime property, read afresh (an admin can change it). */
+    @Test
+    void trashRetentionDaysFollowsTheRuntimeSettingOnEveryRequest() throws Exception {
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("entry.trash.retention.days")).thenReturn(14);
+            assertEquals(14, meta().get("trashRetentionDays").asInt());
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("entry.trash.retention.days")).thenReturn(-1);
+            assertEquals(-1, meta().get("trashRetentionDays").asInt());
+        }
+    }
+
     // ------------------------------------------------- GET /v1/me/profile
 
     @Test

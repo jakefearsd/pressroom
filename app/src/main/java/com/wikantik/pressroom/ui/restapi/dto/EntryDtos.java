@@ -99,7 +99,23 @@ public final class EntryDtos {
             Boolean pinnedToMain,
             @Schema(description = "When the entry was sent as a newsletter; absent until it has been (see "
                     + "POST .../entries/{id}/send-newsletter).")
-            Instant newsletterSentAt) {
+            Instant newsletterSentAt,
+            @Schema(description = "When the entry was moved to the trash; absent for an entry that is not in it. "
+                    + "Trashed entries are listed only by GET .../entries?status=TRASHED.")
+            Instant trashedAt,
+            @Schema(description = "Page views over the last 30 days, as the entries page's Views (30d) column. Only "
+                    + "a list asked for it with fields=views30d carries it (it costs one analytics read per list), "
+                    + "and only when analytics is configured and the count is known: an entry with no recorded "
+                    + "views is a known 0 once the blog has a complete snapshot, and absent before that.")
+            Long views30d) {
+
+        /** This view with its 30-day views set (null leaves them absent). */
+        public EntryView withViews30d(Long views) {
+            return new EntryView(id, anchor, title, summary, text, contentHash, status, category, tags, pubTime,
+                    updateTime, permalink, metaTitle, searchDescription, canonicalUrl, noindex, featuredImageId,
+                    ogImageId, jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation,
+                    commentsClosed, pinned, strand, locale, pinnedToMain, newsletterSentAt, trashedAt, views);
+        }
     }
 
     public record EntryPage(
@@ -179,7 +195,9 @@ public final class EntryDtos {
                 entry.getStrandPageId(),
                 entry.getLocale(),
                 entry.getPinnedToMain(),
-                instant(entry.getNewsletterSentAt()));
+                instant(entry.getNewsletterSentAt()),
+                instant(entry.getTrashedAt()),
+                null);
     }
 
     /**

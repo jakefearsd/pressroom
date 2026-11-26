@@ -34,6 +34,7 @@ import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.runnable.TrashPurgeTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
@@ -120,7 +121,8 @@ public class MetaApi {
         MetaDtos.Limits limits = new MetaDtos.Limits(ApiBodyLimitFilter.MAX_BODY_BYTES, Paging.MAX_LIMIT,
                 ColumnLimits.ENTRY_TEXT);
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
-                siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits));
+                siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits,
+                WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.RETENTION_PROPERTY)));
     }
 
     /**

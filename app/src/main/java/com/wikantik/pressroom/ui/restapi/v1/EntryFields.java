@@ -88,6 +88,11 @@ final class EntryFields {
         return new EntryFields(Set.copyOf(asked));
     }
 
+    /** Whether {@code name} was asked for by name (the full view does not count: some fields cost a read). */
+    boolean asks(String name) {
+        return shown.contains(name);
+    }
+
     /** The view itself when every field is shown, else the asked fields' non-null values. */
     Object project(EntryDtos.EntryView view) {
         if (shown.isEmpty()) {

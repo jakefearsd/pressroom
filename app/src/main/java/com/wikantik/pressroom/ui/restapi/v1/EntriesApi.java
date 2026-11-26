@@ -20,6 +20,7 @@ import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.Paging;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
+import com.wikantik.pressroom.ui.view.EntryListView;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import com.wikantik.pressroom.ui.restapi.dto.RevisionDtos;
 import com.wikantik.pressroom.ui.view.EntryListQuery;
@@ -77,6 +78,9 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             @RequestParam(value = "startDate", required = false) String startDate,
             @Parameter(description = DATE_DESCRIPTION + "Entries up to the end of this day.")
             @RequestParam(value = "endDate", required = false) String endDate,
+            @Parameter(description = "PUBLICATION_TIME or UPDATE_TIME: what the list is ordered by, newest first. "
+                    + "Without one, the publication time.")
+            @RequestParam(value = "sortBy", required = false) String sortBy,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit,
             @Parameter(description = EntryFields.DESCRIPTION)
@@ -96,6 +100,10 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         Date from = filterDate("startDate", startDate, false);
         Date to = filterDate("endDate", endDate, true);
         EntryFields shown = EntryFields.of(fields);
+        if (!EntryListQuery.offersSort(sortBy)) {
+            throw ApiException.problemOnField("sortBy", ProblemCode.PARAMETER_INVALID_VALUE, "sortBy");
+        }
+        var sort = EntryListQuery.pageSort(sortBy);
 
         Weblog weblog = requireActionWeblog(request);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
@@ -104,11 +112,15 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         // treats one as no filter. A blank one is no filter on both.
         EntryListQuery.EntryListPage found = EntryListQuery.run(weblogger.getWeblogEntryManager(), weblog,
                 new EntryListQuery.Filters(status == null || status.isBlank() ? null
-                        : EntryDtos.parseFilterStatus(status), category, tags, text, locale, from, to, null),
+                        : EntryDtos.parseFilterStatus(status), category, tags, text, locale, from, to, sort),
                 offset, boundedLimit);
 
+        // The entries page's Views (30d) column: one batch read per list, and only for a caller who asked.
+        EntryListView.Views views = shown.asks("views30d") && !found.items().isEmpty()
+                ? EntryListView.Views.read(weblogger.getAnalyticsManager(), weblog.getId(), true)
+                : EntryListView.Views.none();
         List<EntryDtos.EntryView> items = found.items().stream()
-                .map(entry -> EntryDtos.toView(entry, permalink(entry)))
+                .map(entry -> EntryDtos.toView(entry, permalink(entry)).withViews30d(views.of(entry.getId())))
                 .toList();
         return shown.project(new EntryDtos.EntryPage(items, found.offset(), found.limit(), found.hasMore()));
     }

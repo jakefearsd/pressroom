@@ -90,6 +90,17 @@ public record EntryListView(List<WeblogEntry> entries, List<Row> rows, int pageN
      */
     public record Views(boolean configured, Map<String, Long> views, boolean zeroIsKnown) {
 
+        /**
+         * One entry's 30-day views as a number: its recorded figure, else a known zero, else null (unknown:
+         * the entries page prints a dash).
+         */
+        public Long of(String entryId) {
+            if (views.containsKey(entryId)) {
+                return views.get(entryId);
+            }
+            return configured && zeroIsKnown ? Long.valueOf(0) : null;
+        }
+
         /** Analytics is not set up: no column. */
         public static Views none() {
             return new Views(false, Map.of(), false);
