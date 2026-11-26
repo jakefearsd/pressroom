@@ -17,6 +17,7 @@ import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.dto.CategoryDtos;
@@ -59,9 +60,10 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         }
         refuse(CategoryRules.nameShapeProblem(name));
         refuse(CategoryRules.descriptionProblem(body.description()));
+        String image = body.image() == null ? null : imageOf(body.image());
         refuse(CategoryRules.nameTaken(weblog, name, null, weblogger.getWeblogEntryManager()));
 
-        WeblogCategory category = new WeblogCategory(weblog, name, body.description(), null);
+        WeblogCategory category = new WeblogCategory(weblog, name, body.description(), image);
         try {
             weblogger.getWeblogEntryManager().saveWeblogCategory(category);
         } catch (DuplicateCategoryNameException e) {
@@ -71,6 +73,19 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         weblogger.flush();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDtos.toView(category, 0));
+    }
+
+    /**
+     * The image to store: null for a blank (removing it is a blank, as on the form), else the trimmed URL once it
+     * fits the column and is an absolute http(s) URL, or a 400 on {@code image}.
+     */
+    private static String imageOf(String raw) {
+        String image = StringUtils.trimToNull(raw);
+        ColumnLimits.requireMaxLength("image", image, ColumnLimits.CATEGORY_IMAGE);
+        if (image != null && !CategoryRules.isValidImageUrl(image)) {
+            throw ApiException.problemOnField("image", ProblemCode.CATEGORY_IMAGE_INVALID);
+        }
+        return image;
     }
 
     /** Raises {@code violation}, when there is one, on its field. */
@@ -91,6 +106,8 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             throw ApiException.problem(ProblemCode.CATEGORY_NOT_FOUND);
         }
 
+        // Checked before anything is applied to the managed category: a refused write changes nothing.
+        String image = body.image() == null ? null : imageOf(body.image());
         if (body.name() != null) {
             String name = body.name().trim();
             if (name.isBlank()) {
@@ -107,6 +124,9 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         if (body.description() != null) {
             refuse(CategoryRules.descriptionProblem(body.description()));
             category.setDescription(body.description());
+        }
+        if (body.image() != null) {
+            category.setImage(image);
         }
 
         weblogger.getWeblogEntryManager().saveWeblogCategory(category);

@@ -42,6 +42,8 @@ public final class ColumnWidths {
     public static final int CATEGORY_NAME = 255;
     /** {@code weblogcategory.description}. */
     public static final int CATEGORY_DESCRIPTION = 255;
+    /** {@code weblogcategory.image}. */
+    public static final int CATEGORY_IMAGE = 255;
     /** {@code pressroom_mediafiledir.name}. */
     public static final int DIRECTORY_NAME = 255;
     /** {@code pressroom_mediafile.name}. */
