@@ -113,6 +113,7 @@ class AdminActionsApiTest {
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals("regenerate-renditions", json.get("action").asString());
         assertEquals("myblog", json.get("weblog").asString());
+        assertEquals(3, json.get("count").asInt(), "the Maintenance screen says how many images were processed");
     }
 
     /**

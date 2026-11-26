@@ -167,6 +167,7 @@ public final class McpToolCatalog {
                     + "they are managed in the admin UI.", false,
                     action("list", "List users and their roles; filter by q (name, email) and kind (people, agents, "
                             + "all).", "GET /v1/admin/users"),
+                    action("get", "One account by user name.", "GET /v1/admin/users/{userName}"),
                     action("create", "Create an account; it is emailed a link to set its password.",
                             "POST /v1/admin/users"),
                     action("update", "Change a non-admin account's screen name, full name, locale, time zone, "

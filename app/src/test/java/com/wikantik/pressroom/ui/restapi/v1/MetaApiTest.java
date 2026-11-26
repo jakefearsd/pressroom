@@ -377,7 +377,7 @@ class MetaApiTest {
             assertEquals("0.16.0", body.get("version").asString());
             assertEquals("https://blog.example.com", body.get("siteUrl").asString());
             assertEquals(List.of("customThemes", "groupBlogging", "userWeblogCreation", "uploads", "readerSignIn",
-                    "analytics"), names(body.get("features")));
+                    "analytics", "searchEnabled", "mailConfigured"), names(body.get("features")));
             assertEquals(List.of("maxBodyBytes", "maxListLimit", "entryTextMaxChars"), names(body.get("limits")));
         }
     }
@@ -403,6 +403,29 @@ class MetaApiTest {
                 rt.when(() -> WebloggerRuntimeConfig.getBooleanProperty(setting)).thenReturn(false);
                 assertFalse(meta().get("features").get(members[i]).asBoolean(), setting + " off");
             }
+        }
+    }
+
+    /** The Maintenance screen hides "Rebuild index" when the site runs without search (the JSP's rc:getBooleanProp). */
+    @Test
+    void searchEnabledFollowsItsSetting() throws Exception {
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getBooleanProperty("search.enabled")).thenReturn(true);
+            assertTrue(meta().get("features").get("searchEnabled").asBoolean());
+            rt.when(() -> WebloggerRuntimeConfig.getBooleanProperty("search.enabled")).thenReturn(false);
+            assertFalse(meta().get("features").get("searchEnabled").asBoolean());
+        }
+    }
+
+    /** The create-user form offers the emailed link only when the server can send it (PasswordLinkMailer.isReady). */
+    @Test
+    void mailConfiguredFollowsThePasswordLinkMailer() throws Exception {
+        try (MockedStatic<com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer> mailer =
+                     Mockito.mockStatic(com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer.class)) {
+            mailer.when(com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer::isReady).thenReturn(true);
+            assertTrue(meta().get("features").get("mailConfigured").asBoolean());
+            mailer.when(com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer::isReady).thenReturn(false);
+            assertFalse(meta().get("features").get("mailConfigured").asBoolean());
         }
     }
 
@@ -494,6 +517,15 @@ class MetaApiTest {
 
         user.setKind(User.Kind.AGENT);
         assertEquals("AGENT", profile().get("kind").asString());
+    }
+
+    /** The Profile page hides the password fields for a single-sign-on account (the JSP's ssoBound). */
+    @Test
+    void profileSaysWhetherTheAccountIsSingleSignOnBound() throws Exception {
+        assertFalse(profile().get("sso").asBoolean());
+
+        user.setSsoSubject("google|123");
+        assertTrue(profile().get("sso").asBoolean());
     }
 
     private JsonNode profile() throws Exception {
@@ -608,7 +640,7 @@ class MetaApiTest {
     /** A field added to the profile later is a deliberate change, and is never a credential. */
     @Test
     void theProfileHoldsExactlyTheseMembersAndNoCredential() {
-        assertEquals(List.of("userName", "screenName", "fullName", "emailAddress", "locale", "timeZone", "kind"),
+        assertEquals(List.of("userName", "screenName", "fullName", "emailAddress", "locale", "timeZone", "kind", "sso"),
                 Arrays.stream(MetaDtos.ProfileView.class.getRecordComponents())
                         .map(java.lang.reflect.RecordComponent::getName).toList());
     }

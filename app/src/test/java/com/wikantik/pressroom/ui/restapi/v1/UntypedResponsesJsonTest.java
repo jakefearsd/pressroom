@@ -203,7 +203,8 @@ class UntypedResponsesJsonTest {
     void theMaintenanceActions() throws Exception {
         Weblog weblog = weblog("myblog", "My blog");
         for (String action : List.of("flush-cache", "rebuild-index", "regenerate-renditions")) {
-            assertSameJson("{\"action\":\"" + action + "\",\"weblog\":\"myblog\"}",
+            String count = "regenerate-renditions".equals(action) ? ",\"count\":0" : "";
+            assertSameJson("{\"action\":\"" + action + "\",\"weblog\":\"myblog\"" + count + "}",
                     body(post("/v1/admin/weblogs/myblog/actions/" + action).requestAttr("actionWeblog", weblog),
                             202));
         }

@@ -4170,6 +4170,40 @@
       }
     },
     "/v1/admin/users/{userName}" : {
+      "get" : {
+        "tags" : [ "Site administration" ],
+        "operationId" : "usersGet",
+        "parameters" : [ {
+          "name" : "userName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch" : {
         "tags" : [ "Site administration" ],
         "operationId" : "usersUpdate",
@@ -7127,6 +7161,11 @@
           "weblog" : {
             "type" : "string",
             "description" : "The handle of the weblog it was started on."
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "regenerate-renditions only: how many media files were processed."
           }
         },
         "required" : [ "action", "weblog" ]
@@ -7165,6 +7204,10 @@
           "administrator" : {
             "type" : "boolean",
             "description" : "Session only (SA-18). Give the new account the site administrator role."
+          },
+          "enabled" : {
+            "type" : "boolean",
+            "description" : "Whether the account may sign in at once. Defaults to true with a typed password and false when a set-password link is sent (the link enables it)."
           }
         }
       },
@@ -7210,8 +7253,19 @@
           "writer" : {
             "type" : "boolean",
             "description" : "Whether the account holds the editor (author) role. Settable only on a single-sign-on account."
+          },
+          "weblogCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many weblogs the account holds a permission on."
+          },
+          "lastActive" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "A person's last sign-in; for an agent, its newest token use. Absent when it never was."
           }
-        }
+        },
+        "required" : [ "weblogCount" ]
       },
       "UserWeblogGrant" : {
         "type" : "object",
@@ -7867,9 +7921,13 @@
           "kind" : {
             "type" : "string",
             "description" : "PERSON or AGENT: whether the account is a person or an agent."
+          },
+          "sso" : {
+            "type" : "boolean",
+            "description" : "True when the account signs in through single sign-on and so has no password to change."
           }
         },
-        "required" : [ "kind", "userName" ]
+        "required" : [ "kind", "sso", "userName" ]
       },
       "UserPatch" : {
         "type" : "object",
@@ -8603,9 +8661,17 @@
           "analytics" : {
             "type" : "boolean",
             "description" : "True when an analytics service is configured; false is what makes a traffic read answer NOT_CONFIGURED."
+          },
+          "searchEnabled" : {
+            "type" : "boolean",
+            "description" : "True when the site's search index is switched on (search.enabled); false hides the Maintenance screen's Rebuild index."
+          },
+          "mailConfigured" : {
+            "type" : "boolean",
+            "description" : "True when the server can email a set-password link: a mail transport and a site email address are configured."
           }
         },
-        "required" : [ "analytics", "customThemes", "groupBlogging", "readerSignIn", "uploads", "userWeblogCreation" ]
+        "required" : [ "analytics", "customThemes", "groupBlogging", "mailConfigured", "readerSignIn", "searchEnabled", "uploads", "userWeblogCreation" ]
       },
       "Limits" : {
         "type" : "object",

@@ -59,7 +59,7 @@ public class AdminActionsApi extends BaseApiController implements UISecurityEnfo
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         new MaintenanceService(weblogger).flushCache(weblog);
-        return accepted("flush-cache", weblog);
+        return accepted("flush-cache", weblog, null);
     }
 
     @Operation(operationId = "maintenanceRebuildIndex")
@@ -69,7 +69,7 @@ public class AdminActionsApi extends BaseApiController implements UISecurityEnfo
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         new MaintenanceService(weblogger).rebuildIndex(weblog);
-        return accepted("rebuild-index", weblog);
+        return accepted("rebuild-index", weblog, null);
     }
 
     @Operation(operationId = "maintenanceRegenerateRenditions")
@@ -78,13 +78,14 @@ public class AdminActionsApi extends BaseApiController implements UISecurityEnfo
     public ResponseEntity<AdminDtos.MaintenanceAccepted> regenerateRenditions(HttpServletRequest request)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        new MaintenanceService(weblogger).regenerateRenditions(weblog);
-        return accepted("regenerate-renditions", weblog);
+        int count = new MaintenanceService(weblogger).regenerateRenditions(weblog);
+        return accepted("regenerate-renditions", weblog, count);
     }
 
-    private static ResponseEntity<AdminDtos.MaintenanceAccepted> accepted(String action, Weblog weblog) {
+    private static ResponseEntity<AdminDtos.MaintenanceAccepted> accepted(String action, Weblog weblog,
+                                                                                 Integer count) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(new AdminDtos.MaintenanceAccepted(action, weblog.getHandle()));
+                .body(new AdminDtos.MaintenanceAccepted(action, weblog.getHandle(), count));
     }
 
     @Override

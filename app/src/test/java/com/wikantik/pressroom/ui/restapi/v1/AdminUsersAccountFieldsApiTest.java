@@ -80,6 +80,7 @@ class AdminUsersAccountFieldsApiTest {
     private static Weblogger weblogger() {
         Weblogger weblogger = mock(Weblogger.class);
         when(weblogger.getUserManager()).thenReturn(mock(UserManager.class));
+        when(weblogger.getApiTokenManager()).thenReturn(mock(com.wikantik.pressroom.business.ApiTokenManager.class));
         return weblogger;
     }
 

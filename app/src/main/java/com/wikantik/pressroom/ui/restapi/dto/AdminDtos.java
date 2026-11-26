@@ -76,7 +76,13 @@ public final class AdminDtos {
                             String timeZone,
                             @Schema(description = "Whether the account holds the editor (author) role. Settable "
                                     + "only on a single-sign-on account.")
-                            boolean writer) {
+                            boolean writer,
+                            @Schema(description = "How many weblogs the account holds a permission on.",
+                                    requiredMode = Schema.RequiredMode.REQUIRED)
+                            int weblogCount,
+                            @Schema(description = "A person's last sign-in; for an agent, its newest token use. "
+                                    + "Absent when it never was.")
+                            Instant lastActive) {
     }
 
     /** One weblog an account belongs to, and what it may do there. */
@@ -125,7 +131,10 @@ public final class AdminDtos {
                     + "instead of a set-password link; the account is then created enabled and no mail is needed.")
             String password,
             @Schema(description = "Session only (SA-18). Give the new account the site administrator role.")
-            Boolean administrator) {
+            Boolean administrator,
+            @Schema(description = "Whether the account may sign in at once. Defaults to true with a typed "
+                    + "password and false when a set-password link is sent (the link enables it).")
+            Boolean enabled) {
     }
 
     /**
@@ -165,13 +174,16 @@ public final class AdminDtos {
      * action was started, on which weblog. It was a {@code Map}; the record
      * fixes the member order as {@code action}, {@code weblog}.
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record MaintenanceAccepted(
             @Schema(description = "flush-cache, rebuild-index or regenerate-renditions: the action started.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
             String action,
             @Schema(description = "The handle of the weblog it was started on.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            String weblog) {
+            String weblog,
+            @Schema(description = "regenerate-renditions only: how many media files were processed.")
+            Integer count) {
     }
 
     /** Front-page discovery, as the Maintenance screen shows it. */
@@ -406,10 +418,11 @@ public final class AdminDtos {
                 status.lastRead(), status.lastReadError());
     }
 
-    public static UserView toView(User user, List<String> roles) {
+    public static UserView toView(User user, List<String> roles, int weblogCount, Instant lastActive) {
         return new UserView(user.getUserName(), user.getScreenName(), user.getEmailAddress(),
                 Boolean.TRUE.equals(user.getEnabled()), roles, user.isSsoBound(), user.getKind().name(),
-                user.getFullName(), user.getLocale(), user.getTimeZone(), roles.contains(AccountRoles.EDITOR));
+                user.getFullName(), user.getLocale(), user.getTimeZone(), roles.contains(AccountRoles.EDITOR),
+                weblogCount, lastActive);
     }
 
     public static WeblogView toView(Weblog weblog, String absoluteUrl) {

@@ -53,6 +53,8 @@ import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import java.time.Instant;
+import com.wikantik.pressroom.pojos.ApiToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -137,7 +139,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         }
         List<AdminDtos.UserView> views = new ArrayList<>();
         for (User user : rows.subList(0, Math.min(rows.size(), boundedLimit))) {
-            views.add(AdminDtos.toView(user, roles(user)));
+            views.add(view(user));
         }
         return new AdminDtos.UserPage(views, offset, boundedLimit, rows.size() > boundedLimit);
     }
@@ -187,14 +189,15 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         }
 
         if (typedPassword) {
-            // Session only: the person screen's typed-password create, enabled at once.
-            user.setEnabled(Boolean.TRUE);
+            // Session only: the person screen's typed-password create, enabled at once unless the form's
+            // Enabled box was cleared.
+            user.setEnabled(body.enabled() == null || body.enabled());
             user.resetPassword(body.password());
         } else {
             // Never accepted from a token -- see class javadoc. A random value nobody is ever told, matching
             // CreateUserBean's own blank-password branch; the account is unusable until the emailed link
             // sets a real one.
-            user.setEnabled(Boolean.FALSE);
+            user.setEnabled(Boolean.TRUE.equals(body.enabled()));
             user.resetPassword(TokenGenerator.newToken());
         }
 
@@ -209,7 +212,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     "account=" + user.getUserName());
         }
         if (typedPassword) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
+            return ResponseEntity.status(HttpStatus.CREATED).body(view(user));
         }
 
         try {
@@ -230,7 +233,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             throw ApiException.problem(ProblemCode.USER_PASSWORD_LINK_NOT_SENT, e);
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(AdminDtos.toView(user, roles(user)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(view(user));
     }
 
     /**
@@ -353,7 +356,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (!Objects.equals(screenNameBefore, user.getScreenName())) {
             commentService.expireWhereShown(user);
         }
-        return AdminDtos.toView(user, roles(user));
+        return view(user);
     }
 
     /** Whether the account holds the site administrator role; a lookup that fails throws, so the caller refuses. */
@@ -444,6 +447,33 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             items.add(new MetaDtos.WeblogMembership(row.handle(), row.name(), row.level()));
         }
         return new AdminDtos.UserWeblogsPage(items);
+    }
+
+    /** One account, as the list shows it: the person page loads it by name instead of searching. */
+    @Operation(operationId = "usersGet")
+    @GetMapping("/users/{userName}")
+    public AdminDtos.UserView getUser(@PathVariable("userName") String userName) throws WebloggerException {
+        return view(requireUser(userName));
+    }
+
+    /** The view with what the list prints per row: the weblog count and the last sign-in (an agent's last token use). */
+    private AdminDtos.UserView view(User user) throws WebloggerException {
+        UserManager mgr = weblogger.getUserManager();
+        return AdminDtos.toView(user, roles(user), mgr.getWeblogPermissions(user).size(), lastActive(user));
+    }
+
+    private Instant lastActive(User user) throws WebloggerException {
+        if (!user.isAgent()) {
+            return user.getLastLogin() == null ? null : user.getLastLogin().toInstant();
+        }
+        Instant newest = null;
+        for (ApiToken token : weblogger.getApiTokenManager().getTokens(user)) {
+            Instant used = token.getLastUsedAt() == null ? null : token.getLastUsedAt().toInstant();
+            if (used != null && (newest == null || used.isAfter(newest))) {
+                newest = used;
+            }
+        }
+        return newest;
     }
 
     private User requireUser(String userName) throws WebloggerException {
