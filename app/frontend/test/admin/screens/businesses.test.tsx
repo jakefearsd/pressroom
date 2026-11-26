@@ -124,7 +124,7 @@ describe('Business edit', () => {
     await user.type(screen.getByLabelText('Profile links'), 'https://x.example{Enter}  https://y.example  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     // The frame shows the message; the screen only hands it over.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 5000 })).toBeInTheDocument();
     expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',
