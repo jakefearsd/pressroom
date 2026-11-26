@@ -322,3 +322,14 @@ last), and `confirmDialog` (the React screens' modal replaces `Selenide.confirm(
 back to a single `insertText` on the contenteditable where the JSP editors' globals are absent. The edit-modal
 iframe dances (`onClickEdit`, `reenterFrameAfterPost`) are gone: the edit screen is a page. `MediaCropIT`'s
 hidden-lightbox race has no counterpart (a `ResizeObserver` seeds the selection whenever the canvas gets a size).
+
+## Interaction ITs added by the 2026-11-26 browser pass
+
+`MembersIT` (grant, change, remove a member, each checked as that person; an Author is answered 403 by the
+Members API, a stranger 404; nobody lowers their own role), `StylesheetIT` (copy, edit, save, the public
+blog serves it, delete), `SetupIT` (front-page weblog chosen on Setup becomes `/`; holds `GLOBAL_CONFIG`
+for WRITE and restores through Global Config, the Setup select having no empty option). Extended:
+`TrashIT` (empty trash, cancel, empty state), `CategoryIT` (validation, duplicate, last category, moved
+entry's category), `CommentsIT` (bulk approve/hide/delete), `ContactFormIT` (selective inbox delete, long
+message), `AgentAccountsIT` (create refusals, edits persist, cancelled disable). Each of these that
+creates a weblog holds `GLOBAL_CONFIG` for READ and removes the weblog in a `finally`.

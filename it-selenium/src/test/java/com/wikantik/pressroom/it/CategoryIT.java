@@ -22,14 +22,22 @@ import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
+import static com.codeborne.selenide.Condition.disabled;
+import static com.codeborne.selenide.Condition.disappear;
+import static com.codeborne.selenide.Condition.enabled;
+import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.exactValue;
 import static com.codeborne.selenide.Condition.value;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>So these tests are written against control names rather than ids: names
  * are what the server binds and cannot drift without the handler noticing.
  */
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class CategoryIT extends PressroomIT {
 
     private static final String CATEGORIES = AdminApp.categories(WEBLOG_HANDLE);
@@ -94,6 +103,7 @@ class CategoryIT extends PressroomIT {
         loginAsAdmin();
         addCategory(doomed, "Holds an entry");
         publishEntryInCategory(title, "Body " + suffix, doomed);
+        String entryId = AdminApp.savedEntryId();
 
         // General is the seeded category; it is what the entry must land in.
         deleteCategory(doomed, "General");
@@ -104,6 +114,142 @@ class CategoryIT extends PressroomIT {
         AdminApp.row(title).should(exist);
         assertTrue($$("table.pressroomtable").first().getText().contains(title),
                 "the entry must survive its category being deleted");
+        // ...and it is now IN the chosen category, not left pointing at the deleted one.
+        openPath(AdminApp.entry(WEBLOG_HANDLE, entryId));
+        AdminApp.awaitEditor();
+        assertTrue($("select[name='bean.categoryId']").getSelectedOption().getText().contains("General"),
+                "the moved entry did not land in the chosen category");
+        logout();
+    }
+
+    /**
+     * The add dialog says what is wrong before anything is sent: an empty name and a malformed image address
+     * leave Save disabled with the reason beside it; the server's refusal of a duplicate name is shown in the
+     * dialog, which stays open; and Cancel adds nothing.
+     */
+    @Test
+    void theAddDialogRefusesBadInputAndCancelAddsNothing() {
+        String suffix = nonce();
+        String name = "ITCatBad" + suffix;
+
+        loginAsAdmin();
+        openPath(CATEGORIES);
+        $("#addCategoryButton").should(visible).click();
+        $(EDIT_MODAL).shouldBe(visible);
+        String save = EDIT_MODAL + " .modal-footer .btn-primary";
+
+        // empty name
+        $(save).shouldBe(disabled);
+        $("#feedback-area-edit").shouldHave(text("Name is required."));
+
+        // a name, but a malformed image address
+        $(EDIT_MODAL + " input[name='bean.name']").setValue(name);
+        $(EDIT_MODAL + " input[name='bean.image']").setValue("not a url");
+        $(save).shouldBe(disabled);
+        $("#feedback-area-edit").shouldHave(text("Image URL is invalid"));
+        $(EDIT_MODAL + " input[name='bean.image']").setValue("https://example.com/cat-" + suffix + ".png");
+        $(save).shouldBe(enabled);
+
+        // Cancel adds nothing
+        $(EDIT_MODAL + " .modal-footer .btn-secondary").click();
+        $(EDIT_MODAL).should(disappear);
+        assertFalse(categoryNames().contains(name), "Cancel added the category anyway: " + categoryNames());
+
+        // a duplicate of the seeded category is refused by the server, in the dialog
+        BrowserHealth.current().expectRefusal("/weblogs/" + WEBLOG_HANDLE + "/categories");
+        $("#addCategoryButton").click();
+        $(EDIT_MODAL + " input[name='bean.name']").setValue("General");
+        $(save).click();
+        $("#feedback-area-edit").shouldHave(text("already exists"));
+        $(EDIT_MODAL).shouldBe(visible);
+        $(EDIT_MODAL + " .modal-footer .btn-secondary").click();
+        $(EDIT_MODAL).should(disappear);
+        assertEquals(1, java.util.Arrays.stream(categoryNames().split(",")).filter("General"::equals).count(),
+                "a duplicate General was created: " + categoryNames());
+        logout();
+    }
+
+    /**
+     * Editing keeps what the dialog showed: description and image come back prefilled, a change to them is
+     * saved and survives a reload, and the screen says what happened (created, updated, deleted).
+     */
+    @Test
+    void anEditedCategoryKeepsItsDescriptionAndImageAndTheScreenSaysWhatHappened() {
+        String suffix = nonce();
+        String name = "ITCatEdit" + suffix;
+        String image = "https://example.com/cat-" + suffix + ".png";
+
+        loginAsAdmin();
+        openPath(CATEGORIES);
+        $("#addCategoryButton").should(visible).click();
+        $(EDIT_MODAL + " input[name='bean.name']").setValue(name);
+        $(EDIT_MODAL + " input[name='bean.description']").setValue("First description");
+        $(EDIT_MODAL + " input[name='bean.image']").setValue(image);
+        saveCategoryModal();
+        $("#messages").shouldHave(text("Category \"" + name + "\" created"));
+
+        // reload: the row shows the description, and the dialog is prefilled from the server
+        openPath(CATEGORIES);
+        $(rowFor(name)).shouldHave(text("First description"));
+        openEditModalFor(name);
+        $(EDIT_MODAL + " input[name='bean.description']").shouldHave(value("First description"));
+        $(EDIT_MODAL + " input[name='bean.image']").shouldHave(value(image));
+
+        $(EDIT_MODAL + " input[name='bean.description']").setValue("Second description");
+        saveCategoryModal();
+        $("#messages").shouldHave(text("Category \"" + name + "\" updated"));
+        openPath(CATEGORIES);
+        $(rowFor(name)).shouldHave(text("Second description"));
+        openEditModalFor(name);
+        $(EDIT_MODAL + " input[name='bean.image']").shouldHave(value(image));
+        $(EDIT_MODAL + " .modal-footer .btn-secondary").click();
+        $(EDIT_MODAL).should(disappear);
+
+        // an unused category asks no destination and says it is deleted
+        openDeleteModalFor(name);
+        $("#category-empty").should(exist);
+        AdminApp.confirmDialog();
+        $("#messages").shouldHave(text("Category \"" + name + "\" deleted"));
+        $(rowFor(name)).shouldNot(exist);
+        logout();
+    }
+
+    /**
+     * A weblog always keeps one category: with only one, the list offers no delete; with two it offers both.
+     * On a weblog of its own, since the shared one has other classes' categories.
+     */
+    @Test
+    void theLastCategoryOfAWeblogCannotBeDeleted() {
+        String suffix = nonce();
+        String handle = "catlastit" + suffix;
+        String second = "ITCatSecond" + suffix;
+        String screen = AdminApp.categories(handle);
+
+        loginAsAdmin();
+        createWeblogOnTheReactScreen(handle, "Categories " + suffix, "journal");
+        try {
+            openPath(screen);
+            $("table#category-table tbody tr").should(exist);
+            // A new weblog starts with a few categories: remove them down to one.
+            while ($$("table#category-table tbody tr").size() > 1) {
+                int before = $$("table#category-table tbody tr").size();
+                $$("button.category-delete-btn").first().click();
+                AdminApp.confirmDialog();
+                $$("table#category-table tbody tr").shouldHave(com.codeborne.selenide.CollectionCondition.size(before - 1));
+            }
+            assertTrue($$("button.category-delete-btn").isEmpty(), "the only category offers a delete");
+
+            $("#addCategoryButton").click();
+            $(EDIT_MODAL + " input[name='bean.name']").setValue(second);
+            saveCategoryModal();
+            $(rowFor(second)).should(exist);
+            assertEquals(2, $$("button.category-delete-btn").size(), "with two categories either may go");
+        } finally {
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+            $("button.btn-danger").should(visible).click();
+            $("h2.mm_weblog_name").should(exist);
+            $$("h2.mm_weblog_name .data").findBy(exactText(handle)).shouldNot(exist);
+        }
         logout();
     }
 

@@ -28,14 +28,18 @@ import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.$$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The Trash screen end to end: an entry deleted from the Entries screen
@@ -59,6 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * takes it out of Trash (it is a normal draft again), so this deletes it from
  * the Entries screen once more before exercising the delete-forever button.
  */
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class TrashIT extends PressroomIT {
 
     @BeforeEach
@@ -113,11 +118,84 @@ class TrashIT extends PressroomIT {
         logout();
     }
 
+    /**
+     * Cancelling a confirmation destroys nothing, the empty trash invites, and "Empty trash" removes every
+     * trashed entry for good while a live entry is untouched. Runs on a weblog of its own: emptying the
+     * trash of the shared one would wipe other classes' fixtures.
+     */
+    @Test
+    void emptyingTheTrashRemovesEveryTrashedEntryAndCancelKeepsThem() {
+        String suffix = Long.toString(System.nanoTime(), 36);
+        String handle = "trashit" + suffix;
+        String keep = "IT Trash keep " + suffix;
+        String gone1 = "IT Trash gone one " + suffix;
+        String gone2 = "IT Trash gone two " + suffix;
+
+        createWeblogOnTheReactScreen(handle, "Trash " + suffix, "journal");
+        try {
+            // --- nothing trashed yet: the invitation, not a table
+            openPath(AdminApp.trash(handle));
+            $("#trash-list-marker .empty-state").shouldHave(text("Nothing in the Trash."));
+            assertTrue($$("#trash-list-marker table").isEmpty(), "an empty trash must not render a table");
+
+            String keepId = publishEntry(handle, keep);
+            String keepLink = permalinkOf(handle, keepId);
+            publishEntry(handle, gone1);
+            publishEntry(handle, gone2);
+            deleteFromEntriesList(handle, gone1);
+            deleteFromEntriesList(handle, gone2);
+
+            openPath(AdminApp.trash(handle));
+            AdminApp.row(gone1).should(exist);
+            AdminApp.row(gone2).should(exist);
+            assertEquals(2, $$("#trash-list-marker table tbody tr").size(),
+                    "only the two deleted entries are in the trash, not the live one");
+
+            // --- cancelling "Delete forever" and "Empty trash" keeps everything
+            AdminApp.row(gone1).$(Selectors.byText("Delete forever")).click();
+            AdminApp.dialog().shouldBe(visible);
+            $("[role='dialog'] .modal-footer .btn-secondary").click();
+            AdminApp.dialog().should(disappear);
+            AdminApp.row(gone1).should(exist);
+
+            $$("button.btn-danger").findBy(text("Empty trash")).click();
+            AdminApp.dialog().shouldBe(visible).shouldHave(text("Permanently delete 2 entries?"));
+            $("[role='dialog'] .modal-footer .btn-secondary").click();
+            AdminApp.dialog().should(disappear);
+            AdminApp.row(gone1).should(exist);
+            AdminApp.row(gone2).should(exist);
+
+            // --- confirming empties it, and says how many
+            $$("button.btn-danger").findBy(text("Empty trash")).click();
+            AdminApp.confirmDialog();
+            $("#messages").shouldHave(text("Entries permanently deleted: 2."));
+            $("#trash-list-marker .empty-state").shouldHave(text("Nothing in the Trash."));
+            openPath(AdminApp.trash(handle));
+            $("#trash-list-marker .empty-state").shouldHave(text("Nothing in the Trash."));
+
+            // --- the live entry is untouched
+            assertEquals(200, statusOf(keepLink), "emptying the trash took a live entry down");
+            openPath(AdminApp.entries(handle));
+            AdminApp.row(keep).should(exist);
+        } finally {
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+            $("button.btn-danger").should(visible).click();
+            $("h2.mm_weblog_name").should(exist);
+            $$("h2.mm_weblog_name .data").findBy(com.codeborne.selenide.Condition.exactText(handle))
+                    .shouldNot(exist);
+        }
+        logout();
+    }
+
     // ---------------------------------------------------------------- fixture
 
     /** Publishes one entry immediately and returns its id. */
     private String publishEntry(String title) {
-        openPath(AdminApp.newEntry(WEBLOG_HANDLE));
+        return publishEntry(WEBLOG_HANDLE, title);
+    }
+
+    private String publishEntry(String handle, String title) {
+        openPath(AdminApp.newEntry(handle));
         AdminApp.write(title, "Body of " + title);
         AdminApp.publishButton().click();
 
@@ -129,7 +207,11 @@ class TrashIT extends PressroomIT {
 
     /** The live permalink for an entry, read from its editor page. */
     private String permalinkOf(String entryId) {
-        openPath(AdminApp.entry(WEBLOG_HANDLE, entryId));
+        return permalinkOf(WEBLOG_HANDLE, entryId);
+    }
+
+    private String permalinkOf(String handle, String entryId) {
+        openPath(AdminApp.entry(handle, entryId));
         $(AdminApp.PERMALINK).should(exist);
         String permalink = $(AdminApp.PERMALINK).getAttribute("href");
         assertNotNull(permalink, "a published entry's editor must expose its permalink");
@@ -141,7 +223,11 @@ class TrashIT extends PressroomIT {
      * -- this is a soft delete (trash), not a hard one.
      */
     private void deleteFromEntriesList(String title) {
-        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        deleteFromEntriesList(WEBLOG_HANDLE, title);
+    }
+
+    private void deleteFromEntriesList(String handle, String title) {
+        openPath(AdminApp.entries(handle));
         AdminApp.row(title).$("button.entry-delete-btn").shouldBe(visible).click();
         AdminApp.dialog().shouldBe(visible);
         AdminApp.confirmDialog();
