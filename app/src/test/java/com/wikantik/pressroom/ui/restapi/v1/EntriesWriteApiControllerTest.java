@@ -1889,6 +1889,52 @@ class EntriesWriteApiControllerTest {
         }
     }
 
+    /** The editor's emptied publish-time box: a draft goes back to having none. */
+    @Test
+    void clearingPubTimeLeavesADraftWithNone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setStatus(WeblogEntry.PubStatus.DRAFT);
+        entry.setPubTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-08-02T19:30:00Z")));
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"clear\":[\"pubTime\"]}").andExpect(status().isOk());
+
+        assertNull(entry.getPubTime());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
+    }
+
+    /** Publishing with no time means now, so a cleared time on a published entry is re-stamped, never saved null. */
+    @Test
+    void clearingPubTimeWhilePublishingMeansNow() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setPubTime(java.sql.Timestamp.from(java.time.Instant.parse("2020-01-02T03:04:00Z")));
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"status\":\"PUBLISHED\",\"clear\":[\"pubTime\"]}")
+                .andExpect(status().isOk());
+
+        assertTrue(entry.getPubTime().after(java.sql.Timestamp.from(java.time.Instant.parse("2021-01-01T00:00:00Z"))));
+    }
+
+    @Test
+    void clearingPubTimeWhileSchedulingIsRefusedAndNamingItAndSendingItIsToo() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = anEntry(weblog);
+        entry.setStatus(WeblogEntry.PubStatus.DRAFT);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"status\":\"SCHEDULED\",\"clear\":[\"pubTime\"]}")
+                .andExpect(status().isBadRequest());
+        patchEntry(weblogger, weblog, "{\"pubTime\":\"2030-01-01T10:00\",\"clear\":[\"pubTime\"]}")
+                .andExpect(status().isBadRequest());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
+    }
+
     @Test
     void clearOnCreateIsA400() throws Exception {
         Weblogger weblogger = mockedWeblogger();

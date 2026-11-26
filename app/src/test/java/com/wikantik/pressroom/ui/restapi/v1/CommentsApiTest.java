@@ -181,6 +181,34 @@ class CommentsApiTest {
                 .andExpect(com.wikantik.pressroom.ui.restapi.ErrorFieldMatchers.errorFieldIs("entry"));
     }
 
+    /** The page states how many comments match, so a screen need not page through to count them. */
+    @Test
+    void listCarriesTheTotalOfWhatMatches() throws Exception {
+        when(entries.getWeblogEntry("e1")).thenReturn(entry);
+        when(comments.getComments(weblog, Status.PENDING, entry, 0, 3)).thenReturn(List.of());
+        when(comments.countComments(weblog, Status.PENDING, entry)).thenReturn(7L);
+
+        JsonNode page = json(ok(get(BASE).requestAttr("actionWeblog", weblog)
+                .param("status", "pending").param("entryId", "e1").param("limit", "2")));
+
+        assertEquals(7, page.get("total").asLong());
+    }
+
+    /** {@code topLevel=true} leaves replies out of the items and the total: the entry page heading's number. */
+    @Test
+    void topLevelLeavesRepliesOutOfItemsAndTotal() throws Exception {
+        ReaderComment a = aComment("c1", entry, Status.PUBLISHED, "first");
+        when(entries.getWeblogEntry("e1")).thenReturn(entry);
+        when(comments.getComments(weblog, Status.PUBLISHED, entry, true, 0, 51)).thenReturn(List.of(a));
+        when(comments.countComments(weblog, Status.PUBLISHED, entry, true)).thenReturn(1L);
+
+        JsonNode page = json(ok(get(BASE).requestAttr("actionWeblog", weblog)
+                .param("status", "published").param("entryId", "e1").param("topLevel", "true")));
+
+        assertEquals(1, page.get("total").asLong());
+        assertEquals(1, page.get("items").size());
+    }
+
     @Test
     void listDefaultsToFiftyAndCapsAtTwoHundred() throws Exception {
         when(comments.getComments(eq(weblog), eq(null), eq(null), anyInt(), anyInt())).thenReturn(List.of());

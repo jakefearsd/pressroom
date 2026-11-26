@@ -52,7 +52,10 @@ public final class CommentDtos {
             @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
             @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
             @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
-            boolean hasMore) {
+            boolean hasMore,
+            @Schema(description = "How many comments match the filters in all, whatever the page: the count a "
+                    + "screen shows without paging to the end.", requiredMode = Schema.RequiredMode.REQUIRED)
+            long total) {
     }
 
     /** {@code "PUBLISHED"} or {@code "HIDDEN"}; anything else is a 400. */

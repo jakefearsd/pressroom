@@ -5037,6 +5037,15 @@
             "type" : "string"
           }
         }, {
+          "name" : "topLevel",
+          "in" : "query",
+          "description" : "true leaves replies out of the items and the total: only the readers' own comments, as the entry page's heading counts them.",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
           "name" : "offset",
           "in" : "query",
           "required" : false,
@@ -8381,9 +8390,14 @@
           "hasMore" : {
             "type" : "boolean",
             "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "How many comments match the filters in all, whatever the page: the count a screen shows without paging to the end."
           }
         },
-        "required" : [ "hasMore", "items", "limit", "offset" ]
+        "required" : [ "hasMore", "items", "limit", "offset", "total" ]
       },
       "BusinessChoice" : {
         "type" : "object",
