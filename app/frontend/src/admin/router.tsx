@@ -13,6 +13,9 @@ import { EntryEditor } from './screens/EntryEditor';
 import { MediaEdit } from './screens/media/MediaEdit';
 import { MediaLibrary } from './screens/media/MediaLibrary';
 import { MediaUpload } from './screens/media/MediaUpload';
+import { PageEditor } from './screens/pages/PageEditor';
+import { PagesList } from './screens/pages/PagesList';
+import { PagesTrash } from './screens/pages/PagesTrash';
 
 const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
   ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
@@ -37,6 +40,10 @@ export const appRoutes: RouteObject[] = [{
     { path: 'weblogs/:handle/media', element: <MediaLibrary />, ...scoped('weblog') },
     { path: 'weblogs/:handle/media/upload', element: <MediaUpload />, ...scoped('weblog') },
     { path: 'weblogs/:handle/media/:id', element: <MediaEdit />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages', element: <PagesList />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/new', element: <PageEditor />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/trash', element: <PagesTrash />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/pages/:id', element: <PageEditor />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
     { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
