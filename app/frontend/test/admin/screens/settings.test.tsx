@@ -225,6 +225,23 @@ describe('WeblogSettings', () => {
     expect(count).toHaveValue(999);
   });
 
+  it('a clean save after a refusal clears the refusal: no error, no marked field, and says saved', async () => {
+    const user = userEvent.setup();
+    await open();
+    await user.clear(screen.getByLabelText('Entries shown per page'));
+    await user.type(screen.getByLabelText('Entries shown per page'), '999');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(screen.getByLabelText('Entries shown per page')).toHaveAttribute('aria-invalid', 'true'); });
+
+    await user.clear(screen.getByLabelText('Entries shown per page'));
+    await user.type(screen.getByLabelText('Entries shown per page'), '10');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Settings saved.')).toBeInTheDocument();
+    expect(document.getElementById('errors')).toBeNull();
+    expect(screen.getByLabelText('Entries shown per page')).not.toHaveAttribute('aria-invalid');
+  });
+
   it('keeps the current business and front page when their lists cannot load, and says so', async () => {
     businessesOk = false;
     pagesOk = false;

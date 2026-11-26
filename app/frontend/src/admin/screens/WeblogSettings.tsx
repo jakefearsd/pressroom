@@ -248,6 +248,8 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
     }
     const patch = buildPatch(valuesOf(saved), values);
     if (patch === null) {
+      // Nothing to send, and nothing refused now: an earlier refusal no longer describes the form.
+      save.reset();
       setMessage([t('websiteSettings.savedChanges')]);
       return;
     }
