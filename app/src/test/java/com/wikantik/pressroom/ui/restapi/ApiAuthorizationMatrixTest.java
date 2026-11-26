@@ -376,7 +376,9 @@ class ApiAuthorizationMatrixTest {
             //     one weblog's settings are its owner's, with an ADMIN token
             row("GET    /v1/weblogs",                                 ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/weblogs",                                 POST,  SITE_LOGIN, NO_WEBLOG),
-            row("GET    /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN),
+            // The read is the contributor's: the entry editor and the admin frame both ask for the weblog's
+            // time zone, locale and name as an Author or Limited member (MembersIT found the editor blank at 403).
+            row("GET    /v1/weblogs/{handle}",                        READ,  SITE_LOGIN, ON_DRAFT),
             row("PATCH  /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN),
             // --- The business profiles a weblog may point at: its owner's, with an ADMIN token, as the
             //     settings form that offers them
@@ -894,7 +896,7 @@ class ApiAuthorizationMatrixTest {
                 "POST /v1/admin/businesses", "POST /v1/admin/users",
                 "PATCH /v1/admin/businesses/{id}", "PATCH /v1/admin/users/{userName}",
                 "DELETE /v1/admin/businesses/{id}", "PATCH /v1/admin/users/{userName}",
-                "GET /v1/weblogs/{handle}/businesses", "GET /v1/weblogs/{handle}");
+                "GET /v1/weblogs/{handle}/businesses", "PATCH /v1/weblogs/{handle}");
         references.forEach((key, reference) -> {
             Row ref = ROWS.stream().filter(r -> r.key().equals(reference)).findFirst().orElseThrow();
             Row row = ROWS.stream().filter(r -> r.key().equals(key)).findFirst().orElseThrow();
@@ -945,6 +947,7 @@ class ApiAuthorizationMatrixTest {
             new McpSample("site_info", "", Map.of()),
             new McpSample("weblogs", "list", Map.of()),
             new McpSample("weblogs", "create", Map.of()),
+            new McpSample("weblogs", "get", W),
             new McpSample("weblogs", "update", W),
             new McpSample("entries", "get", W_ID),
             new McpSample("entries", "create", W),

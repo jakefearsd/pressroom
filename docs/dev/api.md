@@ -222,7 +222,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   admin could not change their own blog over the API. `WeblogSettingsApiDispatchTest` pins
   owner, member, no-role, pin and token-role cases through the real interceptors. The form
   reserves no setting to site admins; a field it ever reserves must be refused here through the
-  same rule (`WeblogSettingsRules`), not a second check.
+  same rule (`WeblogSettingsRules`), not a second check. **The read is the contributor's
+  (2026-11-26):** `GET /v1/weblogs/{handle}` moved to `WeblogReadApi` (`EDIT_DRAFT`, read-role
+  token), because the admin frame and the entry editor call it as an Author or Limited member;
+  on `ADMIN` their editor stayed blank on a 403 (found by `MembersIT`). `PATCH`/`DELETE` stay
+  here, `ADMIN`.
 - **List shape (spec 2026-11-20, Task 5; the wraps landed with the owner decisions, 0.16.0).** Every
   operation with a `limit` answers `{items|entries, offset, limit, hasMore}`, all required
   (`OpenApiContractTest`, no exception set). `GET /v1/weblogs`, `GET /v1/admin/users` and

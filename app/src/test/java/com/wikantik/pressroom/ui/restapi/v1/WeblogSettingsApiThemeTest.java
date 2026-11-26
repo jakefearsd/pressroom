@@ -74,7 +74,9 @@ class WeblogSettingsApiThemeTest {
 
         WeblogSettingsApi controller = new WeblogSettingsApi();
         controller.weblogger = weblogger;
-        mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiExceptionHandler()).build();
+        WeblogReadApi reader = new WeblogReadApi();
+        reader.weblogger = weblogger;
+        mvc = MockMvcBuilders.standaloneSetup(controller, reader).setControllerAdvice(new ApiExceptionHandler()).build();
     }
 
     private static MockedStatic<WebloggerRuntimeConfig> siteConfig() {

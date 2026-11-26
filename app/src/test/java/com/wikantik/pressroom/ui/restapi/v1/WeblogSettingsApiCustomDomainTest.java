@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 class WeblogSettingsApiCustomDomainTest {
 
     private WeblogSettingsApi weblogsApi;
+    private WeblogReadApi readApi;
     private WeblogManager weblogManager;
     private MockWeblogger mocks;
     private Weblog vhostblog;
@@ -52,6 +53,8 @@ class WeblogSettingsApiCustomDomainTest {
 
         weblogsApi = new WeblogSettingsApi();
         weblogsApi.weblogger = mocks.weblogger();
+        readApi = new WeblogReadApi();
+        readApi.weblogger = mocks.weblogger();
 
         vhostblog = aWeblog("vhostblog");
         vhostblog.setCustomDomain("vhost.example.com");
@@ -92,7 +95,7 @@ class WeblogSettingsApiCustomDomainTest {
     }
 
     private AdminDtos.WeblogView get(String handle) {
-        return weblogsApi.get(requestFor(handle));
+        return readApi.get(requestFor(handle));
     }
 
     private AdminDtos.WeblogView patch(String handle, AdminDtos.WeblogPatch body) throws WebloggerException {

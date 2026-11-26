@@ -105,6 +105,11 @@ class WeblogSettingsApiDispatchTest {
         }
 
         @Bean
+        WeblogReadApi weblogReadApi() {
+            return new WeblogReadApi();
+        }
+
+        @Bean
         com.wikantik.pressroom.business.Weblogger weblogger() {
             return weblogger.weblogger();
         }
@@ -259,7 +264,7 @@ class WeblogSettingsApiDispatchTest {
         verify(weblogger.weblogManager()).saveWeblog(weblog("own"));
     }
 
-    // --- AC2: no role is 404, a member below ADMIN is 403 -------------------------------------
+    // --- AC2: no role is 404; a member below ADMIN reads (the editor needs it) but may not change -----
 
     @Test
     void aWeblogTheOwnerHoldsNoRoleOnIsNotFound() throws Exception {
@@ -273,12 +278,13 @@ class WeblogSettingsApiDispatchTest {
     }
 
     @Test
-    void aMemberBelowAdminIsForbidden() throws Exception {
+    void aMemberBelowAdminReadsTheWeblogButMayNotChangeIt() throws Exception {
         signIn("owen", null, ApiToken.Role.ADMIN);
 
-        getWeblog("member").andExpect(status().isForbidden())
+        // The admin frame and the entry editor read it as any member; MembersIT found the editor blank on a 403.
+        getWeblog("member").andExpect(status().isOk()).andExpect(field("handle", "member"));
+        patchWeblog("member", "{\"name\":\"Taken\"}").andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-        patchWeblog("member", "{\"name\":\"Taken\"}").andExpect(status().isForbidden());
         assertNothingSaved();
     }
 

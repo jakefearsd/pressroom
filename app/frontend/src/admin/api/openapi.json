@@ -36,6 +36,9 @@
     "name" : "Weblog settings",
     "description" : "A weblog's settings and theme, for its owner."
   }, {
+    "name" : "Weblog",
+    "description" : "One weblog's name, time zone, locale and address, readable by any member."
+  }, {
     "name" : "Tokens",
     "description" : "Minting, listing and revoking the caller's own API tokens, with a password (HTTP Basic)."
   }, {
@@ -3214,7 +3217,7 @@
     },
     "/v1/weblogs/{handle}" : {
       "get" : {
-        "tags" : [ "Weblog settings" ],
+        "tags" : [ "Weblog" ],
         "operationId" : "weblogsGet",
         "parameters" : [ {
           "name" : "handle",
