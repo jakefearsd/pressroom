@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.Condition;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,12 +70,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class EditorSeoIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
     private static final String MEDIA_ADD = "/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE;
     private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
 
     /** Rendered on the edit page only once the entry is actually published. */
-    private static final String PERMALINK = "#entry_bean_permalink";
+    private static final String PERMALINK = AdminApp.PERMALINK;
 
     @BeforeEach
     void logIn() {
@@ -94,12 +95,12 @@ class EditorSeoIT extends PressroomIT {
 
         // --- write the entry and fill the SEO card --------------------------
         openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(title);
         Editor.setText("Body of the SEO journey entry " + suffix + ".");
 
         // The SEO card starts collapsed; open it the way an author would.
-        $("a[data-bs-target='#collapseSeo']").click();
+        $("button[aria-controls='collapseSeo']").click();
         $("#seo_metaTitle").should(visible).setValue(metaTitle);
         $("#seo_metaDescription").setValue(metaDescription);
         $("#seo_canonicalUrl").setValue(canonicalUrl);
@@ -110,11 +111,9 @@ class EditorSeoIT extends PressroomIT {
         $("#seo_snippet_description").shouldHave(Condition.exactText(metaDescription));
 
         // --- pick the featured image through the media chooser --------------
-        $("button[onclick=\"openImagePicker('featuredImage')\"]").click();
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-        switchTo().frame("mediaFileEditor");
+        $("[aria-labelledby='seo_featuredImage_label'] button.btn-secondary").click();
+        $("#mediaFileChooserForm").shouldBe(visible);
         chooserTile(imageName).should(exist).click();
-        switchTo().defaultContent();
 
         // The callback must have filled the hidden id and shown the preview.
         $("#seo_featuredImageId").shouldHave(Condition.attributeMatching("value", ".+"));
@@ -125,7 +124,7 @@ class EditorSeoIT extends PressroomIT {
                 "the picker preview must use the thumbnail rendition, got: " + previewSrc);
 
         // --- publish and read the head back as an anonymous visitor ---------
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -157,11 +156,11 @@ class EditorSeoIT extends PressroomIT {
         String metaDescription = "The iron lady of Paris " + suffix;
 
         openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(title);
         Editor.setText("Body of the structured-data entry " + suffix + ".");
 
-        $("a[data-bs-target='#collapseSeo']").click();
+        $("button[aria-controls='collapseSeo']").click();
         $("#seo_metaDescription").should(visible).setValue(metaDescription);
 
         // Coordinates are offered on any entry (they also centre a bare [map]);
@@ -175,7 +174,7 @@ class EditorSeoIT extends PressroomIT {
         $("#seo_geoLatitude").setValue("48.8584");
         $("#seo_geoLongitude").setValue("2.2945");
 
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);
@@ -210,21 +209,19 @@ class EditorSeoIT extends PressroomIT {
         String imageName = uploadImage("responsive-" + suffix + ".jpg");
 
         openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue(title);
         Editor.root();
 
         // insert via the toolbar's image control, as an author would
         $(Editor.MEDIA_INSERT).click();
-        $("#mediafile_edit_lightbox").shouldBe(visible);
-        switchTo().frame("mediaFileEditor");
+        $("#mediaFileChooserForm").shouldBe(visible);
         chooserTile(imageName).should(exist).click();
-        switchTo().defaultContent();
 
         // the editor now holds the shortcode, not raw img markup
         Editor.root().shouldHave(Condition.text("[image id="));
 
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink);

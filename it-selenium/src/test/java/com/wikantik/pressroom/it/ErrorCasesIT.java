@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -94,7 +95,7 @@ class ErrorCasesIT extends PressroomIT {
 
         // Back at a login form, and the editor is still closed to us.
         $("#j_username").should(exist);
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
         assertTrue($$("table.pressroomtable").isEmpty(),
                 "a failed login left the entry list reachable");
     }
@@ -195,8 +196,11 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void authoringScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
+                // the old URLs redirect (to the app, which then wants a sign-in); the app's own are closed too
                 "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE,
                 "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE,
+                AdminApp.entries(WEBLOG_HANDLE),
+                AdminApp.newEntry(WEBLOG_HANDLE),
                 "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE}) {
             // A redirect to the login page is the expected answer and carries
             // no body, so judge on the status first and only inspect content

@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.it;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -50,11 +51,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CategoryIT extends PressroomIT {
 
-    private static final String CATEGORIES = "/pressroom-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String CATEGORIES = AdminApp.categories(WEBLOG_HANDLE);
+    private static final String ENTRY_ADD = AdminApp.newEntry(WEBLOG_HANDLE);
 
-    private static final String EDIT_MODAL = "#category-edit-modal";
-    private static final String DELETE_MODAL = "#delete-category-modal";
+    /** Both category dialogs are the app's one modal shape: the open dialog. */
+    private static final String EDIT_MODAL = "[role='dialog']";
+    private static final String DELETE_MODAL = "[role='dialog']";
 
     @Test
     void aCategoryCanBeAddedRenamedAndDeleted() {
@@ -98,8 +100,8 @@ class CategoryIT extends PressroomIT {
 
         assertFalse(categoryNames().contains(doomed),
                 "the category must be gone once its entries have been moved");
-        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
-        BrowserHealth.current().settle();
+        openPath(AdminApp.entries(WEBLOG_HANDLE));
+        AdminApp.row(title).should(exist);
         assertTrue($$("table.pressroomtable").first().getText().contains(title),
                 "the entry must survive its category being deleted");
         logout();
@@ -214,13 +216,11 @@ class CategoryIT extends PressroomIT {
      * animation.
      */
     private void saveCategoryModal() {
-        $(EDIT_MODAL + " button.btn-primary").click();
+        $(EDIT_MODAL + " .modal-footer .btn-primary").click();
         $(EDIT_MODAL).shouldNotBe(visible);
 
-        // The modal's own handler also calls location.reload(). Load the list
-        // ourselves and wait for the table so the assertions that follow are
-        // made against a settled page rather than racing that reload.
-        openPath(CATEGORIES);
+        // The list refetches after the save; wait for the table so the assertions that follow are made
+        // against a settled page.
         $("table#category-table").should(exist);
         BrowserHealth.current().settle();
     }
@@ -237,10 +237,8 @@ class CategoryIT extends PressroomIT {
         if (moveTo != null) {
             $(DELETE_MODAL + " select[name='targetCategoryId']").selectOptionContainingText(moveTo);
         }
-        $(DELETE_MODAL + " button[type='submit']").click();
-        // The handler redirects back to the list; waiting for the row to go is
-        // waiting for that round trip AND for the delete itself, rather than
-        // for an animation.
+        AdminApp.confirmDialog();
+        // Waiting for the row to go is waiting for the delete call itself.
         $("table#category-table").should(exist);
         $(rowFor(name)).shouldNot(exist);
         BrowserHealth.current().settle();
@@ -255,7 +253,6 @@ class CategoryIT extends PressroomIT {
         $(rowFor(name) + " button.category-edit-btn").should(visible).click();
         $(EDIT_MODAL).shouldBe(visible);
         $(EDIT_MODAL + " input[name='bean.name']").shouldHave(value(name));
-        $(EDIT_MODAL + " input[name='bean.id']").shouldNotHave(exactValue(""));
     }
 
     private void openDeleteModalFor(String name) {
@@ -292,14 +289,11 @@ class CategoryIT extends PressroomIT {
 
     private void publishEntryInCategory(String title, String body, String categoryName) {
         openPath(ENTRY_ADD);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText(body);
+        AdminApp.write(title, body);
         $("select[name='bean.categoryId']").selectOptionContainingText(categoryName);
-        $("button[formaction$='entryAdd!publish.rol']").click();
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
-        assertNotNull($("input[name='bean.id']").getValue(),
-                "the published entry must expose its id");
+        assertNotNull(AdminApp.savedEntryId(), "the published entry must be open on its own route");
     }
 
     private static String nonce() {

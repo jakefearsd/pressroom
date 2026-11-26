@@ -19,6 +19,7 @@ package com.wikantik.pressroom.it;
 
 import java.util.List;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -129,11 +130,11 @@ class StrandPartsIT extends PressroomIT {
     }
 
     private void publishEntryOn(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title + ".");
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
     }
 

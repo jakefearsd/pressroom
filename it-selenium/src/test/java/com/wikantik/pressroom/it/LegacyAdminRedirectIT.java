@@ -82,6 +82,37 @@ class LegacyAdminRedirectIT extends PressroomIT {
         logout();
     }
 
+    /** Wave 1: the entry screens' old URLs, raw (status and Location) and in the browser (the screen's marker). */
+    @Test
+    void theEntryScreensKeepTheirOldUrls() throws Exception {
+        loginAsAdmin();
+        String app = "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE;
+        String legacy = "/pressroom-ui/authoring/";
+        String weblog = "?weblog=" + WEBLOG_HANDLE;
+        assertRedirect(legacy + "entries.rol" + weblog + "&bean.status=DRAFT&bean.text=rome&bean.page=2",
+                app + "/entries?status=DRAFT&text=rome");
+        assertRedirect(legacy + "entryAdd.rol" + weblog, app + "/entries/new");
+        assertRedirect(legacy + "entryEdit.rol" + weblog + "&bean.id=abc", app + "/entries/abc");
+        assertRedirect(legacy + "entryAddWithMediaFile.rol" + weblog + "&selectedImage=m1", app + "/entries/new?mediaId=m1");
+        assertRedirect(legacy + "trash.rol" + weblog, app + "/trash");
+        assertRedirect(legacy + "comments.rol" + weblog + "&status=HIDDEN&entry=e1", app + "/comments?status=HIDDEN&entry=e1");
+        assertRedirect(legacy + "categories.rol" + weblog, app + "/categories");
+
+        openPath(legacy + "entries.rol" + weblog);
+        webdriver().shouldHave(url(baseUrl() + app + "/entries"));
+        $("#entries-list-marker").should(exist);
+        openPath(legacy + "entryAdd.rol" + weblog);
+        webdriver().shouldHave(url(baseUrl() + app + "/entries/new"));
+        $("form#entry").should(exist);
+        openPath(legacy + "trash.rol" + weblog);
+        $("#trash-list-marker").should(exist);
+        openPath(legacy + "comments.rol" + weblog);
+        $("#comments-list-marker").should(exist);
+        openPath(legacy + "categories.rol" + weblog);
+        $("table#category-table").should(exist);
+        logout();
+    }
+
     /** A bookmark followed while signed out goes to sign in, and the sign-in returns to the new screen. */
     @Test
     void anOldBookmarkWhileSignedOutSignsInAndArrivesAtTheNewScreen() {

@@ -336,6 +336,18 @@ describe('the writing surface: paste and drop upload', () => {
     await waitFor(() => { expect((doc().match(/\[image id="up1"\]/g) ?? [])).toHaveLength(2); });
   });
 
+  it('offers the browser suite the upload seam the JSP editors\' script had (pressroomUploadImages)', async () => {
+    state.entry['text'] = '';
+    const { unmount } = open('/weblogs/alpha/entries/e1');
+    await ready();
+    const seam = (window as unknown as { pressroomUploadImages?: (files: File[]) => void }).pressroomUploadImages;
+    expect(seam).toBeTypeOf('function');
+    act(() => { seam?.([image()]); });
+    await waitFor(() => { expect(doc()).toBe('[image id="up1"]\n'); });
+    unmount();
+    expect((window as unknown as Record<string, unknown>)['pressroomUploadImages']).toBeUndefined();
+  });
+
   it('leaves a paste with no image alone', async () => {
     open('/weblogs/alpha/entries/e1');
     await ready();

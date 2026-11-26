@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -127,11 +128,11 @@ class FrontDoorIT extends PressroomIT {
     }
 
     private void publishPost(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath(AdminApp.newEntry(handle));
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title + ".");
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        AdminApp.publishButton().click();
         $("#entry_bean_permalink").should(exist);
     }
 

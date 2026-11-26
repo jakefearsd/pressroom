@@ -1,5 +1,7 @@
 # Comments (reader)
 
+> The moderation screen (`Comments.jsp`, `CommentsModerationController`) is a React screen since wave 1 (docs/dev/admin-ui.md, "Wave 1 screens"); references below to them describe deleted code. The API and the rules hold.
+
 Comments by signed-in readers, shipped 2026-10-12. Spec and acceptance
 criteria: `docs/superpowers/specs/2026-10-12-reader-comments-design.md`
 (rulings R3 to R7 below amend it where the code differs). Readers get their

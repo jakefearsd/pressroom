@@ -201,6 +201,14 @@ export function EditorSurface(props: Props) {
     void next();
   };
 
+  // The browser suite's seam (it/support, EditorUploadIT): the name the JSP editors' page script gave it.
+  const uploadRef = useLatest(upload);
+  useEffect(() => {
+    const seam = window as unknown as Record<string, unknown>;
+    seam['pressroomUploadImages'] = (files: File[]) => { uploadRef.current(files); };
+    return () => { delete seam['pressroomUploadImages']; };
+  }, [uploadRef]);
+
   const shortcodes = SHORTCODE_CARDS.map((c) => ({ name: c.name, snippet: c.snippet, label: t(c.labelKey) }));
   const saveLabel = {
     notSaved: t('weblogEdit.unsaved'), unsaved: t('editor.status.unsaved'),

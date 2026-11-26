@@ -35,6 +35,7 @@ import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.WebDriverRunner;
 import com.wikantik.pressroom.it.support.AdminToken;
+import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.KeycloakLoginPage;
@@ -131,7 +132,6 @@ class CommentsIT extends PressroomIT {
     private static final String LOGIN = "/pressroom-ui/login.rol";
     private static final String MENU = "/pressroom-ui/app/";
     private static final String ACCOUNT = "/pressroom-ui/account.rol";
-    private static final String MODERATION = "/pressroom-ui/authoring/comments.rol";
     private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";
     private static final String SSO_START = "/pressroom-ui/sso/start";
     private static final String SESSION_ENDPOINT = "/pressroom-ui/rendering/comments/session.rol";
@@ -144,7 +144,7 @@ class CommentsIT extends PressroomIT {
     private static final String POST_BUTTON = ".comment-form button[type='submit']";
     private static final String MESSAGE = ".comment-form .comment-message";
     private static final String PERMALINK = "#entry_bean_permalink";
-    private static final String MODERATION_ROWS = "#commentsModerationForm tr";
+    private static final String MODERATION_ROWS = "table.pressroomtable tbody tr";
 
     /**
      * Posts {@code arguments[0]} as the signed-in browser, exactly as the page script
@@ -367,11 +367,11 @@ class CommentsIT extends PressroomIT {
         loginAsAdmin();
         openPath(MENU);
         // The link itself is the pill (it was a link wrapping a .badge).
-        $("a.status-pill[href*='/pressroom-ui/authoring/comments.rol?weblog=" + otherHandle + "']")
+        $("a.status-pill[href$='/weblogs/" + otherHandle + "/comments']")
                 .shouldHave(text("awaiting approval"));
         openPath(moderation(otherHandle, null));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);
-        clickAndAwaitNewPage($("#commentsModerationForm button[formaction$='comments!approve.rol'][value='" + id + "']"));
+        $$(MODERATION_ROWS).findBy(text(body)).$(com.codeborne.selenide.Selectors.byText("Approve")).click();
         $("#messages").shouldHave(text("1 approved."));
         $$(MODERATION_ROWS).findBy(text(body)).shouldNot(exist);
         openPath(moderation(otherHandle, "PUBLISHED"));
@@ -435,10 +435,10 @@ class CommentsIT extends PressroomIT {
         String answer = "The author's answer " + nonce();
         loginAsAdmin();
         openPath(moderation(mainHandle, "PUBLISHED"));
-        SelenideElement send = $("button[form='reply-" + id + "']").should(exist);
-        send.closest("details").$("summary").click();
-        $("textarea[form='reply-" + id + "']").should(visible).setValue(answer);
-        clickAndAwaitNewPage(send);
+        SelenideElement questionRow = $$(MODERATION_ROWS).findBy(text(question)).should(exist);
+        questionRow.$("details summary").click();
+        questionRow.$("details textarea").should(visible).setValue(answer);
+        questionRow.$("details").$(com.codeborne.selenide.Selectors.byText("Post reply")).click();
         $("#messages").shouldHave(text("Reply posted."));
         $$(MODERATION_ROWS).findBy(text(question)).shouldHave(text(answer));
         logout();
@@ -489,28 +489,24 @@ class CommentsIT extends PressroomIT {
         String location = refused.headers().firstValue("Location").orElse("");
         assertTrue(refused.statusCode() == 403 || (refused.statusCode() == 302 && location.contains(ACCESS_DENIED)),
                 "the Comments page answered a reader " + refused.statusCode() + " " + location);
-        BrowserHealth.current().expectRefusal(MODERATION);
+        BrowserHealth.current().expectRefusal(AdminApp.comments(otherHandle));
         BrowserHealth.current().expectRefusal(ACCESS_DENIED);
         openPath(moderation(otherHandle, null));
-        $("#commentsModerationForm").shouldNot(exist);
+        $("#comments-list-marker").shouldNot(exist);
         logout();
 
         loginAsAdmin();
         openPath(moderation(otherHandle, null));
-        clickAndAwaitNewPage($("#commentsModerationForm button[formaction$='comments!hide.rol'][value='"
-                + held.id() + "']"));
+        $$(MODERATION_ROWS).findBy(text(body)).$(com.codeborne.selenide.Selectors.byText("Hide")).click();
         $("#messages").shouldHave(text("1 hidden."));
         $$(MODERATION_ROWS).findBy(text(body)).shouldNot(exist);
 
         openPath(moderation(otherHandle, "HIDDEN"));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);
-        SelenideElement delete = $("#commentsModerationForm button[formaction$='comments!delete.rol'][value='"
-                + held.id() + "']").should(visible);
-        assertNotNull(delete.getAttribute("data-confirm"), "Delete is not a confirmed button");
-        awaitNewPageAfter(() -> {
-            delete.click();
-            Selenide.confirm();
-        });
+        $$(MODERATION_ROWS).findBy(text(body)).$(com.codeborne.selenide.Selectors.byText("Delete")).should(visible).click();
+        // A confirmation dialog first: nothing is deleted until it is confirmed.
+        AdminApp.dialog().shouldBe(visible);
+        AdminApp.confirmDialog();
         $("#messages").shouldHave(text("1 deleted."));
         $$(MODERATION_ROWS).findBy(text(body)).shouldNot(exist);
         logout();
@@ -766,7 +762,7 @@ class CommentsIT extends PressroomIT {
             assertFalse(anonymousPage(closed).contains(closedComment), "comments are off, yet a comment shows");
 
             openPath(moderation(mainHandle, "PUBLISHED"));
-            $("#commentsModerationForm input[name='ids'][value='" + closedCommentId + "']").should(exist);
+            $$(MODERATION_ROWS).findBy(text(closedComment)).should(exist);
         } finally {
             setCommentsEnabled(mainHandle, true);
         }
@@ -834,7 +830,7 @@ class CommentsIT extends PressroomIT {
     }
 
     private static String moderation(String handle, String status) {
-        return MODERATION + "?weblog=" + handle + (status == null ? "" : "&status=" + status);
+        return AdminApp.comments(handle) + (status == null ? "" : "?status=" + status);
     }
 
     // ----------------------------------------------------------------- API
@@ -992,24 +988,23 @@ class CommentsIT extends PressroomIT {
 
     /** Publishes one entry and returns it, its id read from the editor the publish lands on. */
     private Entry publishEntry(String handle, String title) {
-        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
-        $("#entry").should(exist);
-        $("[name='bean.title']").setValue(title);
-        Editor.setText("Body of " + title);
-        clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
+        openPath(AdminApp.newEntry(handle));
+        AdminApp.write(title, "Body of " + title);
+        AdminApp.publishButton().click();
         String permalink = $(PERMALINK).should(exist).getAttribute("href");
         assertNotNull(permalink, "publishing must expose the entry's permalink");
-        String id = $("#entry input[name='bean.id']").shouldNotHave(com.codeborne.selenide.Condition.exactValue("")).getValue();
+        String id = AdminApp.savedEntryId();
         return new Entry(id, handle, permalink.substring(permalink.lastIndexOf('/') + 1));
     }
 
     /** Ticks "Comments closed" in the entry editor's SEO drawer and saves the published entry. */
     private void closeComments(Entry entry) {
-        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + entry.handle() + "&bean.id=" + entry.id());
-        $("#entry").should(exist);
-        $("a[data-bs-target='#collapseSeo']").click();
+        openPath(AdminApp.entry(entry.handle(), entry.id()));
+        AdminApp.awaitEditor();
+        $("button[aria-controls='collapseSeo']").click();
         $("#comments_closed").should(visible).click();
-        clickAndAwaitNewPage($("button[formaction$='entryEdit!publish.rol']"));
+        AdminApp.publishButton().click();
+        AdminApp.awaitSavedBanner();
         $("#comments_closed").should(exist).shouldBe(checked);
     }
 
