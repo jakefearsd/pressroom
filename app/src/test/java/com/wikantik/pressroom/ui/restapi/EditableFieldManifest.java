@@ -39,7 +39,7 @@ final class EditableFieldManifest {
     }
 
     static List<Resource> resources() {
-        return List.of(entry(), weblogSettings(), page(), business());
+        return List.of(entry(), weblogSettings(), page(), business(), user());
     }
 
     static Resource entry() {
@@ -88,6 +88,17 @@ final class EditableFieldManifest {
                 "name", "businessType", "websiteUrl", "bookingUrl", "telephone", "email", "logoUrl", "sameAs",
                 "areaServed", "description"),
                 new TreeMap<>(Map.of("clear", CLEAR)));
+    }
+
+    /**
+     * The person edit screen's fields a token may set (spec 2026-11-25 react admin migration, Wave 4). The
+     * administrator flag, memberships, passwords and another user's email stay session-only (SA-18) or off the
+     * API altogether; email is a field here because a token may resend the stored one.
+     */
+    static Resource user() {
+        return new Resource("user", AdminDtos.UserPatch.class, sorted(
+                "screenName", "fullName", "emailAddress", "locale", "timeZone", "enabled", "writer"),
+                new TreeMap<>());
     }
 
     private static Set<String> sorted(String... names) {

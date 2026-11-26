@@ -421,6 +421,22 @@ the old ones (`user.emailRequired` on create, `user.emailInvalid` on patch). Tes
 address use `example.com`: `example.test` is refused now. `AdminUsersCharacterisationTest` pins the wire
 bodies.
 
+## Users and Maintenance, token-safe parts (React admin Wave 4, 2026-11-25)
+
+`AccountRules` gained `fullNameProblem`, `localeProblem` and `timeZoneProblem`; the person screen judges a
+full name, locale or time zone only when it differs from the stored value (older accounts keep saving), the
+API judges whatever is sent. `AccountRoles.sync` is the one grant/revoke of a role (the screen's admin and
+editor boxes, the API's `writer`); `writer` is refused on a non-SSO account (`user.writerSsoOnly`), the
+screen's own rule. `PasswordLinkService` (`ui.controllers.core`) is who may be mailed a link
+(`refusal`: agent, SSO, no mail) and issue-and-mail (`send`); the screen's "send set-password link", `POST
+/v1/admin/users` and `POST .../password-link` all call it. `Memberships.of` lists an account's weblogs for
+`GET .../users/{userName}/weblogs` (read only; writes are SA-18 session-only). `GET /v1/admin/users` with
+`q` or `kind` uses `UserManager.getAccounts` (the screen's search) and pages in memory. `AdminSiteStatusApi`
+serves discovery and analytics status, `discovery/refresh` and `analytics/sync` from the same managers
+`MaintenanceController` calls. MCP: `users.weblogs` is a tool action; password-link and the four Maintenance
+routes are `Exclusion`s (mail to a person; operator maintenance). Not here, by SA-18: admin flag,
+memberships, another user's email.
+
 ## Site facts and the caller's profile (2026-11-21)
 
 `GET /v1/meta` and `GET /v1/me/profile` live on `MetaApi`, both

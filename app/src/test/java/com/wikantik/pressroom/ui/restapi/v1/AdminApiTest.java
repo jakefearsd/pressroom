@@ -453,12 +453,12 @@ class AdminApiTest {
     /**
      * The load-bearing shape of the create-user body: it has no place to put
      * a password even if a caller tried, and {@code UserCreate} carries only
-     * the three fields listed here.
+     * the six fields listed here (names, address, locale and time zone).
      */
     @Test
     void userCreateHasNoPasswordField() {
         var components = AdminDtos.UserCreate.class.getRecordComponents();
-        assertEquals(3, components.length);
+        assertEquals(6, components.length);
         for (var component : components) {
             assertFalse(component.getName().toLowerCase().contains("password"),
                     "UserCreate must never carry a password field: " + component.getName());

@@ -5,16 +5,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashSet;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
+import com.wikantik.pressroom.business.analytics.AnalyticsStatus;
+import com.wikantik.pressroom.business.discovery.DiscoveryStatus;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.controllers.AccountRoles;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -63,7 +67,23 @@ public final class AdminDtos {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record UserView(String userName, String screenName, String emailAddress,
-                            boolean enabled, List<String> globalRoles, boolean sso, String kind) {
+                            boolean enabled, List<String> globalRoles, boolean sso, String kind,
+                            @Schema(description = "The account's full name.")
+                            String fullName,
+                            @Schema(description = "The account's locale, for example en_US.")
+                            String locale,
+                            @Schema(description = "The account's time zone id, for example Europe/Berlin.")
+                            String timeZone,
+                            @Schema(description = "Whether the account holds the editor (author) role. Settable "
+                                    + "only on a single-sign-on account.")
+                            boolean writer) {
+    }
+
+    /** One weblog an account belongs to, and what it may do there. */
+    public record UserWeblogsPage(
+            @Schema(description = "The weblogs the account holds a permission on, by handle.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<MetaDtos.WeblogMembership> items) {
     }
 
     /**
@@ -78,7 +98,13 @@ public final class AdminDtos {
             @Schema(description = "The account's display name.")
             String screenName,
             @Schema(description = "The account's email address; the set-password link is sent to it.")
-            String emailAddress) {
+            String emailAddress,
+            @Schema(description = "The account's full name. Defaults to the screen name.")
+            String fullName,
+            @Schema(description = "The account's locale, one the settings form offers, for example en_US.")
+            String locale,
+            @Schema(description = "The account's time zone id, for example Europe/Berlin.")
+            String timeZone) {
     }
 
     /**
@@ -93,7 +119,16 @@ public final class AdminDtos {
             String screenName,
             @Schema(description = "The account's email address. On a single-sign-on account, replaced at its next "
                     + "sign-in.")
-            String emailAddress) {
+            String emailAddress,
+            @Schema(description = "The account's full name.")
+            String fullName,
+            @Schema(description = "The account's locale, one the settings form offers, for example en_US.")
+            String locale,
+            @Schema(description = "The account's time zone id, for example Europe/Berlin.")
+            String timeZone,
+            @Schema(description = "Grant or revoke the editor (author) role. Only a single-sign-on account has "
+                    + "one to edit; any other is refused.")
+            Boolean writer) {
     }
 
     /**
@@ -108,6 +143,45 @@ public final class AdminDtos {
             @Schema(description = "The handle of the weblog it was started on.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
             String weblog) {
+    }
+
+    /** Front-page discovery, as the Maintenance screen shows it. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record DiscoveryStatusView(
+            @Schema(description = "DISABLED (no analytics to read), NEVER (not read yet), OK or FAILED.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String state,
+            @Schema(description = "When the last refresh was tried.") Instant lastAttempt,
+            @Schema(description = "When a refresh last succeeded.") Instant lastSuccess,
+            @Schema(description = "Entries with a popularity score.", requiredMode = Schema.RequiredMode.REQUIRED)
+            int scoredEntries,
+            @Schema(description = "Entries eligible for the front page.", requiredMode = Schema.RequiredMode.REQUIRED)
+            int candidates,
+            @Schema(description = "Why the last refresh failed, when it did.") String lastError) {
+    }
+
+    /** One weblog that failed to register with the analytics service. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record AnalyticsFailureView(
+            @Schema(description = "The weblog's handle.", requiredMode = Schema.RequiredMode.REQUIRED) String handle,
+            @Schema(description = "What went wrong.") String error,
+            @Schema(description = "When.") Instant at) {
+    }
+
+    /** Analytics registration and read status, from the manager's memory; no analytics call is made. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record AnalyticsStatusView(
+            @Schema(description = "Whether an analytics service is set up.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean configured,
+            @Schema(description = "Whether the last call reached it; absent before any call.") Boolean reachable,
+            @Schema(description = "Weblogs registered.", requiredMode = Schema.RequiredMode.REQUIRED) int registered,
+            @Schema(description = "Weblogs that should be.", requiredMode = Schema.RequiredMode.REQUIRED) int total,
+            @Schema(description = "The weblogs that failed to register.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<AnalyticsFailureView> failures,
+            @Schema(description = "When traffic was last read.") Instant lastRead,
+            @Schema(description = "Why the last read failed, when it did.") String lastReadError) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -269,9 +343,22 @@ public final class AdminDtos {
     public static final String FRONT_PAGE_BEAN_FIELD = "frontPageId";
     public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
 
+    public static DiscoveryStatusView toView(DiscoveryStatus status) {
+        return new DiscoveryStatusView(status.state().name(), status.lastAttempt(), status.lastSuccess(),
+                status.scoredEntries(), status.candidates(), status.lastError());
+    }
+
+    public static AnalyticsStatusView toView(AnalyticsStatus status) {
+        return new AnalyticsStatusView(status.configured(), status.reachable(), status.registered(), status.total(),
+                status.failures().stream()
+                        .map(f -> new AnalyticsFailureView(f.handle(), f.error(), f.at())).toList(),
+                status.lastRead(), status.lastReadError());
+    }
+
     public static UserView toView(User user, List<String> roles) {
         return new UserView(user.getUserName(), user.getScreenName(), user.getEmailAddress(),
-                Boolean.TRUE.equals(user.getEnabled()), roles, user.isSsoBound(), user.getKind().name());
+                Boolean.TRUE.equals(user.getEnabled()), roles, user.isSsoBound(), user.getKind().name(),
+                user.getFullName(), user.getLocale(), user.getTimeZone(), roles.contains(AccountRoles.EDITOR));
     }
 
     public static WeblogView toView(Weblog weblog) {

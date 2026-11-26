@@ -13,6 +13,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
+import com.wikantik.pressroom.ui.controllers.admin.CreateUserBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.PageBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -77,6 +78,17 @@ class FormBodyParityTest {
                                 "shownPartIds", "The rows the Parts panel was built with, so a browser form "
                                         + "keeps parts appended meanwhile; the API's set_parts states the "
                                         + "whole list instead.")),
+                new Parity("CreateUserBean -> user", CreateUserBean.class, EditableFieldManifest.user(),
+                        Map.of(),
+                        Map.of("id", "The account is addressed by user name, the route's path variable.",
+                                "userName", "The user name is the route's path variable and never changes.",
+                                "list", "Not a field: the account list the screen binds beside the form.",
+                                "password", "No API takes a password; a set-password link is mailed instead "
+                                        + "(POST .../password-link).",
+                                "passwordMode", "Chooses between a typed password and a mailed link on create; "
+                                        + "the API always mails the link.",
+                                "administrator", "The admin role is session-only (SA-18); no token may grant or "
+                                        + "revoke it.")),
                 new Parity("BusinessBean -> business", BusinessBean.class, EditableFieldManifest.business(),
                         Map.of(),
                         Map.of("id", "The business's id is the update route's path variable; create assigns "

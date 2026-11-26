@@ -18,11 +18,15 @@
 
 package com.wikantik.pressroom.ui.controllers;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
@@ -68,6 +72,29 @@ public final class Memberships {
             return "ADMIN";
         }
         return actions.contains(WeblogPermission.POST) ? "POST" : "EDIT_DRAFT";
+    }
+
+    /** One weblog an account belongs to: its handle, name (empty when it has none) and level. */
+    public record Row(String handle, String name, String level) {
+    }
+
+    /**
+     * Every weblog {@code account} holds a permission on, by handle, with its level. A permission whose
+     * weblog is gone is left out; inactive weblogs are in (the person's page lists them too). A lookup that
+     * fails throws.
+     */
+    public static List<Row> of(Weblogger weblogger, User account) throws WebloggerException {
+        List<Row> rows = new ArrayList<>();
+        for (WeblogPermission permission : weblogger.getUserManager().getWeblogPermissions(account)) {
+            Weblog weblog = permission.getObjectId() == null ? null
+                    : weblogger.getWeblogManager().getWeblogByHandle(permission.getObjectId(), null);
+            if (weblog != null) {
+                rows.add(new Row(weblog.getHandle(), Objects.toString(weblog.getName(), ""),
+                        strongestLevel(permission)));
+            }
+        }
+        rows.sort(Comparator.comparing(Row::handle));
+        return rows;
     }
 
     /**
