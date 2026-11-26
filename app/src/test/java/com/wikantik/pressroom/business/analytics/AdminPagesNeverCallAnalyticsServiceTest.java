@@ -26,7 +26,7 @@ import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.ui.controllers.admin.MaintenanceController;
+import com.wikantik.pressroom.ui.restapi.v1.AdminSiteStatusApi;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
 import com.wikantik.pressroom.ui.restapi.v1.AdminTrafficApi;
@@ -97,20 +97,21 @@ class AdminPagesNeverCallAnalyticsServiceTest {
                 assertEquals(Boolean.TRUE, model.getAttribute("viewsColumn"), "the Views column is computed");
             }
         },
-        MAINTENANCE {
+        API_ANALYTICS_STATUS {
             @Override
             void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
-                ExtendedModelMap model = new ExtendedModelMap();
-                assertEquals(".Maintenance", t.wire(new MaintenanceController()).execute(request, model, null));
-                assertTrue(model.containsAttribute("analyticsStatus"));
+                AdminSiteStatusApi api = new AdminSiteStatusApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
+                assertTrue(api.analytics().configured());
             }
         },
-        MAINTENANCE_SYNC_NOW {
+        API_SYNC_NOW {
             @Override
             void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
+                AdminSiteStatusApi api = new AdminSiteStatusApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
                 int scheduled = t.tier.background.submitted.get();
-                assertEquals(".Maintenance", t.wire(new MaintenanceController())
-                        .syncAnalytics(request, new ExtendedModelMap()));
+                assertEquals(202, api.syncAnalytics().getStatusCode().value());
                 assertEquals(scheduled + 1, t.tier.background.submitted.get(), "a sync was handed to the pool");
             }
         },

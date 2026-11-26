@@ -322,7 +322,7 @@ class AdminJspHygieneTest {
     @Test
     void everyDataTableScopesItsHeaders() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "editor", "tiles")) {
+        for (String dir : List.of("core", "editor", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -351,7 +351,7 @@ class AdminJspHygieneTest {
     @Test
     void everyModalIsAnAccessibleDialog() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "editor", "tiles")) {
+        for (String dir : List.of("core", "editor", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String body = withoutJspComments(read(f));
@@ -409,33 +409,13 @@ class AdminJspHygieneTest {
     @Test
     void eachFormScreenHasExactlyOnePrimaryAction() {
         List<String> wrong = new ArrayList<>();
-        for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/CreateWeblog.jsp", "core/Setup.jsp",
-                "core/CreateDatabase.jsp")) {
+        for (String screen : List.of("core/CreateWeblog.jsp", "core/CreateDatabase.jsp")) {
             int primaries = jsp(screen).split("btn-primary", -1).length - 1;
             if (primaries != 1) {
                 wrong.add(screen + " has " + primaries);
             }
         }
         assertTrue(wrong.isEmpty(), "expected exactly one btn-primary per screen: " + wrong);
-    }
-
-    /**
-     * Rebuild-index and regenerate-renditions run for minutes against the
-     * weblog named in a &lt;select&gt; the operator may well have scrolled
-     * past. Both confirm, and the confirmation names the weblog.
-     */
-    @Test
-    void theLongMaintenanceOperationsConfirmAndNameTheirWeblog() {
-        String src = jsp("admin/Maintenance.jsp");
-        List<String> missing = new ArrayList<>();
-        for (String key : List.of("maintenance.confirm.index",
-                "maintenance.confirm.regenerateRenditions")) {
-            if (!src.contains(key)) {
-                missing.add(key);
-            }
-        }
-        assertTrue(missing.isEmpty(), "admin/Maintenance.jsp: unconfirmed long operations: " + missing);
     }
 
     /**
@@ -474,28 +454,12 @@ class AdminJspHygieneTest {
     @Test
     void theSweptScreensCarryNoInlineStyleAttributes() {
         List<String> found = new ArrayList<>();
-        for (String screen : List.of("tiles/tiles-installpage.jsp", "core/Setup.jsp",
-                "core/CreateWeblog.jsp")) {
+        for (String screen : List.of("tiles/tiles-installpage.jsp", "core/CreateWeblog.jsp")) {
             if (jsp(screen).contains("style=\"")) {
                 found.add(screen);
             }
         }
         assertTrue(found.isEmpty(), "inline style= attributes remain in: " + found);
-    }
-
-    /**
-     * form-vertical is a Bootstrap 3 class that does nothing in Bootstrap 5.
-     * .form-stacked is this repo's real labels-above conversion.
-     */
-    @Test
-    void noAdminFormRidesTheDeadBootstrap3FormClass() {
-        List<String> found = new ArrayList<>();
-        for (String screen : List.of("admin/Maintenance.jsp", "admin/UserAdmin.jsp")) {
-            if (jsp(screen).contains("form-vertical")) {
-                found.add(screen);
-            }
-        }
-        assertTrue(found.isEmpty(), "dead form-vertical still in: " + found);
     }
 
     // ----------------------------------------------------------------- Task 9
@@ -550,7 +514,7 @@ class AdminJspHygieneTest {
     @Test
     void everyLabelForTargetsAnIdInTheSameFile() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "tiles")) {
+        for (String dir : List.of("core", "tiles")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String src = read(f);
@@ -576,8 +540,7 @@ class AdminJspHygieneTest {
     @Test
     void theRepairedFormScreensBindEveryLabel() {
         List<String> violations = new ArrayList<>();
-        for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/CreateWeblog.jsp", "core/Setup.jsp")) {
+        for (String screen : List.of("core/CreateWeblog.jsp")) {
             String src = jsp(screen);
             Matcher m = Pattern.compile("<label(?![^>]*\\bfor=)[^>]*>(?!\\s*</label>)").matcher(src);
             while (m.find()) {
@@ -604,10 +567,7 @@ class AdminJspHygieneTest {
                 new Field("core/Login.jsp", "j_username", "username"),
                 new Field("core/Login.jsp", "j_password", "current-password"),
                 new Field("core/ResetPassword.jsp", "passwordText", "new-password"),
-                new Field("core/ResetPassword.jsp", "passwordConfirm", "new-password"),
-                new Field("core/Profile.jsp", "passwordText", "new-password"),
-                new Field("core/Profile.jsp", "passwordConfirm", "new-password"),
-                new Field("admin/UserEdit.jsp", "bean_password", "new-password"))) {
+                new Field("core/ResetPassword.jsp", "passwordConfirm", "new-password"))) {
             // Anchored on the element carrying the id: a file-wide contains()
             // let ONE autocomplete="new-password" anywhere in Profile.jsp
             // satisfy both of its password fields, so the confirm field could
@@ -631,7 +591,7 @@ class AdminJspHygieneTest {
     @Test
     void noScreenFocusesTheHiddenCsrfInput() {
         List<String> found = new ArrayList<>();
-        for (String screen : List.of("admin/UserEdit.jsp", "core/CreateWeblog.jsp")) {
+        for (String screen : List.of("core/CreateWeblog.jsp")) {
             String src = jsp(screen);
             if (src.contains("elements[0].focus()")) {
                 found.add(screen + " still focuses elements[0]");
@@ -726,7 +686,7 @@ class AdminJspHygieneTest {
         Pattern unescapedMessageInSingleQuotedConfirm = Pattern.compile(
                 "confirm\\(\\s*'[^']*<spring:message\\b((?:(?!/>).)*?)/>");
         List<String> found = new ArrayList<>();
-        for (String dir : List.of("admin", "core", "tiles", "editor")) {
+        for (String dir : List.of("core", "tiles", "editor")) {
             try (Stream<Path> files = Files.walk(JSPS.resolve(dir))) {
                 files.filter(f -> f.toString().endsWith(".jsp")).forEach(f -> {
                     String src = read(f);
@@ -765,8 +725,7 @@ class AdminJspHygieneTest {
     void theRepairedPromptsSitOnTheirControlNotTheirForm() {
         List<String> wrong = new ArrayList<>();
         record Screen(String file, int expected) { }
-        for (Screen screen : List.of(new Screen("admin/Maintenance.jsp", 3),
-                new Screen("admin/UserEdit.jsp", 1))) {
+        for (Screen screen : List.<Screen>of()) {
             List<String> owners = ownersOf(withoutJspComments(jsp(screen.file())), "data-confirm");
             if (owners.size() != screen.expected()) {
                 wrong.add(screen.file() + " has " + owners.size()
@@ -876,7 +835,7 @@ class AdminJspHygieneTest {
     @Test
     void everyPasswordInputOptsIntoReveal() throws IOException {
         Map<String, String> fields = passwordFields();
-        assertTrue(fields.size() >= 7, "the scan found only " + fields.keySet());
+        assertTrue(fields.size() >= 3, "the scan found only " + fields.keySet());
         Set<String> offenders = new TreeSet<>();
         fields.forEach((name, element) -> {
             // Spring's form tags drop an EMPTY dynamic attribute, so
@@ -923,7 +882,7 @@ class AdminJspHygieneTest {
     @Test
     void confirmFieldsPointAtTheirPassword() {
         Set<String> offenders = new TreeSet<>();
-        for (String page : List.of("core/ResetPassword.jsp", "core/Profile.jsp")) {
+        for (String page : List.of("core/ResetPassword.jsp")) {
             String confirm = elementCarrying(withoutJspComments(jsp(page)), "passwordConfirm");
             if (!confirm.contains("data-match=\"passwordText\"")) {
                 offenders.add(page);

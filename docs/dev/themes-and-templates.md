@@ -270,7 +270,7 @@ resolves through the index at the end of `CLAUDE.md`.
   built from `site.privacy.page` (a `PageReference`: `slug` is a site page,
   `handle/slug` a blog's) and `site.absoluteurl`, and the front door is
   `site.frontpage.weblog.handle` / `site.frontpage.page`: when any of the four
-  changes, `GlobalConfigController`
+  changes, `SiteSettingsEffects` (from `PATCH /v1/admin/config`)
   touches and saves every weblog, and the site space, via `touchLastModified()` and then calls
   `CacheManager.invalidate(weblog)` for each, so every blog's cached pages and
   feeds pick the link up on the next request. The invalidate is what clears

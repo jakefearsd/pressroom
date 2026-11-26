@@ -29,9 +29,17 @@ import java.util.function.UnaryOperator;
  * @param reactPath the React route under the app, {@code {name}} placeholders allowed
  * @param pathParams placeholder name to the request parameter that supplies it
  * @param carried request parameters copied to the query string, in this order, when present
+ * @param fallback where the redirect goes when a path placeholder has no value (the app home for the rows
+ *                 that do not name one)
  */
 public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
-                                   List<String> carried) {
+                                   List<String> carried, String fallback) {
+
+    /** A row whose missing placeholder sends the visitor to the app home. */
+    public LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
+                                List<String> carried) {
+        this(legacyPath, reactPath, pathParams, carried, "/");
+    }
 
     /** Where the React app lives, as a servlet path (spec A1). */
     public static final String APP = "/pressroom-ui/app";
@@ -42,7 +50,37 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/authoring/traffic.rol", "/weblogs/{weblog}/traffic",
                     Map.of("weblog", "weblog"), List.of("period", "tab", "sort")),
             new LegacyAdminRedirects("/pressroom-ui/admin/siteTraffic.rol", "/admin/traffic", Map.of(),
-                    List.of("period")));
+                    List.of("period")),
+            // Wave 4: site admin
+            new LegacyAdminRedirects("/pressroom-ui/admin/globalConfig.rol", "/admin/config", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/setup.rol", "/admin/setup", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/businesses.rol", "/admin/businesses", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/businesses!edit.rol", "/admin/businesses/{id}",
+                    Map.of("id", "id"), List.of(), "/admin/businesses/new"),
+            new LegacyAdminRedirects("/pressroom-ui/admin/maintenance.rol", "/admin/maintenance", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/apiTokens.rol", "/admin/tokens", Map.of(), List.of()),
+            // Wave 4: people
+            new LegacyAdminRedirects("/pressroom-ui/admin/userAdmin.rol", "/admin/users", Map.of(),
+                    List.of("kind", "q")),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createUser.rol", "/admin/users/new", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createUser!cancel.rol", "/admin/users", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser!cancel.rol", "/admin/users", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser.rol", "/admin/users/{userName}",
+                    Map.of("userName", "bean.userName"), List.of(), "/admin/users"),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser!firstSave.rol", "/admin/users/{userName}",
+                    Map.of("userName", "bean.userName"), List.of(), "/admin/users"),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createAgent.rol", "/admin/agents/new", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/agent.rol", "/admin/agents/{userName}",
+                    Map.of("userName", "userName"), List.of(), "/admin/users?kind=agents"),
+            // Wave 4: the signed-in account's own screens
+            new LegacyAdminRedirects("/pressroom-ui/profile.rol", "/profile", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/profileTokens.rol", "/profile/tokens", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/profileTokens!reveal.rol", "/profile/tokens", Map.of(),
+                    List.of()));
 
     /** Every legacy path in the table, for the filter's URL patterns. */
     public static List<String> legacyPaths() {
@@ -71,7 +109,7 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
         for (Map.Entry<String, String> placeholder : pathParams.entrySet()) {
             String value = param.apply(placeholder.getValue());
             if (value == null || value.isBlank()) {
-                return "/";
+                return fallback;
             }
             route = route.replace("{" + placeholder.getKey() + "}", encode(value));
         }

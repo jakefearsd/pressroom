@@ -65,11 +65,16 @@ class JQueryRemovedApiTest {
                 + "(String.prototype.trim, Array.isArray, JSON.parse, Date.now, typeof)");
     }
 
-    /** JSPs and hand-written scripts; the esbuild bundles are generated from app/frontend. */
+    /**
+     * JSPs and hand-written scripts; the esbuild bundles are generated from app/frontend. The React admin's
+     * bundle ({@code admin.js}) is minified: a local variable the minifier names {@code $} makes
+     * {@code $.trim()} on a string read like jQuery's removed call, and the React code loads no jQuery.
+     */
     private static boolean isPageSource(Path file) {
         String name = file.getFileName().toString();
         return (name.endsWith(".jsp") || name.endsWith(".js"))
                 && !name.equals("pressroom-editor.js") && !name.equals("pressroom-content.js")
+                && !name.equals("admin.js")
                 && !file.toString().contains("node_modules");
     }
 }

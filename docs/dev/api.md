@@ -24,13 +24,13 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   stripped, `/api/pressroom-ui/...` once resolved to a JSP controller behind
   the API's chain (Bearer, then also Basic, no CSRF, no token-scope check off
   `/v1/**`): a READ token pinned to one weblog minted an unpinned ADMIN token
-  through `profileTokens!create.rol` (code review, 2026-11-03). Now
+  through the old `profileTokens!create.rol` (code review, 2026-11-03). Now
   `apiSecurityFilterChain` admits only `/api/v1/**` and `/api/mcp` and denies
   the rest, and `PressroomHandlerInterceptor` answers 404 for a non-API
   handler under the `/api` servlet path or an API handler under any other
   (`SecurityConfigTest`, `PressroomHandlerInterceptorTest`). The newsletter
   mount had the same hole: `/newsletter/pressroom-ui/setup!save.rol`
-  reached `SetupController` anonymously, since the UI chain's admin-only
+  reached the (since deleted) `SetupController` anonymously, since the UI chain's admin-only
   rule matches the full path and the controller asks for no user. Under
   `/newsletter` only `NewsletterController` proceeds. `api` and
   `newsletter` are reserved roots in
@@ -411,7 +411,7 @@ field error carries `code`, the last JSON member (so earlier members serialise a
 ## Site settings over the API (2026-11-21)
 
 Spec `docs/superpowers/specs/2026-11-20-jsp-rules-and-view-models-design.md`, Task 1.
-`AdminApi.patchConfig` and `GlobalConfigController.save` share `SiteSettingsRules` (type and range,
+`AdminApi.patchConfig` applies `SiteSettingsRules` (type and range,
 trimming, the front door, the privacy page; a lookup that throws refuses) and
 `SiteSettingsEffects.afterSave` (touch every weblog and the site space on a `RENDERED_PAGE_INPUTS`
 change, then refresh discovery on a changed `site.discovery.*` value). `patchConfig` keeps, in order:

@@ -55,7 +55,7 @@
 
     <c:if test="${userIsAdmin}">
         <p class="mt-4 mb-0">
-            <a href="<c:url value='/pressroom-ui/setup.rol'/>"><spring:message code="siteDirectory.chooseFrontPage"/></a>
+            <a href="<c:url value='/pressroom-ui/app/admin/setup'/>"><spring:message code="siteDirectory.chooseFrontPage"/></a>
         </p>
     </c:if>
 

@@ -524,7 +524,7 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   - **Fail closed**: a limit that cannot be read is off; a weblog whose pass
     throws rolls back whole and is counted in `weblogsFailed`; a ceiling
     pass that throws removes nothing (`ceilingFailed`).
-  - **Saving a setting deletes nothing.** `GlobalConfigController` runs a
+  - **Saving a setting deletes nothing.** `AdminApi.patchConfig` runs a
     dry run after a save that changed a removing limit and adds
     `configForm.revisionsNextSweep` when it is above zero.
   - The settings sit in the `revisionSettings` display group ("Revisions

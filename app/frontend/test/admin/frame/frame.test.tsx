@@ -62,7 +62,7 @@ describe('Frame', () => {
     const context = rail().querySelector('.rail-context');
     expect(context?.querySelector('.visually-hidden')).toHaveTextContent('Signed in as:');
     expect(within(context as HTMLElement).getByRole('link', { name: 'jake' }))
-      .toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/profile.rol');
+      .toHaveAttribute('href', '/profile');
     expect(document.title).toBe('Pressroom: Your weblogs');
     expect(document.querySelector('.card-body')).not.toHaveClass('pressroom-content-body');
   });
@@ -99,7 +99,7 @@ describe('Frame', () => {
       links: ['Configuration', 'Users', 'Businesses', 'API tokens', 'Traffic', 'Maintenance']
     }]);
     expect(screen.getByRole('link', { name: 'Users' }))
-      .toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/admin/userAdmin.rol');
+      .toHaveAttribute('href', '/admin/users');
   });
 
   it('shows a site admin who is no member the full weblog menu', async () => {

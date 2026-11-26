@@ -275,31 +275,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .register();
 
 
-        // ---- setup / install pages ----
-
-        define(".Setup").on(SIMPLE)
-                .content("/WEB-INF/jsps/core/Setup.jsp")
-                .register();
-
-        // Profile is a signed-in screen with no weblog scope, so it has no tabs
-        // to render -- but it is still admin chrome, and mainmenupage is the
-        // layout for exactly that (the rail with the account context block and
-        // no tab groups). On simplepage --
-        // the install/login chrome -- it rendered as a bare card with no rail,
-        // so a reader who opened it had nothing to navigate back by.
-        define(".Profile").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/Profile.jsp")
-                .register();
-
-        // Profile -> API tokens and the one-time reveal: signed-in, un-scoped
-        // screens in Profile's own chrome (spec 2026-10-13, section 3).
-        define(".ProfileTokens").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/ProfileTokens.jsp")
-                .register();
-
-        define(".TokenReveal").on(MAINMENU)
-                .content("/WEB-INF/jsps/core/TokenReveal.jsp")
-                .register();
+        // ---- install pages ----
 
         // The reader's account page is the one admin-UI screen a reader can
         // open, and the rail has nowhere for a reader to go (its account link
@@ -339,44 +315,6 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         define(".Bootstrap").on(INSTALL)
                 .content("/WEB-INF/jsps/core/Bootstrap.jsp")
                 .banner("/WEB-INF/jsps/tiles/bannerInstallation.jsp")
-                .register();
-
-        // ---- global admin pages ----
-
-        define(".GlobalConfig").on(TABBED)
-                .content("/WEB-INF/jsps/admin/GlobalConfig.jsp")
-                .register();
-
-        define(".Businesses").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Businesses.jsp")
-                .register();
-
-        define(".BusinessEdit").on(TABBED)
-                .content("/WEB-INF/jsps/admin/BusinessEdit.jsp")
-                .register();
-
-        define(".UserAdmin").on(TABBED)
-                .content("/WEB-INF/jsps/admin/UserAdmin.jsp")
-                .register();
-
-        define(".UserEdit").on(TABBED)
-                .content("/WEB-INF/jsps/admin/UserEdit.jsp")
-                .register();
-
-        define(".AgentCreate").on(TABBED)
-                .content("/WEB-INF/jsps/admin/AgentCreate.jsp")
-                .register();
-
-        define(".Agent").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Agent.jsp")
-                .register();
-
-        define(".ApiTokens").on(TABBED)
-                .content("/WEB-INF/jsps/admin/ApiTokens.jsp")
-                .register();
-
-        define(".Maintenance").on(TABBED)
-                .content("/WEB-INF/jsps/admin/Maintenance.jsp")
                 .register();
 
         // ---- weblog editor pages ----

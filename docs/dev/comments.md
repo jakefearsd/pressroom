@@ -165,8 +165,8 @@ by every controller in `ReaderRefusalSweepTest`.
   comment becomes or stops being PUBLISHED, a PUBLISHED comment is deleted, a
   reply is added or deleted, or a commenter with published comments renames
   (every weblog where they have one: `expireWhereShown`). A rename can come from
-  the account page, Profile (`ProfileController`) or User Admin
-  (`UserEditController`); each expires after its save commits. A PENDING
+  the account page, Profile (`MeProfileApi`) or User Admin
+  (`AdminApi`); each expires after its save commits. A PENDING
   comment changes no page and expires nothing.
 - Trashed entries render no page and their comments survive a restore;
   deleting an entry outright deletes them.

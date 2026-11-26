@@ -36,7 +36,6 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.controllers.admin.UserWeblogsController;
 import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
 import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
@@ -222,11 +221,6 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
-        UserWeblogsController userWeblogsController() {
-            return new UserWeblogsController();
-        }
-
-        @Bean
         com.wikantik.pressroom.ui.restapi.v1.MetaApi metaApi() {
             return new com.wikantik.pressroom.ui.restapi.v1.MetaApi();
         }
@@ -363,33 +357,6 @@ class SiteSpaceAccessTest {
             assertEquals(302, result.getResponse().getStatus(), screen);
             assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
         }
-    }
-
-    /**
-     * Global Admin's per-person weblog grants name the weblog by a handle in
-     * the form, outside the interceptor. A row on the site space would list it
-     * among that person's blogs, so its handle is refused there exactly as one
-     * naming no weblog, and no row is written.
-     */
-    @Test
-    void noOneIsGrantedARoleOnTheSiteSpace() throws Exception {
-        Weblog site = siteSpace();
-        signIn(admin);
-        Function<String, MockHttpServletRequestBuilder> grant = h -> post("/pressroom-ui/admin/userWeblogs!grant.rol")
-                .param("userName", author.getUserName()).param("handle", h).param("level", "admin");
-
-        MvcResult unknown = perform(grant.apply("ssanosuchblog"));
-        MvcResult refused = perform(grant.apply(SITE));
-
-        assertEquals(302, refused.getResponse().getStatus());
-        assertEquals(unknown.getResponse().getRedirectedUrl(), refused.getResponse().getRedirectedUrl());
-        assertEquals(unknown.getFlashMap().get("errors"), refused.getFlashMap().get("errors"));
-        // This context registers no bundle, so a message reads as its code (BaseController.getText).
-        assertEquals(List.of("userWeblogs.error.noSuchWeblog"), refused.getFlashMap().get("errors"),
-                "refused as a weblog that does not exist");
-        assertTrue(TestUtils.weblogger().getUserManager()
-                .getWeblogPermissions(TestUtils.weblogger().getWeblogManager().getWeblog(site.getId())).isEmpty(),
-                "no permission row on the site space");
     }
 
     // ------------------------------------------------------------ the automation API

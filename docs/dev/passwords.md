@@ -42,7 +42,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 - **`PasswordRules` (`ui/controllers`) is the only password floor** (8
   characters), applied by every path that sets a chosen password: create and
-  edit in `UserEditController`, `ProfileController` and
+  edit in `AdminApi`, `MeProfileApi` and
   `PasswordResetController` (2026-11). The edit and profile paths used to
   enforce nothing, so a one-character password went through. The refusal
   keys still say "8" in their text (`personForm.error.passwordTooShort`,
@@ -67,9 +67,8 @@ comments endpoints answer it with "disabled" (`CommentsControllerTest`).
 - **It compares against the database**, so every way a password changes is
   covered: profile, admin user editor, reset link, `AdminApi`, and the admin
   account tool, which writes the row directly.
-- **The changing session stays signed in**: `ProfileController`, and
-  `UserEditController` when admins edit themselves, call
-  `CredentialStampFilter.restamp` after the save commits.
+- **The changing session stays signed in**: `PUT /v1/me/password` (the only way anyone, an admin included,
+  changes their own password) calls `CredentialStampFilter.restamp` after the save commits.
 - **A lookup that throws ends the session** (fail closed).
 - **A sign-in as someone else** in a session that never signed out keeps
   the session's attributes (only its id changes); the stamp's owner differs,
