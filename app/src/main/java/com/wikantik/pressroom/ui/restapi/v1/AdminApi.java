@@ -1,6 +1,7 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,14 +25,16 @@ import com.wikantik.pressroom.config.runtime.PropertyDef;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
-import com.wikantik.pressroom.pojos.UserToken;
+import com.wikantik.pressroom.ui.controllers.AccountRoles;
 import com.wikantik.pressroom.ui.controllers.AccountRules;
+import com.wikantik.pressroom.ui.controllers.Memberships;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsEffects;
 import com.wikantik.pressroom.ui.controllers.SiteSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
+import com.wikantik.pressroom.ui.controllers.core.PasswordLinkService;
 import com.wikantik.pressroom.ui.restapi.AdminAccountGuard;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
@@ -41,6 +44,7 @@ import com.wikantik.pressroom.ui.restapi.RuleProblems;
 import com.wikantik.pressroom.ui.restapi.auth.AdminScoped;
 import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
+import com.wikantik.pressroom.ui.restapi.dto.MetaDtos;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -91,6 +95,12 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     @GetMapping("/users")
     public AdminDtos.UserPage listUsers(
             @RequestParam(value = "enabled", required = false) Boolean enabled,
+            @Parameter(description = "Only accounts whose user name, screen name, full name or email contains this "
+                    + "text, ignoring case.")
+            @RequestParam(value = "q", required = false) String q,
+            @Parameter(description = "people, agents or all (the default): the admin screen's tabs.",
+                    schema = @Schema(allowableValues = {"all", "people", "agents"}))
+            @RequestParam(value = "kind", required = false) String kind,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
         // Same trap as EntriesApi.list: a negative offset reaches JPA's
@@ -100,15 +110,40 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // instead of failing.
         Paging.requireRange(limit, offset);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
+        User.Kind accountKind = accountKind(kind);
+        String text = StringUtils.trimToNull(q);
 
         UserManager mgr = weblogger.getUserManager();
         // One row past the page decides hasMore: no count query.
-        List<User> rows = mgr.getUsers(enabled, null, null, offset, boundedLimit + 1);
+        List<User> rows;
+        if (accountKind == null && text == null) {
+            rows = mgr.getUsers(enabled, null, null, offset, boundedLimit + 1);
+        } else {
+            // The screen's own search (UserManager.getAccounts, a few dozen rows filtered in memory), then the
+            // enabled filter and the page applied to what it found.
+            rows = mgr.getAccounts(accountKind, text).stream()
+                    .filter(user -> enabled == null || enabled == Boolean.TRUE.equals(user.getEnabled()))
+                    .skip(offset).limit((long) boundedLimit + 1).toList();
+        }
         List<AdminDtos.UserView> views = new ArrayList<>();
         for (User user : rows.subList(0, Math.min(rows.size(), boundedLimit))) {
             views.add(AdminDtos.toView(user, roles(user)));
         }
         return new AdminDtos.UserPage(views, offset, boundedLimit, rows.size() > boundedLimit);
+    }
+
+    /** The screen's tab for {@code kind}: null for all. Anything but people, agents or all is refused. */
+    private static User.Kind accountKind(String kind) {
+        if (kind == null || "all".equalsIgnoreCase(kind)) {
+            return null;
+        }
+        if ("people".equalsIgnoreCase(kind)) {
+            return User.Kind.PERSON;
+        }
+        if ("agents".equalsIgnoreCase(kind)) {
+            return User.Kind.AGENT;
+        }
+        throw ApiException.problemOnField("kind", ProblemCode.PARAMETER_INVALID_VALUE, "kind");
     }
 
     @Operation(operationId = "usersCreate")
@@ -137,6 +172,20 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (StringUtils.isNotBlank(screenName)) {
             RuleProblems.add(errors, AccountRules.screenNameProblem(screenName));
         }
+        // pressroom_user.fullname is NOT NULL: it defaults to the screen name, as the screen name does to the
+        // user name, when not sent.
+        String fullName = body.fullName() == null ? screenName : body.fullName().trim();
+        if (body.fullName() != null) {
+            RuleProblems.add(errors, AccountRules.fullNameProblem(fullName));
+        }
+        String locale = body.locale() == null ? null : body.locale().trim();
+        if (locale != null) {
+            RuleProblems.add(errors, AccountRules.localeProblem(locale));
+        }
+        String timeZone = body.timeZone() == null ? null : body.timeZone().trim();
+        if (timeZone != null) {
+            RuleProblems.add(errors, AccountRules.timeZoneProblem(timeZone));
+        }
         errors.throwIfAny();
 
         UserManager mgr = weblogger.getUserManager();
@@ -157,12 +206,9 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         User user = new User();
         user.setUserName(userName);
         user.setScreenName(screenName);
-        // pressroom_user.fullname is NOT NULL and UserCreate carries no field
-        // for it -- adding one just to satisfy a column an automation
-        // caller has no reason to fill in would be a worse API than
-        // defaulting it the same way screenName already defaults to
-        // userName above.
-        user.setFullName(screenName);
+        user.setFullName(fullName);
+        user.setLocale(locale);
+        user.setTimeZone(timeZone);
         user.setEmailAddress(emailAddress);
         user.setEnabled(Boolean.FALSE);
         user.setDateCreated(new Date());
@@ -176,9 +222,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         weblogger.flush();
 
         try {
-            String raw = weblogger.getUserTokenManager().issueToken(user, UserToken.Purpose.PASSWORD_SET);
-            weblogger.flush();
-            PasswordLinkMailer.sendLink(user, raw, "Set your Pressroom password");
+            PasswordLinkService.send(weblogger, user, PasswordLinkService.DEFAULT_SUBJECT);
         } catch (MessagingException e) {
             // The account exists either way -- disabled and resendable from
             // the JSP UserAdmin screen's "send set-password link" action --
@@ -203,14 +247,8 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     public AdminDtos.UserView patchUser(HttpServletRequest request,
             @PathVariable("userName") String userName, @RequestBody AdminDtos.UserPatch body)
             throws WebloggerException {
-        if (StringUtils.isBlank(userName)) {
-            throw ApiException.problem(ProblemCode.USER_NOT_FOUND);
-        }
+        User user = requireUser(userName);
         UserManager mgr = weblogger.getUserManager();
-        User user = mgr.getUserByUserName(userName, null);
-        if (user == null) {
-            throw ApiException.problem(ProblemCode.USER_NOT_FOUND);
-        }
         Caller caller = Caller.current();
         AdminAccountGuard.requireNotAgent(caller, user);
         AdminAccountGuard.requireNotAdmin(caller, mgr, user);
@@ -235,12 +273,44 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             }
             RuleProblems.add(errors, problem);
         }
+        if (body.fullName() != null) {
+            String fullName = body.fullName().trim();
+            RuleViolation problem = AccountRules.fullNameProblem(fullName);
+            if (problem == null) {
+                user.setFullName(fullName);
+            }
+            RuleProblems.add(errors, problem);
+        }
+        if (body.locale() != null) {
+            String locale = body.locale().trim();
+            RuleViolation problem = AccountRules.localeProblem(locale);
+            if (problem == null) {
+                user.setLocale(locale);
+            }
+            RuleProblems.add(errors, problem);
+        }
+        if (body.timeZone() != null) {
+            String timeZone = body.timeZone().trim();
+            RuleViolation problem = AccountRules.timeZoneProblem(timeZone);
+            if (problem == null) {
+                user.setTimeZone(timeZone);
+            }
+            RuleProblems.add(errors, problem);
+        }
+        // Only a single-sign-on account has an author role to edit (the person screen's own rule); any other
+        // account's follows its memberships.
+        if (body.writer() != null && !user.isSsoBound()) {
+            errors.add("writer", ProblemCode.USER_WRITER_SSO_ONLY);
+        }
         errors.throwIfAny();
         if (body.enabled() != null) {
             user.setEnabled(body.enabled());
         }
 
         mgr.saveUser(user);
+        if (body.writer() != null) {
+            AccountRoles.sync(mgr, user, AccountRoles.EDITOR, body.writer(), mgr.hasRole(AccountRoles.EDITOR, user));
+        }
         weblogger.flush();
         boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
         if (enabledBefore != enabledNow) {
@@ -248,6 +318,58 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                     (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
         }
         return AdminDtos.toView(user, roles(user));
+    }
+
+    /**
+     * Emails the person a set-password link, as the person screen's "send set-password link" does
+     * ({@link PasswordLinkService}). The link goes to the address on the account, never to the caller. A token
+     * may not do this for an agent or an admin account (the account guard); neither screen nor API sends one
+     * to a single-sign-on account.
+     */
+    @Operation(operationId = "usersSendPasswordLink")
+    @ApiResponse(responseCode = "204", description = "The link was mailed to the account's address.")
+    @PostMapping("/users/{userName}/password-link")
+    public ResponseEntity<Void> sendPasswordLink(@PathVariable("userName") String userName)
+            throws WebloggerException {
+        User user = requireUser(userName);
+        Caller caller = Caller.current();
+        AdminAccountGuard.requireNotAgent(caller, user);
+        AdminAccountGuard.requireNotAdmin(caller, weblogger.getUserManager(), user);
+        PasswordLinkService.Refusal refusal = PasswordLinkService.refusal(user);
+        if (refusal != null) {
+            throw ApiException.problem(switch (refusal) {
+                case NOT_A_PERSON -> ProblemCode.USER_NOT_A_PERSON;
+                case SSO_BOUND -> ProblemCode.USER_SSO_BOUND;
+                case MAIL_NOT_CONFIGURED -> ProblemCode.USER_MAIL_NOT_CONFIGURED;
+            });
+        }
+        try {
+            PasswordLinkService.send(weblogger, user, PasswordLinkService.DEFAULT_SUBJECT);
+        } catch (MessagingException e) {
+            log.error("Set-password link could not be sent to {}", userName, e);
+            throw ApiException.problem(ProblemCode.USER_PASSWORD_LINK_FAILED, e);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    /** The weblogs an account belongs to and its level on each: the person page's Weblogs list, read only. */
+    @Operation(operationId = "usersListWeblogs")
+    @GetMapping("/users/{userName}/weblogs")
+    public AdminDtos.UserWeblogsPage userWeblogs(@PathVariable("userName") String userName)
+            throws WebloggerException {
+        List<MetaDtos.WeblogMembership> items = new ArrayList<>();
+        for (Memberships.Row row : Memberships.of(weblogger, requireUser(userName))) {
+            items.add(new MetaDtos.WeblogMembership(row.handle(), row.name(), row.level()));
+        }
+        return new AdminDtos.UserWeblogsPage(items);
+    }
+
+    private User requireUser(String userName) throws WebloggerException {
+        User user = StringUtils.isBlank(userName) ? null : weblogger.getUserManager().getUserByUserName(userName, null);
+        if (user == null) {
+            throw ApiException.problem(ProblemCode.USER_NOT_FOUND);
+        }
+        return user;
     }
 
     private List<String> roles(User user) throws WebloggerException {

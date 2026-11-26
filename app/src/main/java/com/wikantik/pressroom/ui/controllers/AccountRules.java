@@ -46,6 +46,9 @@ public final class AccountRules {
     public static final String USER_NAME = "userName";
     public static final String EMAIL = "emailAddress";
     public static final String SCREEN_NAME = "screenName";
+    public static final String FULL_NAME = "fullName";
+    public static final String LOCALE = "locale";
+    public static final String TIME_ZONE = "timeZone";
 
     /** What an address is for, which decides whether none at all will do, and the API's code. */
     public enum EmailUse {
@@ -149,6 +152,33 @@ public final class AccountRules {
                     ProblemCode.FIELD_TOO_LONG, SCREEN_NAME, Integer.toString(ColumnWidths.SCREEN_NAME));
         }
         return null;
+    }
+
+    /** A full name: not blank, and at most {@link ColumnWidths#FULL_NAME} characters as given. */
+    public static RuleViolation fullNameProblem(String fullName) {
+        if (StringUtils.isBlank(fullName)) {
+            return RuleViolation.invalid(FULL_NAME, "personForm.error.fullName", List.of(),
+                    ProblemCode.FIELD_BLANK, FULL_NAME);
+        }
+        if (fullName.length() > ColumnWidths.FULL_NAME) {
+            return RuleViolation.invalid(FULL_NAME, "personForm.error.fullNameTooLong", List.of(),
+                    ProblemCode.FIELD_TOO_LONG, FULL_NAME, Integer.toString(ColumnWidths.FULL_NAME));
+        }
+        return null;
+    }
+
+    /** A locale the settings form offers, as the weblog rules judge one ({@code locale.invalid}), or null. */
+    public static RuleViolation localeProblem(String locale) {
+        boolean offered = UIUtils.getLocales().stream().map(Locale::toString).anyMatch(l -> l.equals(locale));
+        return offered ? null : RuleViolation.invalid(LOCALE, "websiteSettings.locale.invalid", List.of(),
+                ProblemCode.LOCALE_INVALID);
+    }
+
+    /** A time zone id the settings form offers ({@code timeZone.invalid}), or null. */
+    public static RuleViolation timeZoneProblem(String timeZone) {
+        return UIUtils.getTimeZones().contains(timeZone) ? null
+                : RuleViolation.invalid(TIME_ZONE, "websiteSettings.timeZone.invalid", List.of(),
+                        ProblemCode.TIME_ZONE_INVALID);
     }
 
     /**

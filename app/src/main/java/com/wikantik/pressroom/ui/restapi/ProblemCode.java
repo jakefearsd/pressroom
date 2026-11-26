@@ -277,6 +277,14 @@ public enum ProblemCode {
     USER_MAIL_NOT_CONFIGURED("user.mailNotConfigured", ProblemType.INVALID_REQUEST, 0),
     /** The account was created, disabled, but its set-password mail failed. */
     USER_PASSWORD_LINK_NOT_SENT("user.passwordLinkNotSent", ProblemType.UPSTREAM_FAILURE, 0),
+    /** A set-password link was asked for an agent account, which has no password. */
+    USER_NOT_A_PERSON("user.notAPerson", ProblemType.INVALID_REQUEST, 0),
+    /** A set-password link was asked for a single-sign-on account, which signs in through its provider. */
+    USER_SSO_BOUND("user.ssoBound", ProblemType.INVALID_REQUEST, 0),
+    /** {@code writer} was sent for an account that is not single-sign-on: only those have an editable author role. */
+    USER_WRITER_SSO_ONLY("user.writerSsoOnly", ProblemType.INVALID_REQUEST, 0),
+    /** The set-password link could not be mailed (an existing account; nothing changed). */
+    USER_PASSWORD_LINK_FAILED("user.passwordLinkFailed", ProblemType.UPSTREAM_FAILURE, 0),
     /** A settings PATCH named no setting. */
     CONFIG_PROPERTIES_REQUIRED("config.propertiesRequired", ProblemType.INVALID_REQUEST, 0),
     /** A settings PATCH named a setting with a blank name. */

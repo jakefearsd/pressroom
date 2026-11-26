@@ -157,11 +157,15 @@ public final class McpToolCatalog {
                             + "site admin and an ADMIN token.", "GET /v1/admin/traffic")),
             tool("users", "Site user accounts. Needs an ADMIN token. Admin accounts are read-only here: "
                     + "they are managed in the admin UI.", false,
-                    action("list", "List users and their roles.", "GET /v1/admin/users"),
+                    action("list", "List users and their roles; filter by q (name, email) and kind (people, agents, "
+                            + "all).", "GET /v1/admin/users"),
                     action("create", "Create an account; it is emailed a link to set its password.",
                             "POST /v1/admin/users"),
-                    action("update", "Change a non-admin account's screen name or enabled flag; its email is changed in the admin UI.",
-                            "PATCH /v1/admin/users/{userName}")),
+                    action("update", "Change a non-admin account's screen name, full name, locale, time zone, "
+                            + "enabled flag or (single-sign-on accounts only) writer flag; its email is changed in "
+                            + "the admin UI.", "PATCH /v1/admin/users/{userName}"),
+                    action("weblogs", "The weblogs an account belongs to, with its level on each.",
+                            "GET /v1/admin/users/{userName}/weblogs")),
             tool("businesses", "Site-wide business profiles that blogs show as schema.org data. Needs a site "
                     + "admin and an ADMIN token.", false,
                     action("list", "List business profiles, with how many weblogs use each.",
@@ -194,6 +198,15 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/admin/revisions", "Operator maintenance: the admin screen and admin API only."),
             new Exclusion("POST /v1/admin/revisions/sweep",
                     "Operator maintenance: removes history site-wide; the admin screen and admin API only."),
+            new Exclusion("POST /v1/admin/users/{userName}/password-link",
+                    "Sends mail to a person on an admin's say-so; an agent acting on injected text could spam "
+                            + "or unsettle account holders. The admin screen and admin API only."),
+            new Exclusion("GET /v1/admin/discovery", "Operator maintenance: the admin screen and admin API only."),
+            new Exclusion("POST /v1/admin/discovery/refresh",
+                    "Operator maintenance: re-reads analytics now; the admin screen and admin API only."),
+            new Exclusion("GET /v1/admin/analytics", "Operator maintenance: the admin screen and admin API only."),
+            new Exclusion("POST /v1/admin/analytics/sync",
+                    "Operator maintenance: starts a registration sync; the admin screen and admin API only."),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."));
 

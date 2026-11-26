@@ -633,6 +633,10 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `user.emailUiOnly` | 403 | `forbidden` | A user update changes `emailAddress`; another user's email address is changed in the admin UI only. |
 | `user.mailNotConfigured` | 400 | `invalid-request` | A user create on a site with no mail set up: the set-password link could not be sent. |
 | `user.passwordLinkNotSent` | 502 | `upstream-failure` | The account was created, disabled, but its set-password mail failed. |
+| `user.notAPerson` | 400 | `invalid-request` | A set-password link was asked for an agent account, which has no password. |
+| `user.ssoBound` | 400 | `invalid-request` | A set-password link was asked for a single-sign-on account, which signs in through its provider. |
+| `user.writerSsoOnly` | 400 | `invalid-request` | `writer` was sent for an account that is not single-sign-on: only those have an editable author role. |
+| `user.passwordLinkFailed` | 502 | `upstream-failure` | The set-password link could not be mailed (an existing account; nothing changed). |
 | `config.propertiesRequired` | 400 | `invalid-request` | A settings PATCH named no setting. |
 | `config.propertyNameRequired` | 400 | `invalid-request` | A settings PATCH named a setting with a blank name. |
 | `config.propertyUnknown` | 400 | `invalid-request` | A setting that is not runtime-settable. |
@@ -772,7 +776,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 429 | Throttled: the request throttle (`request.throttled`, with `Retry-After`; see below), or a comment reply over the account's comment rate limit (`comment.replyRateLimited`, with no `Retry-After`). |
 | 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry save that claims an anchor: a create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. Clients should retry. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
-| 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
+| 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent (the account survives and is resendable, so this is not retried as a fresh create), and `POST .../users/{userName}/password-link` when its mail could not be sent. |
 
 A media upload that would exceed a quota is not a whole-request 413: it is a
 per-file `"quota_exceeded"` `status` string inside that file's own
@@ -2029,9 +2033,11 @@ weblog routes: `GET/PATCH /api/v1/weblogs/{handle}` are the weblog owner's
 page (both below).
 
 ```
-GET   /api/v1/admin/users[?enabled=&offset=&limit=]
+GET   /api/v1/admin/users[?enabled=&q=&kind=&offset=&limit=]
 POST  /api/v1/admin/users
 PATCH /api/v1/admin/users/{userName}
+POST  /api/v1/admin/users/{userName}/password-link   email the person a set-password link
+GET   /api/v1/admin/users/{userName}/weblogs         the weblogs the account belongs to
 
 GET   /api/v1/admin/config
 PATCH /api/v1/admin/config
@@ -2135,6 +2141,29 @@ than creating an account with no way to ever reach a usable password.
 > either). Resending the stored address unchanged is accepted. `screenName`, `enabled` and account creation
 > are unchanged. The MCP `users` `update` action answers the same.
 
+**Listing and filtering.** `GET /api/v1/admin/users` takes `q` (text matched, ignoring case, against user name,
+screen name, full name and email) and `kind` (`people`, `agents` or `all`, the default): the admin screen's search
+and its All, People and Agents tabs. An unknown `kind` is a 400 `parameter.invalidValue`. `enabled`, `offset` and
+`limit` apply to what the search finds.
+
+**Profile fields.** `POST` and `PATCH` take `fullName` (not blank, at most 255 characters; on create it defaults
+to the screen name), `locale` and `timeZone` (one the settings forms offer; refused as `locale.invalid` and
+`timeZone.invalid`). `PATCH` also takes `writer`, which grants or revokes the editor (author) role, as the person
+screen's "can write" box does; only a single-sign-on account has one to edit, so on any other account it is a 400
+`user.writerSsoOnly`. Every field is judged before any is saved. Still session-only and absent from the API (SA-18):
+the administrator flag, weblog memberships and another user's email address; agent and admin accounts stay
+refused to tokens as before.
+
+**`POST /api/v1/admin/users/{userName}/password-link`** mails the account's own address a set-password link, as the
+person screen's "send set-password link" does, and answers 204. It is refused with 400 when mail is not configured
+(`user.mailNotConfigured`), for a single-sign-on account (`user.ssoBound`) and for an agent (`user.notAPerson`);
+a token gets 403 for an agent or admin account, and a mail failure is 502 `user.passwordLinkFailed` with nothing
+changed. It is not an MCP tool.
+
+**`GET /api/v1/admin/users/{userName}/weblogs`** answers `{items: [{handle, name, permission}]}`, ordered by
+handle: the weblogs the account holds a permission on and its highest permission on each (`ADMIN`, `POST` or
+`EDIT_DRAFT`). Read only; memberships are changed in the admin UI. MCP: `users` `weblogs`.
+
 The user view (`UserView`) carries these fields:
 
 | Field | Meaning |
@@ -2142,6 +2171,8 @@ The user view (`UserView`) carries these fields:
 | `userName`, `screenName`, `emailAddress` | The account's identity. |
 | `enabled` | Whether the account may sign in. |
 | `globalRoles` | The account's global roles (`admin`, `editor`, `reader`). |
+| `fullName`, `locale`, `timeZone` | The account's profile. |
+| `writer` | Whether the account holds the editor (author) role. |
 | `sso` | `true` when the account signs in with single sign-on (Google). Such an account has no password. An email address patched on such an account is replaced at its next sign-in. |
 
 `GET/PATCH /api/v1/admin/config` reads and writes Pressroom's runtime
@@ -2321,6 +2352,21 @@ background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a
 caller never has to special-case one of the three.
 
+### Discovery and analytics status
+
+```
+GET  /api/v1/admin/discovery           front-page discovery: state, last attempt and success, counts, last error
+POST /api/v1/admin/discovery/refresh   rebuild the popularity snapshot now; answers the status it left
+GET  /api/v1/admin/analytics           registration and read status: configured, reachable, registered/total,
+                                       failures per weblog, last read and its error
+POST /api/v1/admin/analytics/sync      ask for a registration sync; 202, the sync finishes after the response
+```
+
+What the Maintenance screen shows beside its buttons, from the same managers; a site admin with an `ADMIN` token.
+`discovery/refresh` is synchronous, and a failed analytics read is a 200 whose `state` is `FAILED` with `lastError`,
+as the screen reports it. Neither status calls the analytics service. None of the four is an MCP tool: they are
+operator maintenance.
+
 ## MCP
 
 `POST /api/mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless: no sessions, no
@@ -2368,7 +2414,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
 | `traffic` | `get`, `site` |
-| `users` | `list`, `create`, `update` |
+| `users` | `list`, `create`, `update`, `weblogs` |
 | `businesses` | `list`, `get`, `create`, `update`, `delete` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |

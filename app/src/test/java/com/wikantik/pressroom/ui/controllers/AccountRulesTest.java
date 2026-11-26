@@ -208,6 +208,33 @@ class AccountRulesTest {
         assertNull(AccountRules.screenNameProblem("s".repeat(255)));
     }
 
+    // --- full name, locale, time zone ---
+
+    @Test
+    void aFullNameMustBeNonBlankAndFitTheColumn() {
+        assertEquals(RuleViolation.invalid("fullName", "personForm.error.fullName", List.of(),
+                ProblemCode.FIELD_BLANK, "fullName"), AccountRules.fullNameProblem(" "));
+        assertEquals(RuleViolation.invalid("fullName", "personForm.error.fullName", List.of(),
+                ProblemCode.FIELD_BLANK, "fullName"), AccountRules.fullNameProblem(null));
+        assertEquals(RuleViolation.invalid("fullName", "personForm.error.fullNameTooLong", List.of(),
+                ProblemCode.FIELD_TOO_LONG, "fullName", "255"), AccountRules.fullNameProblem("n".repeat(256)));
+        assertNull(AccountRules.fullNameProblem("n".repeat(255)));
+    }
+
+    @Test
+    void aLocaleMustBeOneTheSettingsFormOffers() {
+        assertEquals(RuleViolation.invalid("locale", "websiteSettings.locale.invalid", List.of(),
+                ProblemCode.LOCALE_INVALID), AccountRules.localeProblem("xx_YY"));
+        assertNull(AccountRules.localeProblem("en_US"));
+    }
+
+    @Test
+    void aTimeZoneMustBeOneTheSettingsFormOffers() {
+        assertEquals(RuleViolation.invalid("timeZone", "websiteSettings.timeZone.invalid", List.of(),
+                ProblemCode.TIME_ZONE_INVALID), AccountRules.timeZoneProblem("Mars/Olympus"));
+        assertNull(AccountRules.timeZoneProblem("Europe/Berlin"));
+    }
+
     // --- password ---
 
     @Test

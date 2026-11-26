@@ -34,12 +34,13 @@ import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
-import com.wikantik.pressroom.pojos.UserToken;
+import com.wikantik.pressroom.ui.controllers.AccountRoles;
 import com.wikantik.pressroom.ui.controllers.AccountRules;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.RuleViolation;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
+import com.wikantik.pressroom.ui.controllers.core.PasswordLinkService;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
@@ -278,13 +279,13 @@ public class UserEditController extends BaseController {
             String roleEvent = null;
             if (user.isSsoBound()) {
                 // a bound account never holds admin; only the editor role is editable
-                syncRole(mgr, user, "editor", bean.isWriter(), mgr.hasRole("editor", user));
+                AccountRoles.sync(mgr, user, AccountRoles.EDITOR, bean.isWriter(), mgr.hasRole(AccountRoles.EDITOR, user));
             } else {
                 // grant/revoke admin role if needed (refuseSelfLockout has
                 // already refused an admin unticking their own role)
                 boolean hasAdmin = mgr.checkPermission(
                         new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), user);
-                roleEvent = syncRole(mgr, user, "admin", bean.isAdministrator(), hasAdmin);
+                roleEvent = AccountRoles.sync(mgr, user, "admin", bean.isAdministrator(), hasAdmin);
             }
             weblogger.flush();
             if (passwordChanged && actingOnSelf) {
@@ -308,27 +309,6 @@ public class UserEditController extends BaseController {
             addError(model, "generic.error.check.logs", request);
         }
         return ".UserEdit";
-    }
-
-    /**
-     * Grants or revokes one role so that holding it matches the form.
-     *
-     * @return the admin-log event for a change to the admin role, else null
-     */
-    private static String syncRole(UserManager mgr, User user, String role, boolean wanted, boolean held)
-            throws WebloggerException {
-        if (wanted == held) {
-            return null;
-        }
-        if (wanted) {
-            mgr.grantRole(role, user);
-        } else {
-            mgr.revokeRole(role, user);
-        }
-        if (!"admin".equals(role)) {
-            return null;
-        }
-        return wanted ? "siteAdmin.granted" : "siteAdmin.removed";
     }
 
     @GetMapping("/modifyUser!cancel.rol")
@@ -374,12 +354,12 @@ public class UserEditController extends BaseController {
         UserWeblogsModel.populate(weblogger, model, user);
         model.addAttribute("ssoBound", user.isSsoBound());
 
-        if (user.isSsoBound()) {
+        PasswordLinkService.Refusal refusal = PasswordLinkService.refusal(user);
+        if (refusal == PasswordLinkService.Refusal.SSO_BOUND) {
             addError(model, "userAdmin.error.ssoPassword", request);
             return ".UserEdit";
         }
-
-        if (!PasswordLinkMailer.isReady()) {
+        if (refusal == PasswordLinkService.Refusal.MAIL_NOT_CONFIGURED) {
             addError(model, "userAdmin.mailNotConfigured", request);
             return ".UserEdit";
         }
@@ -400,10 +380,7 @@ public class UserEditController extends BaseController {
     private void issueAndMailPasswordSetLink(User user, Model model, HttpServletRequest request,
                                              String successKey, String... successArg) {
         try {
-            String raw = weblogger.getUserTokenManager().issueToken(user, UserToken.Purpose.PASSWORD_SET);
-            weblogger.flush();
-            String subject = getText("userAdmin.setPassword.email.subject", request);
-            PasswordLinkMailer.sendLink(user, raw, subject);
+            PasswordLinkService.send(weblogger, user, getText("userAdmin.setPassword.email.subject", request));
             if (successArg.length > 0) {
                 addMessage(model, successKey, successArg[0], request);
             } else {
@@ -450,8 +427,9 @@ public class UserEditController extends BaseController {
         if (screenName != null) {
             addFieldError(model, "bean_screenName", screenName, request);
         }
-        if (StringUtils.isBlank(bean.getFullName())) {
-            addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
+        RuleViolation fullName = AccountRules.fullNameProblem(bean.getFullName());
+        if (fullName != null) {
+            addFieldError(model, "bean_fullName", fullName, request);
         }
         RuleViolation email = AccountRules.emailProblem(bean.getEmailAddress(), AccountRules.EmailUse.REQUIRED);
         if (email != null) {
@@ -477,6 +455,32 @@ public class UserEditController extends BaseController {
         String password = AccountRules.passwordProblem(bean.getPassword(), false);
         if (password != null) {
             addFieldError(model, "bean_password", password, request);
+        }
+        validateProfile(bean, user, model, request);
+    }
+
+    /**
+     * The profile fields the API shares ({@link AccountRules}): a full name, locale or time zone is judged only
+     * when it differs from the stored one, so an account holding an older value can still be saved with it.
+     */
+    private void validateProfile(CreateUserBean bean, User user, Model model, HttpServletRequest request) {
+        if (!Objects.equals(bean.getFullName(), user.getFullName())) {
+            RuleViolation fullName = AccountRules.fullNameProblem(bean.getFullName());
+            if (fullName != null) {
+                addFieldError(model, "bean_fullName", fullName, request);
+            }
+        }
+        if (!Objects.equals(bean.getLocale(), user.getLocale())) {
+            RuleViolation locale = AccountRules.localeProblem(bean.getLocale());
+            if (locale != null) {
+                addFieldError(model, "bean_locale", locale, request);
+            }
+        }
+        if (!Objects.equals(bean.getTimeZone(), user.getTimeZone())) {
+            RuleViolation zone = AccountRules.timeZoneProblem(bean.getTimeZone());
+            if (zone != null) {
+                addFieldError(model, "bean_timeZone", zone, request);
+            }
         }
     }
 

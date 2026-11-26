@@ -26,7 +26,7 @@ public final class ColumnLimits {
     // pressroom_user (V002__baseline_schema.sql)
     public static final int USERNAME = ColumnWidths.USERNAME;
     public static final int SCREEN_NAME = ColumnWidths.SCREEN_NAME;
-    public static final int FULL_NAME = 255;
+    public static final int FULL_NAME = ColumnWidths.FULL_NAME;
     public static final int USER_EMAIL_ADDRESS = ColumnWidths.USER_EMAIL_ADDRESS;
 
     // weblog (V002__baseline_schema.sql)
