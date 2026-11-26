@@ -302,6 +302,20 @@ public final class AdminDtos {
                                       + "outside the certificate zones the operator configured (vhost.cert.zones): "
                                       + "the domain is saved, but it has no wildcard certificate here.")
                               Boolean customDomainOutsideCertZone) {
+
+        /**
+         * The view for a caller below weblog admin: the contact email, creator, business and place
+         * fields and the booking link, which only an admin could read before the weblog read was opened
+         * to members, are null (and so absent from the JSON). What the admin frame, rail and entry editor
+         * read stays.
+         */
+        public WeblogView withoutAdminOnlyFields() {
+            return new WeblogView(id, handle, name, tagline, copyright, null, locale, timeZone,
+                    entryDisplayCount, active, commentsEnabled, commentNotify, showMoreFromSite, shareRowEnabled,
+                    entryOrder, pageWidth, frontPage, editorTheme, theme, null, customDomain, icon, about,
+                    newsletterListUuid, null, null, null, null, null, null, null, null, absoluteUrl,
+                    subscribeForm, customDomainOutsideCertZone);
+        }
     }
 
     /** The body of POST /weblogs. handle, name and theme are required; the rest default to the user's own. */

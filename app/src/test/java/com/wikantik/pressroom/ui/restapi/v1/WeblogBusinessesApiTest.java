@@ -62,6 +62,15 @@ class WeblogBusinessesApiTest {
         picker.weblogger = weblogger;
         WeblogSettingsApi settings = new WeblogSettingsApi();
         settings.weblogger = weblogger;
+        // The weblog's admin reads it (businessId is an admin-only field of the view).
+        com.wikantik.pressroom.business.UserManager users = mock(com.wikantik.pressroom.business.UserManager.class);
+        when(weblogger.getUserManager()).thenReturn(users);
+        try {
+            when(users.checkPermission(org.mockito.ArgumentMatchers.any(com.wikantik.pressroom.pojos.WeblogPermission.class),
+                    org.mockito.ArgumentMatchers.any(com.wikantik.pressroom.pojos.User.class))).thenReturn(true);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
         WeblogReadApi reader = new WeblogReadApi();
         reader.weblogger = weblogger;
         mvc = MockMvcBuilders.standaloneSetup(picker, settings, reader).setControllerAdvice(new ApiExceptionHandler())
@@ -137,7 +146,8 @@ class WeblogBusinessesApiTest {
             mvc.perform(patch("/v1/weblogs/myblog").requestAttr("actionWeblog", weblog)
                             .contentType(MediaType.APPLICATION_JSON).content("{\"businessId\":\"" + picked + "\"}"))
                     .andExpect(status().isOk());
-            String got = mvc.perform(get("/v1/weblogs/myblog").requestAttr("actionWeblog", weblog))
+            String got = mvc.perform(get("/v1/weblogs/myblog").requestAttr("actionWeblog", weblog)
+                            .requestAttr("authenticatedUser", new com.wikantik.pressroom.pojos.User()))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertEquals(casa.getId(), picked);
             assertEquals(picked, JSON.readTree(got).get("businessId").asString());

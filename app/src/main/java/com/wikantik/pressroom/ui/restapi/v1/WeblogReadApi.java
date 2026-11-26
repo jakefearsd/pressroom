@@ -4,7 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.GlobalPermission;
+import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.restapi.auth.Caller;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
@@ -25,10 +30,37 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/weblogs")
 public class WeblogReadApi extends BaseApiController implements UISecurityEnforced {
 
-    @Operation(operationId = "weblogsGet")
+    @Operation(operationId = "weblogsGet", description = "One weblog, readable by any member and by read-role "
+            + "tokens. For a caller below weblog admin (or with a token below the ADMIN role) the settings-only "
+            + "fields are absent: emailAddress, creatorUserName, businessId, placeType, placeLocality, "
+            + "placeRegion, placeCountry, placeLat, placeLng and bookingUrl.")
     @GetMapping("/{handle}")
     public AdminDtos.WeblogView get(HttpServletRequest request) {
-        return weblogView(requireActionWeblog(request));
+        Weblog weblog = requireActionWeblog(request);
+        AdminDtos.WeblogView view = weblogView(weblog);
+        return mayReadAdminFields(weblog, request.getAttribute("authenticatedUser")) ? view : view.withoutAdminOnlyFields();
+    }
+
+    /**
+     * Whether the caller holds weblog {@code ADMIN} (a site admin implies it) and, if they came with a
+     * token, an {@code ADMIN}-role one: the contact email, creator, business, place and booking fields are
+     * the settings page's, so a READ or POST token never carries them out, whoever holds it. A check that
+     * cannot be answered is a denial.
+     */
+    private boolean mayReadAdminFields(Weblog weblog, Object requester) {
+        if (!(requester instanceof User user)) {
+            return false;
+        }
+        Caller caller = Caller.current();
+        if (caller.kind() == Caller.Kind.TOKEN && caller.principal().scopeRole() != ApiToken.Role.ADMIN) {
+            return false;
+        }
+        try {
+            return weblogger.getUserManager().checkPermission(
+                    new WeblogPermission(weblog, user, WeblogPermission.ADMIN), user);
+        } catch (WebloggerException e) {
+            return false;
+        }
     }
 
     @Override
