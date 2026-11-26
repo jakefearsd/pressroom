@@ -51,9 +51,9 @@ describe('Template edit screen', () => {
     open('/weblogs/alpha/templates/t2');
     const link = await screen.findByLabelText('Link (path)');
     await waitFor(() => { expect(document.getElementById('linkPreview')).toHaveTextContent('side'); });
-    expect(document.querySelector('#good_link .data')).toHaveTextContent('https://blog.example.com/alpha/page/side');
+    expect(document.querySelector('#good_link .data')).toHaveTextContent('https://elsewhere.example/blogs/alpha/page/side');
     await user.click(screen.getByRole('button', { name: 'Open' }));
-    expect(opened).toHaveBeenCalledWith('https://blog.example.com/alpha/page/side?type=CUSTOM', '_blank', 'noopener');
+    expect(opened).toHaveBeenCalledWith('https://elsewhere.example/blogs/alpha/page/side?type=CUSTOM', '_blank', 'noopener');
     await user.type(link, '2');
     expect(document.getElementById('linkPreview')).toHaveTextContent('side2');
     expect(document.getElementById('launchLink')).toHaveAttribute('hidden');

@@ -64,7 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class PageIT extends PressroomIT {
 
-    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/app/weblogs/new";
 
     /**
      * The seeded weblog, on {@code journal} -- used by the two editor tests

@@ -27,10 +27,10 @@ export function failureLine(label: string, error: unknown): string {
   return `${label}: ${error instanceof Error ? (error instanceof ApiError ? (error.messages[0] ?? error.message) : error.message) : String(error)}`;
 }
 
-/** The weblog's public address with a trailing slash (urls.weblogAbsolute): its own domain, else under the site. */
-export function weblogAddress(handle: string, customDomain: string | undefined, siteUrl: string | undefined): string | undefined {
-  if (customDomain !== undefined && customDomain !== '') {
-    return `https://${customDomain}/`;
+/** The weblog's public address with a trailing slash: the server's own (`absoluteUrl`: custom domain, virtual host or site url). */
+export function weblogAddress(absoluteUrl: string | undefined): string | undefined {
+  if (absoluteUrl === undefined || absoluteUrl === '') {
+    return undefined;
   }
-  return siteUrl === undefined ? undefined : `${siteUrl}/${encodeURIComponent(handle)}/`;
+  return absoluteUrl.endsWith('/') ? absoluteUrl : `${absoluteUrl}/`;
 }

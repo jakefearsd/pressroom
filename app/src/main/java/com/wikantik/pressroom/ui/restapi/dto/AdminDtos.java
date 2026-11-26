@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import com.wikantik.pressroom.business.ListmonkClient;
+import com.wikantik.pressroom.business.SubscribeFormStatus;
+import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.PropertyDef;
 import com.wikantik.pressroom.business.analytics.AnalyticsStatus;
@@ -19,6 +22,7 @@ import com.wikantik.pressroom.pojos.EntryOrder;
 import com.wikantik.pressroom.pojos.PageWidth;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.AccountRoles;
+import com.wikantik.pressroom.ui.controllers.CustomDomainRules;
 import com.wikantik.pressroom.ui.controllers.core.CreateWeblogBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -265,7 +269,15 @@ public final class AdminDtos {
                               String placeCountry, Double placeLat, Double placeLng, String bookingUrl,
                               @Schema(description = "The weblog's absolute web address, as readers reach it "
                                       + "(its custom domain when it has one); absent when it cannot be built.")
-                              String absoluteUrl) {
+                              String absoluteUrl,
+                              @Schema(description = "Whether readers get the subscribe form on this blog's pages: "
+                                      + "on, offNoList (no newsletter list is set) or offNotConfigured (a list is "
+                                      + "set but the site has no newsletter service, so no sign-up can be taken).")
+                              String subscribeForm,
+                              @Schema(description = "True, and present only then, when the custom domain is "
+                                      + "outside the certificate zones the operator configured (vhost.cert.zones): "
+                                      + "the domain is saved, but it has no wildcard certificate here.")
+                              Boolean customDomainOutsideCertZone) {
     }
 
     /** The body of POST /weblogs. handle, name and theme are required; the rest default to the user's own. */
@@ -429,7 +441,10 @@ public final class AdminDtos {
                 weblog.getPlaceCountry(),
                 weblog.getPlaceLat() == null ? null : weblog.getPlaceLat().doubleValue(),
                 weblog.getPlaceLng() == null ? null : weblog.getPlaceLng().doubleValue(),
-                weblog.getBookingUrl(), absoluteUrl);
+                weblog.getBookingUrl(), absoluteUrl,
+                SubscribeFormStatus.of(weblog, ListmonkClient.isSiteConfigured()).getKey(),
+                CustomDomainRules.isOutsideCertZones(weblog.getCustomDomain(),
+                        WebloggerConfig.getProperty("vhost.cert.zones")) ? Boolean.TRUE : null);
     }
 
     /**

@@ -186,31 +186,6 @@ function validateEmail(email) {
     var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
 }
-// This file is also loaded on public weblog pages (see the comment form macro
-// in weblog.vm) purely for the cookie/validateComments helpers above, and those
-// pages never load jQuery or jquery-validate. Guard the jQuery-validate wiring
-// below -- which only targets the admin "validate-form"/"validate-email"
-// classes (see CreateWeblog.jsp) -- so it does not throw on pages without jQuery.
-if (typeof jQuery !== "undefined") {
-    $(document).ready(function () {
-        jQuery("form.validate-form").validate();
-        // Email fields get jquery-validate's own email rule and nothing more.
-        //
-        // There used to be an extra regex here requiring the top-level domain
-        // to be 2-4 characters. That silently rejected every address at a
-        // modern TLD -- .photography, .gallery, .travel, .studio, .email --
-        // and there was no way for the person typing to tell why, because the
-        // message just said the address was invalid. It also blocked the whole
-        // form: jquery-validate refuses to submit, so a weblog simply could
-        // not be created with such an address.
-        jQuery( ".validate-email" ).rules( "add", {
-            minlength: 3,
-            maxlength: 255,
-            email: true
-        });
-    });
-}
-
 /*
  * Confirmation prompts, driven by a data-confirm attribute rather than an
  * inline onclick/onsubmit handler.
@@ -242,14 +217,6 @@ if (typeof jQuery !== "undefined") {
  * seeing the same attribute -- prompts again. That is not hypothetical; it
  * shipped for one round on UserEdit's send-password-link form.
  *
- * A form-level data-confirm may also carry data-confirm-when, a CSS selector
- * evaluated against the form itself: the prompt fires only when the form
- * currently has a match. Members.jsp is the one caller -- whether removing a
- * member needs confirming depends on which of several radios across the whole
- * table is checked, a decision no single control can answer for itself, so
- * this is the one legitimate reason for a form-level (rather than
- * per-control) data-confirm.
- *
  * Capture phase, so this runs before any other handler commits to the action.
  */
 (function () {
@@ -258,14 +225,6 @@ if (typeof jQuery !== "undefined") {
     function confirmed(element) {
         var message = element.getAttribute("data-confirm");
         return !message || window.confirm(message);
-    }
-
-    // A form's own data-confirm is unconditional unless it also names
-    // data-confirm-when, in which case it only applies while the form has a
-    // live match for that selector.
-    function formNeedsConfirming(form) {
-        var when = form.getAttribute("data-confirm-when");
-        return !when || form.querySelector(when) !== null;
     }
 
     // Deliberately stops BEFORE the form: a form's own data-confirm belongs to
@@ -293,8 +252,7 @@ if (typeof jQuery !== "undefined") {
         // prompt was already answered by the click handler above, which is
         // why that handler stops at the form and this one does not climb.
         var form = event.target;
-        if (form.hasAttribute && form.hasAttribute("data-confirm")
-                && formNeedsConfirming(form) && !confirmed(form)) {
+        if (form.hasAttribute && form.hasAttribute("data-confirm") && !confirmed(form)) {
             event.preventDefault();
             event.stopPropagation();
         }

@@ -944,12 +944,12 @@ class CommentsIT extends PressroomIT {
     /** Creates a weblog owned by the seeded admin, on the journal theme, with comments on. */
     private String createWeblogWithComments(String prefix) {
         String handle = prefix + nonce();
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Comments IT " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("journal");
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
         // The save lands on the React home (no flash message there): the new weblog's row is the evidence.
         $$("h2.mm_weblog_name .data").findBy(exactText(handle)).should(exist);
         setCommentsEnabled(handle, true);
@@ -979,12 +979,12 @@ class CommentsIT extends PressroomIT {
     }
 
     private void openWeblogSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.name']").should(visible);
     }
 
     private void saveWeblogSettings() {
-        clickAndAwaitNewPage($("button[type='submit'].btn-primary").should(visible));
+        $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);
         assertTrue($$("#errors").isEmpty(), "saving the weblog settings reported an error: "
                 + ($$("#errors").isEmpty() ? "" : $("#errors").getText()));
@@ -1015,9 +1015,8 @@ class CommentsIT extends PressroomIT {
 
     /** Permanently deletes a weblog through the real confirm-and-remove flow. */
     private void removeWeblog(String handle) {
-        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
-        clickAndAwaitNewPage($("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
-                .should(visible));
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+        $("button.btn-danger").should(visible).click();
         // Back on the React home: the weblog's row is no longer listed.
         $("h2.mm_weblog_name").should(exist);
         $$("h2.mm_weblog_name .data").findBy(exactText(handle)).shouldNot(exist);

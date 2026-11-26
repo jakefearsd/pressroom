@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -38,7 +39,11 @@ public class WeblogThemesApi extends WeblogAdminApi {
     @Operation(operationId = "weblogThemesList", summary = "The shared themes this weblog may switch to.")
     @GetMapping("")
     public ThemeDtos.WeblogThemes list(HttpServletRequest request) throws WebloggerException {
-        Weblog weblog = requireActionWeblog(request);
+        return view(weblogger, requireActionWeblog(request));
+    }
+
+    /** The Theme screen's facts for {@code weblog}: shared with the site theme route, which names no handle. */
+    static ThemeDtos.WeblogThemes view(Weblogger weblogger, Weblog weblog) throws WebloggerException {
         ThemeManager themes = weblogger.getThemeManager();
         boolean custom = WeblogTheme.CUSTOM.equals(weblog.getEditorTheme());
         WeblogTheme current = SharedThemeRules.currentTheme(themes, weblog);

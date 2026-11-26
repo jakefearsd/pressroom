@@ -28,16 +28,16 @@ import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
 import static com.codeborne.selenide.Selectors.byLinkText;
-import static com.codeborne.selenide.Selenide.confirm;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Weblog templates: adding one, editing its source, and removing it.
  *
- * <p>{@code templateEdit.rol} is another route the sweep skips for want of a
- * seeded id, so the theme-editing surface had no coverage at all -- and it is
- * the surface where a mistake writes arbitrary markup onto a public page.
+ * <p>The template editor is a route the sweep skips for want of a seeded id, so
+ * the theme-editing surface would have no coverage at all -- and it is the
+ * surface where a mistake writes arbitrary markup onto a public page. These
+ * tests drive the React screens ({@code /weblogs/:handle/templates}).
  *
  * <p>Templates belong to a weblog and the controllers resolve client-supplied
  * ids, so the ownership checks matter here more than anywhere; those are
@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TemplateIT extends PressroomIT {
 
-    private static final String TEMPLATES = "/pressroom-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String TEMPLATES = "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/templates";
 
     @Test
     void aTemplateCanBeAddedEditedAndRemoved() {
@@ -162,7 +162,7 @@ class TemplateIT extends PressroomIT {
 
     /**
      * Removes a template through the list's trash control, which asks for
-     * confirmation through a native dialog.
+     * confirmation through the React confirmation modal.
      *
      * <p>Targets the button by its {@code data-template-name} attribute, not
      * an onclick substring: the delete control's id/name ride in data-*
@@ -173,9 +173,9 @@ class TemplateIT extends PressroomIT {
         openPath(TEMPLATES);
         $("button.template-delete-btn[data-template-name='" + name + "']")
                 .should(visible).click();
-        confirm();
+        // The React confirmation modal, not a native dialog.
+        $(".modal.show .modal-footer button.btn-danger").should(visible).click();
 
-        $("table").should(exist);
         linkFor(name).shouldNot(exist);
         BrowserHealth.current().settle();
     }
@@ -190,8 +190,9 @@ class TemplateIT extends PressroomIT {
 
     private String templateNames() {
         openPath(TEMPLATES);
-        $("table").should(exist);
-        return $$("a[href*='templateEdit.rol']").texts().toString();
+        // The list loads after the screen draws: wait for the table or the empty invitation.
+        $("table, .empty-state").should(exist);
+        return $$("table a[href*='/templates/']").texts().toString();
     }
 
     private static String nonce() {

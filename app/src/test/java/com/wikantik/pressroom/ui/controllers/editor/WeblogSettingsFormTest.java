@@ -14,17 +14,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Blogs are registered with Umami automatically, so the Settings form offers
- * no analytics fields: not on the bean, not in the page, not in the messages.
+ * no analytics fields: not on the bean, not in the React screen, not in the messages.
  */
 class WeblogSettingsFormTest {
 
     @Test
     void settingsFormHasNoAnalyticsFields() throws Exception {
-        String jsp = Files.readString(Path.of("src/main/webapp/WEB-INF/jsps/editor/WeblogConfig.jsp"));
-        assertFalse(jsp.contains("analyticsSiteId"));
-        assertFalse(jsp.contains("analyticsShareUrl"));
-        assertFalse(jsp.contains("settings-analytics"));
-        assertFalse(jsp.contains("websiteSettings.analytics"));
+        String screen = Files.readString(Path.of("frontend/src/admin/screens/WeblogSettings.tsx"));
+        assertFalse(screen.contains("analyticsSiteId"));
+        assertFalse(screen.contains("analyticsShareUrl"));
+        assertFalse(screen.contains("settings-analytics"));
+        assertFalse(screen.contains("websiteSettings.analytics"));
 
         boolean onBean = Arrays.stream(Introspector.getBeanInfo(WeblogConfigBean.class).getPropertyDescriptors())
                 .map(PropertyDescriptor::getName)

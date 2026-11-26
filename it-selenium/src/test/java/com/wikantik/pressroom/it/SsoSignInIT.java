@@ -128,7 +128,7 @@ class SsoSignInIT extends PressroomIT {
     private static final List<String> AUTHOR_PATHS = List.of(
             "/pressroom-ui/app/",
             "/pressroom-ui/profile.rol",
-            "/pressroom-ui/createWeblog.rol",
+            "/pressroom-ui/app/weblogs/new",
             "/pressroom-ui/authoring/entries.rol",
             "/pressroom-ui/admin/userAdmin.rol");
 

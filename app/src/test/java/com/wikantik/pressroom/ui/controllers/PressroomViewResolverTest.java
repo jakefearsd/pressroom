@@ -126,32 +126,6 @@ class PressroomViewResolverTest {
     }
     // --- B9a: two screens that had lost their chrome ---
 
-    /**
-     * Inquiries is an authoring screen reached from the editor tabs, so it
-     * renders through {@code .tiles-tabbedpage} like every other one -- with
-     * the rail, the weblog context block and the tab spine. It used to be a
-     * {@code .tiles-simplepage}, which is the install/login chrome: a reader
-     * who clicked Inquiries lost the navigation they arrived by and had no way
-     * back except the browser's own history.
-     *
-     * <p>The attribute map is {@code .Trash}'s, which is the minimal tabbed
-     * shape: an explicit head, the content tile, and no page-specific styles.
-     * {@code menu} stays the base layout's {@code empty.jsp} -- the tabs come
-     * from the {@code navMenu} model attribute, not from a tile.
-     */
-    @Test
-    void submissionsRendersThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        MockHttpServletRequest request = renderAndCapture(".Submissions");
-
-        assertEquals("/WEB-INF/jsps/editor/Submissions.jsp", request.getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"),
-                ".Submissions must inherit the tabbed layout's empty menu tile");
-        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_styles"));
-    }
-
     @Test
     void commentsRendersThroughTheTabbedLayout() throws Exception {
         resolver.init();
@@ -229,7 +203,7 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Submissions", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";

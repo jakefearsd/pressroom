@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { appRoutes } from '../../../src/admin/router';
-import { editorBoot, renderRoutes } from '../support';
+import { adminBoot, editorBoot, renderRoutes } from '../support';
 import { API, alpha, me, meta, problem, record, themeChoices, type Seen } from './weblogFixtures';
 
 let seen: Seen[];
@@ -58,7 +58,7 @@ describe('ThemeEdit', () => {
     expect(document.querySelector('.subtitle span')).toHaveTextContent('alpha');
     expect(screen.getByRole('radio', { name: /Journal/ })).toBeChecked();
     expect(document.querySelector('.theme-card-thumb')).toHaveAttribute('src', 'http://pressroom.test/pressroom/themes/journal/preview.png');
-    expect(screen.getByRole('link', { name: 'View your weblog' })).toHaveAttribute('href', 'https://blog.example.com/alpha');
+    expect(screen.getByRole('link', { name: 'View your weblog' })).toHaveAttribute('href', 'https://blog.alpha.example/');
     expect(screen.queryByRole('button', { name: 'Use this theme' })).toBeNull();
     expect(document.getElementById('sharedChooser')).toHaveClass('chooser-selected');
   });
@@ -200,5 +200,68 @@ describe('ThemeEdit', () => {
     server.use(http.get(`${API}/weblogs/alpha/themes`, () => problem('weblog.notFound', 'No such weblog.', undefined, 404)));
     renderRoutes(appRoutes, '/weblogs/alpha/theme', { boot: editorBoot });
     expect((await screen.findAllByText('No such weblog.')).length).toBeGreaterThan(0);
+  });
+
+  describe('the site space (its own admin routes: the weblog routes withhold it)', () => {
+    let siteThemes: Record<string, unknown>;
+    beforeEach(() => {
+      who = { ...me('POST', true), weblogs: [] };
+      siteThemes = { current: 'frontpage', custom: false, customAllowed: false, sharedStylesheetCustomised: false,
+        firstCustomization: true, themes: [{ id: 'journal', name: 'Journal', description: 'Quiet.' },
+          { id: 'frontpage', name: 'Front page', description: 'The site front.' }] };
+      server.use(
+        http.get(`${API}/admin/site-theme`, () => HttpResponse.json(siteThemes)),
+        http.put(`${API}/admin/site-theme`, async ({ request }) => {
+          await record(seen, request);
+          if (refuse !== null) {
+            return refuse;
+          }
+          const body = seen[seen.length - 1]?.body as { theme: string };
+          siteThemes = { ...siteThemes, current: body.theme };
+          return HttpResponse.json(siteThemes);
+        }),
+        // a weblog read for the site space would be a 404: the screen must not ask
+        http.get(`${API}/weblogs/site-space`, () => problem('weblog.notFound', 'No such weblog.', undefined, 404)),
+        http.get(`${API}/weblogs/site-space/themes`, () => problem('weblog.notFound', 'No such weblog.', undefined, 404))
+      );
+    });
+
+    const openSite = async () => {
+      renderRoutes(appRoutes, '/weblogs/site-space/theme', { boot: adminBoot });
+      await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    };
+
+    it('reads the site themes from the site-theme route and offers no custom theme', async () => {
+      await openSite();
+      expect(await screen.findByRole('radio', { name: /Front page/ })).toBeChecked();
+      expect(screen.getByRole('radio', { name: /Journal/ })).toBeInTheDocument();
+      expect(screen.queryByRole('radio', { name: /Custom theme/ })).toBeNull();
+      expect(screen.queryByText('No such weblog.')).toBeNull();
+    });
+
+    it('switches the site theme with a PUT to the site-theme route', async () => {
+      const user = userEvent.setup();
+      await openSite();
+      await user.click(await screen.findByRole('radio', { name: /Journal/ }));
+      await user.click(screen.getByRole('button', { name: 'Use this theme' }));
+      expect(await screen.findByText('Theme set to Journal')).toBeInTheDocument();
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toEqual({ method: 'PUT', path: '/admin/site-theme', csrf: 'tok', body: { theme: 'journal' } });
+    });
+
+    it('shows a refusal in place', async () => {
+      const user = userEvent.setup();
+      refuse = problem('theme.notOffered', 'That theme is not offered here.', undefined, 400);
+      await openSite();
+      await user.click(await screen.findByRole('radio', { name: /Journal/ }));
+      await user.click(screen.getByRole('button', { name: 'Use this theme' }));
+      expect(await screen.findByText('That theme is not offered here.')).toBeInTheDocument();
+    });
+
+    it('is a site admin\'s screen: a member who is no site admin is refused', async () => {
+      who = me('ADMIN');
+      renderRoutes(appRoutes, '/weblogs/site-space/theme', { boot: editorBoot });
+      expect(await screen.findByText('Access denied.')).toBeInTheDocument();
+    });
   });
 });

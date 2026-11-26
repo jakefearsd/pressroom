@@ -85,28 +85,6 @@ class EditorJspScriptBindingTest {
     }
 
     /**
-     * Every {@code $("#id")} selector in TemplateEdit's script block must
-     * reference an {@code id=} present in the file -- same mechanism Task 1
-     * pinned for EntriesSidebar's datepicker binding, extended here because
-     * {@code #template-code-tabs} targets nothing and throws, which kills the
-     * whole ready-block (the manual-content-type reveal, the URL preview, and
-     * launchPage() never run).
-     */
-    @Test
-    void theTemplateEditIdBindingMatchesRealIds() throws Exception {
-        String jsp = Files.readString(EDITOR_JSP_DIR.resolve("TemplateEdit.jsp"));
-        List<String> violations = new ArrayList<>();
-        Matcher sel = Pattern.compile("\\$\\(\"#([A-Za-z0-9_-]+)\"\\)").matcher(jsp);
-        while (sel.find()) {
-            String id = sel.group(1);
-            if (!jsp.contains("id=\"" + id + "\"")) {
-                violations.add("script binds #" + id + " but no element has that id");
-            }
-        }
-        assertTrue(violations.isEmpty(), String.join("\n", violations));
-    }
-
-    /**
      * onclick attributes must not interpolate escaped author text -- the
      * entity decodes before the JS compiles and an apostrophe in a title
      * becomes a SyntaxError. Fix pattern: data-* + delegated handler

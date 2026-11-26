@@ -191,11 +191,7 @@ class EditorJspMarkupHygieneTest {
                         "a published page's slug must link to the live page, with the "
                                 + "author-controlled slug escaped in the href (a page slug is "
                                 + "restricted only against '/' and reserved names, not against "
-                                + "quote/angle-bracket characters)"),
-                new Expected("ThemeEdit.jsp", "themeEditor.viewYourBlog",
-                        "a persistent view-the-blog link, not only the Preview button"),
-                new Expected("WeblogConfig.jsp", "id=\"weblogAbsoluteUrl\"",
-                        "the settings page must say what URL the weblog has"));
+                                + "quote/angle-bracket characters)"));
         for (Expected e : expected) {
             String src = Files.readString(EDITOR_JSP_DIR.resolve(e.jsp()));
             if (!src.contains(e.needle())) {

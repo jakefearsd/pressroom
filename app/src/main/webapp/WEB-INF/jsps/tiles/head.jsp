@@ -18,8 +18,6 @@ mismatch 404s the asset on every page that includes this file.
 
 <script src="<c:url value='/webjars/jquery/4.1.0/jquery.min.js'/>"></script>
 
-<script src="<c:url value='/webjars/jquery-validation/1.21.0/jquery.validate.min.js'/>"></script>
-
 <link href="<c:url value='/webjars/bootstrap/5.3.8/css/bootstrap.min.css'/>" rel="stylesheet" />
 <script src="<c:url value='/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js'/>"></script>
 

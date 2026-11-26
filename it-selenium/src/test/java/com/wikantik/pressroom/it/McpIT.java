@@ -418,9 +418,8 @@ class McpIT extends PressroomIT {
     /** Removes a weblog through the admin UI, as {@code VirtualHostIT} does. */
     private void removeWeblog(String handle) {
         loginAsAdmin();
-        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
-        $("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
-                .should(visible).click();
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+        $("button.btn-danger").should(visible).click();
         $("#messages").should(exist);
         BrowserHealth.current().settle();
         logout();

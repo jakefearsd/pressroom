@@ -123,7 +123,7 @@ class AnalyticsInjectionIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private void openSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.name']").should(visible);
     }
 
@@ -131,7 +131,7 @@ class AnalyticsInjectionIT extends PressroomIT {
     private String createWeblog() {
         String handle = "analytics" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Analytics " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

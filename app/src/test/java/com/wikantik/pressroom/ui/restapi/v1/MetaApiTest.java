@@ -457,6 +457,17 @@ class MetaApiTest {
         assertEquals(200, Paging.MAX_LIMIT);
     }
 
+    /** The settings screen's "At most N" tip and the field's max: the ceiling the save refuses above, read afresh. */
+    @Test
+    void maxEntriesPerPageFollowsTheRuntimeSettingOnEveryRequest() throws Exception {
+        try (MockedStatic<WebloggerRuntimeConfig> rt = Mockito.mockStatic(WebloggerRuntimeConfig.class)) {
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries")).thenReturn(30);
+            assertEquals(30, meta().get("maxEntriesPerPage").asInt());
+            rt.when(() -> WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries")).thenReturn(50);
+            assertEquals(50, meta().get("maxEntriesPerPage").asInt());
+        }
+    }
+
     /** The trash page's retention sentence needs the runtime property, read afresh (an admin can change it). */
     @Test
     void trashRetentionDaysFollowsTheRuntimeSettingOnEveryRequest() throws Exception {

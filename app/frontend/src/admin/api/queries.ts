@@ -59,13 +59,18 @@ export function useWeblogOptions() {
   return useQuery({ queryKey: ['weblogOptions'], queryFn: () => call(api.GET('/v1/meta/weblog-options')) });
 }
 
-/** The shared themes this weblog may switch to, and whether it may go custom. */
-export function useWeblogThemes(handle: string | undefined) {
+/**
+ * The shared themes this weblog may switch to, and whether it may go custom. The site space is withheld
+ * from the weblog routes, so its themes come from the site admin's own route (never custom).
+ */
+export function useWeblogThemes(handle: string | undefined, siteSpace = false) {
   const api = useApi();
   return useQuery({
     queryKey: ['weblogThemes', handle],
     enabled: handle !== undefined,
-    queryFn: () => call(api.GET('/v1/weblogs/{handle}/themes', { params: { path: { handle: handle ?? '' } } }))
+    queryFn: () => siteSpace
+      ? call(api.GET('/v1/admin/site-theme'))
+      : call(api.GET('/v1/weblogs/{handle}/themes', { params: { path: { handle: handle ?? '' } } }))
   });
 }
 

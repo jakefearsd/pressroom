@@ -499,8 +499,8 @@ if (!hasErrors(model)) { ...save... }
 
 The caller reads an empty error list as "passed", so an unreachable store
 let the save through unchecked. **A check that could not run is not a
-check that passed.** `TemplateEditController` and `TemplatesController`
-both did this and now add an error; their tests pin it.
+check that passed.** The old template controllers
+both did this; `TemplatesApi` fails closed now, and its tests pin it.
 
 When adding a `catch` that only logs, ask what the caller does next; if it
 proceeds as though nothing was wrong, fail closed. Two sweeps to repeat:

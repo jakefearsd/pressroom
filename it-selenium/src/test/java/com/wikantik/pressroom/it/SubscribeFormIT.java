@@ -174,7 +174,7 @@ class SubscribeFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "subscribeit" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Subscribe " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -187,10 +187,22 @@ class SubscribeFormIT extends PressroomIT {
 
     /** Sets (or, given a blank uuid, clears) the weblog's newsletter list uuid through Settings. */
     private void setNewsletterUuid(String handle, String uuid) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
-        $("input[name='bean.newsletterListUuid']").should(visible).setValue(uuid);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
+        com.codeborne.selenide.SelenideElement field = $("input[name='bean.newsletterListUuid']").should(visible);
+        if (uuid.isBlank()) {
+            // Real key presses: WebDriver's clear() sets the value with no input event, which a React controlled
+            // input never sees, so it would snap back to the old uuid.
+            field.sendKeys(org.openqa.selenium.Keys.chord(org.openqa.selenium.Keys.CONTROL, "a"),
+                    org.openqa.selenium.Keys.BACK_SPACE);
+        } else {
+            field.setValue(uuid);
+        }
         $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);
+        // The screen says in words whether readers get the form, from the saved blog (the server's
+        // subscribeForm): no list, or a list but no newsletter service on this site (the IT instance has none).
+        $("#subscribe-form-status").shouldHave(text(uuid.isBlank()
+                ? "No newsletter list is set" : "no newsletter service configured"));
         BrowserHealth.current().settle();
     }
 

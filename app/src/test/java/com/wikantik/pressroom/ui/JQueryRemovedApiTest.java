@@ -65,11 +65,15 @@ class JQueryRemovedApiTest {
                 + "(String.prototype.trim, Array.isArray, JSON.parse, Date.now, typeof)");
     }
 
-    /** JSPs and hand-written scripts; the esbuild bundles are generated from app/frontend. */
+    /**
+     * JSPs and hand-written scripts; the esbuild bundles are generated from app/frontend (the React admin's
+     * {@code app/admin.js} too: its minified variable {@code $} makes {@code $.trim()} a false match).
+     */
     private static boolean isPageSource(Path file) {
         String name = file.getFileName().toString();
         return (name.endsWith(".jsp") || name.endsWith(".js"))
                 && !name.equals("pressroom-editor.js") && !name.equals("pressroom-content.js")
+                && !name.equals("admin.js")
                 && !file.toString().contains("node_modules");
     }
 }

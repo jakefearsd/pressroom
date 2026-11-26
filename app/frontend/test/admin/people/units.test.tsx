@@ -46,9 +46,10 @@ describe('screen helpers', () => {
     expect(failureLine('lee', 'odd')).toBe('lee: odd');
   });
 
-  it('finds the weblog address: own domain first, else under the site', () => {
-    expect(weblogAddress('a b', 'b.example.com', 'https://s')).toBe('https://b.example.com/');
-    expect(weblogAddress('a b', '', 'https://s')).toBe('https://s/a%20b/');
-    expect(weblogAddress('a', undefined, undefined)).toBeUndefined();
+  it('takes the weblog address from the server, with a trailing slash, and has none when the server built none', () => {
+    expect(weblogAddress('https://b.example.com/')).toBe('https://b.example.com/');
+    expect(weblogAddress('https://s/a%20b')).toBe('https://s/a%20b/');
+    expect(weblogAddress(undefined)).toBeUndefined();
+    expect(weblogAddress('')).toBeUndefined();
   });
 });

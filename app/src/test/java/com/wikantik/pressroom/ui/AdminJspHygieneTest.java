@@ -410,7 +410,7 @@ class AdminJspHygieneTest {
     void eachFormScreenHasExactlyOnePrimaryAction() {
         List<String> wrong = new ArrayList<>();
         for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/CreateWeblog.jsp", "core/Setup.jsp",
+                "core/Profile.jsp", "core/Setup.jsp",
                 "core/CreateDatabase.jsp")) {
             int primaries = jsp(screen).split("btn-primary", -1).length - 1;
             if (primaries != 1) {
@@ -474,8 +474,7 @@ class AdminJspHygieneTest {
     @Test
     void theSweptScreensCarryNoInlineStyleAttributes() {
         List<String> found = new ArrayList<>();
-        for (String screen : List.of("tiles/tiles-installpage.jsp", "core/Setup.jsp",
-                "core/CreateWeblog.jsp")) {
+        for (String screen : List.of("tiles/tiles-installpage.jsp", "core/Setup.jsp")) {
             if (jsp(screen).contains("style=\"")) {
                 found.add(screen);
             }
@@ -577,7 +576,7 @@ class AdminJspHygieneTest {
     void theRepairedFormScreensBindEveryLabel() {
         List<String> violations = new ArrayList<>();
         for (String screen : List.of("admin/GlobalConfig.jsp", "admin/UserEdit.jsp",
-                "core/Profile.jsp", "core/CreateWeblog.jsp", "core/Setup.jsp")) {
+                "core/Profile.jsp", "core/Setup.jsp")) {
             String src = jsp(screen);
             Matcher m = Pattern.compile("<label(?![^>]*\\bfor=)[^>]*>(?!\\s*</label>)").matcher(src);
             while (m.find()) {
@@ -631,7 +630,7 @@ class AdminJspHygieneTest {
     @Test
     void noScreenFocusesTheHiddenCsrfInput() {
         List<String> found = new ArrayList<>();
-        for (String screen : List.of("admin/UserEdit.jsp", "core/CreateWeblog.jsp")) {
+        for (String screen : List.of("admin/UserEdit.jsp")) {
             String src = jsp(screen);
             if (src.contains("elements[0].focus()")) {
                 found.add(screen + " still focuses elements[0]");

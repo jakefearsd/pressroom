@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class RedirectIT extends PressroomIT {
 
-    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/app/weblogs/new";
 
     /** Follows redirects: the reader's experience of a stale link. */
     private HttpClient following;

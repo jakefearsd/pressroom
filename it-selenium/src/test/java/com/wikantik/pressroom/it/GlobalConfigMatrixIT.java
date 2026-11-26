@@ -90,7 +90,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
             $("#uploadButton").click();
             $("#errors").should(visible);
 
-            openPath("/pressroom-ui/createWeblog.rol");
+            openPath("/pressroom-ui/app/weblogs/new");
             $("#errors").should(visible);
             $$("#handle").shouldHave(CollectionCondition.size(0));
         } finally {
@@ -111,7 +111,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
         loginAsAdmin();
         boolean before = setGlobalFlag("groupblogging.enabled", false);
         try {
-            openPath("/pressroom-ui/createWeblog.rol");
+            openPath("/pressroom-ui/app/weblogs/new");
             $("#errors").should(visible);
             $$("#handle").shouldHave(CollectionCondition.size(0));
         } finally {
@@ -165,7 +165,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "gcfg" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Global Config " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

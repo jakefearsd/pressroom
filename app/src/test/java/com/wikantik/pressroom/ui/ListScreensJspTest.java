@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Source scans for the three authoring list screens -- Entries, Submissions
+ * Source scans for the authoring list screens that are still JSPs -- Entries
  * and Comments -- and the Entries filter sidebar, from the 2026-10
  * fit-and-finish audit. Each test names the defect it pins: a modal that
  * promised "This cannot be undone" over a move to the Trash, a count built
@@ -48,7 +48,6 @@ class ListScreensJspTest {
 
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps/editor");
     private static final Path ENTRIES = JSPS.resolve("Entries.jsp");
-    private static final Path SUBMISSIONS = JSPS.resolve("Submissions.jsp");
     private static final Path COMMENTS = JSPS.resolve("Comments.jsp");
     private static final Path SIDEBAR = JSPS.resolve("EntriesSidebar.jsp");
     private static final Path BUNDLE = Path.of("src/main/resources/ApplicationResources.properties");
@@ -96,7 +95,7 @@ class ListScreensJspTest {
      */
     @Test
     void theBulkDeleteCountIsOneMessageNotAConcatenation() throws IOException {
-        for (Path jsp : List.of(ENTRIES, SUBMISSIONS, COMMENTS)) {
+        for (Path jsp : List.of(ENTRIES, COMMENTS)) {
             String src = read(jsp);
             assertFalse(src.contains("selectedCount"), jsp + " still builds the count from a *.selectedCount fragment");
             assertFalse(src.contains("+ \" \" +"), jsp + " still concatenates the count text in JavaScript");
@@ -165,7 +164,6 @@ class ListScreensJspTest {
         List<String[]> modals = List.of(
                 new String[] {"Entries.jsp", "delete-entry-modal"},
                 new String[] {"Entries.jsp", "bulk-delete-modal"},
-                new String[] {"Submissions.jsp", "submissions-delete-modal"},
                 new String[] {"Comments.jsp", "comments-delete-modal"});
         for (String[] m : modals) {
             String block = modal(read(JSPS.resolve(m[0])), m[1]);
@@ -242,7 +240,7 @@ class ListScreensJspTest {
     /** A nav landmark with no name reads as "navigation" twice on Entries. */
     @Test
     void everyPagerIsALabelledNavAndNoneHardCodesThePageSize() throws IOException {
-        for (Path jsp : List.of(ENTRIES, SUBMISSIONS, COMMENTS)) {
+        for (Path jsp : List.of(ENTRIES, COMMENTS)) {
             String src = read(jsp);
             Matcher bare = Pattern.compile("<nav>").matcher(src);
             assertFalse(bare.find(), jsp + " has a pager <nav> with no aria-label");

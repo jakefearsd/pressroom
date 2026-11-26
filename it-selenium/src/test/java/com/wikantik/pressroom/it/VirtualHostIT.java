@@ -616,7 +616,7 @@ class VirtualHostIT extends PressroomIT {
     private String createWeblog() {
         String handle = "vhostit" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("VHost IT " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -630,9 +630,8 @@ class VirtualHostIT extends PressroomIT {
 
     /** Permanently deletes the fixture weblog through the real confirm-and-remove flow. */
     private void removeWeblog(String handle) {
-        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
-        $("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
-                .should(visible).click();
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+        $("button.btn-danger").should(visible).click();
         // Back on the React home: the weblog's row is no longer listed.
         $("h2.mm_weblog_name").should(exist);
         $$("h2.mm_weblog_name .data").findBy(exactText(handle)).shouldNot(exist);
@@ -647,7 +646,7 @@ class VirtualHostIT extends PressroomIT {
     }
 
     private void openWeblogSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.name']").should(visible);
     }
 

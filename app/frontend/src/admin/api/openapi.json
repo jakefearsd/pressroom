@@ -51,6 +51,9 @@
     "name" : "User memberships",
     "description" : "Granting, changing and removing an account's roles on weblogs (session only: the admin app, never a token)."
   }, {
+    "name" : "Site theme",
+    "description" : "The theme of the site's own pages (site admins; the admin app only)."
+  }, {
     "name" : "Agents",
     "description" : "Agent accounts and the tokens minted for them (session only: the admin app, never a token)."
   }, {
@@ -290,6 +293,72 @@
         "responses" : {
           "204" : {
             "description" : "Done; no body."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/site-theme" : {
+      "get" : {
+        "tags" : [ "Site theme" ],
+        "summary" : "The site themes on offer and the one in use (session only).",
+        "operationId" : "siteThemeGet",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogThemes"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Site theme" ],
+        "summary" : "Switch the site's own pages to a site theme (session only).",
+        "operationId" : "siteThemeSet",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SiteThemeChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeblogThemes"
+                }
+              }
+            }
           },
           "default" : {
             "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
@@ -5984,6 +6053,71 @@
           }
         }
       },
+      "SiteThemeChange" : {
+        "type" : "object",
+        "properties" : {
+          "theme" : {
+            "type" : "string",
+            "description" : "The id of the site theme to switch the site's own pages to; one the GET offers."
+          }
+        },
+        "required" : [ "theme" ]
+      },
+      "ThemeChoice" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "The theme's id: what {@code theme} takes."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The theme's name."
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "What the theme looks like, in a sentence or two."
+          },
+          "previewPath" : {
+            "type" : "string",
+            "description" : "Where the preview image is served, relative to the site root and starting with a slash (\"/themes/journal/preview.png\"); prefix the site's address. Absent when the theme has no preview."
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "WeblogThemes" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "type" : "string",
+            "description" : "The shared theme the weblog is on; absent when it is on a custom theme or its theme cannot be resolved."
+          },
+          "custom" : {
+            "type" : "boolean",
+            "description" : "True when the weblog has its own templates (a custom theme): there is no way back."
+          },
+          "customAllowed" : {
+            "type" : "boolean",
+            "description" : "True when the weblog may take a custom theme: the site allows them (or the weblog is already custom) and it is not the site space."
+          },
+          "sharedStylesheetCustomised" : {
+            "type" : "boolean",
+            "description" : "True when a weblog on a shared theme holds its own copy of that theme's stylesheet."
+          },
+          "firstCustomization" : {
+            "type" : "boolean",
+            "description" : "True when the weblog has no default page template yet, so a custom theme would be its first customisation."
+          },
+          "themes" : {
+            "type" : "array",
+            "description" : "The shared themes this weblog may switch to, in the theme manager's order.",
+            "items" : {
+              "$ref" : "#/components/schemas/ThemeChoice"
+            }
+          }
+        },
+        "required" : [ "custom", "customAllowed", "firstCustomization", "sharedStylesheetCustomised", "themes" ]
+      },
       "WeblogCreate" : {
         "type" : "object",
         "properties" : {
@@ -6134,6 +6268,14 @@
           "absoluteUrl" : {
             "type" : "string",
             "description" : "The weblog's absolute web address, as readers reach it (its custom domain when it has one); absent when it cannot be built."
+          },
+          "subscribeForm" : {
+            "type" : "string",
+            "description" : "Whether readers get the subscribe form on this blog's pages: on, offNoList (no newsletter list is set) or offNotConfigured (a list is set but the site has no newsletter service, so no sign-up can be taken)."
+          },
+          "customDomainOutsideCertZone" : {
+            "type" : "boolean",
+            "description" : "True, and present only then, when the custom domain is outside the certificate zones the operator configured (vhost.cert.zones): the domain is saved, but it has no wildcard certificate here."
           }
         }
       },
@@ -6145,61 +6287,6 @@
             "description" : "The id of the shared theme whose templates to import into the weblog; omit to switch with no import. Importing the weblog's current theme keeps a customised stylesheet."
           }
         }
-      },
-      "ThemeChoice" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "description" : "The theme's id: what {@code theme} takes."
-          },
-          "name" : {
-            "type" : "string",
-            "description" : "The theme's name."
-          },
-          "description" : {
-            "type" : "string",
-            "description" : "What the theme looks like, in a sentence or two."
-          },
-          "previewPath" : {
-            "type" : "string",
-            "description" : "Where the preview image is served, relative to the site root and starting with a slash (\"/themes/journal/preview.png\"); prefix the site's address. Absent when the theme has no preview."
-          }
-        },
-        "required" : [ "id", "name" ]
-      },
-      "WeblogThemes" : {
-        "type" : "object",
-        "properties" : {
-          "current" : {
-            "type" : "string",
-            "description" : "The shared theme the weblog is on; absent when it is on a custom theme or its theme cannot be resolved."
-          },
-          "custom" : {
-            "type" : "boolean",
-            "description" : "True when the weblog has its own templates (a custom theme): there is no way back."
-          },
-          "customAllowed" : {
-            "type" : "boolean",
-            "description" : "True when the weblog may take a custom theme: the site allows them (or the weblog is already custom) and it is not the site space."
-          },
-          "sharedStylesheetCustomised" : {
-            "type" : "boolean",
-            "description" : "True when a weblog on a shared theme holds its own copy of that theme's stylesheet."
-          },
-          "firstCustomization" : {
-            "type" : "boolean",
-            "description" : "True when the weblog has no default page template yet, so a custom theme would be its first customisation."
-          },
-          "themes" : {
-            "type" : "array",
-            "description" : "The shared themes this weblog may switch to, in the theme manager's order.",
-            "items" : {
-              "$ref" : "#/components/schemas/ThemeChoice"
-            }
-          }
-        },
-        "required" : [ "custom", "customAllowed", "firstCustomization", "sharedStylesheetCustomised", "themes" ]
       },
       "TemplateCreate" : {
         "type" : "object",
@@ -8651,9 +8738,14 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "How many days a trashed entry is kept before the nightly sweep deletes it for good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request: a site admin can change it."
+          },
+          "maxEntriesPerPage" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The most entries a weblog may show on one page (the site setting site.pages.maxEntries): the ceiling a settings save refuses above. Read afresh on every request: a site admin can change it."
           }
         },
-        "required" : [ "features", "limits", "trashRetentionDays" ]
+        "required" : [ "features", "limits", "maxEntriesPerPage", "trashRetentionDays" ]
       },
       "LocaleChoice" : {
         "type" : "object",

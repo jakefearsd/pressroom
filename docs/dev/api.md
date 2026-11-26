@@ -108,7 +108,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **The API and the JSP admin UI share exactly one authorization path:
   `PressroomHandlerInterceptor`.** Every `*Api` controller implements
   `UISecurityEnforced` and declares `GlobalPermission`/`WeblogPermission` like
-  `CategoryEditController`, `WeblogConfigController` and the rest; no API-side
+  `CategoryEditController`, `MediaFileEditController` and the rest; no API-side
   permission system exists. `ApiScopeInterceptor` is registered *after* it in
   `WebMvcConfig` (order is load-bearing, see its javadoc) and only narrows by
   token scope.
@@ -214,7 +214,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `BaseApiController` follow this.
 - **A weblog's settings take the Weblog Settings page's permission (2026-11-20).**
   `GET/PATCH /v1/weblogs/{handle}` live in `WeblogSettingsApi`, which declares what
-  `WeblogConfigController`/`ThemeEditController` inherit from `BaseController`
+  the Weblog Settings and Theme pages inherited from `BaseController`
   (`WeblogPermission.ADMIN`, `GlobalPermission.LOGIN`, weblog required), and stays
   `@AdminScoped`. The list `GET /v1/weblogs` stays in `WeblogsApi` with
   `GlobalPermission.ADMIN`. Declarations are per controller class, so a route that needs a
@@ -502,8 +502,8 @@ must not report a wrong number). `WeblogView` (the settings read) gains `absolut
 
 ## A weblog's members, read (2026-11-21)
 
-`GET /v1/weblogs/{handle}/members` is `MembersApi`, declaring what `MembersController`
-does (`ADMIN`, login); not `@AdminScoped`, matrix row equal to `.../traffic`. The level
+`GET /v1/weblogs/{handle}/members` is `MembersApi`, declaring what the Members page did
+(`ADMIN`, login); not `@AdminScoped`, matrix row equal to `.../traffic`. The level
 is `Memberships.strongestLevel`, shared with `/v1/me`'s weblogs. An account that does
 not resolve is skipped (as the Members page does, logging a warning); any lookup that
 throws is a 500. The envelope adds `total` to the house four. Membership WRITES stay
@@ -654,7 +654,7 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
 ## New-weblog needs (step 2)
 
 - **`WeblogSettingsRules` and `WeblogCreationRules`** are the one home for those checks. Both the JSP
-  controllers and the API call them. The settings PATCH lays the request over `WeblogConfigBean` and
+  controllers (while any remained) and the API called them; the API and the React screens now do. The settings PATCH lays the request over `WeblogConfigBean` and
   stores it with the form's own `copyTo`. Violations are reported only when they involve a touched
   field.
 - **`ClearFields`:** null never removes; `clear` does. A new clearable field goes in the resource's

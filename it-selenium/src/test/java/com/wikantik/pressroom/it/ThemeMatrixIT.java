@@ -174,7 +174,7 @@ class ThemeMatrixIT extends PressroomIT {
     private String createWeblog(String themeId) {
         String handle = "thememx" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Theme Matrix " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -234,7 +234,7 @@ class ThemeMatrixIT extends PressroomIT {
      * site — so the button always appears.
      */
     private void switchToSharedTheme(String themeId, String handle) {
-        openPath("/pressroom-ui/authoring/themeEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/theme");
         // Clicking the theme's own card reveals the Save button. The
         // shared/custom radio row is not rendered on a default install (custom
         // themes are off site-wide), so there is nothing else to click first.

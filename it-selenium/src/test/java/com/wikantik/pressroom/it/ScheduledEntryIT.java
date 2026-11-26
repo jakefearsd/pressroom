@@ -148,7 +148,7 @@ class ScheduledEntryIT extends PressroomIT {
     private String createWeblog() {
         String handle = "sched" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Scheduled " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

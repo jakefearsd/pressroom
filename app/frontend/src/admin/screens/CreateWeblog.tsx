@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { call } from '../api/client';
 import { ApiError } from '../api/problem';
 import { useMe, useMeta, useWeblogOptions } from '../api/queries';
+import { useProfile } from './people/queries';
 import { ProblemBanner } from '../components/ProblemBanner';
 import { useApi, useBoot } from '../context';
 import { FieldFeedback, FormProblem } from '../forms/FormProblem';
@@ -22,9 +23,10 @@ export function CreateWeblog() {
   const me = useMe();
   const meta = useMeta();
   const options = useWeblogOptions();
+  const profile = useProfile().data;
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState<string | null>(null);
   const [locale, setLocale] = useState<string | null>(null);
   const [timeZone, setTimeZone] = useState<string | null>(null);
   const [theme, setTheme] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function CreateWeblog() {
     mutationFn: () => call(api.POST('/v1/weblogs', {
       body: {
         handle: handle.trim(), name: name.trim(), theme: chosenTheme,
-        ...(email.trim() === '' ? {} : { emailAddress: email.trim() }),
+        ...(chosenEmail.trim() === '' ? {} : { emailAddress: chosenEmail.trim() }),
         ...(chosenLocale === '' ? {} : { locale: chosenLocale }),
         ...(chosenZone === '' ? {} : { timeZone: chosenZone })
       }
@@ -53,11 +55,14 @@ export function CreateWeblog() {
   const themes = choices?.themes ?? [];
   // The form preselects the site's default theme, else the first offered (the JSP's picker, journal first).
   const chosenTheme = theme ?? choices?.defaultTheme ?? themes[0]?.id ?? '';
-  const userLocale = boot.user.locale;
-  // The user's own locale ("en" in the bootstrap) picks the first matching option ("en_US"); none matching leaves it to the API.
-  const ownLocale = choices?.locales.find((l) => l.id === userLocale || l.id.startsWith(`${userLocale}_`))?.id ?? '';
+  // The form starts from the signed-in account's own email, locale and zone, as the JSP's bean did; what the
+  // account lacks, or the form does not offer, is left to the API's defaults.
+  const own = profile?.locale ?? '';
+  const ownLocale = own === '' ? '' : choices?.locales.find((l) => l.id === own || l.id.startsWith(`${own}_`))?.id ?? '';
+  const ownZone = choices?.timeZones.includes(profile?.timeZone ?? '') === true ? profile?.timeZone ?? '' : '';
+  const chosenEmail = email ?? profile?.emailAddress ?? '';
   const chosenLocale = locale ?? ownLocale;
-  const chosenZone = timeZone ?? '';
+  const chosenZone = timeZone ?? ownZone;
   const themeChoice = themes.find((th) => th.id === chosenTheme);
 
   // Who may create is the server's rule too (WeblogCreationRules.mayCreate); saying so up front is the JSP's refusal page.
@@ -94,7 +99,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="name">{t('generic.name')}</label>
               <div className="col-sm-9">
-                <input type="text" autoFocus size={30} maxLength={30} required {...fields.props('name', 'form-control')}
+                <input type="text" autoFocus size={30} maxLength={30} required {...fields.props('name', 'form-control')} name="name"
                        value={name} onChange={(e) => { setName(e.target.value); }} />
                 <FieldFeedback message={fields.message('name')} />
               </div>
@@ -102,7 +107,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="handle">{t('createWebsite.handle')}</label>
               <div className="col-sm-9">
-                <input type="text" size={30} maxLength={30} required {...fields.props('handle', 'form-control')}
+                <input type="text" size={30} maxLength={30} required {...fields.props('handle', 'form-control')} name="handle"
                        value={handle} onChange={(e) => { setHandle(e.target.value); }} />
                 <FieldFeedback message={fields.message('handle')} />
               </div>
@@ -113,15 +118,15 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="emailAddress">{t('createWebsite.emailAddress')}</label>
               <div className="col-sm-9">
-                <input type="email" size={40} maxLength={255} {...fields.props('emailAddress', 'form-control validate-email')}
-                       value={email} onChange={(e) => { setEmail(e.target.value); }} />
+                <input type="email" size={40} maxLength={255} {...fields.props('emailAddress', 'form-control validate-email')} name="emailAddress"
+                       value={chosenEmail} onChange={(e) => { setEmail(e.target.value); }} />
                 <FieldFeedback message={fields.message('emailAddress')} />
               </div>
             </div>
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="locale">{t('createWebsite.locale')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('locale', 'form-select')} value={chosenLocale}
+                <select {...fields.props('locale', 'form-select')} name="locale" value={chosenLocale}
                         onChange={(e) => { setLocale(e.target.value); }}>
                   {chosenLocale === '' ? <option value="" /> : null}
                   {(choices?.locales ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -132,7 +137,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="timeZone">{t('createWebsite.timezone')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('timeZone', 'form-select')} value={chosenZone}
+                <select {...fields.props('timeZone', 'form-select')} name="timeZone" value={chosenZone}
                         onChange={(e) => { setTimeZone(e.target.value); }}>
                   {chosenZone === '' ? <option value="" /> : null}
                   {(choices?.timeZones ?? []).map((z) => <option key={z} value={z}>{z}</option>)}
@@ -143,7 +148,7 @@ export function CreateWeblog() {
             <div className="row mb-3">
               <label className="col-sm-3 col-form-label" htmlFor="theme">{t('createWebsite.theme')}</label>
               <div className="col-sm-9">
-                <select {...fields.props('theme', 'form-select')} value={chosenTheme}
+                <select {...fields.props('theme', 'form-select')} name="theme" value={chosenTheme}
                         onChange={(e) => { setTheme(e.target.value); }}>
                   {themes.map((th) => <option key={th.id} value={th.id}>{th.name}</option>)}
                 </select>

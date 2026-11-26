@@ -63,4 +63,11 @@ public final class ThemeDtos {
                     + "stylesheet.")
             String importTheme) {
     }
+
+    /** The body of {@code PUT /v1/admin/site-theme}. */
+    public record SiteThemeChange(
+            @Schema(description = "The id of the site theme to switch the site's own pages to; one the GET offers.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            String theme) {
+    }
 }

@@ -14,6 +14,12 @@ import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
 import { useCanAdminister } from '../routes/access';
 
+/*
+ * Message keys built at run time, listed whole for MessageKeyTest:
+ * websiteSettings.subscribeForm.on, websiteSettings.subscribeForm.offNoList,
+ * websiteSettings.subscribeForm.offNotConfigured, websiteSettings.placeLat.invalid,
+ * websiteSettings.placeLng.invalid.
+ */
 type WeblogView = components['schemas']['WeblogView'];
 type WeblogPatch = components['schemas']['WeblogPatch'];
 
@@ -177,11 +183,12 @@ export function WeblogSettings() {
 function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }) {
   const t = useT();
   const api = useApi();
-  const { contextPath } = useBoot();
+  const boot = useBoot();
+  const { contextPath } = boot;
   const queries = useQueryClient();
   const meta = useMeta();
   const options = useWeblogOptions();
-  const pages = useWeblogPages(handle);
+  const pages = useWeblogPages(handle === boot.site.siteSpaceHandle ? undefined : handle);
   const businesses = useWeblogBusinesses(handle);
   const [saved, setSaved] = useState<WeblogView>(weblog);
   const [values, setValues] = useState<Values>(() => valuesOf(weblog));
@@ -221,9 +228,11 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
   const businessesUnavailable = businesses.isError;
   const frontPages = (pages.data ?? []).filter((p) => p.status === 'PUBLISHED');
   const frontPagesUnavailable = pages.isError;
-  const siteUrl = meta.data?.siteUrl ?? `${contextPath}`;
-  const absolute = saved.customDomain !== undefined && saved.customDomain !== ''
-    ? `https://${saved.customDomain}/` : `${siteUrl}/${handle}`;
+  // The address readers reach the weblog at is the server's to say (custom domain, virtual host, site url).
+  const absolute = saved.absoluteUrl;
+  // The site space is the hidden weblog for the site's own pages: it has no front door to choose.
+  const siteSpace = handle === boot.site.siteSpaceHandle;
+  const maxEntries = meta.data?.maxEntriesPerPage;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -239,14 +248,16 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
     }
     const patch = buildPatch(valuesOf(saved), values);
     if (patch === null) {
+      // Nothing to send, and nothing refused now: an earlier refusal no longer describes the form.
+      save.reset();
       setMessage([t('websiteSettings.savedChanges')]);
       return;
     }
     save.mutate(patch);
   };
 
-  const subscribeNote = values.newsletterListUuid.trim() === '' && (saved.newsletterListUuid ?? '') === ''
-    ? t('websiteSettings.subscribeForm.offNoList') : null;
+  // What readers get is about the stored blog, never about what is typed but not yet saved.
+  const subscribeNote = t(`websiteSettings.subscribeForm.${saved.subscribeForm ?? 'offNoList'}`);
 
   return (
     <>
@@ -254,11 +265,12 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
       {message.length > 0 ? <ProblemBanner messages={message} /> : null}
       <FormProblem error={error} controls={(f) => document.getElementById(idFor(f)) !== null} />
       {businessesUnavailable ? <ProblemBanner errors={[t('websiteSettings.business.listUnavailable')]} /> : null}
-      {frontPagesUnavailable ? <ProblemBanner errors={[t('weblogSettings.frontDoor.unavailable')]} /> : null}
+      {!siteSpace && frontPagesUnavailable ? <ProblemBanner errors={[t('weblogSettings.frontDoor.unavailable')]} /> : null}
       <form className="settings-grid form-stacked" onSubmit={submit} noValidate>
         <div>
           <h2 className="section-head" id="settings-general">{t('websiteSettings.generalSettings')}</h2>
 
+          {absolute === undefined ? null : (
           <div className="row mb-3">
             <span className="col-sm-3 col-form-label">{t('websiteSettings.weblogUrl')}</span>
             <div className="col-sm-9">
@@ -275,6 +287,7 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
               </button>
             </div>
           </div>
+          )}
 
           <Row id={idFor('name')} label={t('websiteSettings.websiteTitle')}>
             <input type="text" size={30} maxLength={255} {...bind('name')} />{field('name')}
@@ -295,8 +308,10 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
           <Row id={idFor('emailAddress')} label={t('websiteSettings.emailAddress')}>
             <input type="email" size={30} maxLength={255} {...bind('emailAddress')} />{field('emailAddress')}
           </Row>
-          <Row id={idFor('entryDisplayCount')} label={t('websiteSettings.entryDisplayCount')}>
-            <input type="number" min={1} size={4} {...bind('entryDisplayCount')} />{field('entryDisplayCount')}
+          <Row id={idFor('entryDisplayCount')} label={t('websiteSettings.entryDisplayCount')}
+               help={maxEntries === undefined ? undefined
+                 : <div className="form-text">{t('websiteSettings.entryDisplayCount.tip', maxEntries)}</div>}>
+            <input type="number" min={1} max={maxEntries} size={4} {...bind('entryDisplayCount')} />{field('entryDisplayCount')}
           </Row>
 
           <Check name="bean.active" checked={values.active} onChange={set('active')} label={t('websiteSettings.active')} />
@@ -324,7 +339,7 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
             </select>{field('pageWidth')}
           </Row>
 
-          {frontPagesUnavailable ? null : (
+          {siteSpace || frontPagesUnavailable ? null : (
             <Row id={idFor('frontPage')} label={t('weblogSettings.frontDoor')}
                  help={<div className="form-text">{t('weblogSettings.frontDoor.help')}</div>}>
               <select {...bind('frontPage', 'form-select')}>
@@ -351,7 +366,7 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
                help={(
                  <>
                    <div className="form-text">{t('websiteSettings.newsletterListUuid.tip')}</div>
-                   {subscribeNote === null ? null : <div className="form-text" id="subscribe-form-status">{subscribeNote}</div>}
+                   <div className="form-text" id="subscribe-form-status">{subscribeNote}</div>
                  </>
                )}>
             <input type="text" size={40} maxLength={64} {...bind('newsletterListUuid')} />{field('newsletterListUuid')}
@@ -411,6 +426,8 @@ function SettingsForm({ handle, weblog }: { handle: string; weblog: WeblogView }
                        </a>
                      </div>
                    )}
+                   {saved.customDomainOutsideCertZone === true
+                     ? <div className="form-text text-warning">{t('websiteSettings.customDomain.outsideZone')}</div> : null}
                  </>
                )}>
             <input type="text" size={40} maxLength={255} {...bind('customDomain')} />{field('customDomain')}

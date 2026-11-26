@@ -98,8 +98,8 @@ describe('WeblogSettings', () => {
     expect(screen.getByRole('link', { name: 'Remove weblog' })).toHaveAttribute('href', '/weblogs/alpha/remove');
   });
 
-  it('uses the site address for the weblog url when there is no custom domain, and copies it', async () => {
-    current = { ...alpha, customDomain: undefined };
+  it('shows the weblog address the server built (WeblogView.absoluteUrl), and copies it', async () => {
+    current = { ...alpha, customDomain: undefined, absoluteUrl: 'https://blog.example.com/alpha' };
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     await open();
@@ -108,6 +108,49 @@ describe('WeblogSettings', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Copy to clipboard' }));
     expect(writeText).toHaveBeenCalledWith('https://blog.example.com/alpha');
     await waitFor(() => { expect(document.querySelector('.clipbutton')).toHaveClass('copied'); });
+  });
+
+  it('takes the address from the server, not from the site url and the handle, even when they differ', async () => {
+    current = { ...alpha, customDomain: undefined, absoluteUrl: 'https://elsewhere.example/blogs/alpha/' };
+    await open();
+    expect(document.getElementById('weblogAbsoluteUrl')).toHaveAttribute('href', 'https://elsewhere.example/blogs/alpha/');
+  });
+
+  it('gives the entries field the site maximum and says it: "At most N per page"', async () => {
+    server.use(http.get(`${API}/meta`, () => HttpResponse.json({ ...meta(), maxEntriesPerPage: 25 })));
+    await open();
+    const count = screen.getByLabelText('Entries shown per page');
+    await waitFor(() => { expect(count).toHaveAttribute('max', '25'); });
+    expect(count).toHaveAttribute('min', '1');
+    expect(screen.getByText('At most 25 per page.')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['on', 'Subscribe form: on'],
+    ['offNotConfigured', 'newsletter service'],
+    ['offNoList', 'No newsletter list is set']
+  ])('says in words whether readers get the subscribe form: %s', async (status, words) => {
+    current = { ...alpha, subscribeForm: status, newsletterListUuid: status === 'offNoList' ? '' : 'list-1' };
+    await open();
+    expect(document.getElementById('subscribe-form-status')).toHaveTextContent(words);
+  });
+
+  it('warns, as the JSP did, when the saved custom domain is outside the wildcard certificate zones', async () => {
+    current = { ...alpha, customDomainOutsideCertZone: true };
+    await open();
+    expect(await screen.findByText(/no wildcard certificate covering that hostname/)).toHaveClass('form-text', 'text-warning');
+  });
+
+  it('shows no certificate warning for a domain inside the zones', async () => {
+    await open();
+    expect(screen.queryByText(/no wildcard certificate/)).toBeNull();
+  });
+
+  it('offers no home-page row on the site space, which has no front door', async () => {
+    const boot = { ...editorBoot, site: { ...editorBoot.site, siteSpaceHandle: 'alpha' } };
+    await open(boot);
+    expect(screen.queryByLabelText('Home page')).toBeNull();
+    expect(screen.queryByText(/The page list could not be loaded/)).toBeNull();
   });
 
   it('saves only what changed, blanks become clear, and says so; the PATCH carries the CSRF header', async () => {
@@ -180,6 +223,23 @@ describe('WeblogSettings', () => {
     expect(screen.queryByText('Settings saved.')).toBeNull();
     // what was typed stays
     expect(count).toHaveValue(999);
+  });
+
+  it('a clean save after a refusal clears the refusal: no error, no marked field, and says saved', async () => {
+    const user = userEvent.setup();
+    await open();
+    await user.clear(screen.getByLabelText('Entries shown per page'));
+    await user.type(screen.getByLabelText('Entries shown per page'), '999');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(screen.getByLabelText('Entries shown per page')).toHaveAttribute('aria-invalid', 'true'); });
+
+    await user.clear(screen.getByLabelText('Entries shown per page'));
+    await user.type(screen.getByLabelText('Entries shown per page'), '10');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Settings saved.')).toBeInTheDocument();
+    expect(document.getElementById('errors')).toBeNull();
+    expect(screen.getByLabelText('Entries shown per page')).not.toHaveAttribute('aria-invalid');
   });
 
   it('keeps the current business and front page when their lists cannot load, and says so', async () => {

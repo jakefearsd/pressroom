@@ -162,7 +162,10 @@ class CategoryIT extends PressroomIT {
         addCategory(extra, "Second category");
         deleteCategory(extra, null);
 
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/settings");
+        // The React screen PATCHes only what changed and saves nothing for an untouched form, so change
+        // something: the save must actually reach the server for this test to prove anything.
+        $("input[name='bean.tagline']").should(visible).setValue("Saved after deleting " + extra);
         $("button[type='submit'].btn-primary").should(visible).click();
 
         // A Selenide condition, not a snapshot assertion: it waits for the save

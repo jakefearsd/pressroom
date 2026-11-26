@@ -44,12 +44,8 @@ import com.wikantik.pressroom.ui.controllers.editor.MediaFileAddController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileEditController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileImageChooserController;
 import com.wikantik.pressroom.ui.controllers.editor.MediaFileViewController;
-import com.wikantik.pressroom.ui.controllers.editor.MembersController;
 import com.wikantik.pressroom.ui.controllers.editor.PageEditController;
 import com.wikantik.pressroom.ui.controllers.editor.PagesController;
-import com.wikantik.pressroom.ui.controllers.editor.ThemeEditController;
-import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigController;
-import com.wikantik.pressroom.ui.controllers.editor.WeblogRemoveController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
@@ -154,7 +150,7 @@ class SiteSpaceAccessTest {
             return new WebMvcConfig(interceptor);
         }
 
-        // --- the three screens the site space offers
+        // --- the screens the site space offers that are still JSP (its theme moved to the React admin: AdminSiteThemeApi)
         @Bean
         PagesController pagesController() {
             return new PagesController();
@@ -163,11 +159,6 @@ class SiteSpaceAccessTest {
         @Bean
         PageEditController pageEditController() {
             return new PageEditController();
-        }
-
-        @Bean
-        ThemeEditController themeEditController() {
-            return new ThemeEditController();
         }
 
         @Bean
@@ -204,21 +195,6 @@ class SiteSpaceAccessTest {
         @Bean
         CategoriesController categoriesController() {
             return new CategoriesController();
-        }
-
-        @Bean
-        WeblogConfigController weblogConfigController() {
-            return new WeblogConfigController();
-        }
-
-        @Bean
-        MembersController membersController() {
-            return new MembersController();
-        }
-
-        @Bean
-        WeblogRemoveController weblogRemoveController() {
-            return new WeblogRemoveController();
         }
 
         @Bean
@@ -310,11 +286,11 @@ class SiteSpaceAccessTest {
     // ------------------------------------------------------------ the screens it offers
 
     @Test
-    void aGlobalAdminReachesTheSitePagesThemeAndMedia() throws Exception {
+    void aGlobalAdminReachesTheSitePagesAndMedia() throws Exception {
         siteSpace();
         signIn(admin);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
+        for (String screen : List.of("pages.rol", "pageEdit.rol", "mediaFileView.rol",
                 "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(200, result.getResponse().getStatus(), screen + " is offered on the site space");
@@ -328,17 +304,13 @@ class SiteSpaceAccessTest {
 
     @Test
     void aGlobalAdminIsRefusedEveryOtherBlogScreenAsForAWeblogThatDoesNotExist() throws Exception {
-        Weblog site = siteSpace();
+        siteSpace();
         signIn(admin);
 
         for (Function<String, MockHttpServletRequestBuilder> screen : List.<Function<String, MockHttpServletRequestBuilder>>of(
                 h -> get(AUTHORING + "entries.rol").param("weblog", h),
                 h -> get(AUTHORING + "comments.rol").param("weblog", h),
-                h -> get(AUTHORING + "categories.rol").param("weblog", h),
-                h -> get(AUTHORING + "weblogConfig.rol").param("weblog", h),
-                h -> get(AUTHORING + "members.rol").param("weblog", h),
-                h -> get(AUTHORING + "weblogRemove.rol").param("weblog", h),
-                h -> post(AUTHORING + "weblogRemove!remove.rol").param("weblog", h))) {
+                h -> get(AUTHORING + "categories.rol").param("weblog", h))) {
             MvcResult unknown = perform(screen.apply("ssanosuchblog"));
             MvcResult refused = perform(screen.apply(SITE));
             String uri = refused.getRequest().getRequestURI();
@@ -349,16 +321,14 @@ class SiteSpaceAccessTest {
             assertNull(refused.getRequest().getAttribute("actionWeblog"),
                     uri + " never sees the site space");
         }
-        assertNotNull(TestUtils.weblogger().getWeblogManager().getWeblog(site.getId()),
-                "the refused removal removed nothing");
     }
 
     @Test
-    void aBlogAuthorIsRefusedTheSitePagesAndTheme() throws Exception {
+    void aBlogAuthorIsRefusedTheSitePages() throws Exception {
         siteSpace();
         signIn(author);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol")) {
+        for (String screen : List.of("pages.rol", "pageEdit.rol", "mediaFileView.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(302, result.getResponse().getStatus(), screen);
             assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);

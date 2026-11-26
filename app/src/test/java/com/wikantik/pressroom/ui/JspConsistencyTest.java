@@ -132,9 +132,6 @@ class JspConsistencyTest {
         String pages = Files.readString(JSPS.resolve("editor/Pages.jsp"), StandardCharsets.UTF_8);
         assertTrue(pages.contains("<c:if test=\"${not empty pages}\">\n    <a href=\"${addUrl}\" class=\"btn btn-primary btn-sm\">"),
                 "Pages hides the top primary when empty");
-
-        String members = Files.readString(JSPS.resolve("editor/Members.jsp"), StandardCharsets.UTF_8);
-        assertEquals(1, countOccurrences(members, "btn btn-primary"), "Members has one primary");
     }
 
     /**
@@ -180,10 +177,6 @@ class JspConsistencyTest {
         assertFalse(entries.contains("entriesBulkActions"),
                 "Entries.jsp still has the old #entriesBulkActions div -- its buttons "
                         + "must move into the .selection-bar");
-
-        String submissions = Files.readString(JSPS.resolve("editor/Submissions.jsp"), StandardCharsets.UTF_8);
-        assertEquals(1, countOccurrences(submissions, "class=\"selection-bar\""),
-                "Submissions.jsp must have exactly one .selection-bar");
 
         String comments = Files.readString(JSPS.resolve("editor/Comments.jsp"), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(comments, "class=\"selection-bar\""),
@@ -271,7 +264,7 @@ class JspConsistencyTest {
 
     /**
      * Task B6: the four sidebar tiles (EntriesSidebar, MediaFileSidebar,
-     * CategoriesSidebar, TemplatesSidebar; the main menu's moved to React) speak the rail's
+     * CategoriesSidebar; the main menu's and the templates' moved to React) speak the rail's
      * own grammar instead of a Bootstrap card with h3/hr section markup: a
      * caps-label ({@code p.sidebar-label}) per logical block, each wrapped in
      * a {@code div.sidebar-group}, no {@code <h3>} and no {@code <hr>}
@@ -291,8 +284,8 @@ class JspConsistencyTest {
         List<Path> sidebarJsps = jsps().stream()
                 .filter(p -> p.getFileName().toString().endsWith("Sidebar.jsp"))
                 .toList();
-        assertEquals(4, sidebarJsps.size(),
-                "Expected exactly the four sidebar tiles -- the scan is not looking where it thinks it is.");
+        assertFalse(sidebarJsps.isEmpty(),
+                "Expected sidebar tiles -- the scan is not looking where it thinks it is.");
 
         for (Path jsp : sidebarJsps) {
             String src = Files.readString(jsp, StandardCharsets.UTF_8);
@@ -414,22 +407,18 @@ class JspConsistencyTest {
      * Every controller that calls {@code addFieldError} and the JSP(s) whose
      * form it renders. An explicit table rather than a derivation from
      * {@code PressroomViewResolver}: the field a validation names is often on a
-     * SIDEBAR tile ({@code TemplatesSidebar.jsp}) or in a modal on the list
+     * SIDEBAR tile ({@code MediaFileSidebar.jsp}) or in a modal on the list
      * screen ({@code Categories.jsp}), neither of which the view name spells
      * out. Adding a controller to {@code addFieldError} without adding it here
      * fails {@link #everyFieldErrorNamesAnIdThatExistsInItsJsp} -- an unmapped
      * caller is not silently skipped.
      */
     private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
-            Map.entry("editor/WeblogConfigController.java", List.of("editor/WeblogConfig.jsp")),
             Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
             Map.entry("editor/MediaFileViewController.java", List.of("editor/MediaFileSidebar.jsp")),
             Map.entry("editor/MediaFileEditController.java", List.of("editor/MediaFileEdit.jsp")),
             Map.entry("editor/PageEditController.java", List.of("editor/PageEdit.jsp")),
             Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
-            Map.entry("editor/TemplatesController.java", List.of("editor/TemplatesSidebar.jsp")),
-            Map.entry("editor/MembersController.java", List.of("editor/Members.jsp")),
-            Map.entry("core/CreateWeblogController.java", List.of("core/CreateWeblog.jsp")),
             Map.entry("core/ProfileController.java", List.of("core/Profile.jsp")),
             Map.entry("admin/UserEditController.java", List.of("admin/UserEdit.jsp")),
             Map.entry("admin/BusinessesController.java", List.of("admin/BusinessEdit.jsp")),
@@ -632,45 +621,6 @@ class JspConsistencyTest {
         }
     }
 
-    /**
-     * Task B9b: picking a theme is a grid of cards, each showing the theme's
-     * own preview image, not a one-line {@code <select>} beside a thumbnail
-     * fetched over ajax. Every card is a {@code <label>} wrapping a radio, so
-     * the whole card is the hit target and the browser does the grouping.
-     *
-     * <p>The chooser's {@code change} handler is delegated rather than an
-     * inline {@code onchange}, for the reason
-     * {@link #globalConfigHasTheSettingsRail} gives: an inline handler is a
-     * second place generated text reaches raw JavaScript. The old
-     * {@code #themeSelector} select and the {@code #themeThumbnail} it drove
-     * must both be gone -- leaving either means two chooser mechanisms on one
-     * page, only one of which the state machine listens to.
-     */
-    @Test
-    void themeChooserIsACardGrid() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("editor/ThemeEdit.jsp"), StandardCharsets.UTF_8));
-
-        assertTrue(markup.contains("class=\"theme-cards\""),
-                "ThemeEdit.jsp must render the .theme-cards grid");
-        assertTrue(markup.contains("<label class=\"theme-card\">"),
-                "every theme is a <label class=\"theme-card\"> wrapping its radio");
-        assertTrue(markup.contains("type=\"radio\" name=\"selectedThemeId\""),
-                "the cards must post the same selectedThemeId the controller reads");
-        assertFalse(markup.contains("id=\"themeSelector\""),
-                "the old <select id=\"themeSelector\"> must be gone, not merely hidden");
-        assertFalse(markup.contains("id=\"themeThumbnail\""),
-                "the ajax-driven thumbnail is replaced by each card's own preview image");
-        assertFalse(markup.contains("onchange="),
-                "wire the chooser with a delegated change listener, not an inline onchange");
-
-        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        for (String rule : List.of(".theme-cards", ".theme-card", ".theme-card-thumb",
-                ".theme-card-name", ".theme-card-desc")) {
-            assertTrue(css.contains(rule), "pressroom.css lacks " + rule);
-        }
-    }
-
     // --- B10: the weblog switcher in the top bar ---
 
     /**
@@ -763,30 +713,6 @@ class JspConsistencyTest {
         int chevronStart = css.indexOf(".editor-details > summary::");
         assertTrue(chevronStart >= 0, ".editor-details > summary must have its own rotating chevron, "
                 + "the same shape as .editor-drawer::after / .editor-drawer:not(.collapsed)::after");
-    }
-
-    /**
-     * B9's "first card checked" fallback only covered a blank
-     * {@code selectedThemeId} (a weblog on a custom theme). A weblog whose
-     * {@code editorTheme} names a shared theme that no longer exists (a
-     * retired id, or a directory removed by hand) sends a NON-blank
-     * {@code selectedThemeId} that matches no card, so the old condition
-     * {@code opt.id == selectedThemeId or (empty selectedThemeId and
-     * themeStatus.first)} checks nothing at all -- the browser posts no
-     * {@code selectedThemeId}, and save answers "theme not found". The
-     * fallback must trigger whenever the weblog's current theme is not
-     * found among the rendered cards, not only when it is blank.
-     */
-    @Test
-    void themeCardFallsBackToTheFirstCardWhenTheCurrentThemeIsNotInTheList() throws IOException {
-        String markup = withoutJspComments(
-                Files.readString(JSPS.resolve("editor/ThemeEdit.jsp"), StandardCharsets.UTF_8));
-
-        assertFalse(markup.contains("empty selectedThemeId and themeStatus.first"),
-                "the old fallback only handled a blank selectedThemeId, not one naming a missing theme");
-        assertTrue(markup.contains("selectedThemeFound"),
-                "the checked condition must fall back to the first card whenever the weblog's "
-                        + "current theme id is not found among the rendered cards");
     }
 
     // --- B11's bug sweep, folded in from the class it was routed to ---

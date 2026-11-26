@@ -341,12 +341,12 @@ class SearchIT extends PressroomIT {
     private String createWeblog(String name) {
         loginAsAdmin();
         String handle = "box" + nonce();
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue(name);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("journal");
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
         $("#messages").should(exist);
         return handle;
     }

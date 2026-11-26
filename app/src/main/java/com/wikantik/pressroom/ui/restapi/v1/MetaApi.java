@@ -122,7 +122,8 @@ public class MetaApi {
                 ColumnLimits.ENTRY_TEXT);
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
                 siteUrl == null || siteUrl.isEmpty() ? null : siteUrl, features, limits,
-                WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.RETENTION_PROPERTY)));
+                WebloggerRuntimeConfig.getIntProperty(TrashPurgeTask.RETENTION_PROPERTY),
+                WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries")));
     }
 
     /**

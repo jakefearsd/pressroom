@@ -890,6 +890,7 @@ setting an operator changes shows in the next response.
 | `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
 | `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
 | `trashRetentionDays` | Days a trashed entry is kept before the sweep deletes it for good: negative keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request. |
+| `maxEntriesPerPage` | The most entries a weblog may show on one page (the `site.pages.maxEntries` setting): the ceiling a settings save refuses above. Read afresh on every request. |
 
 ```
 GET /api/v1/me/profile
@@ -2257,6 +2258,12 @@ property of either name is ignored and naming one in `clear` is a 400 on `clear`
 The rules judge the weblog as it will be after the change, so setting only
 `placeType` on a weblog with no `placeLocality` is a 400.
 
+The weblog view also says two things the settings screen shows: `subscribeForm`
+(`on`, `offNoList` when no newsletter list is set, `offNotConfigured` when a list is set
+but the site has no newsletter service) and `customDomainOutsideCertZone` (`true`, and
+present only then, when the custom domain is saved but sits outside the operator's
+`vhost.cert.zones`, so it has no wildcard certificate here).
+
 **`theme` switches the blog's shared theme**, by the rule the Theme page
 applies: an enabled theme, never `frontpage` (the site-wide aggregator
 theme) unless the blog is already on it. A theme that is not offered is a
@@ -2644,6 +2651,7 @@ Site administration and the caller's own account (a site admin, or any signed-in
 | `PATCH`, `DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}` | Change the account's level `{permission}` there, or remove it (204). |
 | `PATCH /v1/me/profile` | The caller's own `{screenName, fullName, emailAddress, locale, timeZone}`; a field left out is left alone. Answers the profile. |
 | `PUT /v1/me/password` | Change the caller's own password: `{currentPassword, newPassword}`. 204; the account's other sessions end. |
+| `GET`, `PUT /v1/admin/site-theme` | The theme of the site's own pages (the hidden site space, which the weblog routes withhold): the site themes on offer with the one in use (the `GET /v1/weblogs/{handle}/themes` shape), and the switch `{theme}`; a theme that is no site theme is 400 `theme.notOffered`. Session only. |
 
 `PATCH /v1/admin/users/{userName}` also takes `administrator` and `password`, and `POST /v1/admin/users` takes
 `password` and `administrator`, as session-only fields (see the admin-users section above): a token that sends one gets

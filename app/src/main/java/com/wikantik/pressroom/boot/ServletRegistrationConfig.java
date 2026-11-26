@@ -25,7 +25,6 @@ import jakarta.servlet.ServletRegistration;
 
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
-import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.AppShellForwardFilter;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
@@ -125,11 +124,6 @@ public class ServletRegistrationConfig {
     }
 
     @Bean
-    public ThemeDataServlet themeDataServlet(@Lazy Weblogger weblogger) {
-        return new ThemeDataServlet(weblogger);
-    }
-
-    @Bean
     public ServletRegistrationBean<PageServlet> pageServletRegistration(PageServlet pageServlet) {
         ServletRegistrationBean<PageServlet> registration =
                 new ServletRegistrationBean<>(pageServlet, "/pressroom-ui/rendering/page/*");
@@ -183,11 +177,6 @@ public class ServletRegistrationConfig {
                 new ServletRegistrationBean<>(previewResourceServlet, "/pressroom-ui/authoring/previewresource/*");
         registration.setLoadOnStartup(9);
         return registration;
-    }
-
-    @Bean
-    public ServletRegistrationBean<ThemeDataServlet> themeDataServletRegistration(ThemeDataServlet themeDataServlet) {
-        return new ServletRegistrationBean<>(themeDataServlet, "/pressroom-ui/authoring/themedata/*");
     }
 
     // ------------------------------------------------------------------

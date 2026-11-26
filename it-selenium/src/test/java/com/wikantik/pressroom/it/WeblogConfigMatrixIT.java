@@ -188,6 +188,8 @@ class WeblogConfigMatrixIT extends PressroomIT {
 
         openSettings(handle);
         $("#weblog_bean_newsletterListUuid").setValue("not-a-uuid");
+        // The refusal is the point: the PATCH answers 400, which the health check would otherwise call broken.
+        BrowserHealth.current().expectRefusal("/api/v1/weblogs/" + handle);
         $("button[type='submit'].btn-primary").should(visible).click();
 
         $("#errors").should(exist);
@@ -200,7 +202,10 @@ class WeblogConfigMatrixIT extends PressroomIT {
         // A form with nothing wrong must carry no marker at all -- otherwise
         // the attribute would be sticky and every later save would look
         // refused.
-        $("#weblog_bean_newsletterListUuid").setValue("");
+        // Real key presses, not clear(): WebDriver's clear() sets the value without an input event, which a React
+        // controlled input never sees, so the field would snap back to what was typed.
+        $("#weblog_bean_newsletterListUuid").sendKeys(org.openqa.selenium.Keys.chord(org.openqa.selenium.Keys.CONTROL, "a"),
+                org.openqa.selenium.Keys.BACK_SPACE);
         saveSettings();
         $("#weblog_bean_newsletterListUuid").shouldNotHave(cssClass("is-invalid"));
         assertTrue($$("body[data-invalid-fields]").isEmpty(),
@@ -257,7 +262,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     }
 
     private void openSettings(String handle) {
-        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.name']").should(visible);
     }
 
@@ -276,7 +281,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "wcfg" + nonce();
 
-        openPath("/pressroom-ui/createWeblog.rol");
+        openPath("/pressroom-ui/app/weblogs/new");
         $("#name").should(visible).setValue("Weblog Config " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

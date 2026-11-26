@@ -398,6 +398,9 @@ class ApiAuthorizationMatrixTest {
             row("POST   /v1/admin/discovery/refresh",                 ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/analytics",                         ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/analytics/sync",                    ADMIN, SITE_ADMIN, NO_WEBLOG),
+            // --- The site's own theme: the Theme screen on the site space, which the weblog routes withhold.
+            row("GET    /v1/admin/site-theme",                        ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
+            row("PUT    /v1/admin/site-theme",                        ADMIN, SITE_ADMIN, NO_WEBLOG, Flag.SESSION_ONLY),
             // --- Business profiles: the site admin's, as the Businesses screen
             row("GET    /v1/admin/businesses",                        ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/businesses/{id}",                   ADMIN, SITE_ADMIN, NO_WEBLOG),

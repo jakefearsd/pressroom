@@ -200,7 +200,7 @@ class AdminChromeJspTest {
         java.util.regex.Pattern options = java.util.regex.Pattern.compile(
                 "<option value=\"admin\"[^>]*>.*?</option>\\s*<option value=\"post\"[^>]*>.*?</option>"
                         + "\\s*<option value=\"edit_draft\"", java.util.regex.Pattern.DOTALL);
-        for (String screen : java.util.List.of("editor/Members.jsp", "admin/UserWeblogs.jsp")) {
+        for (String screen : java.util.List.of("admin/UserWeblogs.jsp")) {
             String src = jsp(screen);
             java.util.regex.Matcher m = options.matcher(src);
             int lists = 0;
@@ -211,24 +211,6 @@ class AdminChromeJspTest {
             assertTrue(selects > 0 && lists == selects,
                     screen + ": " + lists + " of " + selects + " level lists are in the house order");
         }
-        assertTrue(jsp("editor/Members.jsp").contains("<option value=\"post\" selected"),
-                "a new member is still an Author by default");
-    }
-
-    /**
-     * The copy says "you are not allowed to demote or remove yourself", but
-     * the caller's own row had every radio live; the server then refused the
-     * save. The non-admin choices are disabled on that row (the admin radio
-     * stays live, so the save still carries the one admin it needs).
-     */
-    @Test
-    void membersCannotPickADemotionForThemselves() {
-        String src = jsp("editor/Members.jsp");
-        assertTrue(src.contains("<c:set var=\"selfRow\" value=\"${perm.user.userName == authenticatedUser.userName}\"/>"),
-                "Members.jsp knows which row is the caller's own");
-        assertEquals(3, src.split(java.util.regex.Pattern.quote("<c:if test=\"${selfRow}\">disabled</c:if>"), -1).length - 1,
-                "Author, Limited and Remove are disabled on the caller's own row");
-        assertTrue(src.contains("<div class=\"table-responsive\">"), "the table scrolls inside its card at phone width");
     }
 
     /**
@@ -268,26 +250,12 @@ class AdminChromeJspTest {
     }
 
     /**
-     * Create weblog: the URL preview printed the English word "handle" until
-     * the user typed, an empty label sat in front of it, and the email field
-     * stopped at 50 characters where every other one allows 255.
-     */
-    @Test
-    void theCreateWeblogFormHasNoPlaceholderWordOrEmptyLabel() {
-        String src = jsp("core/CreateWeblog.jsp");
-        assertFalse(src.contains("<c:otherwise>handle</c:otherwise>"), "the preview still prints \"handle\"");
-        assertFalse(src.contains("<label class=\"col-sm-3\"></label>"), "an empty label is still rendered");
-        assertTrue(src.contains("id=\"emailAddress\" cssClass=\"form-control validate-email\" size=\"40\" maxlength=\"255\""),
-                "the email field allows 255 characters");
-    }
-
-    /**
      * Cancel was built four ways; a navigating Cancel is a link styled as a
      * button, which works without script.
      */
     @Test
     void aNavigatingCancelIsALink() {
-        for (String screen : java.util.List.of("core/CreateWeblog.jsp", "core/Profile.jsp")) {
+        for (String screen : java.util.List.of("core/Profile.jsp")) {
             String src = jsp(screen);
             assertFalse(src.contains("onclick=\"window.location="), screen + " still navigates from an onclick");
             assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/pressroom-ui/app/'/>\""),
@@ -369,10 +337,7 @@ class AdminChromeJspTest {
      */
     @Test
     void theSettingsPagesNameLocalesAndMarkTheirSectionIndex() {
-        String weblog = jsp("editor/WeblogConfig.jsp");
-        assertTrue(weblog.contains(">${fn:escapeXml(opt.displayName)}</option>"),
-                "Weblog settings shows locale codes, not names");
-        for (String screen : java.util.List.of("editor/WeblogConfig.jsp", "admin/GlobalConfig.jsp")) {
+        for (String screen : java.util.List.of("admin/GlobalConfig.jsp")) {
             assertTrue(jsp(screen).contains("<div class=\"rail-box settings-rail-index\">"),
                     screen + "'s section index box is not marked");
         }

@@ -190,13 +190,6 @@ public final class Routes {
             // EDITOR (whose role grants "comment") is the lowest role listed here.
             new Route("/pressroom-ui/account.rol", Role.EDITOR, "", "#accountPage"),
 
-            // Renders .CreateWeblog rather than .GenericError because
-            // site.allowUserWeblogCreation defaults to true (runtimeConfigDefs.xml)
-            // and groupblogging.enabled defaults to true (pressroom.properties), which
-            // skips the "you already have a blog" bail-out.
-            new Route("/pressroom-ui/createWeblog.rol", Role.EDITOR, "",
-                    "form[action$='/pressroom-ui/createWeblog!save.rol']"),
-
             // The settings rail (task B9a): the <form> IS the .settings-grid,
             // so the rail is the marker that proves the page rendered its own
             // content rather than the form action, which the old
@@ -294,9 +287,6 @@ public final class Routes {
             // #createPostForm is at the top of the JSP and always renders.
             new Route("/pressroom-ui/authoring/mediaFileView.rol", Role.EDITOR, WEBLOG, "#createPostForm"),
 
-            new Route("/pressroom-ui/authoring/members.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/members!save.rol']"),
-
             // Table is empty with no pages seeded, but the remove form around
             // it is emitted unconditionally, same reasoning as entries.rol.
             new Route("/pressroom-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
@@ -308,36 +298,9 @@ public final class Routes {
             // "New page" mode (no id parameter): the edit form always renders.
             new Route("/pressroom-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
 
-            // Both of StylesheetEdit.jsp's forms sit inside a <c:choose> on the
-            // weblog's theme state, so neither is a reliable marker. The subtitle
-            // is outside the choose.
-            new Route("/pressroom-ui/authoring/stylesheetEdit.rol", Role.EDITOR, WEBLOG, "p.subtitle"),
-
-            // Table is empty with no submissions seeded, but the delete form
-            // around it is emitted unconditionally, same reasoning as
-            // pages.rol/entries.rol.
-            new Route("/pressroom-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
-                    "#submissionsDeleteForm"),
-
             // The moderation form is emitted unconditionally, empty list or not.
             new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
-                    "#commentsModerationForm"),
-
-            new Route("/pressroom-ui/authoring/templates.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/templates!remove.rol']"),
-
-            // The theme card grid (task B9b). It sits inside #themeChooser,
-            // which the page's JS reveals -- but this asserts the elements
-            // EXIST, not that they are visible, so the marker holds whichever
-            // state block the state machine lands on.
-            new Route("/pressroom-ui/authoring/themeEdit.rol", Role.EDITOR, WEBLOG,
-                    ".theme-cards"),
-
-            new Route("/pressroom-ui/authoring/weblogConfig.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/weblogConfig!save.rol']"),
-
-            new Route("/pressroom-ui/authoring/weblogRemove.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol']")
+                    "#commentsModerationForm")
     );
 
     // ---------------------------------------------------------------- bucket c
@@ -403,11 +366,6 @@ public final class Routes {
                             + "allDirectories}\">, so with no media files seeded there is "
                             + "nothing to assert on. Exercised with a real fixture by "
                             + "EditorSeoIT's featured-image picker journey."),
-            new SkippedRoute("/pressroom-ui/authoring/templateEdit.rol", Role.EDITOR,
-                    "Needs bean.id of a WeblogTemplate; without one it falls back to "
-                            + "the .Templates view with an error. No custom templates are "
-                            + "seeded. TemplateIT drives it with a template it creates, and "
-                            + "checks the result reaches the public page URL."),
             new SkippedRoute("/pressroom-ui/admin/modifyUser.rol", Role.ADMIN,
                     "Needs bean.id or bean.userName; without one it renders .UserAdmin "
                             + "with a not-found error rather than the edit form. "
@@ -476,7 +434,30 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/traffic", Role.EDITOR, "", "#trafficPage"),
 
             // Global Traffic: every blog's numbers from the local cache; the marker is the page's root div.
-            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage")
+            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage"),
+
+            // Wave 3. Create weblog: the live address preview only this form emits.
+            new Route("/pressroom-ui/app/weblogs/new", Role.EDITOR, "", "#handlePreview"),
+
+            // Website settings: the section index in the rail (the form is the grid, so the rail proves the screen).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/settings", Role.EDITOR, "", "#settingsSectionIndex"),
+
+            // Theme: the card grid, whichever state block the screen lands on.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/theme", Role.EDITOR, "", ".theme-cards"),
+
+            // Templates: the add-a-template form is emitted whether or not any template exists.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/templates", Role.EDITOR, "", "#templateAdd"),
+
+            // Stylesheet: the subtitle sits outside the screen's state branches (editor, copy button or notice).
+            new Route("/pressroom-ui/app/weblogs/it_weblog/stylesheet", Role.EDITOR, "", "p.subtitle"),
+
+            new Route("/pressroom-ui/app/weblogs/it_weblog/members", Role.EDITOR, "", "#memberPermissionsForm"),
+
+            // The contact inbox: the delete form is emitted with an empty list too.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/inbox", Role.EDITOR, "", "#submissionsDeleteForm, .empty-state"),
+
+            // Remove: the irreversible-removal warning, which only this confirmation carries.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/remove", Role.EDITOR, "", "span.warning")
     );
 
     // ------------------------------------------------------------ known broken
