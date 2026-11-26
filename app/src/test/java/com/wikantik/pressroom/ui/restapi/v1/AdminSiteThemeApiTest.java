@@ -99,4 +99,13 @@ class AdminSiteThemeApiTest {
     void aMissingThemeIsARequiredFieldProblem() throws Exception {
         refused(t.send(put(URL), "{}"), 400, "field.required");
     }
+
+    @Test
+    void aBlankThemeIsARequiredFieldProblemAndNothingIsSaved() throws Exception {
+        refused(t.send(put(URL), "{\"theme\":\"   \"}"), 400, "field.required");
+        refused(t.send(put(URL), "{\"theme\":\"\"}"), 400, "field.required");
+
+        assertEquals("frontpage", t.weblog.getEditorTheme());
+        verify(t.tier.weblogManager(), never()).saveWeblog(t.weblog);
+    }
 }

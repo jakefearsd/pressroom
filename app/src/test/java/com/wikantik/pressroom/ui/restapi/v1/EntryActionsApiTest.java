@@ -242,4 +242,15 @@ class EntryActionsApiTest {
     void theListmonkClientIsBuiltOnFirstUseWhenNoneWasInjected() {
         assertNotNull(new EntryActionsApi().listmonkClient());
     }
+
+    @Test
+    void aFailureWithNoMessageStillAnswersWithoutTheWordNull() throws Exception {
+        when(listmonk.isCampaignConfigured()).thenReturn(true);
+        doThrow(new IOException()).when(listmonk).sendCampaign(any(), any(), any());
+
+        JsonNode problem = json(send("e1/send-newsletter").andExpect(status().isBadGateway()));
+
+        assertEquals("newsletter.sendFailed", problem.get("code").asString());
+        assertFalse(problem.get("detail").asString().contains("null"), problem.toString());
+    }
 }

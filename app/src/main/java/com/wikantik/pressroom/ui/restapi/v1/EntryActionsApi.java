@@ -50,7 +50,7 @@ public class EntryActionsApi extends BaseApiController implements UISecurityEnfo
     private static final MessageSource MESSAGES = ProblemMessages.applicationResources();
 
     /** Built on first use: {@code WebloggerConfig} is not necessarily loaded when Spring makes controllers. */
-    private volatile ListmonkClient listmonkClient;
+    private ListmonkClient listmonkClient;
 
     /**
      * Copies an entry into a new draft titled "Copy of ...": a fresh id, no anchor of its own, none of the
@@ -100,10 +100,8 @@ public class EntryActionsApi extends BaseApiController implements UISecurityEnfo
         EntryFields shown = EntryFields.of(fields);
         WeblogEntry entry = requireEntry(request, id);
         EntryNewsletter.Result result = EntryNewsletter.send(weblogger, this::listmonkClient, entry, permalink(entry));
-        switch (result.outcome()) {
-            case SENT -> {
-                return shown.project(EntryDtos.toView(entry, permalink(entry)));
-            }
+        return switch (result.outcome()) {
+            case SENT -> shown.project(EntryDtos.toView(entry, permalink(entry)));
             case NOT_PUBLISHED -> throw ApiException.problem(ProblemCode.NEWSLETTER_NOT_PUBLISHED);
             case ALREADY_SENT -> throw ApiException.problem(ProblemCode.NEWSLETTER_ALREADY_SENT);
             case NO_LIST -> throw ApiException.problem(ProblemCode.NEWSLETTER_NO_LIST);
@@ -111,8 +109,7 @@ public class EntryActionsApi extends BaseApiController implements UISecurityEnfo
             case SEND_FAILED -> throw ApiException.problem(ProblemCode.NEWSLETTER_SEND_FAILED, detail(result));
             case SENT_NOT_RECORDED ->
                     throw ApiException.problem(ProblemCode.NEWSLETTER_SENT_NOT_RECORDED, detail(result));
-        }
-        throw new IllegalStateException("unreachable: every newsletter outcome is handled");
+        };
     }
 
     /** The failure's own words; a failure with none still has to fill its message's placeholder. */
@@ -121,22 +118,15 @@ public class EntryActionsApi extends BaseApiController implements UISecurityEnfo
     }
 
     /** Package-private so a test can inject a mock without a real Listmonk instance. */
-    void setListmonkClient(ListmonkClient client) {
+    synchronized void setListmonkClient(ListmonkClient client) {
         this.listmonkClient = client;
     }
 
-    ListmonkClient listmonkClient() {
-        ListmonkClient client = listmonkClient;
-        if (client == null) {
-            synchronized (this) {
-                client = listmonkClient;
-                if (client == null) {
-                    client = ListmonkClient.fromConfig();
-                    listmonkClient = client;
-                }
-            }
+    synchronized ListmonkClient listmonkClient() {
+        if (listmonkClient == null) {
+            listmonkClient = ListmonkClient.fromConfig();
         }
-        return client;
+        return listmonkClient;
     }
 
     private String permalink(WeblogEntry entry) {

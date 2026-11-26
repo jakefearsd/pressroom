@@ -166,4 +166,23 @@ class WeblogThemesApiTest {
 
         verify(themes).importTheme(any(), any(), anyBoolean());
     }
+
+    @Test
+    void anEmptyImportThemeImportsNothingAndStillGoesCustom() throws Exception {
+        t.send(post(URL + "/custom"), "{\"importTheme\":\"\"}");
+
+        verify(themes, never()).importTheme(any(), any(), anyBoolean());
+        assertEquals(WeblogTheme.CUSTOM, t.weblog.getEditorTheme());
+    }
+
+    @Test
+    void aWeblogWhoseThemeCannotBeResolvedNamesNoCurrentThemeButStillLists() throws Exception {
+        when(themes.getTheme(t.weblog)).thenReturn(null);
+
+        JsonNode list = body(t.send(get(URL), null));
+
+        assertTrue(list.path("current").isMissingNode());
+        assertFalse(list.path("custom").asBoolean());
+        assertEquals(1, list.path("themes").size());
+    }
 }

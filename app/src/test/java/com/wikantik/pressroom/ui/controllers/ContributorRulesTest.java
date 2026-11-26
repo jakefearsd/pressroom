@@ -83,4 +83,24 @@ class ContributorRulesTest {
 
         assertFalse(ContributorRules.mayPublish(users, new Weblog(), user("abe")));
     }
+
+    @Test
+    void isSiteAdminAsksForTheGlobalAdminPermission() throws Exception {
+        UserManager users = mock(UserManager.class);
+        when(users.checkPermission(any(), any())).thenAnswer(call ->
+                call.getArgument(0) instanceof com.wikantik.pressroom.pojos.GlobalPermission gp
+                        && gp.getActionsAsList().equals(List.of(com.wikantik.pressroom.pojos.GlobalPermission.ADMIN))
+                        && "abe".equals(((User) call.getArgument(1)).getUserName()));
+
+        assertTrue(ContributorRules.isSiteAdmin(users, user("abe")));
+        assertFalse(ContributorRules.isSiteAdmin(users, user("dora")));
+    }
+
+    @Test
+    void aSiteAdminCheckThatFailsIsANo() throws Exception {
+        UserManager users = mock(UserManager.class);
+        when(users.checkPermission(any(), any())).thenThrow(new WebloggerException("down"));
+
+        assertFalse(ContributorRules.isSiteAdmin(users, user("abe")));
+    }
 }

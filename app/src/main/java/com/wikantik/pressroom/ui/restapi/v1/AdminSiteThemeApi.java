@@ -49,7 +49,7 @@ public class AdminSiteThemeApi extends BaseApiController implements UISecurityEn
     public ThemeDtos.WeblogThemes set(HttpServletRequest request, @RequestBody ThemeDtos.SiteThemeChange body)
             throws WebloggerException {
         Weblog site = siteSpace(request);
-        String theme = body == null ? null : body.theme();
+        String theme = body.theme();
         if (theme == null || theme.isBlank()) {
             throw ApiException.problemOnField("theme", ProblemCode.FIELD_REQUIRED, "theme");
         }

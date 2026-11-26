@@ -68,7 +68,7 @@ public class WeblogThemesApi extends WeblogAdminApi {
     public ThemeDtos.WeblogThemes convertToCustom(HttpServletRequest request,
             @RequestBody(required = false) ThemeDtos.CustomThemeRequest body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        String importId = body == null || body.importTheme() == null ? null : body.importTheme();
+        String importId = body == null ? null : body.importTheme();
         RuleViolation refusal = SharedThemeRules.customViolation(weblogger.getThemeManager(), weblog, importId, true);
         if (refusal != null) {
             throw RuleProblems.problem(refusal, "importTheme".equals(refusal.field()));

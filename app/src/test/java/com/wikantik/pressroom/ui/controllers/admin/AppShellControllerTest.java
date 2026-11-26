@@ -141,4 +141,40 @@ class AppShellControllerTest {
         assertFalse(controller.isWeblogRequired());
         assertEquals(java.util.List.of(GlobalPermission.LOGIN), controller.requiredGlobalPermissionActions());
     }
+
+    @Test
+    void theSiteNameIsTheOneConfiguredAndTheProductNameWhenBlank() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+        when(weblogger.propertiesManager().getProperty("site.name"))
+                .thenReturn(new com.wikantik.pressroom.pojos.RuntimeConfigProperty("site.name", "Maiia Travel"));
+        when(weblogger.propertiesManager().getProperty("site.shortName"))
+                .thenReturn(new com.wikantik.pressroom.pojos.RuntimeConfigProperty("site.shortName", "   "));
+
+        JsonNode boot = bootstrapFor(requestUnder("", jake, "tok-1"));
+
+        assertEquals("Maiia Travel", boot.get("site").get("name").asString(), "the configured name is shown");
+        assertEquals("Pressroom", boot.get("site").get("shortName").asString(), "a blank one is not");
+    }
+
+    @Test
+    void anAuthorWithoutAScreenNameGetsAnEmptyOneNotNull() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+        User nameless = new User();
+        nameless.setUserName("nameless");
+
+        JsonNode boot = bootstrapFor(requestUnder("", nameless, "tok-1"));
+
+        assertEquals("", boot.get("user").get("screenName").asString());
+    }
+
+    @Test
+    void aContainerThatReportsNoContextPathIsTheRoot() throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(false);
+
+        JsonNode boot = bootstrapFor(requestUnder(null, jake, "tok-1"));
+
+        assertEquals("", boot.get("contextPath").asString());
+        assertTrue(boot.get("messagesUrl").asString().startsWith("/pressroom-ui/app-messages.rol?locale=en&v="),
+                boot.get("messagesUrl").asString());
+    }
 }
