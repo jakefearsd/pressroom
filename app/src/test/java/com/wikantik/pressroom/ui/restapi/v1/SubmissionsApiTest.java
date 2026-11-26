@@ -111,4 +111,15 @@ class SubmissionsApiTest {
         refused(t.send(delete(URL + "/nope"), null), 404, "submission.notFound");
         verify(inbox, never()).remove(any());
     }
+
+    @Test
+    void aFullLastPageHasNoMore() throws Exception {
+        when(inbox.getSubmissions(t.weblog, 5, 3)).thenReturn(List.of(message("a", t.weblog), message("b", t.weblog)));
+        when(inbox.getCount(t.weblog)).thenReturn(7);
+
+        JsonNode page = body(t.send(get(URL + "?offset=5&limit=2"), null));
+
+        assertEquals(2, page.path("items").size());
+        assertFalse(page.path("hasMore").asBoolean());
+    }
 }

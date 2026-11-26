@@ -1991,4 +1991,27 @@ class EntriesWriteApiControllerTest {
         assertEquals(end, entry.getEventEnd());
         verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
+
+    @Test
+    void aRestoredEntryCarriesItsPermalink() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setAnchor("was-trashed");
+        entry.setStatus(WeblogEntry.PubStatus.TRASHED);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        when(weblogger.getUrlStrategy().getWeblogEntryURL(weblog, null, "was-trashed", true))
+                .thenReturn("https://blog.example.com/myblog/entry/was-trashed");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries/{id}/restore", "entry-1")
+                        .requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals("https://blog.example.com/myblog/entry/was-trashed",
+                new tools.jackson.databind.ObjectMapper().readTree(body).get("permalink").asString());
+    }
 }

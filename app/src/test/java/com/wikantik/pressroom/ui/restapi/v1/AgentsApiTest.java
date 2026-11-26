@@ -389,4 +389,58 @@ class AgentsApiTest {
 
         assertEquals(500, status(send(delete(URL + "/bot/tokens/t1"), null)));
     }
+
+    // --- limits and what the answers carry
+
+    @Test
+    void aBlankUserNameIsRequiredOnItsField() throws Exception {
+        ResultActions result = send(post(URL), "{\"userName\":\"  \",\"name\":\"Robo\"}");
+
+        assertEquals(400, status(result));
+        assertEquals("userName", body(result).path("errors").path(0).path("field").asString());
+        assertEquals("field.required", body(result).path("errors").path(0).path("code").asString());
+        verify(users, never()).addUser(any());
+    }
+
+    @Test
+    void notesAreHeldToTheirColumnAtTheBoundary() throws Exception {
+        assertEquals(200, status(send(patch(URL + "/bot"), "{\"notes\":\"" + "n".repeat(1000) + "\"}")));
+        assertEquals(1000, bot.getNotes().length());
+
+        refused(send(patch(URL + "/bot"), "{\"notes\":\"" + "n".repeat(1001) + "\"}"), 400, "field.tooLong");
+        assertEquals(1000, bot.getNotes().length(), "a refused edit changes nothing");
+    }
+
+    @Test
+    void aPatchAnswersWithTheAgentItChanged() throws Exception {
+        JsonNode view = body(send(patch(URL + "/bot"), "{\"name\":\"Robo Two\"}"));
+
+        assertEquals("bot", view.path("userName").asString());
+        assertEquals("Robo Two", view.path("name").asString());
+    }
+
+    @Test
+    void aLabelOfExactlyTheColumnWidthIsMintedAndOneMoreIsNot() throws Exception {
+        ApiToken persisted = token("t9", bot);
+        when(tokens.issueToken(any(), anyString(), any(), any(), any(), any()))
+                .thenReturn(new ApiTokenManager.Issued("prs_secret", persisted));
+
+        assertEquals(201, status(send(post(URL + "/bot/tokens"),
+                "{\"label\":\"" + "l".repeat(255) + "\",\"role\":\"READ\"}")));
+        refused(send(post(URL + "/bot/tokens"), "{\"label\":\"" + "l".repeat(256) + "\",\"role\":\"READ\"}"),
+                400, "field.tooLong");
+    }
+
+    @Test
+    void aPinOfExactlyTheColumnWidthIsJudgedAMembershipAndOneMoreIsTooLong() throws Exception {
+        refused(send(post(URL + "/bot/tokens"),
+                "{\"label\":\"ci\",\"role\":\"READ\",\"weblog\":\"" + "w".repeat(255) + "\"}"), 400,
+                "token.weblogNotMember");
+        ResultActions result = send(post(URL + "/bot/tokens"),
+                "{\"label\":\"ci\",\"role\":\"READ\",\"weblog\":\"" + "w".repeat(256) + "\"}");
+        assertEquals(400, status(result));
+        assertEquals("weblog", body(result).path("errors").path(0).path("field").asString());
+        assertEquals("field.tooLong", body(result).path("errors").path(0).path("code").asString());
+        assertEquals(1, body(result).path("errors").size(), "too long is the one finding, not also a non-member");
+    }
 }

@@ -266,4 +266,22 @@ class WeblogCreateApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldsAre("handle", "theme"));
     }
+
+    @Test
+    void anAddressOverTheColumnIsAFieldErrorOnEmailAddress() throws Exception {
+        ResultActions result = send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\","
+                + "\"emailAddress\":\"" + "a".repeat(250) + "@x.com\"}", true)
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("emailAddress"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                result.andReturn().getResponse().getContentAsString().contains("field.tooLong"));
+        verify(weblogManager, never()).addWeblog(any());
+    }
+
+    @Test
+    void aCreatedWeblogIsCommitted() throws Exception {
+        send(BODY, true).andExpect(status().isCreated());
+
+        verify(weblogger).flush();
+    }
 }

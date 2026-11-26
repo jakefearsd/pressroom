@@ -135,4 +135,45 @@ class EntryEditsTest {
 
         assertEquals("edits[0] not found in the entry's text.", refused().get(0).message());
     }
+
+    /** A refused edit leaves the text as it was, so the edits after it are judged against the real text. */
+    @Test
+    void aRefusedEditDoesNotHideOrInventTheFindingsOfTheOnesAfterIt() {
+        String text = resolve("abc", edit(null, "x"), edit("b", "B"));
+        assertEquals("aBc", text);
+        assertEquals(List.of("edits[0]"), fields(refused()));
+
+        FieldErrors second = new FieldErrors();
+        assertEquals("aBc", EntryEdits.resolve(second, null,
+                Arrays.asList(edit("zz", "x"), edit("a", null), edit("b", "B")), "abc"));
+        assertEquals(List.of("edits[0]", "edits[1]"),
+                assertThrows(ApiException.class, second::throwIfAny).getFieldErrors().stream()
+                        .map(ApiProblem.FieldError::field).toList());
+
+        FieldErrors third = new FieldErrors();
+        EntryEdits.resolve(third, null, Arrays.asList(null, edit("", "x"), edit("a", "A"), edit("a", "A")), "aa");
+        assertEquals(List.of("edits[0]", "edits[1]", "edits[2]", "edits[3]"),
+                assertThrows(ApiException.class, third::throwIfAny).getFieldErrors().stream()
+                        .map(ApiProblem.FieldError::field).toList(), "the ambiguous one is judged against the true text");
+    }
+
+    @Test
+    void theTextSentIsTheTextStoredWhenThereAreNoEditsOrEditsAreRefusedAlongsideIt() {
+        assertEquals("sent", EntryEdits.resolve(errors, "sent", null, "stored"));
+        assertEquals("sent", EntryEdits.resolve(errors, "sent", List.of(), "stored"));
+        assertEquals("sent", EntryEdits.resolve(errors, "sent", List.of(edit("a", "b")), "stored"));
+        assertEquals(List.of("edits"), fields(refused()));
+    }
+
+    @Test
+    void anUnknownFieldNameIsReportedAndTheFullViewStandsInMeanwhile() {
+        FieldErrors found = new FieldErrors();
+
+        EntryFields shown = EntryFields.of(List.of("bogus"), found);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(shown);
+        assertEquals(List.of("fields"),
+                assertThrows(ApiException.class, found::throwIfAny).getFieldErrors().stream()
+                        .map(ApiProblem.FieldError::field).toList());
+    }
 }

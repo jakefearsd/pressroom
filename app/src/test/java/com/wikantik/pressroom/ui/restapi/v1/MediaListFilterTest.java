@@ -185,4 +185,12 @@ class MediaListFilterTest {
                 .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
         return new ObjectMapper().readTree(body);
     }
+
+    @Test
+    void aLargerThanOfZeroIsAcceptedAsNoMinimum() throws Exception {
+        when(files.searchMediaFiles(eq(weblog), any())).thenReturn(List.of(
+                file(photos, "beach.jpg", "image/jpeg", 1)));
+
+        assertEquals(List.of("beach.jpg"), names(list("?largerThan=0")));
+    }
 }

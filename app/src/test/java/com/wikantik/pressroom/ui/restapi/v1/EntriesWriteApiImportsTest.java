@@ -416,4 +416,98 @@ class EntriesWriteApiImportsTest {
         verify(fetcher, never()).fetch(any(), anyLong(), any());
         verify(media, never()).createMediaFile(any(), any(), any());
     }
+
+    private static String images(int count) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            text.append("![x](https://img.example.com/").append(i).append(".jpg) ");
+        }
+        return text.toString();
+    }
+
+    /** The cap is eleven refused, not ten: exactly ten distinct images are imported. */
+    @Test
+    void exactlyTenImagesAreImported() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            serves("https://img.example.com/" + i + ".jpg");
+        }
+
+        fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\",\"text\":\"" + images(10)
+                + "\",\"importExternalImages\":true}")).andExpect(status().isCreated());
+
+        verify(fetcher, times(10)).fetch(any(), anyLong(), any());
+    }
+
+    /** The budget is spent when exactly its length has passed, not only after it. */
+    @Test
+    void aBudgetSpentToTheSecondStopsTheNextFetch() throws Exception {
+        stored("![a](https://img.example.com/a.jpg) ![b](https://img.example.com/b.jpg)");
+        when(fetcher.fetch(eq("https://img.example.com/a.jpg"), anyLong(), any())).thenAnswer(inv -> {
+            clock.advance(EntryImports.BUDGET);
+            return new FetchedImage("a.jpg", ImageKind.JPEG, JPEG.clone());
+        });
+
+        JsonNode problem = fx.refused(patch("/v1/weblogs/myblog/entries/e1").content(
+                "{\"importExternalImages\":true}"));
+
+        assertTrue(problem.get("errors").get(0).get("message").asString().contains("budget"));
+        verify(fetcher, never()).fetch(eq("https://img.example.com/b.jpg"), anyLong(), any());
+    }
+
+    /** One URL used twice keeps the first alt text it carries; a later alt fills in only when the first had none. */
+    @Test
+    void aRepeatedUrlTakesTheFirstAltItCarriesAndNoAltIsNoAlt() throws Exception {
+        serves("https://img.example.com/a.jpg");
+        serves("https://img.example.com/b.jpg");
+        serves("https://img.example.com/c.jpg");
+
+        fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\",\"text\":\""
+                + "![](https://img.example.com/a.jpg) ![Later](https://img.example.com/a.jpg) "
+                + "![First](https://img.example.com/b.jpg) ![Second](https://img.example.com/b.jpg) "
+                + "<img src=\\\"https://img.example.com/c.jpg\\\">"
+                + "\",\"importExternalImages\":true}")).andExpect(status().isCreated());
+
+        ArgumentCaptor<MediaFile> created = ArgumentCaptor.forClass(MediaFile.class);
+        verify(media, times(3)).createMediaFile(eq(fx.weblog), created.capture(), any());
+        java.util.Map<String, String> altByName = new java.util.HashMap<>();
+        created.getAllValues().forEach(f -> altByName.put(f.getName(), f.getAltText()));
+        assertEquals("Later", altByName.get("a.jpg"));
+        assertEquals("First", altByName.get("b.jpg"));
+        assertNull(altByName.get("c.jpg"));
+    }
+
+    /** An image on the site's own address is already ours: it is neither fetched nor a hot-link. */
+    @Test
+    void anImageOnTheSitesOwnAddressIsLeftAlone() throws Exception {
+        runtime.when(WebloggerRuntimeConfig::getAbsoluteContextURL).thenReturn("https://site.example.org/pressroom");
+
+        fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\",\"text\":\""
+                + "![own](https://SITE.example.org/media/a.jpg)\",\"importExternalImages\":true}"))
+                .andExpect(status().isCreated());
+
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+    }
+
+    @Test
+    void anOverlongFeaturedAltIsRefusedOnItsFieldBeforeAnyFetch() throws Exception {
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\","
+                + "\"text\":\"x\",\"featuredImageUrl\":\"https://img.example.com/a.jpg\","
+                + "\"featuredImageAlt\":\"" + "a".repeat(256) + "\"}"));
+
+        assertEquals(List.of("featuredImageAlt"), fields(problem));
+        assertEquals("field.tooLong", problem.get("errors").get(0).get("code").asString());
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+    }
+
+    @Test
+    void aFeaturedUrlIsImportedEvenWhenTheBodyIsToldNotToImport() throws Exception {
+        serves("https://img.example.com/pier.jpg");
+
+        fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\",\"text\":"
+                + "\"![x](https://img.example.com/other.jpg)\",\"importExternalImages\":false,"
+                + "\"featuredImageUrl\":\"https://img.example.com/pier.jpg\"}")).andExpect(status().isCreated());
+
+        verify(fetcher).fetch(eq("https://img.example.com/pier.jpg"), anyLong(), any());
+        verify(fetcher, never()).fetch(eq("https://img.example.com/other.jpg"), anyLong(), any());
+    }
 }

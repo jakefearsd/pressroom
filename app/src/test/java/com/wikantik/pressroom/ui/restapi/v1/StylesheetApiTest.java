@@ -198,4 +198,17 @@ class StylesheetApiTest {
         assertFalse(view.path("sharedThemeStylesheet").asBoolean());
         assertEquals(200, status(t.send(put(URL), "{\"contents\":\"c {}\"}")));
     }
+
+    @Test
+    void copyFromSharedAndRevertAnswerWithTheStylesheetNow() throws Exception {
+        when(weblogs.getTemplateByLink(t.weblog, "css")).thenReturn(null).thenReturn(own);
+        JsonNode copied = body(t.send(post(URL + "/copy-from-shared"), null));
+        assertTrue(copied.path("exists").asBoolean());
+        assertEquals("shared {}", copied.path("contents").asString());
+
+        hasOwn();
+        JsonNode reverted = body(t.send(post(URL + "/revert"), null));
+        assertTrue(reverted.path("exists").asBoolean());
+        assertEquals("shared {}", reverted.path("contents").asString());
+    }
 }

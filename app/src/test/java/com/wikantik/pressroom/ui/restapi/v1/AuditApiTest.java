@@ -837,4 +837,29 @@ class AuditApiTest {
         String message = found.get("message").asString();
         assertTrue(message.startsWith("1 image is loaded from another site (raw.githubusercontent.com)"), message);
     }
+
+    /** A page that ends exactly on the last gap is the last page. */
+    @Test
+    void seoAuditAPageEndingOnTheLastGapHasNoMore() throws Exception {
+        Weblogger weblogger = withFiveGappyEntries();
+
+        assertPage(weblogger, "3", "2", 5, 3, 2, false);
+        assertPage(weblogger, "0", "5", 5, 0, 5, false);
+        assertPage(weblogger, "0", "4", 5, 0, 4, true);
+    }
+
+    /** Both the audit's own search and the one for what a title must differ from are about this weblog. */
+    @Test
+    void seoAuditSearchesOnlyTheActionWeblog() throws Exception {
+        Weblogger weblogger = withFiveGappyEntries();
+        com.wikantik.pressroom.pojos.Weblog weblog = aWeblog();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<WeblogEntrySearchCriteria> captor = ArgumentCaptor.forClass(WeblogEntrySearchCriteria.class);
+        verify(weblogger.getWeblogEntryManager(), org.mockito.Mockito.atLeastOnce()).getWeblogEntries(captor.capture());
+        captor.getAllValues().forEach(c -> org.junit.jupiter.api.Assertions.assertSame(weblog, c.getWeblog()));
+    }
 }

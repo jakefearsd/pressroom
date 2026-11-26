@@ -826,4 +826,20 @@ class TokensApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("label"));
     }
+
+    @Test
+    void anOverlongPinIsRefusedAsTooLongOnTheWeblogField() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(new User());
+
+        String body = mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens")
+                        .contentType("application/json")
+                        .content("{\"label\":\"ok\",\"weblog\":\"" + "a".repeat(256) + "\",\"role\":\"POST\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(body.contains("field.tooLong"), body);
+    }
 }

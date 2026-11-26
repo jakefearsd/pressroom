@@ -155,4 +155,13 @@ class EntriesWriteApiFieldErrorsTest {
 
         assertEquals(List.of("eventStart"), EntriesWriteApiFixture.fields(problem));
     }
+
+    /** A SCHEDULED write with no time is reported with the other bad fields, not alone after them. */
+    @Test
+    void aScheduledWriteWithNoTimeIsReportedAlongsideTheOtherBadFields() throws Exception {
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"status\":\"SCHEDULED\",\"category\":\"Travle\"}"));
+
+        assertEquals(Set.of("category", "pubTime"), Set.copyOf(EntriesWriteApiFixture.fields(problem)));
+    }
 }

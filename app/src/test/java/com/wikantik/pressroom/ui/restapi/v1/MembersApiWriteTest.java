@@ -264,4 +264,14 @@ class MembersApiWriteTest {
 
         code(send(delete(URL + "/carol"), null), 404, "member.notFound");
     }
+
+    @Test
+    void aChangeOfLevelIsCommitted() throws Exception {
+        account("carol");
+        members(holds("owen", "admin"), holds("carol", "post"));
+
+        send(patch(URL + "/carol"), "{\"permission\":\"EDIT_DRAFT\"}").andExpect(status().isOk());
+
+        verify(tier.weblogger()).flush();
+    }
 }

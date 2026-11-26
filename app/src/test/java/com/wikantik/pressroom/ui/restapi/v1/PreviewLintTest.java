@@ -70,4 +70,26 @@ class PreviewLintTest {
     void bothProblemsAreBothReported() {
         assertEquals(2, PreviewLint.warnings("<p style=\"color:red\">x</p><pre><code>y</code></pre>").size());
     }
+
+    /** The example names the first element in full up to 120 characters, and cuts it past that. */
+    @Test
+    void theExampleIsCutOnlyPastItsLimit() {
+        String open = "<div style=\"color:red\" data-pad=\"";
+        String exact = open + "p".repeat(120 - open.length() - 2) + "\">";
+        String longer = open + "p".repeat(120 - open.length() - 1) + "\">";
+        assertEquals(120, exact.length());
+        assertEquals(121, longer.length());
+
+        assertTrue(PreviewLint.warnings(exact + "x</div>").get(0).contains("for example " + exact + "."),
+                "kept whole at the limit");
+        String cut = PreviewLint.warnings(longer + "x</div>").get(0);
+        assertTrue(cut.contains("for example " + longer.substring(0, 120) + "\u2026."), cut);
+    }
+
+    /** A declaration with no property name before its colon sets nothing. */
+    @Test
+    void aDeclarationWithNoPropertyNameIsNotAColor() {
+        assertEquals(List.of(), PreviewLint.warnings("<p style=\":color\">x</p>"));
+        assertEquals(1, PreviewLint.warnings("<p style=\"margin:0;color:red\">x</p>").size());
+    }
 }
