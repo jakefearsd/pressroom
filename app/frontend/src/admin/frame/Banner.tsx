@@ -61,6 +61,11 @@ function WeblogSwitcher({ options, currentHandle, currentName }: {
   );
 }
 
+function mainMenuTarget(contextPath: string): LinkTarget {
+  const { path, legacy } = CHROME_LINKS.mainMenu;
+  return path === undefined ? { kind: 'legacy', to: contextPath + legacy } : { kind: 'react', to: path };
+}
+
 /** The top bar of bannerStatus.jsp: brand, weblog switcher (two or more weblogs), main menu, sign out. */
 export function Banner({ siteName, switcher, currentHandle, currentName }: {
   siteName: string;
@@ -87,7 +92,7 @@ export function Banner({ siteName, switcher, currentHandle, currentName }: {
         <div id="navbar" className={`navbar-collapse collapse${open ? ' show' : ''}`}>
           <ul className="navbar-nav ms-auto">
             <li className="nav-item">
-              <AppLink className="nav-link" target={{ kind: 'legacy', to: contextPath + CHROME_LINKS.mainMenu.legacy }}>
+              <AppLink className="nav-link" target={mainMenuTarget(contextPath)}>
                 {t('mainPage.mainMenu')}
               </AppLink>
             </li>

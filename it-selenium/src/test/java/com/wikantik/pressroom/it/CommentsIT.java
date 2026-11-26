@@ -129,7 +129,7 @@ class CommentsIT extends PressroomIT {
     private static final String AUTHOR_BADGE = "Author";
 
     private static final String LOGIN = "/pressroom-ui/login.rol";
-    private static final String MENU = "/pressroom-ui/menu.rol";
+    private static final String MENU = "/pressroom-ui/app/";
     private static final String ACCOUNT = "/pressroom-ui/account.rol";
     private static final String MODERATION = "/pressroom-ui/authoring/comments.rol";
     private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";

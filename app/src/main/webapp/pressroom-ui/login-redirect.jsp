@@ -19,25 +19,24 @@
 <%@ page import="com.wikantik.pressroom.business.*" %>
 <%@ page import="com.wikantik.pressroom.pojos.*" %>
 <%@ page import="com.wikantik.pressroom.ui.core.PressroomSession" %>
-<%@ page import="java.util.List" %>
 <%@ page import="org.springframework.web.context.support.WebApplicationContextUtils" %>
 <%
 // The session factory and the user lookup take their collaborators since the
 // DI wave (plan Task 6b); a scriptlet reaches the provider bean through the
 // web application context the way a bean would be injected.
+//
+// Signed in: the React admin's home, where every sign-in lands (the main menu
+// it replaced was the landing for anyone with more than one weblog; the
+// one-weblog shortcut to New entry went with it). Not signed in: the login page.
 WebloggerProvider provider = WebApplicationContextUtils
         .getRequiredWebApplicationContext(application).getBean(WebloggerProvider.class);
 Weblogger weblogger = provider.getWeblogger();
 User user = PressroomSession.getPressroomSession(request, provider)
         .getAuthenticatedUser(weblogger.getUserManager());
-List weblogs = weblogger.getWeblogManager().getUserWeblogs(user, true);
 
 if (user == null) {
     response.sendRedirect(request.getContextPath()+"/pressroom-ui/login.rol");
-} else if (weblogs.size() == 1) {
-    Weblog weblog = (Weblog) weblogs.get(0);
-    response.sendRedirect(request.getContextPath()+"/pressroom-ui/authoring/entryAdd.rol?weblog="+weblog.getHandle());
 } else {
-    response.sendRedirect(request.getContextPath()+"/pressroom-ui/menu.rol");
+    response.sendRedirect(request.getContextPath()+"/pressroom-ui/app/");
 }
 %>

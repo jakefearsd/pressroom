@@ -125,7 +125,17 @@ describe('entryTarget', () => {
       .toEqual({ kind: 'react', to: '/admin/config' });
   });
 
-  it('starts with every entry legacy: no screen has migrated', () => {
-    expect(RAIL_ENTRIES.every((e) => e.path === undefined)).toBe(true);
+  it('links the migrated screens to React routes and every other entry to its .rol', () => {
+    expect(RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path])).toEqual([
+      ['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']
+    ]);
+  });
+
+  it('offers the site space only the screens the interceptor lets reach it, and drops a tab left empty', () => {
+    const site = visibleGroups('weblog', { globalAdmin: true, membership: null, features: { customThemes: true, groupBlogging: true }, siteSpace: true });
+    expect(site.map((g) => [g.key, g.entries.map((e) => e.id)])).toEqual([
+      ['tabbedmenu.weblog', ['pages', 'mediaFileView']],
+      ['tabbedmenu.design', ['themeEdit']]
+    ]);
   });
 });

@@ -74,7 +74,7 @@ public class WeblogRemoveController extends BaseController {
             addFlashMessage(redirectAttributes, "websiteRemove.success",
                     StringEscapeUtils.escapeHtml4(getActionWeblog(request).getName()), request);
 
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         } catch (Exception ex) {
             log.error("Error removing weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "websiteRemove.error",

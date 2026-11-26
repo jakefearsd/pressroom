@@ -69,7 +69,7 @@ public class WeblogCreateApi extends BaseApiController implements UISecurityEnfo
         weblogger.flush();
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .path("/{handle}").buildAndExpand(weblog.getHandle()).toUri();
-        return ResponseEntity.created(location).body(AdminDtos.toView(weblog));
+        return ResponseEntity.created(location).body(weblogView(weblog));
     }
 
     @Override

@@ -4,21 +4,21 @@ import { ApiError } from '../api/problem';
 import { TimeZoneContext } from '../components/DateTime';
 import { ProblemBanner } from '../components/ProblemBanner';
 import { useBoot } from '../context';
-import { useT } from '../i18n/messages';
+import { plainText, useT } from '../i18n/messages';
 import { RAIL_ENTRIES, entryTarget } from '../routes/railTable';
 import { visibleGroups } from '../routes/visibility';
 import { SessionExpiredBar } from '../session/SessionExpiredBar';
 import { Banner, type SwitcherOption } from './Banner';
 import { Footer } from './Footer';
 import { Rail, type RailWeblog } from './Rail';
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 
 /** Route `handle` data: which rail menu a screen shows (the JSP's desiredMenu); none for the main menu. */
 export interface FrameHandle {
   scope: 'none' | 'weblog' | 'admin';
+  /** The page's sidebar (`aside#adminSidebar`, under the rail), as the tiles layouts' tile_sidebar was. */
+  sidebar?: ComponentType;
 }
-
-const SITE_NAME = 'Pressroom';
 
 function isFrameHandle(value: unknown): value is FrameHandle {
   return typeof value === 'object' && value !== null && 'scope' in value;
@@ -37,11 +37,14 @@ export function Frame() {
   const last = matches[matches.length - 1];
   const scope = isFrameHandle(last?.handle) ? last.handle.scope : 'none';
   const handle = last?.params['handle'];
+  const Sidebar = isFrameHandle(last?.handle) ? last.handle.sidebar : undefined;
   const [railOpen, setRailOpen] = useState(false);
 
   const me = useMe();
   const meta = useMeta();
-  const weblogQuery = useWeblog(handle);
+  // The API never serves the site space, so the frame knows it from the shell and asks for nothing.
+  const siteSpace = handle !== undefined && handle === boot.site.siteSpaceHandle;
+  const weblogQuery = useWeblog(siteSpace ? undefined : handle);
   const weblogView = weblogQuery.data;
 
   const membership = me.data?.weblogs.find((w) => w.handle === handle);
@@ -50,20 +53,21 @@ export function Frame() {
     ? visibleGroups(scope, {
       globalAdmin: me.data.globalAdmin,
       membership: membership?.permission,
-      features: { customThemes: meta.data.features.customThemes, groupBlogging: meta.data.features.groupBlogging }
+      features: { customThemes: meta.data.features.customThemes, groupBlogging: meta.data.features.groupBlogging },
+      siteSpace
     })
     : [];
 
-  const siteUrl = meta.data?.siteUrl;
   let weblog: RailWeblog | undefined;
-  if (handle !== undefined) {
+  if (siteSpace && handle !== undefined) {
+    weblog = { handle, name: plainText(t('mainMenu.site.title')), visible: false, url: undefined };
+  } else if (handle !== undefined) {
     const domain = weblogView?.customDomain;
     weblog = {
       handle,
       name: weblogView?.name ?? membership?.name ?? handle,
       visible: weblogView?.active ?? false,
-      url: domain !== undefined && domain !== '' ? `https://${domain}/` : siteUrl === undefined ? undefined
-        : `${siteUrl}/${encodeURIComponent(handle)}/`
+      url: weblogView?.absoluteUrl ?? (domain !== undefined && domain !== '' ? `https://${domain}/` : undefined)
     };
   }
 
@@ -80,7 +84,7 @@ export function Frame() {
 
   return (
     <TimeZoneContext.Provider value={weblogView?.timeZone}>
-      <Banner siteName={SITE_NAME} switcher={switcher} currentHandle={handle} currentName={weblog?.name} />
+      <Banner siteName={boot.site.name} switcher={switcher} currentHandle={handle} currentName={weblog?.name} />
       <div className="container-fluid">
         <div className="row">
           <div className="col-md-3 pressroom-column-left">
@@ -91,6 +95,7 @@ export function Frame() {
             </button>
             <div className={`collapse d-md-block${railOpen ? ' show' : ''}`} id="adminRailColumn">
               <Rail weblog={weblog} groups={groups} active={active} />
+              {Sidebar === undefined ? null : <aside className="sidebar" id="adminSidebar"><Sidebar /></aside>}
             </div>
           </div>
           <main className="col-md-9 pressroom-column-right">
@@ -104,7 +109,7 @@ export function Frame() {
           </main>
         </div>
       </div>
-      <Footer colophon={{ version: boot.version }} />
+      <Footer colophon={{ ...boot.colophon, version: boot.version }} />
     </TimeZoneContext.Provider>
   );
 }

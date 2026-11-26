@@ -49,7 +49,7 @@ export const RAIL_ENTRIES: readonly RailEntry[] = [
   { id: 'categories', messageKey: 'tabbedmenu.weblog.categories', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'pages', messageKey: 'tabbedmenu.pages', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'mediaFileView', messageKey: 'tabbedmenu.weblog.mediaFiles', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'traffic', messageKey: 'tabbedmenu.weblog.traffic', group: 'tabbedmenu.weblog', requires: weblog('admin'), switchable: true },
+  { id: 'traffic', messageKey: 'tabbedmenu.weblog.traffic', group: 'tabbedmenu.weblog', requires: weblog('admin'), switchable: true, path: '/weblogs/:handle/traffic' },
 
   { id: 'themeEdit', messageKey: 'tabbedmenu.website.themes', group: 'tabbedmenu.design', requires: weblog('admin'), switchable: true },
   { id: 'stylesheetEdit', messageKey: 'tabbedmenu.design.stylesheet', group: 'tabbedmenu.design', requires: weblog('admin'), feature: 'customThemes' },
@@ -62,13 +62,13 @@ export const RAIL_ENTRIES: readonly RailEntry[] = [
   { id: 'userAdmin', messageKey: 'tabbedmenu.admin.userAdmin', group: 'tabbedmenu.admin', requires: admin },
   { id: 'businesses', messageKey: 'tabbedmenu.admin.businesses', group: 'tabbedmenu.admin', requires: admin },
   { id: 'apiTokens', messageKey: 'tabbedmenu.admin.apiTokens', group: 'tabbedmenu.admin', requires: admin },
-  { id: 'siteTraffic', messageKey: 'tabbedmenu.admin.siteTraffic', group: 'tabbedmenu.admin', requires: admin },
+  { id: 'siteTraffic', messageKey: 'tabbedmenu.admin.siteTraffic', group: 'tabbedmenu.admin', requires: admin, path: '/admin/traffic' },
   { id: 'maintenance', messageKey: 'tabbedmenu.admin.maintenance', group: 'tabbedmenu.admin', requires: admin }
 ];
 
 /** Chrome links outside the rail; `path` flips to a React route when the screen migrates. */
 export const CHROME_LINKS = {
-  mainMenu: { legacy: '/pressroom-ui/menu.rol', path: undefined as string | undefined },
+  mainMenu: { legacy: '/pressroom-ui/menu.rol', path: '/' as string | undefined },
   profile: { legacy: '/pressroom-ui/profile.rol', path: undefined as string | undefined },
   logout: { legacy: '/pressroom-ui/logout.rol', path: undefined as string | undefined },
   login: { legacy: '/pressroom-ui/login.rol', path: undefined as string | undefined }

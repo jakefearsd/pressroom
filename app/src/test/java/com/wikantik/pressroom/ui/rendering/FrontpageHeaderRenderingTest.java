@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FrontpageHeaderRenderingTest {
 
     private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
-    private static final String MENU = "/pressroom-ui/menu.rol";
+    private static final String MENU = "/pressroom-ui/app/";
 
     private User author;
     private User reader;
@@ -88,7 +88,7 @@ class FrontpageHeaderRenderingTest {
         String html = render(reader.getUserName());
         assertTrue(html.contains("fd-topbar"), html);
         assertTrue(html.contains("logout"), "a signed-in reader must be able to sign out:\n" + html);
-        assertFalse(html.contains("menu.rol"), "a reader must not be offered the authoring menu:\n" + html);
+        assertFalse(html.contains("pressroom-ui/app/"), "a reader must not be offered the authoring menu:\n" + html);
     }
 
     @Test
@@ -98,7 +98,7 @@ class FrontpageHeaderRenderingTest {
         assertTrue(html.contains("<a class=\"fd-sign-in\" href=\"") && html.contains("/pressroom-ui/login.rol\">"),
                 "Sign in goes to the sign-in page, which can send the visitor back:\n" + html);
         assertFalse(html.contains("fd-topbar-who"), html);
-        assertFalse(html.contains("menu.rol"), html);
+        assertFalse(html.contains("pressroom-ui/app/"), html);
         assertFalse(html.contains("logout"), html);
     }
 

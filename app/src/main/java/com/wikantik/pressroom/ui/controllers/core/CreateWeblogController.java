@@ -124,11 +124,11 @@ public class CreateWeblogController extends BaseController {
             // A check that could not run is not one that passed.
             log.error("error checking whether this user may create a weblog", ex);
             addFlashError(redirectAttributes, "generic.error.check.logs", request);
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
         if (refusal != null) {
             addFlashError(redirectAttributes, refusal.messageKey(), request);
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         myValidate(request, model, bean);
@@ -140,7 +140,7 @@ public class CreateWeblogController extends BaseController {
                 weblogger.flush();
 
                 addFlashMessage(redirectAttributes, "createWebsite.created", bean.getHandle(), request);
-                return "redirect:/pressroom-ui/menu.rol";
+                return "redirect:/pressroom-ui/app/";
 
             } catch (WebloggerException e) {
                 log.error("ERROR adding weblog", e);

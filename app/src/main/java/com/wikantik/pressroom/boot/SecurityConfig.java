@@ -332,9 +332,8 @@ public class SecurityConfig {
                 // back to "/", which forwards to the admin-only setup page
                 // when no frontpage weblog is configured -- so every non-admin
                 // user was sent to a 403 the moment they signed in
-                // successfully. login-redirect.jsp already exists for exactly
-                // this job: straight to the editor when the user has one
-                // weblog, otherwise the menu. A sign-in started from a page's
+                // successfully. The React admin's home is the landing for
+                // everyone (ReturnPathLoginSuccessHandler.DEFAULT_TARGET). A sign-in started from a page's
                 // Sign in link goes back to that page instead (the form posts
                 // it as "return"); ReturnPathLoginSuccessHandler holds both rules.
                 .successHandler(new ReturnPathLoginSuccessHandler())

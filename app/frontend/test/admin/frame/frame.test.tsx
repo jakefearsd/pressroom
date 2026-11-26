@@ -14,7 +14,8 @@ const API = 'http://pressroom.test/pressroom/api/v1';
 let me: object;
 let meta: object;
 const weblogs: Record<string, object> = {
-  alpha: { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'Europe/Berlin', theme: 'journal' },
+  alpha: { handle: 'alpha', name: 'Alpha Blog', active: true, timeZone: 'Europe/Berlin', theme: 'journal',
+    absoluteUrl: 'https://blog.example.com/alpha' },
   beta: { handle: 'beta', name: 'Beta Blog', active: false, customDomain: 'beta.example.com' }
 };
 
@@ -22,6 +23,7 @@ const served: string[] = [];
 const server = setupServer(
   http.get(`${API}/me`, () => { served.push('me'); return HttpResponse.json(me); }),
   http.get(`${API}/meta`, () => { served.push('meta'); return HttpResponse.json(meta); }),
+  http.get(`${API}/me/weblogs`, () => HttpResponse.json({ weblogs: [] })),
   http.get(`${API}/weblogs/:handle`, ({ params }) => {
     const found = weblogs[String(params['handle'])];
     return found === undefined ? HttpResponse.json({ code: 'weblog.notFound', detail: 'No such weblog.' }, { status: 404 }) : HttpResponse.json(found);
@@ -111,7 +113,7 @@ describe('Frame', () => {
   it('puts the weblog in the rail context: name linked to the site, handle and status dot, tz for dates', async () => {
     renderRoutes(appRoutes, '/weblogs/alpha', { boot: editorBoot });
     const name = await screen.findByRole('link', { name: 'Alpha Blog' });
-    expect(name).toHaveAttribute('href', 'https://blog.example.com/alpha/');
+    expect(name).toHaveAttribute('href', 'https://blog.example.com/alpha');
     const handle = rail().querySelector('.rail-context-handle') as HTMLElement;
     expect(handle).toHaveTextContent('alpha');
     expect(handle.querySelector('.rail-status-dot')).not.toBeNull();
@@ -180,9 +182,40 @@ describe('Frame', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('renders the footer with the version', async () => {
-    renderRoutes(appRoutes, '/', { boot: editorBoot });
-    expect(await screen.findByText('Pressroom 1.2.3')).toHaveClass('colophon-version');
+  it('renders the footer with the version and the colophon facts the shell carries', async () => {
+    const boot = { ...editorBoot, colophon: { copyrightHolder: 'Acme Press', copyrightYear: '2026', privacyUrl: 'https://x.test/privacy',
+      shortRevision: 'abc1234', releaseDate: '2026-11-20' } };
+    renderRoutes(appRoutes, '/', { boot });
+    expect(await screen.findByText('Pressroom 1.2.3 (abc1234)')).toHaveClass('colophon-version');
+    expect(document.querySelector('.colophon-copyright')).toHaveTextContent('© 2026 Acme Press. All rights reserved.');
+    expect(screen.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute('href', 'https://x.test/privacy');
+    expect(document.querySelector('.colophon-released')).toHaveTextContent('released 2026-11-20');
+  });
+
+  it('brands the banner and the tab with the site names from the shell', async () => {
+    const boot = { ...editorBoot, site: { name: 'Acme Press', shortName: 'Acme', siteSpaceHandle: 'site-space' } };
+    renderRoutes(appRoutes, '/weblogs/alpha', { boot });
+    await screen.findByRole('link', { name: 'Alpha Blog' });
+    expect(document.querySelector('.navbar-brand')).toHaveTextContent('Acme Press');
+    expect(document.title).toBe('Acme: Alpha Blog — alpha');
+  });
+
+  it('knows the site space from the shell: asks the API for nothing, names it, and offers its three screens', async () => {
+    me = { ...me, globalAdmin: true, weblogs: [] };
+    meta = { ...meta, features: { customThemes: true, groupBlogging: true } };
+    const asked: string[] = [];
+    server.use(http.get(`${API}/weblogs/site-space`, () => { asked.push('weblog'); return HttpResponse.json({}, { status: 404 }); }));
+    renderRoutes(appRoutes, '/weblogs/site-space', { boot: adminBoot });
+    await screen.findByRole('link', { name: 'Pages' });
+    expect(groups()).toEqual([
+      { label: 'Create & edit', links: ['Pages', 'Media files'] },
+      { label: 'Design', links: ['Theme'] }
+    ]);
+    expect(rail().querySelector('.rail-context-name')).toHaveTextContent('Site');
+    expect(rail().querySelector('.rail-context-name a')).toBeNull();
+    expect(rail().querySelector('.rail-context-handle')).toHaveTextContent('site-space');
+    expect(asked).toEqual([]);
+    expect(screen.queryByText('Could not find that weblog.')).not.toBeInTheDocument();
   });
 });
 
@@ -192,7 +225,7 @@ describe('Banner', () => {
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     const logout = await screen.findByRole('link', { name: 'Sign out' });
     expect(logout).toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/logout.rol');
-    expect(screen.getByRole('link', { name: 'Main menu' })).toHaveAttribute('href', 'http://pressroom.test/pressroom/pressroom-ui/menu.rol');
+    expect(screen.getByRole('link', { name: 'Main menu' })).toHaveAttribute('href', '/');
     expect(document.querySelector('.navbar-brand')).toHaveAttribute('href', 'http://pressroom.test/pressroom/');
     logout.addEventListener('click', (event) => { event.preventDefault(); });
     fireEvent.click(logout);

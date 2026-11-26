@@ -299,7 +299,7 @@ class VirtualHostIT extends PressroomIT {
     // ---------------------------------------------------------- criterion 3
 
     /**
-     * {@code GET https://b.example.com/pressroom-ui/menu.rol} -> 301 to the
+     * {@code GET https://b.example.com/pressroom-ui/app/} -> 301 to the
      * same path on the site host. {@code GET https://b.example.com/api/v1/ping}
      * likewise.
      *
@@ -313,9 +313,9 @@ class VirtualHostIT extends PressroomIT {
      */
     @Test
     void adminAndApiLeaveTheCustomDomain() throws Exception {
-        HttpResponse<String> admin = get("/pressroom-ui/menu.rol", VHOST);
+        HttpResponse<String> admin = get("/pressroom-ui/app/", VHOST);
         assertEquals(301, admin.statusCode());
-        assertEquals(baseUrl() + "/pressroom-ui/menu.rol",
+        assertEquals(baseUrl() + "/pressroom-ui/app/",
                 admin.headers().firstValue("Location").orElseThrow());
 
         HttpResponse<String> api = get("/api/v1/ping", VHOST);
@@ -486,7 +486,7 @@ class VirtualHostIT extends PressroomIT {
 
     /**
      * With {@code site.absoluteurl} unset and at least one weblog holding a
-     * custom domain, {@code GET https://b.example.com/pressroom-ui/menu.rol} is
+     * custom domain, {@code GET https://b.example.com/pressroom-ui/app/} is
      * served, not redirected -- the degraded path is pre-vhost behaviour,
      * never a loop.
      *
@@ -504,7 +504,7 @@ class VirtualHostIT extends PressroomIT {
      * -- which, reached over the custom domain, would loop forever.
      *
      * <p><b>"Served, not redirected" means never redirected CROSS-HOST, not
-     * never redirected at all.</b> {@code menu.rol} requires an
+     * never redirected at all.</b> The app home requires an
      * authenticated session, and this test deliberately runs unauthenticated
      * (nothing here logs in before the request) -- so once
      * {@code ControlPlaneHostFilter} degrades and calls
@@ -526,7 +526,7 @@ class VirtualHostIT extends PressroomIT {
         String duringTest = setSiteAbsoluteUrl("");
         logout();
         try {
-            HttpResponse<String> response = get("/pressroom-ui/menu.rol", VHOST);
+            HttpResponse<String> response = get("/pressroom-ui/app/", VHOST);
             Optional<String> location = response.headers().firstValue("Location");
             if (location.isPresent()) {
                 // Spring Security 7.2 sends the login redirect as a relative

@@ -305,11 +305,11 @@ class ApiIT extends PressroomIT {
     }
 
     /**
-     * Criterion 5 on the real container: a signed-in admin-UI session is no
-     * credential on the API. The API chains are stateless and never read it.
+     * A signed-in admin-UI session is a credential on the API's {@code /v1} reads (the React admin runs on it,
+     * spec 2026-11-25-react-admin-migration-design A3) and never on {@code /api/mcp}, which is bearer only.
      */
     @Test
-    void anAdminUiSessionIsNoCredentialOnTheApi() throws Exception {
+    void anAdminUiSessionReadsTheApiButNeverMcp() throws Exception {
         Map<String, String> cookies = new LinkedHashMap<>();
         for (HttpCookie cookie : authenticateOverHttp(ADMIN_USERNAME, ADMIN_PASSWORD)) {
             cookies.put(cookie.getName(), cookie.getValue());
@@ -317,19 +317,26 @@ class ApiIT extends PressroomIT {
         String header = cookies.entrySet().stream()
                 .map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining("; "));
         try {
-            // The control: the same cookie is signed in on the admin UI (no redirect to log in).
-            HttpResponse<String> menu = client.send(HttpRequest.newBuilder(
-                            URI.create(baseUrl() + "/pressroom-ui/menu.rol"))
+            // The control: the same cookie is signed in on the admin UI (the React shell, no redirect to log in).
+            HttpResponse<String> app = client.send(HttpRequest.newBuilder(
+                            URI.create(baseUrl() + "/pressroom-ui/app/"))
                     .timeout(Duration.ofSeconds(20)).header("Cookie", header).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
-            assertEquals(200, menu.statusCode(), "the session is not signed in");
+            assertEquals(200, app.statusCode(), "the session is not signed in");
 
-            for (String path : new String[] {"/api/v1/me", "/api/v1/tokens"}) {
-                HttpResponse<String> api = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + path))
-                        .timeout(Duration.ofSeconds(20)).header("Cookie", header).GET().build(),
-                        HttpResponse.BodyHandlers.ofString());
-                assertEquals(401, api.statusCode(), path + ": " + api.body());
-            }
+            HttpResponse<String> me = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/v1/me"))
+                    .timeout(Duration.ofSeconds(20)).header("Cookie", header).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, me.statusCode(), me.body());
+            assertTrue(me.body().contains("\"userName\":\"" + ADMIN_USERNAME + "\""), me.body());
+
+            HttpResponse<String> mcp = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
+                    .timeout(Duration.ofSeconds(20)).header("Cookie", header)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}"))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, mcp.statusCode(), "a session is never a credential on /api/mcp: " + mcp.body());
         } finally {
             invalidateServerSession(cookies);
         }

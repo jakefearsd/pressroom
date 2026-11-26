@@ -11,6 +11,7 @@ import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPageRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import com.wikantik.pressroom.ui.restapi.ProblemCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,11 @@ public abstract class BaseApiController {
             return w;
         }
         throw ApiException.problem(ProblemCode.WEBLOG_NOT_FOUND);
+    }
+
+    /** The weblog as the settings routes write it, with the address readers reach it at. */
+    protected AdminDtos.WeblogView weblogView(Weblog weblog) {
+        return AdminDtos.toView(weblog, weblogger.getUrlStrategy().getWeblogURL(weblog, null, true));
     }
 
     /**

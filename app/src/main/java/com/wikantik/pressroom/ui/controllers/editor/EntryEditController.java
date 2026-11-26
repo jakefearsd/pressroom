@@ -168,7 +168,7 @@ public class EntryEditController extends BaseController {
         }
         WeblogEntry entry = lookupNonTrashedEntry(bean.getId(), request);
         if (entry == null) {
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         bean.copyFrom(entry, request.getLocale());
@@ -348,7 +348,7 @@ public class EntryEditController extends BaseController {
         }
         WeblogEntry entry = lookedUp;
         if (entry == null) {
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         addStatusMessage(entry.getStatus(), model, entry, request);
@@ -407,7 +407,7 @@ public class EntryEditController extends BaseController {
 
         WeblogEntry entry = lookupEntry(entryId, request);
         if (entry == null) {
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         showNewsletterOutcome(EntryNewsletter.send(weblogger, this::listmonkClient, entry, permalinkOf(entry)),
@@ -467,7 +467,7 @@ public class EntryEditController extends BaseController {
 
         WeblogEntry entry = lookupChangeableEntry(bean.getId(), request);
         if (entry == null) {
-            return "redirect:/pressroom-ui/menu.rol";
+            return "redirect:/pressroom-ui/app/";
         }
 
         Timestamp pubTime = resolvePubTime(bean, request, model);

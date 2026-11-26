@@ -32,7 +32,11 @@ import java.time.Duration;
 import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
+import static com.codeborne.selenide.Condition.size;
 import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.$$;
+import static com.codeborne.selenide.WebDriverConditions.urlContaining;
+import static com.codeborne.selenide.Selenide.webdriver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The analytics pages as an administrator sees them on a server with no Umami
  * configured, which is what the IT app is: Blog &rsaquo; Traffic and Global
- * &rsaquo; Traffic say so and show no numbers, Maintenance's Analytics block
+ * &rsaquo; Traffic (both React screens now) say so and show no numbers, Maintenance's Analytics block
  * says analytics is off and offers no Sync, and no reader page loads a tracker.
  * The configured states (tiles, tables, the Sync button, the tag) are covered by
  * the controller and rendering unit tests; the IT stack has no Umami to read.
@@ -80,7 +84,7 @@ class AnalyticsIT extends PressroomIT {
     void trafficPageSaysNotConfigured() {
         loginAsAdmin();
 
-        openPath("/pressroom-ui/authoring/traffic.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/traffic");
         $("#trafficPage").should(exist);
         $("#trafficPage .traffic-notice-notConfigured").should(exactText(NOT_CONFIGURED));
         $("#trafficPage .traffic-tiles").shouldNot(exist);
@@ -95,10 +99,34 @@ class AnalyticsIT extends PressroomIT {
     void siteTrafficPageSaysNotConfigured() {
         loginAsAdmin();
 
-        openPath("/pressroom-ui/admin/siteTraffic.rol");
+        openPath("/pressroom-ui/app/admin/traffic");
         $("#siteTrafficPage").should(exist);
         $("#siteTrafficPage .traffic-notice-notConfigured").should(exactText(NOT_CONFIGURED));
         $("#siteTrafficPage .traffic-table").shouldNot(exist);
+
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+        logout();
+    }
+
+    /**
+     * The period switch is client-side now: a click changes the address and the page, no reload, and the
+     * rail's Traffic entry is the active one (the React rail marks the entry whose route is on screen).
+     */
+    @Test
+    void thePeriodSwitchAndTheRailWorkOnTheTrafficPage() {
+        loginAsAdmin();
+
+        openPath("/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/traffic");
+        $("#trafficPage .traffic-notice-notConfigured").should(exist);
+        $$("#trafficPage nav.traffic-period a").shouldHave(size(4));
+        $("#trafficPage nav.traffic-period a.on").shouldHave(text("30"));
+        $("#adminRail a.rail-active").shouldHave(text("Traffic"));
+
+        $$("#trafficPage nav.traffic-period a").findBy(text("7")).click();
+        webdriver().shouldHave(urlContaining("period=7d"));
+        $("#trafficPage nav.traffic-period a.on").shouldHave(text("7"));
+        $("#trafficPage .traffic-notice-notConfigured").should(exist);
 
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();

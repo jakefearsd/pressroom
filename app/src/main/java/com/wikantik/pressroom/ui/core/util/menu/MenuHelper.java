@@ -29,6 +29,7 @@ import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.ui.core.filters.LegacyAdminRedirects;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -242,7 +243,8 @@ public final class MenuHelper {
             for (ParsedTabItem configTabItem : configTab.getTabItems()) {
                 if (offeredHere(weblog, configTabItem)
                         && isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
-                    addItem(tab, configTabItem, currentAction, customThemeOverride);
+                    addItem(tab, configTabItem, currentAction, customThemeOverride,
+                            appPath(menuId, configTabItem.getAction(), weblog));
                 }
             }
             // add the tab, unless the site space left it with nothing to offer
@@ -255,13 +257,25 @@ public final class MenuHelper {
     }
 
     /**
+     * The React route for an item whose screen has moved to the React admin, from the one table of migrated
+     * routes ({@link LegacyAdminRedirects}): the item's legacy URL is looked up there, so a migration is a
+     * table row and the rail follows. Null while the screen is a JSP.
+     */
+    private static String appPath(String menuId, String action, Weblog weblog) {
+        String legacy = (ADMIN_MENU.equals(menuId) ? "/pressroom-ui/admin/" : "/pressroom-ui/authoring/")
+                + action + ".rol";
+        return LegacyAdminRedirects.locate("", legacy,
+                name -> "weblog".equals(name) && weblog != null ? weblog.getHandle() : null).orElse(null);
+    }
+
+    /**
      * Adds one allowed item to its tab. The first item the current action
      * matches selects itself and the tab (only one can be selected), and
      * the tab links to its first item.
      */
     private static void addItem(MenuTab tab, ParsedTabItem configTabItem, String currentAction,
-            boolean customThemeOverride) {
-        MenuTabItem tabItem = new MenuTabItem(configTabItem.getName(), configTabItem.getAction());
+            boolean customThemeOverride, String appPath) {
+        MenuTabItem tabItem = new MenuTabItem(configTabItem.getName(), configTabItem.getAction(), appPath);
 
         if (currentAction != null && !tab.isSelected()
                 && isSelected(currentAction, configTabItem)) {

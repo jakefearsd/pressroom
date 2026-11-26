@@ -58,6 +58,7 @@ class TrafficApiTest {
         weblog = new Weblog();
         weblog.setId("myblog-id");
         weblog.setHandle("myblog");
+        weblog.setTimeZone("America/Denver");
 
         TrafficApi controller = new TrafficApi();
         controller.weblogger = weblogger;
@@ -122,6 +123,51 @@ class TrafficApiTest {
         assertEquals("google.com", body.get("breakdowns").get("sources").get(0).get("key").asString());
         assertEquals(12, body.get("breakdowns").get("sources").get(0).get("value").asLong());
         assertEquals(1000, body.get("pathsCappedAt").asInt());
+    }
+
+    /** The zone asOf and the day buckets are read in, so a client formats them as the page did. */
+    @Test
+    void carriesTheWeblogsTimeZone() throws Exception {
+        when(analytics.getBlogTraffic("myblog-id", "30d")).thenReturn(snapshot(TrafficState.OK, 0, null));
+
+        assertEquals("America/Denver", okJson(get(URL).requestAttr("actionWeblog", weblog)).get("timeZone").asString());
+    }
+
+    /** "Open in Umami" is offered only for a registered weblog and a configured http(s) dashboard. */
+    @Test
+    void umamiUrlNeedsARegistrationAndAConfiguredDashboard() throws Exception {
+        when(analytics.getBlogTraffic("myblog-id", "30d")).thenReturn(snapshot(TrafficState.OK, 0, null));
+        when(analytics.websiteIdFor("myblog-id")).thenReturn("site 1");
+        try (var config = org.mockito.Mockito.mockStatic(com.wikantik.pressroom.config.WebloggerConfig.class)) {
+            config.when(() -> com.wikantik.pressroom.config.WebloggerConfig.getProperty("analytics.umami.dashboardUrl"))
+                    .thenReturn("https://stats.example.com/");
+
+            assertEquals("https://stats.example.com/websites/site%201",
+                    okJson(get(URL).requestAttr("actionWeblog", weblog)).get("umamiUrl").asString());
+
+            config.when(() -> com.wikantik.pressroom.config.WebloggerConfig.getProperty("analytics.umami.dashboardUrl"))
+                    .thenReturn("ftp://stats.example.com");
+            assertFalse(okJson(get(URL).requestAttr("actionWeblog", weblog)).has("umamiUrl"));
+        }
+    }
+
+    /** No numbers because registering failed: say why (the page always did); STALE and OK never carry it. */
+    @Test
+    void aFailedRegistrationIsExplainedOnlyWhenThereAreNoNumbers() throws Exception {
+        when(analytics.getBlogTraffic("myblog-id", "30d")).thenReturn(
+                new BlogTraffic(TrafficState.NO_DATA, null, null, null, null, null, null, "HTTP 401 from Umami"));
+
+        JsonNode unregistered = okJson(get(URL).requestAttr("actionWeblog", weblog));
+
+        assertEquals("HTTP 401 from Umami", unregistered.get("registrationError").asString());
+        assertFalse(unregistered.has("umamiUrl"));
+
+        when(analytics.websiteIdFor("myblog-id")).thenReturn("w1");
+        assertFalse(okJson(get(URL).requestAttr("actionWeblog", weblog)).has("registrationError"),
+                "a registered weblog's NO_DATA is just 'not read yet'");
+        when(analytics.websiteIdFor("myblog-id")).thenReturn(null);
+        when(analytics.getBlogTraffic("myblog-id", "30d")).thenReturn(snapshot(TrafficState.STALE, 0, "boom"));
+        assertFalse(okJson(get(URL).requestAttr("actionWeblog", weblog)).has("registrationError"));
     }
 
     /** T1: each of the four periods is read as asked. */

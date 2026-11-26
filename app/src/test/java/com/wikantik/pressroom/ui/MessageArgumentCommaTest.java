@@ -65,7 +65,6 @@ class MessageArgumentCommaTest {
                 "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
                 "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[fn:escapeXml(actionWeblog.name)]}\"",
                 "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
-                "core/MainMenu.jsp", "arguments=\"${[fn:escapeXml(permLabels)]}\"",
                 "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"",
                 "editor/TemplateEdit.jsp", "arguments=\"${[fn:escapeXml(bean.name), actionWeblog.handle]}\"");
         List<String> missing = new ArrayList<>();

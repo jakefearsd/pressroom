@@ -96,7 +96,7 @@
 
     <button type="submit" class="btn btn-primary"><spring:message code="createWebsite.button.save"/></button>
 
-    <a class="btn btn-secondary" href="<c:url value='/pressroom-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
+    <a class="btn btn-secondary" href="<c:url value='/pressroom-ui/app/'/>"><spring:message code="generic.cancel"/></a>
 
 </form:form>
 

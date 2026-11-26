@@ -3123,7 +3123,7 @@ a name never leaks between visitors.
     <a class="${acctPrefix}-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
 #else
     #if($utils.authenticatedUser)<span class="${acctPrefix}-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
-    #if($utils.isUserAuthor())<a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a>#end
+    #if($utils.isUserAuthor())<a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a>#end
     <a href="$url.logout">$text.get("navigationBar.logout")</a>
 #end
 </span>
@@ -3380,7 +3380,7 @@ print it as "2,026". All words come from the footer.* message keys.
         ## the site's front page and the site directory is gone. Same words
         ## and rules as the frontpage theme's top bar. Pages are cached per
         ## signed-in user, so this never leaks between visitors.
-        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
+        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
         #if($utils.isNotEmpty($colophonFacts.version))<span class="colophon-version">$text.get("footer.version", [$utils.escapeHTML($colophonFacts.version)])</span>#end
         #if($utils.isNotEmpty($colophonFacts.releaseDate))<span class="colophon-released">$text.get("footer.released", [$utils.escapeHTML($colophonFacts.releaseDate)])</span>#end
     </p>

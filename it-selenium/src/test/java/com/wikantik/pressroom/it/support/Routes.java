@@ -174,12 +174,6 @@ public final class Routes {
             // not .card-body, where Bootstrap 5's card-title is normally used.
             new Route("/pressroom-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
 
-            // The weblog list only renders under
-            // <c:if test="${not empty existingPermissions}">, which holds because
-            // seed-it-data.sql grants it_admin a permission on it_weblog. If the
-            // seed ever stops granting it, this marker is the thing that fails.
-            new Route("/pressroom-ui/menu.rol", Role.EDITOR, "", "h2.mm_weblog_name"),
-
             // The React admin's shell. #pressroom-app is emitted by the bundle
             // itself (App.tsx), so the marker proves admin.js loaded and read
             // the bootstrap block, not just that the JSP rendered.
@@ -241,10 +235,6 @@ public final class Routes {
             // formaction.
             new Route("/pressroom-ui/admin/maintenance.rol", Role.ADMIN, "",
                     "form[action$='/pressroom-ui/admin/maintenance.rol']"),
-
-            // Global Traffic: every blog's numbers from the local cache. Reachable
-            // with no parameters; the marker is the page's root div.
-            new Route("/pressroom-ui/admin/siteTraffic.rol", Role.ADMIN, "", "#siteTrafficPage"),
 
             // UserEdit.jsp posts to a runtime-chosen ${saveAction}, so the form
             // action is not a stable selector; the username input is.
@@ -334,10 +324,6 @@ public final class Routes {
             new Route("/pressroom-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
                     "#submissionsDeleteForm"),
 
-            // The page root is emitted whatever the state (not configured, no data
-            // yet, or numbers), so the marker is the page's own wrapper.
-            new Route("/pressroom-ui/authoring/traffic.rol", Role.EDITOR, WEBLOG, "#trafficPage"),
-
             // The moderation form is emitted unconditionally, empty list or not.
             new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
                     "#commentsModerationForm"),
@@ -404,7 +390,7 @@ public final class Routes {
 
             new SkippedRoute("/pressroom-ui/authoring/entryEdit.rol", Role.EDITOR,
                     "Needs bean.id of a WeblogEntry; without one the controller "
-                            + "redirects to menu.rol. No entries are seeded."),
+                            + "redirects to the app home. No entries are seeded."),
             new SkippedRoute("/pressroom-ui/authoring/entryEdit!firstSave.rol", Role.EDITOR,
                     "Post-save landing page for entryEdit; same missing entry id."),
             new SkippedRoute("/pressroom-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
@@ -447,11 +433,9 @@ public final class Routes {
             new SkippedRoute("/pressroom-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
                     "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
             new SkippedRoute("/pressroom-ui/login-redirect.rol", Role.EDITOR,
-                    "login-redirect.jsp branches on how many weblogs the user owns: exactly "
-                            + "one sends you to the entry editor, otherwise to the main menu. "
-                            + "Other ITs create weblogs on the shared baseline, so the landing "
-                            + "page depends on execution order. Assert it in a login test that "
-                            + "owns its fixture."),
+                    "A redirect: a signed-in user lands on the React admin's home, a "
+                            + "visitor on the login page (SsoSignInIT and AuthoringJourneyIT "
+                            + "assert the landing). It has no page of its own to sweep."),
 
             // --- would break the sweep itself ---
 
@@ -470,6 +454,30 @@ public final class Routes {
                     "Same: returns redirect:/ when already bootstrapped, and triggering a "
                             + "real bootstrap mid-suite would reinitialise the app under the "
                             + "other tests.")
+    );
+
+    // ------------------------------------------------ the React admin's screens
+
+    /**
+     * The screens the React admin has taken over from the JSPs (spec 2026-11-25-react-admin-migration-design,
+     * A8 step 3): routes under {@code /pressroom-ui/app/}, rendered client-side from the API, so the sweep
+     * waits for the marker. Each marker is an element only the screen itself emits; the screens keep the
+     * ids and classes of the JSPs they replaced. The old {@code .rol} URLs are no longer routes: they
+     * redirect ({@code LegacyAdminRedirectIT}). {@code RouteCoverageTest} only reads {@code .rol} literals, so
+     * these are the sweep's own bookkeeping: add a row here when a screen migrates.
+     */
+    private static final List<Route> APP = List.of(
+
+            // The main menu (it was menu.rol). The weblog list only renders when the user holds a permission,
+            // which holds because seed-it-data.sql grants it_admin one on it_weblog.
+            new Route("/pressroom-ui/app/", Role.EDITOR, "", "h2.mm_weblog_name"),
+
+            // A blog's Traffic page: the page root is emitted whatever the state (not configured, no data yet,
+            // or numbers), so the marker is the page's own wrapper.
+            new Route("/pressroom-ui/app/weblogs/it_weblog/traffic", Role.EDITOR, "", "#trafficPage"),
+
+            // Global Traffic: every blog's numbers from the local cache; the marker is the page's root div.
+            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage")
     );
 
     // ------------------------------------------------------------ known broken
@@ -499,7 +507,7 @@ public final class Routes {
 
     /** Routes the sweep visits and asserts real content on. */
     public static List<Route> covered() {
-        return java.util.stream.Stream.concat(NO_PARAMETERS.stream(), WEBLOG_ONLY.stream()).toList();
+        return java.util.stream.Stream.of(NO_PARAMETERS, WEBLOG_ONLY, APP).flatMap(List::stream).toList();
     }
 
     /** Routes reachable with no request parameters. */
@@ -510,6 +518,11 @@ public final class Routes {
     /** Routes needing only {@code weblog=it_weblog}. */
     public static List<Route> weblogOnly() {
         return WEBLOG_ONLY;
+    }
+
+    /** The React admin's screens (client-rendered). */
+    public static List<Route> app() {
+        return APP;
     }
 
     /** Routes left out of the sweep, each carrying its reason. */

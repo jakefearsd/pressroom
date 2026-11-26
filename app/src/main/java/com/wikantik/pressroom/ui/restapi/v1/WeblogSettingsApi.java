@@ -57,7 +57,7 @@ public class WeblogSettingsApi extends BaseApiController implements UISecurityEn
     @Operation(operationId = "weblogsGet")
     @GetMapping("/{handle}")
     public AdminDtos.WeblogView get(HttpServletRequest request) {
-        return AdminDtos.toView(requireActionWeblog(request));
+        return weblogView(requireActionWeblog(request));
     }
 
     @Operation(operationId = "weblogsUpdate")
@@ -92,7 +92,7 @@ public class WeblogSettingsApi extends BaseApiController implements UISecurityEn
         weblogger.flush();
         // WeblogPageCache expires only against weblog.lastModified; invalidate bumps it.
         CacheManager.invalidate(weblog);
-        return AdminDtos.toView(weblog);
+        return weblogView(weblog);
     }
 
     /** The API names the bean's {@code frontPageId} {@code frontPage}. */

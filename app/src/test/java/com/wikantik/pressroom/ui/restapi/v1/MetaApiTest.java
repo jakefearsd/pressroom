@@ -72,6 +72,9 @@ class MetaApiTest {
     private User user;
     private AnalyticsManager analyticsManager;
     private Weblogger weblogger;
+    private com.wikantik.pressroom.business.WeblogEntryManager entryManager;
+    private com.wikantik.pressroom.business.CommentManager commentManager;
+    private com.wikantik.pressroom.business.URLStrategy urlStrategy;
 
     @BeforeEach
     void setUp() {
@@ -83,6 +86,14 @@ class MetaApiTest {
         when(weblogger.getUserManager()).thenReturn(userManager);
         weblogManager = mock(WeblogManager.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
+        entryManager = mock(com.wikantik.pressroom.business.WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
+        commentManager = mock(com.wikantik.pressroom.business.CommentManager.class);
+        when(weblogger.getCommentManager()).thenReturn(commentManager);
+        urlStrategy = mock(com.wikantik.pressroom.business.URLStrategy.class);
+        when(weblogger.getUrlStrategy()).thenReturn(urlStrategy);
+        when(urlStrategy.getWeblogURL(any(Weblog.class), any(), eq(true)))
+                .thenAnswer(call -> "https://blog.example.com/" + ((Weblog) call.getArgument(0)).getHandle());
 
         MetaApi api = new MetaApi();
         // Field-injected (@Autowired @Lazy) in production; no constructor.
@@ -477,6 +488,110 @@ class MetaApiTest {
     private JsonNode profile() throws Exception {
         return json(mockMvc.perform(get("/v1/me/profile").requestAttr(AUTHENTICATED_USER, user))
                 .andExpect(status().isOk()));
+    }
+
+    // ------------------------------------------------- GET /v1/me/weblogs
+
+    @Test
+    void myWeblogsWithoutAnAuthenticatedUserIsA401Problem() throws Exception {
+        mockMvc.perform(get("/v1/me/weblogs")).andExpect(status().isUnauthorized());
+    }
+
+    /** The main menu's rows: sorted by handle, with the facts each row prints and the actions as stored. */
+    @Test
+    void myWeblogsCarriesEachRowsFactsAndCountsPendingCommentsOnlyForAModerator() throws Exception {
+        givenGlobalAdmin(false);
+        Weblog travels = weblog("travels", "Travels");
+        travels.setAbout("  Notes from the road.  ");
+        travels.setEditorTheme("custom");
+        Weblog food = weblog("food", "Food");
+        givenMembership(travels, List.of(WeblogPermission.ADMIN, WeblogPermission.POST));
+        givenMembership(food, List.of(WeblogPermission.EDIT_DRAFT));
+        givenCounts(travels, 12, 3);
+        givenCounts(food, 4, 9);
+
+        JsonNode view = json(mockMvc.perform(get("/v1/me/weblogs").requestAttr(AUTHENTICATED_USER, user))
+                .andExpect(status().isOk()));
+
+        JsonNode rows = view.get("weblogs");
+        assertEquals(List.of("food", "travels"), rows.valueStream().map(r -> r.get("handle").asString()).toList());
+        JsonNode first = rows.get(1);
+        assertEquals("Travels", first.get("name").asString());
+        assertEquals("Notes from the road.", first.get("about").asString());
+        assertEquals("custom", first.get("theme").asString());
+        assertEquals("https://blog.example.com/travels", first.get("absoluteUrl").asString());
+        assertEquals("ADMIN", first.get("permission").asString());
+        assertEquals(List.of("admin", "post"), first.get("actions").valueStream().map(a -> a.asString()).toList());
+        assertTrue(first.get("canModerate").asBoolean());
+        assertEquals(12, first.get("entryCount").asLong());
+        assertEquals(3, first.get("pendingComments").asLong());
+        JsonNode limited = rows.get(0);
+        assertFalse(limited.get("canModerate").asBoolean());
+        assertEquals(0, limited.get("pendingComments").asLong(), "a limited member has no comments to moderate");
+        assertFalse(limited.has("about"), limited.toString());
+        assertFalse(view.has("siteSpace"), "only a site admin gets the site space");
+    }
+
+    /**
+     * Moderation needs the weblog POST permission, and a weblog's creator holds "admin" alone (the Members page
+     * grants single-action rows too), so the row answers by implication, never by looking for the literal "post".
+     */
+    @Test
+    void canModerateFollowsTheImpliedPostPermissionNotTheLiteralAction() throws Exception {
+        givenGlobalAdmin(false);
+        Weblog creator = weblog("creator", "Creator's");
+        Weblog limited = weblog("limited", "Limited");
+        Weblog nothing = weblog("nothing", "Nothing");
+        givenMembership(creator, List.of(WeblogPermission.ADMIN));
+        givenMembership(limited, List.of(WeblogPermission.EDIT_DRAFT));
+        givenMembership(nothing, List.of());
+        givenCounts(creator, 0, 2);
+        givenCounts(limited, 0, 5);
+        givenCounts(nothing, 0, 5);
+
+        JsonNode rows = json(mockMvc.perform(get("/v1/me/weblogs").requestAttr(AUTHENTICATED_USER, user)))
+                .get("weblogs");
+
+        assertTrue(rows.get(0).get("canModerate").asBoolean(), "an admin-only row is a creator's row");
+        assertEquals(2, rows.get(0).get("pendingComments").asLong());
+        assertFalse(rows.get(1).get("canModerate").asBoolean());
+        assertFalse(rows.get(2).get("canModerate").asBoolean(), "a row granting nothing implies nothing");
+    }
+
+    @Test
+    void aSiteAdminGetsTheSiteSpaceHandleAndAPinnedTokenDoesNot() throws Exception {
+        givenGlobalAdmin(true);
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE, "Site");
+        when(weblogManager.getOrCreateSiteSpace(user)).thenReturn(site);
+
+        assertEquals(Weblog.SITE_SPACE_HANDLE, json(mockMvc.perform(
+                get("/v1/me/weblogs").requestAttr(AUTHENTICATED_USER, user))).get("siteSpace").asString());
+
+        authenticateWithToken(new ApiPrincipal("alice", "travels", ApiToken.Role.ADMIN, "token-1"));
+        assertFalse(json(mockMvc.perform(get("/v1/me/weblogs").requestAttr(AUTHENTICATED_USER, user)))
+                .has("siteSpace"));
+    }
+
+    @Test
+    void aPinnedTokenSeesOnlyItsWeblogInTheMenu() throws Exception {
+        authenticateWithToken(new ApiPrincipal("alice", "food", ApiToken.Role.POST, "token-1"));
+        givenGlobalAdmin(false);
+        Weblog food = weblog("food", "Food");
+        givenMembership(weblog("travels", "Travels"), List.of(WeblogPermission.ADMIN));
+        givenMembership(food, List.of(WeblogPermission.POST));
+        givenCounts(food, 1, 0);
+
+        JsonNode rows = json(mockMvc.perform(get("/v1/me/weblogs").requestAttr(AUTHENTICATED_USER, user)))
+                .get("weblogs");
+
+        assertEquals(1, rows.size());
+        assertEquals("food", rows.get(0).get("handle").asString());
+    }
+
+    private void givenCounts(Weblog weblog, long entries, long pending) throws WebloggerException {
+        when(entryManager.getEntryCount(weblog)).thenReturn(entries);
+        when(commentManager.countComments(weblog, com.wikantik.pressroom.pojos.ReaderComment.Status.PENDING))
+                .thenReturn(pending);
     }
 
     /** A field added to the profile later is a deliberate change, and is never a credential. */

@@ -43,8 +43,7 @@ class ScreenIndependenceTest {
             "controllers/SiteSettingsEffects.java", "controllers/AccountRules.java",
             "controllers/Memberships.java", "controllers/CategoryRules.java", "controllers/MediaRules.java",
             "controllers/ColumnWidths.java", "controllers/PageRules.java", "controllers/StrandChoice.java",
-            "controllers/EntryPinRules.java", "controllers/editor/TrafficView.java",
-            "controllers/admin/SiteTrafficView.java", "controllers/BusinessRules.java",
+            "controllers/EntryPinRules.java", "controllers/BusinessRules.java",
             "controllers/CustomDomainRules.java", "controllers/EntryFieldRules.java",
             "controllers/PasswordRules.java", "controllers/SharedThemeRules.java");
 
@@ -117,7 +116,7 @@ class ScreenIndependenceTest {
                         "com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean",
                         "com.wikantik.pressroom.ui.restapi.ApiException",
                         "com.wikantik.pressroom.ui.restapi.ProblemCode", "java.util.List",
-                        "com.wikantik.pressroom.ui.view.MainMenuView",
+                        "com.wikantik.pressroom.ui.view.EntryListView",
                         "com.wikantik.pressroom.pojos.Weblog")
                         .stream().map(ScreenIndependenceTest::forbidden).toList());
     }

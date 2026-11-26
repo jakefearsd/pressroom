@@ -657,7 +657,7 @@ class SecurityConfigTest {
                             .user("j_username", "alice")
                             .password("j_password", TestUtils.TEST_PASSWORD))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/pressroom-ui/login-redirect.rol"));
+                    .andExpect(redirectedUrl("/pressroom-ui/app/"));
 
             verify(tier.userManager()).recordLogin("alice");
             assertEquals(1, tier.flushCount());

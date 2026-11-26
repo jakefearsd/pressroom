@@ -1,10 +1,13 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
-import { Home } from './screens/Home';
+import { Home, HomeSidebar } from './screens/Home';
+import { SiteTraffic } from './screens/traffic/SiteTraffic';
+import { WeblogTraffic } from './screens/traffic/WeblogTraffic';
 import { NotFound } from './screens/NotFound';
 
-const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ handle: { scope } });
+const scoped = (scope: FrameHandle['scope'], sidebar?: FrameHandle['sidebar']): { handle: FrameHandle } =>
+  ({ handle: { scope, ...(sidebar === undefined ? {} : { sidebar }) } });
 
 /**
  * The routes, all inside the frame. `weblogs/:handle` and `admin` are placeholders so the
@@ -14,9 +17,11 @@ const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ hand
 export const appRoutes: RouteObject[] = [{
   element: <Frame />,
   children: [
-    { index: true, element: <Home />, ...scoped('none') },
+    { index: true, element: <Home />, ...scoped('none', HomeSidebar) },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
+    { path: 'weblogs/:handle/traffic', element: <WeblogTraffic />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
+    { path: 'admin/traffic', element: <SiteTraffic />, ...scoped('admin') },
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
 }];

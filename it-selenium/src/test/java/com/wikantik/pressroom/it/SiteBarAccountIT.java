@@ -58,7 +58,7 @@ class SiteBarAccountIT extends PressroomIT {
 
         assertEquals(baseUrl() + page, WebDriverRunner.url(), "the sign-in must come back to the page");
         $("nav.site-bar .site-bar-who").shouldBe(visible);
-        $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/menu.rol']").should(exist);
+        $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/app/']").should(exist);
         $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/logout.rol']").shouldHave(text("Sign out"));
         $("nav.site-bar .site-bar-sign-in").shouldNot(exist);
         logout();

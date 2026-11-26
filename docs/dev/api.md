@@ -470,7 +470,23 @@ matrix row equal to `GET /v1/admin/users`. It does NOT reuse `SiteTrafficView`
 (`ui.controllers.admin`): that record is the page's display strings (formatted numbers, the
 em dash). `TrafficDtos.toSiteView` maps `SiteTraffic` itself, sharing `post` with the blog
 route. `NOT_CONFIGURED` lists nothing, as the page shows no body; an unread blog's numbers
-and a NaN `change` are null.
+and a NaN `change` are null. Both traffic reads carry `timeZone` (the zone `asOf` and the day buckets read
+in: the weblog's, or the site space's for the site read), and the blog read `umamiUrl` and
+`registrationError` (why a weblog has no numbers because registering failed; what the page always told the
+weblog's admin) through `TrafficReads`. `GET /v1/admin/traffic/{handle}` is the same blog read for any weblog,
+the site space included (the weblog route never offers it): site admins only, MCP `Exclusion`.
+
+## The main menu's rows (Wave 0 screens, 2026-11-25)
+
+`GET /v1/me/weblogs` (`MetaApi`, `@WeblogScopeExempt`, user required, no permission) is what the React home
+shows: per weblog the caller can act on, sorted by handle, `about`, `theme`, `absoluteUrl`, the strongest
+`permission`, the stored `actions` (the role sentence needs the literal actions: a creator holds `admin`
+alone), `canModerate` (implied POST, as the interceptor checks, never the literal action), `entryCount` and
+`pendingComments` (0 unless the caller may moderate); plus `siteSpace` (its handle, created on first read) for
+a site admin with an unpinned token. One call instead of three reads per weblog, and the settings route is the
+weblog owner's while the menu is every member's. A failed count is a 500, not a 0 (the JSP degraded; an API
+must not report a wrong number). `WeblogView` (the settings read) gains `absoluteUrl` through
+`BaseApiController.weblogView`. MCP: `Exclusion` (`me` lists the weblogs).
 
 ## A weblog's members, read (2026-11-21)
 

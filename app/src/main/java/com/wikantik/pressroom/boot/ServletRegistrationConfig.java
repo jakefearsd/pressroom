@@ -30,6 +30,8 @@ import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.AppShellForwardFilter;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
+import com.wikantik.pressroom.ui.core.filters.LegacyAdminRedirectFilter;
+import com.wikantik.pressroom.ui.core.filters.LegacyAdminRedirects;
 import com.wikantik.pressroom.ui.core.filters.LegacyUiRedirectFilter;
 import com.wikantik.pressroom.ui.core.filters.ControlPlaneHostFilter;
 import com.wikantik.pressroom.ui.core.filters.InitFilter;
@@ -403,6 +405,21 @@ public class ServletRegistrationConfig {
                 new FilterRegistrationBean<>(new AppShellForwardFilter());
         registration.setOrder(75);
         registration.setUrlPatterns(List.of("/pressroom-ui/app", "/pressroom-ui/app/*"));
+        registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
+        return registration;
+    }
+
+    /**
+     * Order 74: after Spring Security (40), so a legacy admin URL keeps the authorisation it always had and a
+     * signed-out visitor returns to it after signing in; REQUEST only. The patterns are the table's own
+     * (LegacyAdminRedirects), so adding a row adds its route here.
+     */
+    @Bean
+    public FilterRegistrationBean<LegacyAdminRedirectFilter> legacyAdminRedirectFilterRegistration() {
+        FilterRegistrationBean<LegacyAdminRedirectFilter> registration =
+                new FilterRegistrationBean<>(new LegacyAdminRedirectFilter());
+        registration.setOrder(74);
+        registration.setUrlPatterns(LegacyAdminRedirects.legacyPaths());
         registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
         return registration;
     }

@@ -57,7 +57,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
                 .getWeblogs(null, null, null, null, offset, boundedLimit + 1);
         List<AdminDtos.WeblogView> views = new ArrayList<>();
         for (Weblog weblog : rows.subList(0, Math.min(rows.size(), boundedLimit))) {
-            views.add(AdminDtos.toView(weblog));
+            views.add(weblogView(weblog));
         }
         return new AdminDtos.WeblogListPage(views, offset, boundedLimit, rows.size() > boundedLimit);
     }

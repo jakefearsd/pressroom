@@ -325,7 +325,7 @@ class EntryEditNewsletterTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditSendNewsletter("entry-1", request, model);
 
-        assertEquals("redirect:/pressroom-ui/menu.rol", view,
+        assertEquals("redirect:/pressroom-ui/app/", view,
                 "an entryId from another weblog must bounce, exactly like an unknown one");
         verify(listmonk, never()).sendCampaign(any(), any(), any());
     }

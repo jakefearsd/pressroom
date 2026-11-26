@@ -213,7 +213,7 @@ class AdminJspHygieneTest {
         String src = jsp("core/GenericError.jsp");
         assertTrue(src.contains("empty-state"),
                 "core/GenericError.jsp needs an .empty-state body explaining what happened");
-        assertTrue(src.contains("menu.rol"),
+        assertTrue(src.contains("/pressroom-ui/app/"),
                 "core/GenericError.jsp needs a way back to the weblog list");
     }
 

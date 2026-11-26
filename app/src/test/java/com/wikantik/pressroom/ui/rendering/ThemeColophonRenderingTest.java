@@ -119,17 +119,17 @@ class ThemeColophonRenderingTest {
             TestUtils.endSession(true);
 
             String anonymous = colophon(null);
-            if (!anonymous.contains("/pressroom-ui/login") || anonymous.contains("menu.rol")
+            if (!anonymous.contains("/pressroom-ui/login") || anonymous.contains("pressroom-ui/app/")
                     || anonymous.contains("logout")) {
                 failures.add(theme + " (visitor): " + anonymous);
             }
             String author = colophon(user.getUserName());
-            if (author.contains("/pressroom-ui/login") || !author.contains("/pressroom-ui/menu.rol")
+            if (author.contains("/pressroom-ui/login") || !author.contains("/pressroom-ui/app/")
                     || !author.contains("logout")) {
                 failures.add(theme + " (author): " + author);
             }
             String signedInReader = colophon(reader.getUserName());
-            if (signedInReader.contains("/pressroom-ui/login") || signedInReader.contains("menu.rol")
+            if (signedInReader.contains("/pressroom-ui/login") || signedInReader.contains("pressroom-ui/app/")
                     || !signedInReader.contains("logout")) {
                 failures.add(theme + " (reader): " + signedInReader);
             }

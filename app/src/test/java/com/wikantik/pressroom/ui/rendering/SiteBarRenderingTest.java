@@ -239,11 +239,11 @@ class SiteBarRenderingTest {
                 String anonymous = bar(page(path));
                 assertTrue(Pattern.compile("<a class=\"site-bar-sign-in\" href=\"[^\"]*/pressroom-ui/login\\.rol\">"
                         + "Sign in</a>").matcher(anonymous).find(), theme + ": a visitor gets Sign in:\n" + anonymous);
-                assertFalse(anonymous.contains("logout") || anonymous.contains("menu.rol"), theme + ":\n" + anonymous);
+                assertFalse(anonymous.contains("logout") || anonymous.contains("pressroom-ui/app/"), theme + ":\n" + anonymous);
 
                 String author = bar(pageAs(admin.getUserName(), path));
                 assertTrue(author.contains("<span class=\"site-bar-who\">"), theme + ": who is signed in:\n" + author);
-                assertTrue(author.contains("/pressroom-ui/menu.rol\">Main menu</a>"), theme + ":\n" + author);
+                assertTrue(author.contains("/pressroom-ui/app/\">Main menu</a>"), theme + ":\n" + author);
                 assertTrue(author.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + author);
                 assertFalse(author.contains("site-bar-sign-in"), theme + ":\n" + author);
 
@@ -251,7 +251,7 @@ class SiteBarRenderingTest {
                 assertTrue(asReader.contains("<span class=\"site-bar-who\">Ann &amp; Co</span>"),
                         theme + ": the reader's name, escaped once:\n" + asReader);
                 assertTrue(asReader.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + asReader);
-                assertFalse(asReader.contains("menu.rol"), theme + ": no Main Menu for a reader:\n" + asReader);
+                assertFalse(asReader.contains("pressroom-ui/app/"), theme + ": no Main Menu for a reader:\n" + asReader);
             }
         } finally {
             TestUtils.teardownUser(reader.getUserName());
