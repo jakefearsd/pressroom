@@ -39,6 +39,7 @@ import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The {@code [contact]} shortcode end to end: a page carrying it renders the
@@ -153,7 +154,84 @@ class ContactFormIT extends PressroomIT {
         BrowserHealth.current().assertNoFailedRequests();
     }
 
+    /**
+     * The inbox's bulk delete: a long message is cut with a way to read it all; ticking some inquiries and
+     * cancelling the confirmation deletes nothing; confirming deletes exactly the ticked ones, says how many,
+     * and the rest are still there after a reload; "select all" then clears the inbox to its empty state.
+     */
+    @Test
+    void theInboxDeletesTheSelectedInquiriesOnlyAndShowsLongMessagesInFull() throws Exception {
+        String suffix = nonce();
+        String handle = createWeblogAsAdmin();
+        String longTail = "END-OF-LONG-" + suffix;
+        String longMessage = ("A long inquiry about a booking. ".repeat(8)) + longTail;
+        assertTrue(longMessage.length() > 140);
+        try {
+            logout();
+            postInquiry(handle, "Ann " + suffix, "Subject A " + suffix, longMessage);
+            postInquiry(handle, "Ben " + suffix, "Subject B " + suffix, "Short message B " + suffix);
+            postInquiry(handle, "Cy " + suffix, "Subject C " + suffix, "Short message C " + suffix);
+
+            loginAsAdmin();
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/inbox");
+            $$(".submission-select").shouldHave(CollectionCondition.size(3));
+
+            // --- the long message is cut, and the whole of it is one click away
+            $("table.pressroomtable").shouldNotHave(text(longTail));
+            $("table.pressroomtable details summary").shouldHave(text("Show full message")).click();
+            $("table.pressroomtable details p").shouldHave(text(longTail));
+
+            // --- tick A and B, cancel: nothing is deleted
+            $("input[aria-label='Subject A " + suffix + "']").click();
+            $("input[aria-label='Subject B " + suffix + "']").click();
+            $("#submissionsDeleteSelected").click();
+            $(".modal.show").shouldBe(visible).shouldHave(text("2"));
+            $(".modal.show .modal-footer button.btn-secondary").click();
+            $(".modal.show").should(com.codeborne.selenide.Condition.disappear);
+            $$(".submission-select").shouldHave(CollectionCondition.size(3));
+
+            // --- confirm: exactly A and B go, C stays, across a reload
+            $("#submissionsDeleteSelected").click();
+            $(".modal.show .modal-footer button.btn-danger").click();
+            $("#messages").shouldHave(text("Inquiries deleted: 2."));
+            $$(".submission-select").shouldHave(CollectionCondition.size(1));
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/inbox");
+            $$(".submission-select").shouldHave(CollectionCondition.size(1));
+            $("table.pressroomtable").shouldHave(text("Subject C " + suffix));
+            $("table.pressroomtable").shouldNotHave(text("Subject A " + suffix));
+            $("table.pressroomtable").shouldNotHave(text("Subject B " + suffix));
+
+            // --- select all, delete: the empty state
+            $("#selectAllSubmissions").click();
+            $("#submissionsDeleteSelected").click();
+            $(".modal.show .modal-footer button.btn-danger").click();
+            $("#messages").shouldHave(text("Inquiries deleted: 1."));
+            $(".empty-state").shouldHave(text("No inquiries yet."));
+        } finally {
+            loginAsAdmin();
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/remove");
+            $("button.btn-danger").should(visible).click();
+            $("h2.mm_weblog_name").should(exist);
+            $$("h2.mm_weblog_name .data").findBy(com.codeborne.selenide.Condition.exactText(handle))
+                    .shouldNot(exist);
+            logout();
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    private String createWeblogAsAdmin() {
+        loginAsAdmin();
+        return createWeblog();
+    }
+
+    /** One genuine submission over the public endpoint, as the page script sends it. */
+    private void postInquiry(String handle, String name, String subject, String message) throws Exception {
+        String json = "{\"weblog\":\"" + handle + "\",\"name\":\"" + name + "\",\"email\":\"reader@example.invalid\","
+                + "\"subject\":\"" + subject + "\",\"message\":\"" + message + "\",\"website\":\"\","
+                + "\"elapsedMs\":5000,\"source\":\"/" + handle + "/contact\"}";
+        assertEquals(204, postJson(CONTACT_ENDPOINT, json), "a genuine submission must be accepted");
+    }
 
     /** Creates a weblog owned by the seeded admin, on the default theme. */
     private String createWeblog() {

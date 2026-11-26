@@ -26,7 +26,6 @@ import com.wikantik.pressroom.ui.restapi.dto.AdminDtos;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,7 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code PressroomHandlerInterceptor} resolves the weblog from {@code {handle}}
  * alone and refuses a caller with no role there 404, a member below ADMIN
  * 403. The site-wide list stays in {@link WeblogsApi}, site admin only;
- * permission declarations are per controller, hence two classes.
+ * permission declarations are per controller, hence two classes. Reading the weblog is the contributor's
+ * ({@link WeblogReadApi}, {@code EDIT_DRAFT}); this class is what changes it.
  *
  * <p>{@code @AdminScoped}: an {@code ADMIN}-role token, as before the split.
  * A token pinned to this weblog reaches it; one pinned elsewhere gets 404,
@@ -58,12 +58,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/weblogs")
 @AdminScoped
 public class WeblogSettingsApi extends BaseApiController implements UISecurityEnforced {
-
-    @Operation(operationId = "weblogsGet")
-    @GetMapping("/{handle}")
-    public AdminDtos.WeblogView get(HttpServletRequest request) {
-        return weblogView(requireActionWeblog(request));
-    }
 
     @Operation(operationId = "weblogsUpdate")
     @PatchMapping("/{handle}")

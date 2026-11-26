@@ -43,6 +43,7 @@ import com.wikantik.pressroom.ui.core.security.sso.PressroomOidcUser;
 import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import com.wikantik.pressroom.ui.restapi.auth.PasswordCallerDetails;
 import com.wikantik.pressroom.ui.restapi.v1.PagesApi;
+import com.wikantik.pressroom.ui.restapi.v1.WeblogReadApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogSettingsApi;
 import com.wikantik.pressroom.ui.restapi.v1.WeblogsApi;
 import org.junit.jupiter.api.AfterAll;
@@ -196,6 +197,11 @@ class SiteSpaceAccessTest {
         @Bean
         WeblogSettingsApi weblogSettingsApi() {
             return new WeblogSettingsApi();
+        }
+
+        @Bean
+        WeblogReadApi weblogReadApi() {
+            return new WeblogReadApi();
         }
 
         @Bean

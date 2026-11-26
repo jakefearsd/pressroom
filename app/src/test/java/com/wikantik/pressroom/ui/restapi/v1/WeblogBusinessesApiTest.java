@@ -62,7 +62,9 @@ class WeblogBusinessesApiTest {
         picker.weblogger = weblogger;
         WeblogSettingsApi settings = new WeblogSettingsApi();
         settings.weblogger = weblogger;
-        mvc = MockMvcBuilders.standaloneSetup(picker, settings).setControllerAdvice(new ApiExceptionHandler())
+        WeblogReadApi reader = new WeblogReadApi();
+        reader.weblogger = weblogger;
+        mvc = MockMvcBuilders.standaloneSetup(picker, settings, reader).setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
 

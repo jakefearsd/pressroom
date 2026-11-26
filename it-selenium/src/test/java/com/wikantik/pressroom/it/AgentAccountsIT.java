@@ -169,7 +169,12 @@ class AgentAccountsIT extends PressroomIT {
 
         openAgentPage(agent);
         $("#bean_siteAdmin").shouldBe(checked).click();
-        clickAndAwaitSavedMessage($("#agentSaveButton"));
+        // Wait for THIS save's message by its text: reopening the agent page right after creating it can
+        // replay the "Agent created" flash from history state, which satisfied a bare #messages wait before
+        // the save landed (seen once in a full /pressroom run: the 403 read as 200).
+        $("#agentSaveButton").click();
+        $$("#messages").findBy(text("Agent saved.")).should(exist);
+        BrowserHealth.current().settle();
         $("#bean_siteAdmin").shouldNotBe(checked);
         assertEquals(403, bearerGet(secret, "/api/v1/admin/config").statusCode());
 
@@ -241,6 +246,61 @@ class AgentAccountsIT extends PressroomIT {
         loginAsAdmin();
         openPath("/pressroom-ui/app/admin/users?q=" + person);
         $("a[data-username='" + person + "']").closest("tr").find("time").should(exist);
+        logout();
+    }
+
+    /**
+     * What the agent screens tell the person: the create form refuses an empty and a duplicate user name in
+     * place (it stays, nothing is created); an agent's edited name, notes and site-admin switch persist across
+     * a reload with "Agent saved."; and cancelling the disable confirmation leaves the agent enabled and its
+     * token working.
+     */
+    @Test
+    void theAgentScreensRefuseBadInputKeepEditsAndCancelLeavesTheAgentEnabled() throws Exception {
+        String agent = "itscreen" + nonce();
+        loginAsAdmin();
+
+        // --- an empty user name is refused in place (a 400, then a 409 for the duplicate: both meant)
+        BrowserHealth.current().expectRefusal("/api/v1/admin/agents");
+        openPath("/pressroom-ui/app/admin/agents/new");
+        $("#bean_userName").should(visible);
+        $("#bean_name").setValue("Nameless");
+        $("#agentCreateButton").click();
+        $("#errors").should(exist);
+        $("#agentCreateForm").should(exist);
+        assertTrue($$("#agentPage").isEmpty(), "an agent with no user name was created");
+
+        // --- a real one, then the same user name again
+        createAgent(agent, false);
+        openPath("/pressroom-ui/app/admin/agents/new");
+        $("#bean_userName").should(visible).setValue(agent);
+        $("#bean_name").setValue("Duplicate");
+        $("#agentCreateButton").click();
+        $("#errors").should(exist);
+        $("#agentCreateForm").should(exist);
+
+        // --- edits persist across a reload
+        openAgentPage(agent);
+        $("#bean_name").setValue("Renamed " + agent);
+        $("#bean_notes").setValue("Notes for " + agent);
+        $("#bean_siteAdmin").click();
+        clickAndAwaitSavedMessage($("#agentSaveButton"));
+        $("#messages").shouldHave(text("Agent saved."));
+        openAgentPage(agent);
+        $("#bean_name").shouldHave(com.codeborne.selenide.Condition.value("Renamed " + agent));
+        $("#bean_notes").shouldHave(com.codeborne.selenide.Condition.value("Notes for " + agent));
+        $("#bean_siteAdmin").shouldBe(checked);
+
+        // --- cancelling the disable confirmation changes nothing
+        String secret = mintOnThisPage("cancel-check", "READ", null);
+        $("#agentDisableButton").click();
+        $("[role='dialog'] .modal-footer .btn-secondary").click();
+        $("[role='dialog']").should(com.codeborne.selenide.Condition.disappear);
+        $("#agentDisableButton").should(exist);
+        assertEquals(200, bearerGet(secret, "/api/v1/me").statusCode(), "cancelling the dialog disabled the agent");
+
+        openAgentPage(agent);
+        revokeTheTokenOnThisPage();
         logout();
     }
 

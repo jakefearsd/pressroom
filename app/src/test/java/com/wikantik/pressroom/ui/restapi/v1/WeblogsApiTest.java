@@ -104,7 +104,9 @@ class WeblogsApiTest {
         list.weblogger = weblogger;
         WeblogSettingsApi settings = new WeblogSettingsApi();
         settings.weblogger = weblogger;
-        return new Object[] {list, settings};
+        WeblogReadApi reader = new WeblogReadApi();
+        reader.weblogger = weblogger;
+        return new Object[] {list, settings, reader};
     }
 
     private static Weblog aWeblog(String handle) {
@@ -896,6 +898,22 @@ class WeblogsApiTest {
         assertTrue(settings.isWeblogRequired());
         assertTrue(WeblogSettingsApi.class.isAnnotationPresent(AdminScoped.class),
                 "the settings routes keep the ADMIN-role token requirement");
+    }
+
+    /**
+     * The read of one weblog is the contributor's, not the owner's: the admin frame and the entry editor ask
+     * for the weblog's name, time zone and locale as an Author or Limited member (MembersIT: the editor stayed
+     * blank on a 403 there). Changing it stays the owner's, above.
+     */
+    @Test
+    void theReadRouteDeclaresTheContributorLevel() {
+        WeblogReadApi reader = new WeblogReadApi();
+        assertEquals(List.of(WeblogPermission.EDIT_DRAFT), reader.requiredWeblogPermissionActions());
+        assertEquals(List.of(GlobalPermission.LOGIN), reader.requiredGlobalPermissionActions());
+        assertTrue(reader.isUserRequired());
+        assertTrue(reader.isWeblogRequired());
+        assertFalse(WeblogReadApi.class.isAnnotationPresent(AdminScoped.class),
+                "a read-role token may read the weblog, as it reads entries");
     }
 
     /**

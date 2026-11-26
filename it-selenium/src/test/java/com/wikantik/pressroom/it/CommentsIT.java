@@ -553,6 +553,95 @@ class CommentsIT extends PressroomIT {
         assertEquals(404, adminApiStatus("GET", comment(mainHandle, replyId)), "its reply survives");
     }
 
+    // ------------------------------------------------------------ bulk moderation
+
+    /**
+     * The Comments page's bulk actions, on a weblog of its own (approving a reader there makes them trusted,
+     * which must not leak into the other tests' weblogs): three held comments; two ticked and approved leave
+     * the third waiting and show on the public page; the two ticked and hidden move to the Hidden tab and
+     * leave the public page; "select all" there, a cancelled bulk delete, then a confirmed one empties the
+     * tab to its explanation. The count each message gives is what was ticked, not what was listed.
+     */
+    @Test
+    void bulkModerationActsOnTheTickedCommentsOnly() throws Exception {
+        String stamp = nonce();
+        String c1 = "Bulk one " + stamp;
+        String c2 = "Bulk two " + stamp;
+        String c3 = "Bulk three " + stamp;
+
+        loginAsAdmin();
+        String handle = createWeblogWithComments("cmtbulk");
+        Entry entry = publishEntry(handle, "Bulk moderation " + stamp);
+        logout();
+        try {
+            signInWithKeycloak(READER, entry.fullPath());
+            $(TEXTAREA).should(visible);
+            for (String body : new String[] {c1, c2, c3}) {
+                assertEquals("PENDING", postThroughTheSessionEndpoint(body).status(),
+                        "a reader new to the weblog is held");
+            }
+            logout();
+
+            // --- tick two of three and approve
+            loginAsAdmin();
+            openPath(moderation(handle, null));
+            $$(MODERATION_ROWS).shouldHave(com.codeborne.selenide.CollectionCondition.size(3));
+            $(".selection-bar").shouldNotBe(visible);
+            tick(c1);
+            tick(c2);
+            $(".selection-bar .selection-count").shouldHave(text("2 selected"));
+            $(".selection-bar").$(com.codeborne.selenide.Selectors.byText("Approve")).click();
+            $("#messages").shouldHave(text("2 approved."));
+            $$(MODERATION_ROWS).findBy(text(c1)).shouldNot(exist);
+            $$(MODERATION_ROWS).findBy(text(c2)).shouldNot(exist);
+            $$(MODERATION_ROWS).findBy(text(c3)).should(exist);
+            openPath(moderation(handle, "PUBLISHED"));
+            $$(MODERATION_ROWS).findBy(text(c1)).should(exist);
+            $$(MODERATION_ROWS).findBy(text(c2)).should(exist);
+            $$(MODERATION_ROWS).findBy(text(c3)).shouldNot(exist);
+            String page = anonymousPage(entry);
+            assertTrue(page.contains(c1) && page.contains(c2), "the approved comments are not on the public page");
+            assertFalse(page.contains(c3), "a comment still awaiting approval is on the public page");
+
+            // --- hide both: they leave the public page and land in the Hidden tab
+            $("#selectAllComments").click();
+            $(".selection-bar .selection-count").shouldHave(text("2 selected"));
+            $(".selection-bar").$(com.codeborne.selenide.Selectors.byText("Hide")).click();
+            $("#messages").shouldHave(text("2 hidden."));
+            $$(MODERATION_ROWS).findBy(text(c1)).shouldNot(exist);
+            assertFalse(anonymousPage(entry).contains(c1), "a hidden comment is still on the public page");
+            openPath(moderation(handle, "HIDDEN"));
+            $$(MODERATION_ROWS).findBy(text(c1)).should(exist);
+            $$(MODERATION_ROWS).findBy(text(c2)).should(exist);
+
+            // --- bulk delete: cancel keeps both, confirm removes both
+            $("#selectAllComments").click();
+            $("#commentsDeleteSelected").click();
+            AdminApp.dialog().shouldBe(visible).shouldHave(text("2 selected"));
+            $("[role='dialog'] .modal-footer .btn-secondary").click();
+            AdminApp.dialog().should(disappear);
+            $$(MODERATION_ROWS).shouldHave(com.codeborne.selenide.CollectionCondition.size(2));
+            $("#commentsDeleteSelected").click();
+            AdminApp.confirmDialog();
+            $("#messages").shouldHave(text("2 deleted."));
+            $(".empty-state").shouldHave(text("No comments here."))
+                    .shouldHave(text("Comments you hide appear here."));
+            // ...and the third, never ticked, is still waiting
+            openPath(moderation(handle, null));
+            $$(MODERATION_ROWS).findBy(text(c3)).should(exist);
+            logout();
+        } finally {
+            loginAsAdmin();
+            removeWeblog(handle);
+            logout();
+        }
+    }
+
+    /** Ticks the moderation row holding {@code body}. */
+    private static void tick(String body) {
+        $$(MODERATION_ROWS).findBy(text(body)).$(".comment-select").click();
+    }
+
     // ---------------------------------------------------------- criterion 19
 
     /** Criterion 19: a closed entry shows its published comments and "Comments are closed", and no form. */
