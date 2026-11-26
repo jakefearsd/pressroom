@@ -82,8 +82,10 @@ class BusinessProfileIT extends PressroomIT {
             $$("table.pressroomtable td").findBy(text(businessName)).should(exist);
 
             // --- the blog owner selects it and describes the place --------
-            openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
+            openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
             $("#settings-business").should(exist);
+            // The business list loads after the form draws: wait for the option, then pick it.
+            $$("#weblog_bean_businessId option").findBy(text(businessName)).should(exist);
             $("#weblog_bean_businessId").selectOption(businessName);
             $("#weblog_bean_placeType").selectOptionByValue("LodgingBusiness");
             $("#weblog_bean_placeLocality").setValue("Porto");
@@ -143,7 +145,7 @@ class BusinessProfileIT extends PressroomIT {
 
     /** Unsets the blog's business, then deletes the business: identity cleanup. */
     private void cleanUp(String handle, boolean businessCreated) {
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("#weblog_bean_businessId").selectOptionByValue("");
         saveSettings();
         if (!businessCreated) {
@@ -160,7 +162,7 @@ class BusinessProfileIT extends PressroomIT {
     }
 
     private void saveSettings() {
-        clickAndAwaitNewPage($("button[type='submit'].btn-primary").should(visible));
+        $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);
         assertTrue($$("#errors").isEmpty(),
                 "saving the weblog settings reported an error: "
@@ -176,7 +178,7 @@ class BusinessProfileIT extends PressroomIT {
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue("journal");
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
 
         $("#messages").should(exist);
         return handle;

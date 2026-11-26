@@ -110,7 +110,7 @@ class ContactFormIT extends PressroomIT {
 
         // --- the Inquiries admin screen ---------------------------------------
         loginAsAdmin();
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/inbox";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/inbox");
         $("table.pressroomtable").shouldHave(text(name));
         $("table.pressroomtable").shouldHave(text(message));
 
@@ -119,8 +119,9 @@ class ContactFormIT extends PressroomIT {
         // so the button opens a confirmation modal rather than deleting on the
         // first click. The real submit lives inside it.
         $("#submissionsDeleteSelected").click();
-        $("#submissions-delete-modal").shouldBe(visible);
-        $("#submissionsDeleteConfirm").click();
+        // The React confirmation modal (a ConfirmDialog), whose destructive button deletes.
+        $(".modal.show").shouldBe(visible);
+        $(".modal.show .modal-footer button.btn-danger").click();
         $("#messages").should(exist);
         $$(".submission-select").shouldHave(CollectionCondition.size(0));
         // The empty state is a SIBLING of the table, not a row inside it: with
@@ -144,7 +145,7 @@ class ContactFormIT extends PressroomIT {
         assertEquals(204, postJson(CONTACT_ENDPOINT, honeypotJson),
                 "a honeypot-filled submission must answer exactly like success");
 
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/inbox";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/inbox");
         $$(".submission-select").shouldHave(CollectionCondition.size(0));
         $(".empty-state").shouldHave(text("No inquiries yet."));
         BrowserHealth.current().assertNoBrokenResources();

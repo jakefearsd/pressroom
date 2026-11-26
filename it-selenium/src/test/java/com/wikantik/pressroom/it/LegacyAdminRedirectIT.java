@@ -82,6 +82,43 @@ class LegacyAdminRedirectIT extends PressroomIT {
         logout();
     }
 
+    /**
+     * Wave 3: every legacy settings, theme, template, stylesheet, member, inbox and remove URL answers 302 to its
+     * React route with the weblog handle (and a template's id, an inbox's page) carried over; create weblog needs
+     * no parameters. One signed-in session for all rows.
+     */
+    @Test
+    void wave3ScreensRedirectWithTheirHandleAndIds() throws Exception {
+        loginAsAdmin();
+        String app = "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE;
+        assertRedirect("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE, app + "/settings");
+        assertRedirect("/pressroom-ui/authoring/themeEdit.rol?weblog=" + WEBLOG_HANDLE, app + "/theme");
+        assertRedirect("/pressroom-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE, app + "/templates");
+        assertRedirect("/pressroom-ui/authoring/templateEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=t-1",
+                app + "/templates/t-1");
+        assertRedirect("/pressroom-ui/authoring/stylesheetEdit.rol?weblog=" + WEBLOG_HANDLE, app + "/stylesheet");
+        assertRedirect("/pressroom-ui/authoring/members.rol?weblog=" + WEBLOG_HANDLE, app + "/members");
+        assertRedirect("/pressroom-ui/authoring/submissions.rol?weblog=" + WEBLOG_HANDLE + "&page=2",
+                app + "/inbox?page=2");
+        assertRedirect("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + WEBLOG_HANDLE, app + "/remove");
+        assertRedirect("/pressroom-ui/createWeblog.rol", "/pressroom-ui/app/weblogs/new");
+        logout();
+    }
+
+    /** The redirects land on the screens: settings and create weblog draw their own markers in the browser. */
+    @Test
+    void theSettingsAndCreateBookmarksArriveAtTheirScreens() {
+        loginAsAdmin();
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE);
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/" + WEBLOG_HANDLE + "/settings"));
+        $("#settingsSectionIndex").should(exist);
+
+        openPath("/pressroom-ui/createWeblog.rol");
+        webdriver().shouldHave(url(baseUrl() + "/pressroom-ui/app/weblogs/new"));
+        $("#handlePreview").should(exist);
+        logout();
+    }
+
     /** A bookmark followed while signed out goes to sign in, and the sign-in returns to the new screen. */
     @Test
     void anOldBookmarkWhileSignedOutSignsInAndArrivesAtTheNewScreen() {

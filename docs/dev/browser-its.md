@@ -127,7 +127,7 @@ Four classes carry the configuration matrix:
 
 Comment-related tests and their `postCommentDirectly`/`approveComment`
 helpers were deleted with the comment subsystem in W1; the invite/accept
-ceremony (`invite.rol`) went in W2 — `MembersController.grant()` adds a
+ceremony (`invite.rol`) went in W2 — `POST /v1/weblogs/{handle}/members` adds a
 collaborator directly and has no `groupblogging.enabled` check of its own
 (only the menu entry is gated).
 
@@ -174,8 +174,9 @@ a race:
   exposed to every site-wide flag (on a `/pressroom`-prefix run with
   `groupblogging.enabled` off, `createWeblog.rol` returned a healthy 200
   with no form — the `categoryEdit.rol` failure mode the sweep exists to
-  catch — because `CreateWeblogController` answers `.GenericError` to an
-  admin who already owns a weblog), and by the media classes, which need
+  catch — because the create controller answered `.GenericError` to an
+  admin who already owns a weblog; the React create screen shows that refusal
+  in place too, and its sweep marker is `#handlePreview`, which the refusal omits), and by the media classes, which need
   `uploads.enabled` true (`GlobalConfigMatrixIT` sets
   `uploads.enabled=false`; with uploads off the media page renders no
   buttons, and the failure reads

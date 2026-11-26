@@ -73,7 +73,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
  * concurrency error, it is a marker that "should" be on the page and isn't.
  * Observed: {@code GlobalConfigMatrixIT} turns {@code groupblogging.enabled}
  * off to prove a second weblog is refused, and while it is off
- * {@code CreateWeblogController} answers {@code .GenericError} for an admin who
+ * the create-weblog screen (once a controller answering {@code .GenericError}) refuses an admin who
  * already owns a weblog -- a healthy 200 carrying full site chrome and no form,
  * which is precisely the {@code categoryEdit.rol} failure mode this sweep exists
  * to catch. Same shape as the {@code uploads.enabled} collision CLAUDE.md

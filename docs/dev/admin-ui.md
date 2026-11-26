@@ -63,15 +63,15 @@ resolves through the index at the end of `CLAUDE.md`.
   hover→active→disabled in one place.
 - **`.form-stacked`** on a `<form>` converts Bootstrap's
   `row.mb-3 > label.col-sm-3 + div.col-sm-9` grid to labels-above block flow
-  without touching fields (`WeblogConfig.jsp`, `GlobalConfig.jsp`, ten more).
+  without touching fields (`GlobalConfig.jsp`, ten more; the React settings screen keeps the class).
 - **`.empty-state`/`.empty-state-title`/`.empty-state-body`** are the
   "invitations, not shrugs" signature (600/16px title, one `--ink-soft`
   sentence, at most one primary action, icon-free) on Entries/Pages/
-  Submissions/MediaFileView. **`Categories.jsp` renders it INSIDE the table**
+  MediaFileView (and the React inbox). **`Categories.jsp` renders it INSIDE the table**
   as the lone `<tr>` of an empty tbody, making its `<td>` the tbody's
   first-child (the hook the header's caps-label rule keys off), so
   `.empty-state`'s `font-weight`/`text-transform`/`letter-spacing` resets are
-  load-bearing. `Pages.jsp`/`Submissions.jsp` render it as a sibling of the
+  load-bearing. `Pages.jsp` renders it as a sibling of the
   table in a `<c:otherwise>`; check the caller.
 - **Admin → Users is a list, not a search box** (2026-10-13): every account,
   All / People / Agents tabs and a `q` filter the server applies
@@ -108,7 +108,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `weblogEdit.unsaved`).
 - **One selection bar for every list with bulk actions.** `.selection-bar`
   (`data-selection-bar="<form id>"`, `hidden` by default) sits above the table
-  on Entries/Submissions/MediaFileView; the header checkbox carries
+  on Entries/MediaFileView (and the React inbox); the header checkbox carries
   `data-select-all` and is excluded from the count. `pressroom.js`'s delegated
   document-level `change` listener finds the bar whose `data-selection-bar`
   matches the checkbox's `form.id`, counts
@@ -195,8 +195,10 @@ resolves through the index at the end of `CLAUDE.md`.
   `GET /v1/me/weblogs` returns `siteSpace`, creating the hidden `site-space` weblog
   on first read; absent for everyone else) shows a Site row with Pages, Media and Theme, the only
   three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
-  is false by default and true on the Pages, PageEdit, ThemeEdit and media
-  controllers. The site space's traffic (ruling R25: Global › Traffic links its
+  is false by default and true on the Pages, PageEdit and media
+  controllers; the Theme screen is React and reaches the site space through its own
+  admin routes, `GET`/`PUT /v1/admin/site-theme` (session only, site admins only), because the
+  weblog routes withhold it. The site space's traffic (ruling R25: Global › Traffic links its
   "Site pages" row there) is read through `GET /v1/admin/traffic/{handle}` (site admins only; the weblog
   route never offers the site space); the rail does not offer it on the site space;
   `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
@@ -204,18 +206,18 @@ resolves through the index at the end of `CLAUDE.md`.
   API/MCP request), so a refusal looks exactly like an unknown handle (redirect
   to access-denied; API 404). `MenuHelper` shows only those three tabs on the
   site space, and `userWeblogs` grants refuse it, so it is never in a weblog
-  list. `ThemeEditController.offered` gives the site space `journal`,
+  list. `SharedThemeRules.offered` gives the site space `journal`,
   `portfolio`, `travel` and `frontpage` and never a custom theme; other weblogs
   get everything but `frontpage` (unless already on it). The custom-theme
   import applies `offered` too, so a posted `frontpage` import is refused
   like a posted `frontpage` switch. Re-importing the current theme keeps a
   customised stylesheet; when that check cannot run, the import is refused
   (`generic.error.check.logs`), never run as though nothing was customised.
-  Covered by `SiteSpaceAccessTest`, `ThemeEditControllerTest` and `SitePagesIT`.
+  Covered by `SiteSpaceAccessTest`, `AdminSiteThemeApiTest` and `SitePagesIT`.
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.
-  `switcherAction` is the current admin action when it is one of ten reusable
+  `switcherAction` is the current admin action when it is one of the reusable
   ones (`entries`, `trash`, `submissions`, `comments`, `categories`, `pages`,
   `mediaFileView`, `themeEdit`, `weblogConfig`, `members`), else `entries`, so
   switching from Global Config lands on the entry list, not a 403. The
@@ -274,10 +276,7 @@ resolves through the index at the end of `CLAUDE.md`.
   not a boundary: its no-closing-bracket branch appends the rest verbatim, `<`
   included, so an unterminated `<img src=x onerror=…` survives. Over-escaping
   costs too (hence the allowlist): an entry title, already escaped at save by
-  `EntryFieldRules`, renders `&amp;lt;`. Deliberately outside the scan:
-  `CreateWeblogController` passes `e.getMessage()` as the message **key**, and
-  `getText` returns an unresolvable key verbatim to the raw sink — recorded,
-  not fixed.
+  `EntryFieldRules`, renders `&amp;lt;`. (The create-weblog controller that once passed `e.getMessage()` as a message key went with its JSP.)
 
 - **Businesses (Global Admin, `/pressroom-ui/admin/businesses.rol`).** List,
   `businesses!edit.rol` (create/edit; blank id opens an empty form),
@@ -354,7 +353,7 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   field is `handle` and the token form's is `pin`: a field named `weblog` is read by
   `PressroomHandlerInterceptor` as the action weblog.
 - **Both membership screens share `Memberships`** (2026-11): the weblog's Members page
-  (`MembersController`) accepts only `Memberships.LEVELS` (Admin, Author, Limited; `-1`
+  (now the React Members screen over `MembersApi`) accepts only `Memberships.LEVELS` (Admin, Author, Limited; `-1`
   removes) from `perm-<id>` and `permissionString`, refusing the whole save otherwise
   (`userWeblogs.error.level`), and records `membership.granted|changed|removed` through
   `AdminLog` exactly as `UserWeblogsController` does. A permission row whose account no
@@ -525,6 +524,26 @@ Routes `/weblogs/:handle/media` (+ `?dir=<directoryId>&sort=&q=&type=&size=&unit
   `imagesOnly` lists images outside private folders (what featured and share images accept). It does not close
   itself; the host unmounts it in `onSelect` or `onCancel`.
 - Vitest runs jsdom at the app's own origin (`vitest.config.ts`), so the upload XHR is same-origin as in production.
+### Wave 3 screens, cut over (settings, create, theme, templates, stylesheet, members, inbox, remove)
+
+Routes `/weblogs/new`, `/weblogs/:handle/{settings,theme,templates,templates/:id,stylesheet,members,inbox,remove}`.
+Their legacy `.rol` GETs (`weblogConfig`, `createWeblog`, `themeEdit`, `templates`, `templateEdit`, `stylesheetEdit`,
+`members`, `submissions`, `weblogRemove`) are rows in `LegacyAdminRedirects` (`templateEdit` carries `bean.id`, the inbox
+its `page`); the controllers, JSPs, tiles definitions, POST actions and the `ThemeDataServlet` (the old create page's
+theme picker) are gone. The beans the API shares (`WeblogConfigBean`, `CreateWeblogBean`, `TemplateEditBean`) and
+`Memberships` stay under `ui/controllers`.
+
+- **The server says what the screen shows**: the weblog address is `WeblogView.absoluteUrl` (never site url + handle),
+  `subscribeForm` is `on`/`offNoList`/`offNotConfigured`, `customDomainOutsideCertZone` is the "saved, but no wildcard
+  certificate" warning, `GET /v1/meta` carries `maxEntriesPerPage` (the field's max and its "At most N" tip), and
+  create-weblog prefills email, locale and zone from `GET /v1/me/profile`.
+- **The site space is withheld from `/v1/weblogs/{handle}`**, so the Theme screen reads and switches it through
+  `GET`/`PUT /v1/admin/site-theme`, and Settings hides the front-page row on it (`boot.site.siteSpaceHandle`).
+- **The theme preview is not an admin screen** and stays: `/pressroom-ui/authoring/preview/{handle}?theme=` renders a weblog
+  page under the preview servlets (`ServletRegistrationConfigTest` pins it).
+- Template action labels are `ComponentType`'s readable names (Java literals, never message keys), copied into
+  `Templates.tsx`; `TemplateActionNamesDriftTest` pins the copy to the enum.
+
 ### Wave 4 people screens (`screens/people/`)
 
 Routes: `/admin/users` (`?kind=&q=`), `/admin/users/new`, `/admin/users/:userName`,

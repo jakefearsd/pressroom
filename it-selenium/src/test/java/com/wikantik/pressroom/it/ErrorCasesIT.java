@@ -34,7 +34,6 @@ import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -112,8 +111,10 @@ class ErrorCasesIT extends PressroomIT {
         $("#name").should(visible).setValue("Clashing Blog");
         $("#handle").setValue(WEBLOG_HANDLE);
         $("#emailAddress").setValue("clash@example.invalid");
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
 
+        // The React screen refuses in place: the error banner, no success message.
+        $("#errors").should(exist);
         // Outcome, not page shape: a refusal may render errors or bounce, but
         // it must never report success.
         assertFalse($$("#messages").size() > 0,
@@ -142,7 +143,10 @@ class ErrorCasesIT extends PressroomIT {
 
     /**
      * An empty handle used to reach a code path that created a weblog with no
-     * URL of its own; the controller guards it now, and this keeps it guarded.
+     * URL of its own. Two guards keep it closed: the create screen refuses it before anything is sent
+     * (the field marked, nothing created), and the server refuses it on its own when a client skips the
+     * screen -- the one this test is named for, so it is asked directly, from the signed-in page, with
+     * the page's own CSRF token.
      */
     @Test
     void aWeblogWithNoHandleIsRefused() {
@@ -150,15 +154,25 @@ class ErrorCasesIT extends PressroomIT {
         openPath(CREATE_WEBLOG);
         $("#name").should(visible).setValue("No Handle Blog");
         $("#emailAddress").setValue("nohandle@example.invalid");
-        // The form marks #handle `required`, so the browser would refuse to submit and
-        // the server guard this test is named for would never run. Take it off.
-        executeJavaScript("document.getElementById('handle').removeAttribute('required')");
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
 
-        // The server refused: the create form is shown again with its field error.
-        $("#handle").should(visible);
-        assertTrue($("body").text().contains("The handle you specified is not valid"),
-                "the server did not refuse a weblog with no handle");
+        // The screen refused: the handle field is marked and says why; no success message.
+        $("#handle").should(visible).shouldHave(com.codeborne.selenide.Condition.cssClass("is-invalid"));
+        assertTrue($("body").text().contains("Handle is a required field"),
+                "the create screen did not say the handle is required");
+        assertFalse($$("#messages").size() > 0, "a weblog with no handle reported success");
+
+        // The server refused too: a request that skips the screen is a 400, and creates nothing.
+        Object status = com.codeborne.selenide.Selenide.executeAsyncJavaScript(
+                "var done = arguments[arguments.length - 1];"
+                        + "var boot = JSON.parse(document.getElementById('pressroom-bootstrap').textContent);"
+                        + "var headers = {'Content-Type': 'application/json'};"
+                        + "headers[boot.csrf.headerName] = boot.csrf.token;"
+                        + "fetch(arguments[0], {method: 'POST', credentials: 'same-origin', headers: headers,"
+                        + "  body: JSON.stringify({handle: '', name: 'No Handle Blog', theme: 'journal'})})"
+                        + ".then(function (r) { done(r.status); });",
+                baseUrl() + "/api/v1/weblogs");
+        assertEquals(400, ((Number) status).intValue(), "the server did not refuse a weblog with no handle");
         logout();
     }
 

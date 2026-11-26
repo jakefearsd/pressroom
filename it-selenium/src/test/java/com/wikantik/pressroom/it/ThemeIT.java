@@ -27,7 +27,8 @@ import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static com.codeborne.selenide.Selenide.executeAsyncJavaScript;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -158,7 +159,7 @@ class ThemeIT extends PressroomIT {
      * shared theme -- and not merely be told so.
      *
      * <p>The setting used to gate only the Design tab in the menu, so a POST
-     * straight to {@code themeEdit!save.rol} converted the weblog anyway. That
+     * straight to the old theme page's save action converted the weblog anyway. That
      * import is one-way, which made a hidden menu entry the only thing between
      * an installation that had turned the option off and a weblog that could
      * never go back. This posts the way that page's own form does and then
@@ -170,7 +171,8 @@ class ThemeIT extends PressroomIT {
 
         boolean wasAllowed = setGlobalFlag(CUSTOM_THEMES_ALLOWED, false);
         try {
-            postCustomThemeSwitch(handle);
+            assertEquals(403, postCustomThemeSwitch(handle),
+                    "the API must refuse a custom theme while the site has them turned off");
 
             // The weblog is still on the shared theme it started with, which
             // only its own rendering can show: a custom copy would serve the
@@ -237,32 +239,25 @@ class ThemeIT extends PressroomIT {
     }
 
     /**
-     * Posts the theme form asking for a custom theme, the way somebody who
-     * knows the URL would.
+     * Asks for a custom theme the way somebody who knows the API would: straight at the route the screen's
+     * own radio calls, from the signed-in page (same session, the page's own CSRF token).
      *
-     * <p>Deliberately not through the radio button: with the option off the
-     * page no longer offers one, and that hidden control was exactly what used
-     * to be doing the "enforcing". The form is otherwise real -- same action,
-     * same session, and the page's own CSRF token and weblog parameter ride
-     * along with it.
+     * <p>Deliberately not through the radio button: with the option off the screen no longer offers one,
+     * and that hidden control was exactly what used to be doing the "enforcing". Returns the HTTP status;
+     * the refusal is {@code 403 theme.customisationDisabled}.
      */
-    private void postCustomThemeSwitch(String handle) {
+    private int postCustomThemeSwitch(String handle) {
         openPath(themeEditPath(handle));
-        // SETS the themeType the page already carries rather than appending a
-        // second one: with custom themes off the form ships a hidden
-        // themeType=shared, and two parameters of the same name would bind the
-        // FIRST -- so the POST would quietly be an ordinary shared-theme save
-        // and this test would pass without ever exercising the refusal.
-        //
-        // Awaited, not settled: form.submit() starts the navigation in a task of its
-        // own, and a templates check that overtook the POST would pass on a weblog
-        // nobody had yet asked to switch.
-        awaitNewPageAfter(() -> executeJavaScript(
-                "var f = document.querySelector(\"form[action$='themeEdit!save.rol']\");"
-                        + "var t = f.querySelector(\"input[name='themeType']\");"
-                        + "if (!t) { t = document.createElement('input');"
-                        + "  t.type = 'hidden'; t.name = 'themeType'; f.appendChild(t); }"
-                        + "t.value = 'custom'; f.submit();"));
+        $(".theme-cards").should(exist);
+        Object status = executeAsyncJavaScript(
+                "var done = arguments[arguments.length - 1];"
+                        + "var boot = JSON.parse(document.getElementById('pressroom-bootstrap').textContent);"
+                        + "var headers = {'Content-Type': 'application/json'};"
+                        + "headers[boot.csrf.headerName] = boot.csrf.token;"
+                        + "fetch(arguments[0], {method: 'POST', credentials: 'same-origin', headers: headers,"
+                        + "  body: '{}'}).then(function (r) { done(r.status); });",
+                baseUrl() + "/api/v1/weblogs/" + handle + "/themes/custom");
+        return ((Number) status).intValue();
     }
 
     /** Switches to a custom theme, importing the current shared theme. */
@@ -303,7 +298,7 @@ class ThemeIT extends PressroomIT {
 
     private String templateNames() {
         $("table").should(exist);
-        return $$("a[href*='templateEdit.rol']").texts().toString()
+        return $$("table a[href*='/templates/']").texts().toString()
                 .replace("[", "").replace("]", "");
     }
 

@@ -187,10 +187,14 @@ class SubscribeFormIT extends PressroomIT {
 
     /** Sets (or, given a blank uuid, clears) the weblog's newsletter list uuid through Settings. */
     private void setNewsletterUuid(String handle, String uuid) {
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.newsletterListUuid']").should(visible).setValue(uuid);
         $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);
+        // The screen says in words whether readers get the form, from the saved blog (the server's
+        // subscribeForm): no list, or a list but no newsletter service on this site (the IT instance has none).
+        $("#subscribe-form-status").shouldHave(text(uuid.isBlank()
+                ? "No newsletter list is set" : "no newsletter service configured"));
         BrowserHealth.current().settle();
     }
 

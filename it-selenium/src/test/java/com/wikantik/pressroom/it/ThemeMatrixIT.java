@@ -234,7 +234,7 @@ class ThemeMatrixIT extends PressroomIT {
      * site — so the button always appears.
      */
     private void switchToSharedTheme(String themeId, String handle) {
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/theme";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/theme");
         // Clicking the theme's own card reveals the Save button. The
         // shared/custom radio row is not rendered on a default install (custom
         // themes are off site-wide), so there is nothing else to click first.

@@ -213,7 +213,7 @@ class MarkdownContentIT extends PressroomIT {
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
         $("select[name='theme']").selectOptionByValue(themeId);
-        clickAndAwaitNewPage($("button[type='submit']"));
+        $("button[type='submit']").click();
         $("#messages").should(exist);
         return handle;
     }

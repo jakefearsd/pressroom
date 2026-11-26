@@ -49,7 +49,7 @@ resolves through the index at the end of `CLAUDE.md`.
   (the author edits what they typed), so `bean.title` is raw though
   `entry.title` is stored escaped; and a wrapper that escapes does not make
   the pojo safe — `Weblog.getName()` is raw, `WeblogWrapper.getName()`
-  escapes on read, `WeblogConfig.jsp` reads the bean. Guard a field by adding
+  escapes on read, the settings screen reads the bean's raw value (React escapes on render). Guard a field by adding
   it to `EditorJspEscapingTest`'s `AUTHOR_CONTROLLED` list in
   **both** spellings. `<spring:message arguments="...">` does **not** escape
   (`defaultHtmlEscape` is unset), so an argument is an injection point too.
@@ -62,7 +62,7 @@ resolves through the index at the end of `CLAUDE.md`.
   templates as the weblog's own rows and is one-way (it stops tracking the
   shared theme). `ThemeIT` therefore works on weblogs it creates itself;
   never switch the seeded IT weblog.
-- `ThemeEdit.jsp` hides its Save buttons until its JS sees a change; pick
+- The React theme screen (`ThemeEdit.tsx`) shows its Save buttons only once something is proposed; pick
   the theme (or the radio) first to reveal the right one.
 - A theme switch reaches readers via `saveWeblog` bumping `lastModified`, not
   `CacheManager.invalidate` — see Templates on `WeblogPageCache`.
@@ -70,13 +70,13 @@ resolves through the index at the end of `CLAUDE.md`.
   Design tab's three items.** `themeEdit` (shared-theme selection, safe and
   reversible) is ungated; only `stylesheetEdit` and `templates` carry
   `enabledProperty="themes.customtheme.allowed"` in `editor-menu.xml` (the
-  whole `tabbedmenu.design` group used to). `MainMenu.jsp` splits its theme
+  whole `tabbedmenu.design` group used to). The React home splits its theme
   button the same way: shared-theme link unconditional, custom-theme link
   behind the flag.
-- **`themes.customtheme.allowed` is enforced in `ThemeEditController`, not
-  just the menu** — a hidden menu entry stops nobody posting to
-  `themeEdit!save.rol` directly. Only the `WeblogTheme.CUSTOM` branch of
-  `ThemeEditController.save` checks it; the shared-theme branch never has. A
+- **`themes.customtheme.allowed` is enforced server side, not just in the menu** —
+  a hidden menu entry stops nobody calling `POST /v1/weblogs/{handle}/themes/custom`
+  directly. `SharedThemeRules.customViolation` checks it (the API answers
+  `theme.customisationDisabled`); the shared-theme switch never has. A
   weblog already on a custom theme is grandfathered (disabling the option
   must not strand it).
 - `journal`, `travel`, `portfolio` and `frontpage` each ship a `_page` template
@@ -203,13 +203,12 @@ resolves through the index at the end of `CLAUDE.md`.
   second `nav`, and styles both (`ThemePolishTest`).
 
 ## Templates
-- Add/edit/remove live in `TemplatesController` and `TemplateEditController`;
-  both resolve client ids through `BaseController.lookupTemplate` (pinned by
-  their `*ControllerTest`s).
+- Add/edit/remove live in `TemplatesApi` (the React Templates and Template edit screens
+  call it); it resolves client ids through `WeblogOwnership` (pinned by `TemplatesApiTest`).
 - **An existing template's action is fixed.** `TemplateEditBean.copyTo` never
-  applies `bean.action` (read-only only in the browser, so a crafted POST once
+  applies `bean.action` (a crafted POST once
   turned a custom template into a second WEBLOG/STYLESHEET one); the editor
-  shows the action without posting it. The template-language select, never
+  shows the action without sending it. The template-language select, never
   filled nor saved, is gone with `pageForm.templateLanguage` (2026-11).
 - A CUSTOM template gets `link = name` and is served publicly at
   `/<handle>/page/<link>` — including on a weblog running a *shared* theme,

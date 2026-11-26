@@ -123,7 +123,7 @@ class AnalyticsInjectionIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private void openSettings(String handle) {
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
         $("input[name='bean.name']").should(visible);
     }
 

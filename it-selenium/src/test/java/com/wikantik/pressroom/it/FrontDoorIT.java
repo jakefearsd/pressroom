@@ -89,9 +89,11 @@ class FrontDoorIT extends PressroomIT {
         BrowserHealth.current().settle();
 
         // --- choose it in the blog settings ----------------------------------
-        openPath("/pressroom-ui/app/weblogs/" + handle) + "/settings";
+        openPath("/pressroom-ui/app/weblogs/" + handle + "/settings");
+        // The page list loads after the form draws: wait for the option, then pick it.
+        $$("#weblog_bean_frontPageId option").findBy(com.codeborne.selenide.Condition.text(pageTitle)).should(exist);
         $("#weblog_bean_frontPageId").should(visible).selectOption(pageTitle);
-        clickAndAwaitNewPage($("button[type='submit'].btn-primary").should(visible));
+        $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);
         assertTrue($$("#errors").isEmpty(), "saving the blog settings reported an error");
         BrowserHealth.current().settle();
