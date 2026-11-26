@@ -99,7 +99,7 @@ describe('the switcher set', () => {
   /** The screens the top-bar weblog switcher keeps when the reader picks another weblog (the rail's own tabs). */
   it('is the weblog-scoped rail tabs', () => {
     expect(RAIL_ENTRIES.filter((e) => e.switchable === true).map((e) => e.id).sort()).toEqual([
-      'categories', 'comments', 'entries', 'members', 'mediaFileView', 'pages', 'submissions', 'themeEdit',
+      'categories', 'comments', 'entries', 'mediaFileView', 'members', 'pages', 'submissions', 'themeEdit',
       'traffic', 'trash', 'weblogConfig'
     ]);
   });
