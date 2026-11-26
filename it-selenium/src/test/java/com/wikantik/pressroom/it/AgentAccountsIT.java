@@ -169,7 +169,12 @@ class AgentAccountsIT extends PressroomIT {
 
         openAgentPage(agent);
         $("#bean_siteAdmin").shouldBe(checked).click();
-        clickAndAwaitSavedMessage($("#agentSaveButton"));
+        // Wait for THIS save's message by its text: reopening the agent page right after creating it can
+        // replay the "Agent created" flash from history state, which satisfied a bare #messages wait before
+        // the save landed (seen once in a full /pressroom run: the 403 read as 200).
+        $("#agentSaveButton").click();
+        $("#messages").shouldHave(text("Agent saved."));
+        BrowserHealth.current().settle();
         $("#bean_siteAdmin").shouldNotBe(checked);
         assertEquals(403, bearerGet(secret, "/api/v1/admin/config").statusCode());
 
