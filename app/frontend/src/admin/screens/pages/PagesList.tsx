@@ -126,6 +126,7 @@ export function PagesList() {
         </p>
       )}
 
+      <div id="pages-list-marker">
       {pages.length === 0 ? (
         pagesQuery.isSuccess ? (
           <EmptyState title={t('empty.pages.title')} body={t('empty.pages.body')}>
@@ -204,6 +205,7 @@ export function PagesList() {
           </table>
         </div>
       )}
+      </div>
 
       {confirming === null ? null : (
         <ConfirmDialog

@@ -52,30 +52,13 @@ class ControllerMetadataTest {
     }
 
     @Test
-    void categoryAndMediaManagementRequirePostPermission() {
-        // Categories and media are blog-wide structure, not a single draft, so
-        // they sit above the contributor level.
+    void categoryManagementRequiresPostPermission() {
+        // Categories are blog-wide structure, not a single draft, so they sit
+        // above the contributor level.
         assertEquals(List.of(WeblogPermission.POST),
                 new CategoryEditController().requiredWeblogPermissionActions());
         assertEquals(List.of(WeblogPermission.POST),
                 new CategoryRemoveController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileAddController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileViewController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new MediaFileEditController().requiredWeblogPermissionActions());
-    }
-
-    @Test
-    void pageManagementRequiresPostPermission() {
-        // Static pages are blog-wide structure like categories and media, not
-        // a single draft, so they sit at the same POST level rather than
-        // falling back to the ADMIN default.
-        assertEquals(List.of(WeblogPermission.POST),
-                new PageEditController().requiredWeblogPermissionActions());
-        assertEquals(List.of(WeblogPermission.POST),
-                new PagesController().requiredWeblogPermissionActions());
     }
 
     @Test
@@ -122,9 +105,6 @@ class ControllerMetadataTest {
         assertEquals("weblogConfig", new WeblogConfigController().getActionName());
         assertEquals("templateEdit", new TemplateEditController().getActionName());
         assertEquals("stylesheetEdit", new StylesheetEditController().getActionName());
-        assertEquals("mediaFileAdd", new MediaFileAddController().getActionName());
-        assertEquals("mediaFileView", new MediaFileViewController().getActionName());
-        assertEquals("mediaFileEdit", new MediaFileEditController().getActionName());
     }
 
     @Test
@@ -135,9 +115,6 @@ class ControllerMetadataTest {
         assertEquals("websiteSettings.title", new WeblogConfigController().getPageTitle());
         assertEquals("pagesForm.title", new TemplateEditController().getPageTitle());
         assertEquals("stylesheetEdit.title", new StylesheetEditController().getPageTitle());
-        assertEquals("mediaFileAdd.title", new MediaFileAddController().getPageTitle());
-        assertEquals("mediaFileView.title", new MediaFileViewController().getPageTitle());
-        assertEquals("mediaFile.edit.title", new MediaFileEditController().getPageTitle());
     }
 
     private static List<BaseController> allControllers() {
@@ -146,9 +123,6 @@ class ControllerMetadataTest {
                 new CategoryRemoveController(),
                 new EntryEditController(),
                 new EntryRemoveController(),
-                new MediaFileAddController(),
-                new MediaFileEditController(),
-                new MediaFileViewController(),
                 new MembersController(),
                 new StylesheetEditController(),
                 new TemplateEditController(),

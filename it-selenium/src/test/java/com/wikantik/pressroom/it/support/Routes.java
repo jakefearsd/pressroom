@@ -287,26 +287,8 @@ public final class Routes {
             // emitted unconditionally, same reasoning as entries.rol above.
             new Route("/pressroom-ui/authoring/trash.rol", Role.EDITOR, WEBLOG, "#trash-list-marker"),
 
-            new Route("/pressroom-ui/authoring/mediaFileAdd.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/pressroom-ui/authoring/mediaFileAdd!save.rol']"),
-
-            // #mediaFileViewForm only renders when the directory has files;
-            // #createPostForm is at the top of the JSP and always renders.
-            new Route("/pressroom-ui/authoring/mediaFileView.rol", Role.EDITOR, WEBLOG, "#createPostForm"),
-
             new Route("/pressroom-ui/authoring/members.rol", Role.EDITOR, WEBLOG,
                     "form[action$='/pressroom-ui/authoring/members!save.rol']"),
-
-            // Table is empty with no pages seeded, but the remove form around
-            // it is emitted unconditionally, same reasoning as entries.rol.
-            new Route("/pressroom-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
-
-            // The page trash: empty with nothing trashed, but its wrapper is
-            // emitted in both states, as trash.rol's is.
-            new Route("/pressroom-ui/authoring/pagesTrash.rol", Role.EDITOR, WEBLOG, "#pages-trash-list-marker"),
-
-            // "New page" mode (no id parameter): the edit form always renders.
-            new Route("/pressroom-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
 
             // Both of StylesheetEdit.jsp's forms sit inside a <c:choose> on the
             // weblog's theme state, so neither is a reliable marker. The subtitle
@@ -394,15 +376,6 @@ public final class Routes {
                     "Post-save landing page for entryEdit; same missing entry id."),
             new SkippedRoute("/pressroom-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
                     "Needs selectedImage(s) holding MediaFile ids; no media files are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/mediaFileEdit.rol", Role.EDITOR,
-                    "Needs mediaFileId; no media files are seeded."),
-            new SkippedRoute("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Role.EDITOR,
-                    "Takes no required parameter, but the whole of "
-                            + "MediaFileImageChooser.jsp sits inside "
-                            + "<c:if test=\"${not empty childFiles or not empty "
-                            + "allDirectories}\">, so with no media files seeded there is "
-                            + "nothing to assert on. Exercised with a real fixture by "
-                            + "EditorSeoIT's featured-image picker journey."),
             new SkippedRoute("/pressroom-ui/authoring/templateEdit.rol", Role.EDITOR,
                     "Needs bean.id of a WeblogTemplate; without one it falls back to "
                             + "the .Templates view with an error. No custom templates are "
@@ -476,7 +449,16 @@ public final class Routes {
             new Route("/pressroom-ui/app/weblogs/it_weblog/traffic", Role.EDITOR, "", "#trafficPage"),
 
             // Global Traffic: every blog's numbers from the local cache; the marker is the page's root div.
-            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage")
+            new Route("/pressroom-ui/app/admin/traffic", Role.ADMIN, "", "#siteTrafficPage"),
+
+            // Wave 2: pages and media. The page list and its trash wrap the table or the empty invitation in a
+            // marker emitted in both states; the media library always has its search form; the upload page its
+            // drop zone; a new page its edit form. (A page's or a file's own editor needs a seeded id.)
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages", Role.EDITOR, "", "#pages-list-marker"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages/new", Role.EDITOR, "", "#pageEditForm"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/pages/trash", Role.EDITOR, "", "#pages-trash-list-marker"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/media", Role.EDITOR, "", "#mediaFileSearchForm"),
+            new Route("/pressroom-ui/app/weblogs/it_weblog/media/upload", Role.EDITOR, "", "#mediaDropZone")
     );
 
     // ------------------------------------------------------------ known broken

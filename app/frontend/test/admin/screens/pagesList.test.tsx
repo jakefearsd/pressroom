@@ -44,6 +44,19 @@ describe('PagesList', () => {
     expect(document.getElementById('pagesOrderSave')).toHaveAttribute('hidden');
   });
 
+  it('wraps the list in a marker the browser route sweep waits for, in both states', async () => {
+    await open();
+    const row = (await screen.findByText('Welcome')).closest('tr') as HTMLElement;
+    expect(document.getElementById('pages-list-marker')).toContainElement(row);
+  });
+
+  it('keeps the marker around the invitation when there are no pages', async () => {
+    server.use(http.get(`${API}/weblogs/:handle/pages`, () => HttpResponse.json([])));
+    await open();
+    await screen.findByText('No pages yet.');
+    expect(document.getElementById('pages-list-marker')?.querySelector('.empty-state')).not.toBeNull();
+  });
+
   it('says "Site pages" for the site space', async () => {
     await open('/weblogs/site-space/pages');
     await screen.findByText('Welcome');

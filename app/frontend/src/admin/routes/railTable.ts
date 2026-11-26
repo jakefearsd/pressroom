@@ -47,8 +47,8 @@ export const RAIL_ENTRIES: readonly RailEntry[] = [
   { id: 'submissions', messageKey: 'tabbedmenu.submissions', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'comments', messageKey: 'tabbedmenu.comments', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
   { id: 'categories', messageKey: 'tabbedmenu.weblog.categories', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'pages', messageKey: 'tabbedmenu.pages', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
-  { id: 'mediaFileView', messageKey: 'tabbedmenu.weblog.mediaFiles', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true },
+  { id: 'pages', messageKey: 'tabbedmenu.pages', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/pages' },
+  { id: 'mediaFileView', messageKey: 'tabbedmenu.weblog.mediaFiles', group: 'tabbedmenu.weblog', requires: weblog('post'), switchable: true, path: '/weblogs/:handle/media' },
   { id: 'traffic', messageKey: 'tabbedmenu.weblog.traffic', group: 'tabbedmenu.weblog', requires: weblog('admin'), switchable: true, path: '/weblogs/:handle/traffic' },
 
   { id: 'themeEdit', messageKey: 'tabbedmenu.website.themes', group: 'tabbedmenu.design', requires: weblog('admin'), switchable: true },

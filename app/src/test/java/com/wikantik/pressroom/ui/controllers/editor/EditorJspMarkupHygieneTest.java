@@ -168,30 +168,6 @@ class EditorJspMarkupHygieneTest {
         List<String> missing = new ArrayList<>();
         record Expected(String jsp, String needle, String what) { }
         List<Expected> expected = List.of(
-                new Expected("MediaFileAddSuccess.jsp", "data-clipboard-target=\"#clip_image_",
-                        "the just-uploaded URL must be copyable"),
-                new Expected("MediaFileEdit.jsp", "clip_shortcode",
-                        "the canonical [image] embed string must be shown and copyable"),
-                // The address moved onto the writing surface when the page
-                // editor took the entry editor's layout: the weblog's own
-                // root as a prefix span, the slug as the field beside it, and
-                // the copy control on a published page. Same affordance, two
-                // halves; the old single anchor (#page_permalink) also showed
-                // a "/page/<slug>" URL that a WeblogPage is not served at.
-                new Expected("PageEdit.jsp", "class=\"editor-slug-prefix\"",
-                        "a page must show its own URL, rooted at the weblog"),
-                new Expected("PageEdit.jsp", "data-clipboard-text=",
-                        "a published page's URL must be copyable"),
-                // The bare single segment a WeblogPage is served at -- NOT
-                // "/page/<slug>", which is the CUSTOM-template route. This
-                // needle pinned the wrong shape until task M1; see
-                // PageEditJspTest.thePagesListLinksAPageWhereTheEditorSaysItLives
-                // for why the two screens are compared against each other.
-                new Expected("Pages.jsp", "${fn:escapeXml(urls.page(actionWeblog, p))}",
-                        "a published page's slug must link to the live page, with the "
-                                + "author-controlled slug escaped in the href (a page slug is "
-                                + "restricted only against '/' and reserved names, not against "
-                                + "quote/angle-bracket characters)"),
                 new Expected("ThemeEdit.jsp", "themeEditor.viewYourBlog",
                         "a persistent view-the-blog link, not only the Preview button"),
                 new Expected("WeblogConfig.jsp", "id=\"weblogAbsoluteUrl\"",

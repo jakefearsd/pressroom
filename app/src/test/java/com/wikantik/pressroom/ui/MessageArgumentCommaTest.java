@@ -65,7 +65,6 @@ class MessageArgumentCommaTest {
                 "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
                 "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[fn:escapeXml(actionWeblog.name)]}\"",
                 "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
-                "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"",
                 "editor/TemplateEdit.jsp", "arguments=\"${[fn:escapeXml(bean.name), actionWeblog.handle]}\"");
         List<String> missing = new ArrayList<>();
         for (Map.Entry<String, String> site : sites.entrySet()) {
@@ -75,9 +74,6 @@ class MessageArgumentCommaTest {
             }
         }
         assertTrue(missing.isEmpty(), String.join("\n", missing));
-        assertTrue(Files.readString(JSPS.resolve("editor/MediaFileView.jsp"), StandardCharsets.UTF_8)
-                        .contains("arguments=\"${[fn:escapeXml(bean.tags)]}\""),
-                "MediaFileView.jsp: the tag search echo");
     }
 
     private static String render(Object arguments) throws Exception {

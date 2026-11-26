@@ -40,13 +40,7 @@ import com.wikantik.pressroom.ui.controllers.admin.UserWeblogsController;
 import com.wikantik.pressroom.ui.controllers.editor.CategoriesController;
 import com.wikantik.pressroom.ui.controllers.editor.CommentsModerationController;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileAddController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileEditController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileImageChooserController;
-import com.wikantik.pressroom.ui.controllers.editor.MediaFileViewController;
 import com.wikantik.pressroom.ui.controllers.editor.MembersController;
-import com.wikantik.pressroom.ui.controllers.editor.PageEditController;
-import com.wikantik.pressroom.ui.controllers.editor.PagesController;
 import com.wikantik.pressroom.ui.controllers.editor.ThemeEditController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogRemoveController;
@@ -84,7 +78,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 /**
  * The site space's access boundary (spec AC7, AC13, Review Focus 4): only a
- * global admin reaches it, only through the Pages, Media and Theme screens
+ * global admin reaches it, only through the Theme screen and, in React, the Pages and Media screens
  * and, for its traffic numbers, one admin-only API route (ruling R25: Global ›
  * Traffic links the site pages' row there), and never through the rest of the
  * automation API.
@@ -154,40 +148,10 @@ class SiteSpaceAccessTest {
             return new WebMvcConfig(interceptor);
         }
 
-        // --- the three screens the site space offers
-        @Bean
-        PagesController pagesController() {
-            return new PagesController();
-        }
-
-        @Bean
-        PageEditController pageEditController() {
-            return new PageEditController();
-        }
-
+        // --- the screen the site space still has a JSP for (pages and media are React: the API enforces them)
         @Bean
         ThemeEditController themeEditController() {
             return new ThemeEditController();
-        }
-
-        @Bean
-        MediaFileViewController mediaFileViewController() {
-            return new MediaFileViewController();
-        }
-
-        @Bean
-        MediaFileAddController mediaFileAddController() {
-            return new MediaFileAddController();
-        }
-
-        @Bean
-        MediaFileEditController mediaFileEditController() {
-            return new MediaFileEditController();
-        }
-
-        @Bean
-        MediaFileImageChooserController mediaFileImageChooserController() {
-            return new MediaFileImageChooserController();
         }
 
         // --- blog screens it does not
@@ -310,12 +274,11 @@ class SiteSpaceAccessTest {
     // ------------------------------------------------------------ the screens it offers
 
     @Test
-    void aGlobalAdminReachesTheSitePagesThemeAndMedia() throws Exception {
+    void aGlobalAdminReachesTheSiteTheme() throws Exception {
         siteSpace();
         signIn(admin);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
-                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol")) {
+        for (String screen : List.of("themeEdit.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(200, result.getResponse().getStatus(), screen + " is offered on the site space");
             Weblog acting = (Weblog) result.getRequest().getAttribute("actionWeblog");
@@ -354,11 +317,11 @@ class SiteSpaceAccessTest {
     }
 
     @Test
-    void aBlogAuthorIsRefusedTheSitePagesAndTheme() throws Exception {
+    void aBlogAuthorIsRefusedTheSiteTheme() throws Exception {
         siteSpace();
         signIn(author);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol")) {
+        for (String screen : List.of("themeEdit.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(302, result.getResponse().getStatus(), screen);
             assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);

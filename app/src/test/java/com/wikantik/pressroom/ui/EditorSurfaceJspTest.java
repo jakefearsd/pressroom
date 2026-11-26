@@ -167,8 +167,7 @@ class EditorSurfaceJspTest {
     @Test
     void aLongTitleWrapsInsteadOfBeingCutOff() throws IOException {
         for (Path screen : new Path[]{
-                Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEdit.jsp"),
-                Paths.get("src/main/webapp/WEB-INF/jsps/editor/PageEdit.jsp")}) {
+                Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEdit.jsp")}) {
             String jsp = read(screen);
             int at = jsp.indexOf("class=\"editor-title\"");
             assertTrue(at > 0, screen + ": the title field must exist");

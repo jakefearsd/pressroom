@@ -127,6 +127,7 @@ describe('entryTarget', () => {
 
   it('links the migrated screens to React routes and every other entry to its .rol', () => {
     expect(RAIL_ENTRIES.filter((e) => e.path !== undefined).map((e) => [e.id, e.path])).toEqual([
+      ['pages', '/weblogs/:handle/pages'], ['mediaFileView', '/weblogs/:handle/media'],
       ['traffic', '/weblogs/:handle/traffic'], ['siteTraffic', '/admin/traffic']
     ]);
   });

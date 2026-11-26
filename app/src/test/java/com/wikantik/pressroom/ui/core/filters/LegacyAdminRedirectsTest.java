@@ -79,6 +79,60 @@ class LegacyAdminRedirectsTest {
                 "/pressroom/pressroom-ui/app/admin/traffic?period=90d");
     }
 
+    // ---- wave 2: pages and media
+
+    @Test
+    void pagesAndTheirTrashCarryTheHandleIncludingTheSiteSpaces() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/pages.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/pages.rol", Map.of("weblog", "site-space"),
+                "/pressroom/pressroom-ui/app/weblogs/site-space/pages");
+        assertRedirect("", "/pressroom-ui/authoring/pagesTrash.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/trash");
+        assertRedirect("", "/pressroom-ui/authoring/pages.rol", Map.of(), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void pageEditGoesToThePageWithAnIdAndToTheNewPageWithout() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog", "id", "p 1"),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/p%201");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/pages/new");
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("weblog", "it_weblog", "id", " "),
+                "/pressroom-ui/app/weblogs/it_weblog/pages/new");
+        assertRedirect("", "/pressroom-ui/authoring/pageEdit.rol", Map.of("id", "p1"), "/pressroom-ui/app/");
+    }
+
+    @Test
+    void mediaLibraryCarriesTheFolderAndSortUnderTheirNewNames() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileView.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/mediaFileView.rol",
+                Map.of("weblog", "it_weblog", "directoryId", "d 1", "sortBy", "date_uploaded", "directoryName", "x"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/media?dir=d%201&sort=date_uploaded");
+    }
+
+    @Test
+    void mediaUploadAndEditCarryTheirTarget() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileAdd.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media/upload");
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileAdd.rol",
+                Map.of("weblog", "it_weblog", "directoryId", "d1"),
+                "/pressroom-ui/app/weblogs/it_weblog/media/upload?dir=d1");
+        assertRedirect("/pressroom", "/pressroom-ui/authoring/mediaFileEdit.rol",
+                Map.of("weblog", "it_weblog", "mediaFileId", "m/1"),
+                "/pressroom/pressroom-ui/app/weblogs/it_weblog/media/m%2F1");
+        assertRedirect("", "/pressroom-ui/authoring/mediaFileEdit.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/");
+    }
+
+    /** The image chooser overlay has no React page (the editors open a modal); its address opens the library. */
+    @Test
+    void theImageChooserOverlayOpensTheMediaLibrary() throws Exception {
+        assertRedirect("", "/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Map.of("weblog", "it_weblog"),
+                "/pressroom-ui/app/weblogs/it_weblog/media");
+    }
+
     // ---- the filter
 
     @Test

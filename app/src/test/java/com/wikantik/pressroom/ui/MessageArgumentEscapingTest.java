@@ -117,11 +117,6 @@ class MessageArgumentEscapingTest {
             "editor/EntriesController.java -> copy.getTitle()",
             // A formatted date, not text anyone typed.
             "editor/EntryEditController.java -> DateUtil.fullDate(entry.getPubTime())",
-            // A URL the server built from a weblog and a media-file id --
-            // URLStrategy output, with no author text in it. Escaping it would
-            // turn the & joining its query parameters into &amp;.
-            "editor/MediaFileAddController.java -> weblogger.getUrlStrategy()"
-                    + ".getMediaFileURL(upload.getWeblog(), upload.getId(), true)",
             // CreateWeblogController.myValidate refuses any handle that is not
             // identical to itself filtered through username.allowedChars
             // (default A-Za-z0-9) before this line can be reached.

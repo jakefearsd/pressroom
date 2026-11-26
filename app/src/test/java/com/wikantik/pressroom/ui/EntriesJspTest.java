@@ -143,7 +143,6 @@ class EntriesJspTest {
                 JSPS.resolve("editor/Entries.jsp"),
                 JSPS.resolve("editor/Trash.jsp"),
                 JSPS.resolve("editor/Submissions.jsp"),
-                JSPS.resolve("editor/Pages.jsp"),
                 JSPS.resolve("editor/StatusPill.jsp"));
 
         for (Path jsp : dateBearing) {

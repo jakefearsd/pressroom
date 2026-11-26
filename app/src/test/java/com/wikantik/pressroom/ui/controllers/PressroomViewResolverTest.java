@@ -90,8 +90,6 @@ class PressroomViewResolverTest {
                 ".Maintenance should be registered");
         assertNotNull(resolver.resolveViewName(".ApiTokens", Locale.getDefault()),
                 ".ApiTokens should be registered");
-        assertNotNull(resolver.resolveViewName(".MediaFileImageChooser", Locale.getDefault()),
-                ".MediaFileImageChooser should be registered");
     }
 
     @Test
