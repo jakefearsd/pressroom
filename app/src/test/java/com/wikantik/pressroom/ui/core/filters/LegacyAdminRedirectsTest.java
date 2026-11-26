@@ -98,6 +98,21 @@ class LegacyAdminRedirectsTest {
         }
     }
 
+    // ---- wave 4: site, people and own-account screens
+
+    @Test
+    void siteScreensGoToTheirReactRoutes() throws Exception {
+        for (String ctx : List.of("", "/pressroom")) {
+            assertRedirect(ctx, "/pressroom-ui/admin/globalConfig.rol", Map.of(), ctx + "/pressroom-ui/app/admin/config");
+            assertRedirect(ctx, "/pressroom-ui/setup.rol", Map.of(), ctx + "/pressroom-ui/app/admin/setup");
+            assertRedirect(ctx, "/pressroom-ui/admin/businesses.rol", Map.of(),
+                    ctx + "/pressroom-ui/app/admin/businesses");
+            assertRedirect(ctx, "/pressroom-ui/admin/maintenance.rol", Map.of(),
+                    ctx + "/pressroom-ui/app/admin/maintenance");
+            assertRedirect(ctx, "/pressroom-ui/admin/apiTokens.rol", Map.of(), ctx + "/pressroom-ui/app/admin/tokens");
+        }
+    }
+
     @Test
     void createWeblogHasNoParameters() throws Exception {
         assertRedirect("", "/pressroom-ui/createWeblog.rol", Map.of(), "/pressroom-ui/app/weblogs/new");
@@ -177,6 +192,51 @@ class LegacyAdminRedirectsTest {
                 "/pressroom-ui/app/weblogs/it_weblog/media");
     }
 
+    @Test
+    void businessEditCarriesTheIdAndNewGoesToTheCreateForm() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/businesses!edit.rol", Map.of("id", "b 1"),
+                "/pressroom-ui/app/admin/businesses/b%201");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/businesses!edit.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/admin/businesses/new");
+        assertRedirect("", "/pressroom-ui/admin/businesses!edit.rol", Map.of("id", " "),
+                "/pressroom-ui/app/admin/businesses/new");
+    }
+
+    @Test
+    void theUserListCarriesItsTabAndFilter() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/userAdmin.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/userAdmin.rol", Map.of("kind", "agents", "q", "bo t"),
+                "/pressroom/pressroom-ui/app/admin/users?kind=agents&q=bo%20t");
+    }
+
+    @Test
+    void createUserAndItsCancelAndTheEditFormsGoToTheUserScreens() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/createUser.rol", Map.of(), "/pressroom-ui/app/admin/users/new");
+        assertRedirect("", "/pressroom-ui/admin/createUser!cancel.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        assertRedirect("", "/pressroom-ui/admin/modifyUser!cancel.rol", Map.of(), "/pressroom-ui/app/admin/users");
+        for (String path : List.of("modifyUser", "modifyUser!firstSave")) {
+            assertRedirect("/pressroom", "/pressroom-ui/admin/" + path + ".rol", Map.of("bean.userName", "a b"),
+                    "/pressroom/pressroom-ui/app/admin/users/a%20b");
+            assertRedirect("", "/pressroom-ui/admin/" + path + ".rol", Map.of(), "/pressroom-ui/app/admin/users");
+        }
+    }
+
+    @Test
+    void agentScreensGoToTheAgentRoutes() throws Exception {
+        assertRedirect("", "/pressroom-ui/admin/createAgent.rol", Map.of(), "/pressroom-ui/app/admin/agents/new");
+        assertRedirect("/pressroom", "/pressroom-ui/admin/agent.rol", Map.of("userName", "bot"),
+                "/pressroom/pressroom-ui/app/admin/agents/bot");
+        assertRedirect("", "/pressroom-ui/admin/agent.rol", Map.of(), "/pressroom-ui/app/admin/users?kind=agents");
+    }
+
+    @Test
+    void profileAndItsTokensGoToTheOwnAccountScreens() throws Exception {
+        assertRedirect("", "/pressroom-ui/profile.rol", Map.of(), "/pressroom-ui/app/profile");
+        assertRedirect("/pressroom", "/pressroom-ui/profileTokens.rol", Map.of(),
+                "/pressroom/pressroom-ui/app/profile/tokens");
+        assertRedirect("", "/pressroom-ui/profileTokens!reveal.rol", Map.of(), "/pressroom-ui/app/profile/tokens");
+    }
+
     // ---- the filter
 
     @Test
@@ -190,7 +250,7 @@ class LegacyAdminRedirectsTest {
     @Test
     void aPostAndAnUnlistedPathPassThrough() throws Exception {
         for (MockHttpServletRequest req : List.of(new MockHttpServletRequest("POST", "/pressroom-ui/menu.rol"),
-                new MockHttpServletRequest("GET", "/pressroom-ui/profile.rol"))) {
+                new MockHttpServletRequest("GET", "/pressroom-ui/login.rol"))) {
             MockFilterChain chain = new MockFilterChain();
             MockHttpServletResponse res = new MockHttpServletResponse();
             filter.doFilter(req, res, chain);
@@ -224,7 +284,7 @@ class LegacyAdminRedirectsTest {
     void noRedirectedRouteIsStillHandledByAController() {
         Set<String> controllers = RouteCoverageTest.declaredGetRoutes();
         assertNotNull(controllers);
-        assertTrue(controllers.size() > 40, "the controller scan found them: " + controllers.size());
+        assertTrue(controllers.size() > 20, "the controller scan found them: " + controllers.size());
         for (String legacy : LegacyAdminRedirects.legacyPaths()) {
             assertFalse(controllers.contains(legacy),
                     legacy + " is redirected to the React admin and must not also have a controller GET handler:"
@@ -234,6 +294,6 @@ class LegacyAdminRedirectsTest {
 
     @Test
     void locateIgnoresPathsOutsideTheTable() {
-        assertTrue(LegacyAdminRedirects.locate("", "/pressroom-ui/profile.rol", n -> null).isEmpty());
+        assertTrue(LegacyAdminRedirects.locate("", "/pressroom-ui/login.rol", n -> null).isEmpty());
     }
 }

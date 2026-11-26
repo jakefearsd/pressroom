@@ -10,21 +10,21 @@ const rae = { ...ada, userName: 'rae', screenName: 'Rae', emailAddress: 'rae@exa
 const bot = { userName: 'bot', screenName: 'Bot', emailAddress: 'bot@agents.invalid', enabled: true, globalRoles: ['editor'], sso: false, kind: 'AGENT' };
 const options = { themes: [], locales: [{ id: 'en_US', name: 'English (United States)' }, { id: 'de', name: 'German' }],
   timeZones: ['Europe/London', 'UTC'] };
-let features = { groupBlogging: true };
+let features = { groupBlogging: true, mailConfigured: true };
 const memberships = [{ handle: 'alpha', name: 'Alpha', permission: 'ADMIN' }, { handle: 'beta', name: 'Beta', permission: 'POST' }];
 let held = memberships;
 
 fakeServer();
 beforeEach(() => {
-  features = { groupBlogging: true };
+  features = { groupBlogging: true, mailConfigured: true };
   held = memberships;
   server.use(
     http.get(`${API}/meta/weblog-options`, () => HttpResponse.json(options)),
     http.get(`${API}/meta`, () => HttpResponse.json({ features, limits: {} })),
-    http.get(`${API}/admin/users`, ({ request }) => {
-      const q = new URL(request.url).searchParams.get('q');
-      return HttpResponse.json({ items: [ada, rae, bot].filter((u) => u.userName === q), offset: 0, limit: 200, hasMore: false });
-    }),
+    http.get(`${API}/admin/users/:userName`, recording(({ params }) => {
+      const found = [ada, rae, bot].find((u) => u.userName === params['userName']);
+      return found === undefined ? problem(404, 'user.notFound', 'No such account.') : HttpResponse.json(found);
+    })),
     http.get(`${API}/admin/users/:userName/weblogs`, () => HttpResponse.json({ items: held })),
     http.get(`${API}/weblogs`, () => HttpResponse.json({
       items: [{ handle: 'alpha', name: 'Alpha' }, { handle: 'beta', name: 'Beta' }, { handle: 'gamma', name: 'Gamma' }],
@@ -47,12 +47,12 @@ describe('New person', () => {
     await user.type(screen.getByLabelText('Email'), 'n@example.com');
     expect(screen.getByRole('radio', { name: 'Email a set-password link' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Author' })).toBeChecked();
-    expect(screen.queryByLabelText('Enabled')).toBeNull();
+    expect(screen.getByLabelText('Enabled')).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/users'); });
     expect(seen.find((s) => s.method === 'POST')?.body).toEqual({
       userName: 'newbie', screenName: 'Newbie', fullName: 'New Bie', emailAddress: 'n@example.com',
-      locale: 'en_US', timeZone: expect.any(String) as string, administrator: false });
+      locale: 'en_US', timeZone: expect.any(String) as string, administrator: false, enabled: true });
     expect(router.state.location.state).toEqual({ message: 'User created. A set-password link has been emailed.' });
   });
 
@@ -67,6 +67,32 @@ describe('New person', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/users'); });
     expect(seen.find((s) => s.method === 'POST')?.body).toMatchObject({ password: 'longenough1', administrator: true });
+    expect(router.state.location.state).toEqual({ message: 'User "newbie" created' });
+  });
+
+  it('sends the Enabled box as cleared, as the JSP posted it', async () => {
+    const user = userEvent.setup();
+    server.use(http.post(`${API}/admin/users`, recording(() => HttpResponse.json(ada, { status: 201 }))));
+    const { router } = renderPeople('/admin/users/new');
+    await user.type(await label('Username'), 'newbie');
+    await user.click(screen.getByLabelText('Enabled'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/users'); });
+    expect(seen.find((s) => s.method === 'POST')?.body).toMatchObject({ enabled: false });
+  });
+
+  it('offers the emailed link only when the server can mail one; otherwise a password is set now', async () => {
+    const user = userEvent.setup();
+    features = { groupBlogging: true, mailConfigured: false };
+    server.use(http.post(`${API}/admin/users`, recording(() => HttpResponse.json(ada, { status: 201 }))));
+    const { router } = renderPeople('/admin/users/new');
+    await user.type(await label('Username'), 'newbie');
+    expect(screen.queryByRole('radio', { name: 'Email a set-password link' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Set a password now' })).toBeNull();
+    await user.type(screen.getByLabelText('Password'), 'longenough1');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/admin/users'); });
+    expect(seen.find((s) => s.method === 'POST')?.body).toMatchObject({ password: 'longenough1' });
     expect(router.state.location.state).toEqual({ message: 'User "newbie" created' });
   });
 
@@ -201,6 +227,7 @@ describe('Edit person', () => {
   it('says so when there is no such account', async () => {
     renderPeople('/admin/users/ghost');
     expect(await screen.findByText('No such user.')).toBeInTheDocument();
+    expect(seen.map((s) => s.path)).toContain('/admin/users/ghost');
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
   });
 
@@ -275,12 +302,12 @@ describe('The account\'s weblogs', () => {
   });
 
   it('explains the missing add form: group blogging off, or already everywhere', async () => {
-    features = { groupBlogging: false };
+    features = { groupBlogging: false, mailConfigured: true };
     const { unmount } = renderPeople('/admin/users/ada');
     expect(await screen.findByText('Group blogging is turned off, so an account cannot be added to a weblog here.')).toHaveAttribute('id', 'userWeblogsGroupBloggingOff');
     expect(screen.queryByRole('button', { name: 'Add to weblog' })).toBeNull();
     unmount();
-    features = { groupBlogging: true };
+    features = { groupBlogging: true, mailConfigured: true };
     held = [...memberships, { handle: 'gamma', name: 'Gamma', permission: 'POST' }];
     renderPeople('/admin/users/ada');
     expect(await screen.findByText('This account is already a member of every weblog.')).toBeInTheDocument();

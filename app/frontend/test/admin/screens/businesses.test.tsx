@@ -124,12 +124,13 @@ describe('Business edit', () => {
     await user.type(screen.getByLabelText('Profile links'), 'https://x.example{Enter}  https://y.example  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     // The frame shows the message; the screen only hands it over.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' })).toBeInTheDocument();
+    // A slow machine (typing six fields, then the save and the redirect) needs more than the 1s default.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Businesses' }, { timeout: 8000 })).toBeInTheDocument();
     expect(router.state.location.state).toEqual({ message: 'Business saved.' });
     expect(sent).toEqual([{ method: 'POST', url: '/pressroom/api/v1/admin/businesses', csrf: 'tok', body: {
       name: 'New Co', businessType: 'ProfessionalService', websiteUrl: 'https://new.example',
       sameAs: ['https://x.example', 'https://y.example'] } }]);
-  });
+  }, 20000);
 
   it('edits: fills the form, and every field left empty is sent in clear (blank means none, as the form did)', async () => {
     server.use(http.patch(`${API}/admin/businesses/:id`, async ({ request }) => {

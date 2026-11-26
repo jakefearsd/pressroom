@@ -37,10 +37,9 @@ const entries = () => groups.flatMap((g) => g.properties).map((p) => ({ name: p.
 const server = setupServer(
   http.get(`${API}/admin/config/definitions`, () => HttpResponse.json(groups)),
   http.get(`${API}/admin/config`, () => HttpResponse.json(entries())),
-  http.get(`${API}/weblogs`, () => HttpResponse.json({ items: [{ handle: 'alpha', name: 'Alpha' }, { handle: 'site-space', name: 'Site' },
-    { handle: 'beta', name: 'Beta' }], offset: 0, limit: 200, hasMore: false })),
-  http.get(`${API}/weblogs/site-space/pages`, () => sitePages === 404
-    ? HttpResponse.json({ code: 'weblog.notFound', detail: 'No such weblog.' }, { status: 404 }) : HttpResponse.json(sitePages)),
+  http.get(`${API}/weblogs`, () => HttpResponse.json({ items: [{ handle: 'alpha', name: 'Alpha' },
+    { handle: 'site-space', name: 'Site' }, { handle: 'beta', name: 'Beta' }], offset: 0, limit: 200, hasMore: false })),
+  http.get(`${API}/admin/site-pages`, () => HttpResponse.json(sitePages === 404 ? [] : sitePages)),
   http.get(`${API}/admin/revisions`, () => HttpResponse.json({ nextSweep }))
 );
 beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); });
@@ -136,7 +135,7 @@ describe('Global config', () => {
   });
 
   it('points to writing a site page when there are none, and when there is no site space', async () => {
-    sitePages = 404;
+    sitePages = 404; // no site space: the route answers an empty list
     await openScreen();
     expect(screen.getByText(/No published site pages yet\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Write one' })).toHaveAttribute('href',

@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class MultiUserJourneyIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String CREATE_USER = "/pressroom-ui/app/admin/users/new";
     private static final String CREATE_WEBLOG = "/pressroom-ui/app/weblogs/new";
 
     /** Rendered on the edit page only once the entry is actually published. */
@@ -197,6 +197,8 @@ class MultiUserJourneyIT extends PressroomIT {
     private void createUser(String userName, String screenName) {
         openPath(CREATE_USER);
         $("input[name='bean.userName']").should(visible).setValue(userName);
+        // The mail flag and the locale and time zone lists arrive in their own reads: let them land first.
+        BrowserHealth.current().settle();
         $("input[name='bean.screenName']").setValue(screenName);
         $("input[name='bean.fullName']").setValue(screenName);
         // "Set a password now" is offered beside the emailed link only while
@@ -209,11 +211,9 @@ class MultiUserJourneyIT extends PressroomIT {
         $("input[name='bean.emailAddress']").setValue(userName + "@example.com");
         // Enabled is ticked by default now (spec 2026-10-13, section 4).
         $("input[name='bean.enabled']").shouldBe(checked);
-        $("#save_button").click();
-
-        // The success page is the user list; a validation failure re-renders
-        // the form with the username still in it.
-        $("#messages").should(exist);
+        // The success screen is the user list with its message; a validation failure keeps the form, the
+        // username still in it, and shows the problem in place.
+        clickAndAwaitSavedMessage($("#save_button"));
         assertTrue($$("input[name='bean.userName']").isEmpty()
                         || !userName.equals($("input[name='bean.userName']").getValue()),
                 "creating " + userName + " came back with the form still filled in, "

@@ -15,19 +15,25 @@ const report = (over: object = {}) => ({ at: '2026-11-25T10:00:00Z', dryRun: fal
 let stats: object;
 let discovery: object;
 let analytics: object;
+let searchEnabled = true;
 let posts: { url: string; body: unknown; csrf: string | null }[];
 
 const server = setupServer(
   http.get(`${API}/weblogs`, () => HttpResponse.json({ items: weblogs, offset: 0, limit: 200, hasMore: false })),
   http.get(`${API}/admin/revisions`, () => HttpResponse.json(stats)),
   http.get(`${API}/admin/discovery`, () => HttpResponse.json(discovery)),
-  http.get(`${API}/admin/analytics`, () => HttpResponse.json(analytics))
+  http.get(`${API}/admin/analytics`, () => HttpResponse.json(analytics)),
+  http.get(`${API}/meta`, () => HttpResponse.json({
+    version: '1', features: { customThemes: false, groupBlogging: false, userWeblogCreation: false, uploads: true,
+      readerSignIn: false, analytics: true, searchEnabled, mailConfigured: true },
+    limits: { maxBodyBytes: 1, maxListLimit: 200, entryTextMaxChars: 1 }, trashRetentionDays: 30 }))
 );
 beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); });
 afterEach(() => { server.resetHandlers(); });
 afterAll(() => { server.close(); });
 beforeEach(() => {
   posts = [];
+  searchEnabled = true;
   stats = { entryRevisions: 120, pageRevisions: 8, kept: 3, approximateBytes: 2_500_000, oldest: '2026-01-02T03:04:00Z',
     largest: [{ kind: 'ENTRY', id: 'e1', title: 'Big <post>', revisions: 40 }, { kind: 'PAGE', id: 'p1', title: 'About', revisions: 9 }],
     lastSweep: report({ total: 5 }), nextSweep: report({ total: 7, dryRun: true }), total: 131 };
@@ -98,8 +104,16 @@ describe('Maintenance', () => {
     expect(posts.map((p) => p.url)).toEqual(['/admin/weblogs/beta/actions/rebuild-index']);
   });
 
+  it('offers no Rebuild search index when the site runs without search (the JSP hid it on search.enabled)', async () => {
+    searchEnabled = false;
+    await openScreen();
+    await screen.findByRole('button', { name: 'Flush cache' });
+    expect(screen.queryByRole('button', { name: 'Rebuild search index' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Regenerate image renditions' })).toBeInTheDocument();
+  });
+
   it('confirms and starts the rendition regeneration', async () => {
-    server.use(capture('/admin/weblogs/alpha/actions/regenerate-renditions', 202, { action: 'regenerate-renditions', weblog: 'alpha' }));
+    server.use(capture('/admin/weblogs/alpha/actions/regenerate-renditions', 202, { action: 'regenerate-renditions', weblog: 'alpha', count: 3 }));
     const user = userEvent.setup();
     await openScreen();
     await choose(user, 'alpha');
@@ -107,7 +121,7 @@ describe('Maintenance', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Regenerate every image rendition for alpha? This re-encodes every uploaded photo.')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Regenerate image renditions' }));
-    expect(await screen.findByText('Rendition regeneration started.')).toBeInTheDocument();
+    expect(await screen.findByText('Renditions regenerated. Images processed: 3.')).toBeInTheDocument();
     expect(posts.map((p) => p.url)).toEqual(['/admin/weblogs/alpha/actions/regenerate-renditions']);
   });
 

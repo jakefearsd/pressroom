@@ -153,8 +153,7 @@ class AdminChromeJspTest {
      */
     @Test
     void theListScreensShareOneRowActionPattern() {
-        for (String screen : java.util.List.of("editor/Categories.jsp",
-                "admin/Businesses.jsp")) {
+        for (String screen : java.util.List.of("editor/Categories.jsp")) {
             String src = jsp(screen);
             assertTrue(src.contains("<td class=\"row-actions\">"), screen + " has no td.row-actions");
             assertTrue(src.contains("row-action row-action-danger"), screen + "'s delete is not a .row-action");
@@ -163,13 +162,6 @@ class AdminChromeJspTest {
         }
         assertFalse(jsp("editor/CategoriesSidebar.jsp").contains("addCategoryButton"),
                 "Add category moved into the card; the sidebar must not carry a second one");
-    }
-
-    /** "Delete this business?" did not say which; the prompt names it. */
-    @Test
-    void deletingABusinessNamesIt() {
-        assertTrue(jsp("admin/Businesses.jsp").contains(
-                "<spring:message code=\"businesses.delete.confirm\" arguments=\"${[b.name]}\""));
     }
 
     /**
@@ -187,79 +179,6 @@ class AdminChromeJspTest {
             assertTrue(m.group().contains("javaScriptEscape=\"true\""), "not JS-escaped: " + m.group());
         }
         assertTrue(seen > 0, "the scan found no JS-string messages at all");
-    }
-
-    /**
-     * The permission levels came in a different order on each screen (and
-     * Members' own grant form disagreed with its table). One order now:
-     * Administrator, Author, Limited -- Author still preselected on a grant.
-     */
-    @Test
-    void permissionLevelsAreAlwaysAdministratorAuthorLimited() {
-        java.util.regex.Pattern options = java.util.regex.Pattern.compile(
-                "<option value=\"admin\"[^>]*>.*?</option>\\s*<option value=\"post\"[^>]*>.*?</option>"
-                        + "\\s*<option value=\"edit_draft\"", java.util.regex.Pattern.DOTALL);
-        for (String screen : java.util.List.of("admin/UserWeblogs.jsp")) {
-            String src = jsp(screen);
-            java.util.regex.Matcher m = options.matcher(src);
-            int lists = 0;
-            while (m.find()) {
-                lists++;
-            }
-            int selects = src.split("<option value=\"admin\"", -1).length - 1;
-            assertTrue(selects > 0 && lists == selects,
-                    screen + ": " + lists + " of " + selects + " level lists are in the house order");
-        }
-    }
-
-    /**
-     * "No weblogs yet." over "User is a member of no weblogs." said the same
-     * thing twice, and the list opened with "...the following weblog(s):".
-     */
-    @Test
-    void theAccountWeblogsSectionSaysThingsOnce() {
-        String src = jsp("admin/UserWeblogs.jsp");
-        assertFalse(src.contains("userAdmin.userMemberOf"), "the lead-in sentence above the table is gone");
-        assertFalse(src.contains("userAdmin.userHasNoWeblogs"), "the empty state's body no longer repeats its title");
-        assertTrue(src.contains("userWeblogs.empty.body"), "the empty state points at the add form");
-    }
-
-    /**
-     * The user editor kept its field help in {@code title=} tooltips (gone on
-     * touch, unread by most screen readers) and disabled Save from an
-     * {@code onkeyup} check, so autofill or a mouse paste left it disabled
-     * with no reason given. The server already answers each field with
-     * {@code addFieldError}; the help that matters is visible
-     * {@code .form-text}, and Save is always live.
-     */
-    @Test
-    void theUserEditorShowsItsHelpAndNeverDisablesSave() {
-        String src = jsp("admin/UserEdit.jsp");
-        assertFalse(src.contains("title=\"<spring:message"), "field help is still in a title= tooltip");
-        assertFalse(src.contains("formChanged"), "Save is still gated by a keyup check");
-        assertFalse(src.contains("prop(\"disabled\""), "Save is still disabled by script");
-        for (String tip : java.util.List.of("userAdmin.tip.userName", "userSettings.tip.username",
-                "userAdmin.tip.email", "userAdmin.tip.password")) {
-            assertTrue(java.util.regex.Pattern.compile("<div class=\"form-text\"[^>]*><spring:message code=\""
-                            + java.util.regex.Pattern.quote(tip) + "\"/></div>").matcher(src).find(),
-                    tip + " is not visible help under its field");
-        }
-        assertFalse(src.contains("<p class=\"pagetip\">\n    <c:if"),
-                "the edit screen renders an empty pagetip");
-    }
-
-    /**
-     * Cancel was built four ways; a navigating Cancel is a link styled as a
-     * button, which works without script.
-     */
-    @Test
-    void aNavigatingCancelIsALink() {
-        for (String screen : java.util.List.of("core/Profile.jsp")) {
-            String src = jsp(screen);
-            assertFalse(src.contains("onclick=\"window.location="), screen + " still navigates from an onclick");
-            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/pressroom-ui/app/'/>\""),
-                    screen + "'s Cancel is not a link");
-        }
     }
 
     /**
@@ -294,24 +213,6 @@ class AdminChromeJspTest {
     }
 
     /**
-     * Admin API tokens squeezed ten columns into the card: "Issued by" (a
-     * column of its own, usually the owner again) now sits under the owner
-     * only when it differs; a never-used token says Never in the UI face
-     * rather than leaving a blank; the table scrolls at phone width and its
-     * timestamps never wrap.
-     */
-    @Test
-    void theAdminTokenListIsNarrowerAndSaysNever() {
-        String src = jsp("admin/ApiTokens.jsp");
-        assertFalse(src.contains("<th scope=\"col\"><spring:message code=\"apiTokens.issuedBy\"/></th>"),
-                "Issued by is still a column of its own");
-        assertTrue(src.contains("row.issuedBy != row.token.user.userName"), "issued-by shows only when it differs");
-        assertTrue(src.contains("apiTokens.lastUsed.never"), "a never-used token says so");
-        assertTrue(src.contains("<div class=\"table-responsive\">"));
-        assertTrue(src.contains("<td class=\"data text-nowrap\">"));
-    }
-
-    /**
      * The sign-in page: "Forgot your password?" (and the SSO button) sat
      * outside the centred form column, flush with the page edge, and the
      * placeholders only repeated the labels above them.
@@ -325,21 +226,6 @@ class AdminChromeJspTest {
         assertTrue(column >= 0 && forgot > column && end > forgot,
                 "the forgot-password link is outside the form column");
         assertFalse(src.contains("placeholder="), "a placeholder repeats its label");
-    }
-
-    /**
-     * Weblog settings listed locales as raw codes ("en_US") where Profile and
-     * Create weblog show "English (United States)"; and below 900px its
-     * section index fell to the bottom of the page, after every field, where
-     * it no longer helps (same on Site settings). The index box is marked so
-     * the narrow layout can drop it.
-     */
-    @Test
-    void theSettingsPagesNameLocalesAndMarkTheirSectionIndex() {
-        for (String screen : java.util.List.of("admin/GlobalConfig.jsp")) {
-            assertTrue(jsp(screen).contains("<div class=\"rail-box settings-rail-index\">"),
-                    screen + "'s section index box is not marked");
-        }
     }
 
     /**

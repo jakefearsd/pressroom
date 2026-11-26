@@ -59,8 +59,8 @@ class AgentAccountsIT extends PressroomIT {
         createAgent(agent, false);
 
         $("#userWeblogsAddHandle").selectOptionByValue(WEBLOG_HANDLE);
-        $("#userWeblogsAddLevel").selectOptionByValue("post");
-        clickAndAwaitNewPage($("#userWeblogsAddButton"));
+        $("#userWeblogsAddLevel").selectOptionByValue("POST");
+        $("#userWeblogsAddButton").click();
         $("#userWeblogsTable").shouldHave(text(WEBLOG_HANDLE));
 
         String secret = mintOnThisPage("bootstrap", "POST", WEBLOG_HANDLE);
@@ -68,10 +68,11 @@ class AgentAccountsIT extends PressroomIT {
         assertTrue(snippet.contains("/api/mcp"), snippet);
         assertTrue(snippet.contains("Authorization: Bearer " + secret), snippet);
 
-        // Criterion 10 in the browser: the reveal shows the secret once.
+        // Criterion 10 in the browser: the reveal shows the secret once. It lives in the page's memory only,
+        // so a reload shows the token list and no secret.
         Selenide.refresh();
         BrowserHealth.current().settle();
-        $("#tokenAlreadyShown").should(exist);
+        $("#tokenListTable").should(exist);
         assertTrue($$("#revealedToken").isEmpty(), "a second visit must not show the secret");
 
         String entryId = null;
@@ -102,10 +103,8 @@ class AgentAccountsIT extends PressroomIT {
                 Map.of("name", "whoami", "arguments", Map.of()))).statusCode());
 
         // Leave the shared weblog as it was.
-        awaitNewPageAfter(() -> {
-            $("#userWeblogsTable button[data-confirm]").click();
-            Selenide.confirm();
-        });
+        $("#userWeblogsTable button.btn-secondary:not([type='submit'])").click();
+        confirmReactDialog();
         $("#userWeblogsTable").shouldNot(exist);
         logout();
     }
@@ -143,19 +142,15 @@ class AgentAccountsIT extends PressroomIT {
         assertEquals(200, bearerGet(secret, "/api/v1/me").statusCode());
 
         openAgentPage(agent);
-        awaitNewPageAfter(() -> {
-            $("#agentDisableButton").click();
-            Selenide.confirm();
-        });
+        $("#agentDisableButton").click();
+        confirmReactDialog();
         $("#agentEnableButton").should(exist);
         assertEquals(401, bearerGet(secret, "/api/v1/me").statusCode(), "REST");
         assertEquals(401, mcpPost(secret, rpcBody("tools/call",
                 Map.of("name", "whoami", "arguments", Map.of()))).statusCode(), "MCP");
 
-        awaitNewPageAfter(() -> {
-            $("#agentEnableButton").click();
-            Selenide.confirm();
-        });
+        $("#agentEnableButton").click();
+        confirmReactDialog();
         $("#agentDisableButton").should(exist);
         assertEquals(200, bearerGet(secret, "/api/v1/me").statusCode(), "the same token works again");
 
@@ -174,7 +169,7 @@ class AgentAccountsIT extends PressroomIT {
 
         openAgentPage(agent);
         $("#bean_siteAdmin").shouldBe(checked).click();
-        clickAndAwaitNewPage($("#agentSaveButton"));
+        clickAndAwaitSavedMessage($("#agentSaveButton"));
         $("#bean_siteAdmin").shouldNotBe(checked);
         assertEquals(403, bearerGet(secret, "/api/v1/admin/config").statusCode());
 
@@ -223,8 +218,9 @@ class AgentAccountsIT extends PressroomIT {
         String person = "itlast" + nonce();
         String password = "it-last-password";
         loginAsAdmin();
-        openPath("/pressroom-ui/admin/createUser.rol");
+        openPath("/pressroom-ui/app/admin/users/new");
         $("input[name='bean.userName']").should(visible).setValue(person);
+        BrowserHealth.current().settle();
         $("input[name='bean.screenName']").setValue("Screen " + person);
         $("input[name='bean.fullName']").setValue("Full " + person);
         if ($("#bean_passwordModeNow").exists()) {
@@ -232,9 +228,10 @@ class AgentAccountsIT extends PressroomIT {
         }
         $("input[name='bean.password']").setValue(password);
         $("input[name='bean.emailAddress']").setValue(person + "@example.com");
-        clickAndAwaitNewPage($("#save_button"));
+        clickAndAwaitSavedMessage($("#save_button"));
 
-        openPath("/pressroom-ui/admin/userAdmin.rol?q=" + person);
+        openPath("/pressroom-ui/app/admin/users?q=" + person);
+        $("a[data-username='" + person + "']").should(exist);
         $("a[data-username='" + person + "']").closest("tr").find("time").shouldNot(exist);
         logout();
 
@@ -242,7 +239,7 @@ class AgentAccountsIT extends PressroomIT {
         logout();
 
         loginAsAdmin();
-        openPath("/pressroom-ui/admin/userAdmin.rol?q=" + person);
+        openPath("/pressroom-ui/app/admin/users?q=" + person);
         $("a[data-username='" + person + "']").closest("tr").find("time").should(exist);
         logout();
     }
@@ -250,18 +247,18 @@ class AgentAccountsIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private void createAgent(String userName, boolean siteAdmin) {
-        openPath("/pressroom-ui/admin/createAgent.rol");
+        openPath("/pressroom-ui/app/admin/agents/new");
         $("#bean_userName").should(visible).setValue(userName);
         $("#bean_name").setValue("IT Agent " + userName);
         if (siteAdmin) {
             $("#bean_siteAdmin").click();
         }
-        clickAndAwaitNewPage($("#agentCreateButton"));
+        $("#agentCreateButton").click();
         $("#agentPage").should(exist);
     }
 
     private void openAgentPage(String userName) {
-        openPath("/pressroom-ui/admin/agent.rol?userName=" + userName);
+        openPath("/pressroom-ui/app/admin/agents/" + userName);
         $("#agentPage").should(exist);
     }
 
@@ -272,15 +269,14 @@ class AgentAccountsIT extends PressroomIT {
         if (pin != null) {
             $("#tokenPin").selectOptionByValue(pin);
         }
-        clickAndAwaitNewPage($("#tokenCreateButton"));
+        $("#tokenCreateButton").click();
         return $("#revealedToken").should(visible).getValue();
     }
 
     private void revokeTheTokenOnThisPage() {
-        awaitNewPageAfter(() -> {
-            $("#tokenListTable button[data-confirm]").click();
-            Selenide.confirm();
-        });
+        $("#tokenListTable button").click();
+        confirmReactDialog();
+        $("#tokenListEmpty").should(exist);
     }
 
     private HttpResponse<String> adminRest(AdminToken admin, String method, String path) throws Exception {

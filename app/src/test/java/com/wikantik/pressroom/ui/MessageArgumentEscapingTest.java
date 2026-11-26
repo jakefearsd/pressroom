@@ -146,7 +146,7 @@ class MessageArgumentEscapingTest {
             }
         }
 
-        assertTrue(argumentsChecked >= 15,
+        assertTrue(argumentsChecked >= 5,
                 "Only " + argumentsChecked + " accessor-valued message arguments found -- "
                         + "the scan is not looking where it thinks it is.");
         assertTrue(violations.isEmpty(),

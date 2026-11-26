@@ -384,8 +384,10 @@ class ApiAuthorizationMatrixTest {
 
             // --- Site administration: a site admin with an ADMIN token
             row("GET    /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/site-pages",                        ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/traffic",                           ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("GET    /v1/admin/traffic/{handle}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
+            row("GET    /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users",                             ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("PATCH  /v1/admin/users/{userName}",                  ADMIN, SITE_ADMIN, NO_WEBLOG),
             row("POST   /v1/admin/users/{userName}/password-link",    ADMIN, SITE_ADMIN, NO_WEBLOG),

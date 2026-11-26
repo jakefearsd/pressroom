@@ -68,17 +68,16 @@ class BusinessProfileIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- the site admin creates the shared business ---------------
-            openPath("/pressroom-ui/admin/businesses.rol");
+            openPath("/pressroom-ui/app/admin/businesses");
             $("#businesses-list-marker").should(exist);
-            clickAndAwaitNewPage($("#business-new"));
+            $("#business-new").click();
             $("#bean_name").should(visible).setValue(businessName);
             $("#bean_bookingUrl").setValue("https://book.example.com/stay");
             $("#bean_telephone").setValue("+351 912 345 678");
             businessCreated.set(true);
-            clickAndAwaitNewPage($("#business-save"));
-            $("#messages").should(exist);
+            clickAndAwaitSavedMessage($("#business-save"));
             assertTrue($$("#errors").isEmpty(), "saving the business reported an error");
-            openPath("/pressroom-ui/admin/businesses.rol");
+            openPath("/pressroom-ui/app/admin/businesses");
             $$("table.pressroomtable td").findBy(text(businessName)).should(exist);
 
             // --- the blog owner selects it and describes the place --------
@@ -151,12 +150,10 @@ class BusinessProfileIT extends PressroomIT {
         if (!businessCreated) {
             return;
         }
-        openPath("/pressroom-ui/admin/businesses.rol");
+        openPath("/pressroom-ui/app/admin/businesses");
         SelenideElement row = $$("table.pressroomtable tr").findBy(text(businessName));
-        awaitNewPageAfter(() -> {
-            row.find("button[data-confirm]").click();
-            Selenide.confirm();
-        });
+        row.find("button.row-action-danger").click();
+        confirmReactDialog();
         $("#messages").should(exist);
         $$("table.pressroomtable td").findBy(text(businessName)).shouldNot(exist);
     }

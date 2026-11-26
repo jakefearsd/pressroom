@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../context';
 import { call } from './client';
-import { ApiError } from './problem';
 import type { components } from './schema';
 
 export type BusinessView = components['schemas']['BusinessView'];
@@ -54,12 +53,21 @@ export type AnalyticsStatus = components['schemas']['AnalyticsStatusView'];
 
 export type SiteAction = 'flush-cache' | 'rebuild-index' | 'regenerate-renditions';
 
-/** Every weblog, for the maintenance picker (a site has tens, one page of up to 200). */
+/** Every weblog (all pages), for the pickers and the setup checklist's total. */
 export function useAllWeblogs() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'weblogs'],
-    queryFn: () => call(api.GET('/v1/weblogs', { params: { query: { limit: 200 } } }))
+    queryFn: async () => {
+      const items: components['schemas']['WeblogView'][] = [];
+      for (let offset = 0; ; offset += 200) {
+        const page = await call(api.GET('/v1/weblogs', { params: { query: { limit: 200, offset } } }));
+        items.push(...page.items);
+        if (!page.hasMore) {
+          return { items };
+        }
+      }
+    }
   });
 }
 
@@ -140,22 +148,16 @@ export function useConfig() {
   return useQuery({ queryKey: ['admin', 'config'], queryFn: () => call(api.GET('/v1/admin/config')) });
 }
 
-/** The site space's pages (the front-door choices); none when there is no site space. */
+/**
+ * The site space's pages (the front-door choices); none while there is no site space. The API withholds the
+ * site space from every route that names it, so a site admin reads them from `GET /v1/admin/site-pages`.
+ */
 export function useSitePages() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'sitePages'],
     retry: false,
-    queryFn: async () => {
-      try {
-        return await call(api.GET('/v1/weblogs/{handle}/pages', { params: { path: { handle: 'site-space' } } }));
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          return [];
-        }
-        throw error;
-      }
-    }
+    queryFn: () => call(api.GET('/v1/admin/site-pages'))
   });
 }
 
@@ -195,12 +197,21 @@ export function useSaveConfig(sayNextSweep: (total: number | undefined) => strin
   });
 }
 
-/** Accounts on the site (people and agents), for the setup checklist; a site has far fewer than 200. */
+/** Accounts on the site (people and agents), counted over every page, for the setup checklist. */
 export function useAccountCount() {
   const api = useApi();
   return useQuery({
     queryKey: ['admin', 'accountCount'],
-    queryFn: async () => (await call(api.GET('/v1/admin/users', { params: { query: { limit: 200 } } }))).items.length
+    queryFn: async () => {
+      let count = 0;
+      for (let offset = 0; ; offset += 200) {
+        const page = await call(api.GET('/v1/admin/users', { params: { query: { limit: 200, offset } } }));
+        count += page.items.length;
+        if (!page.hasMore) {
+          return count;
+        }
+      }
+    }
   });
 }
 

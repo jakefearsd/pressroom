@@ -12,10 +12,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import com.wikantik.pressroom.ui.controllers.admin.AgentBean;
-import com.wikantik.pressroom.ui.controllers.admin.BusinessBean;
-import com.wikantik.pressroom.ui.controllers.core.ProfileBean;
-import com.wikantik.pressroom.ui.controllers.admin.CreateUserBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntryBean;
 import com.wikantik.pressroom.ui.controllers.editor.TemplateEditBean;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigBean;
@@ -68,24 +64,6 @@ class FormBodyParityTest {
                         EditableFieldManifest.weblogSettings(),
                         Map.of("frontPageId", "frontPage"),
                         Map.of("handle", "The weblog's handle is the route's path variable and never changes.")),
-                new Parity("CreateUserBean -> user", CreateUserBean.class, EditableFieldManifest.user(),
-                        Map.of(),
-                        Map.of("id", "The account is addressed by user name, the route's path variable.",
-                                "userName", "The user name is the route's path variable and never changes.",
-                                "list", "Not a field: the account list the screen binds beside the form.",
-                                "passwordMode", "Chooses between a typed password and a mailed link on create; "
-                                        + "the API reads it from whether a (session-only) password was sent.")),
-                new Parity("AgentBean -> agent", AgentBean.class, EditableFieldManifest.agent(),
-                        Map.of(), Map.of()),
-                new Parity("ProfileBean -> profile", ProfileBean.class, EditableFieldManifest.profile(),
-                        Map.of(),
-                        Map.of("id", "The caller's own account: no surface edits its id.",
-                                "userName", "The user name never changes.",
-                                "password", "Unused by the form; the password has its own route "
-                                        + "(PUT /v1/me/password).",
-                                "passwordText", "The new password, on the password route (PasswordChange.newPassword).",
-                                "passwordConfirm", "A form-side retype; the API takes the new password once.",
-                                "currentPassword", "On the password route (PasswordChange.currentPassword).")),
                 new Parity("TemplateEditBean -> template", TemplateEditBean.class, EditableFieldManifest.template(),
                         Map.of("contentsStandard", "contents", "manualContentType", "contentType"),
                         Map.of("id", "The template's id is the update route's path variable.",
@@ -94,11 +72,7 @@ class FormBodyParityTest {
                                         + "form's checkbox is that choice.",
                                 "standardTemplateId", "The STANDARD rendition's id, round-tripped by the form; "
                                         + "the API addresses the template, not its renditions.",
-                                "type", "A hidden form field the page does not use; no surface edits it.")),
-                new Parity("BusinessBean -> business", BusinessBean.class, EditableFieldManifest.business(),
-                        Map.of(),
-                        Map.of("id", "The business's id is the update route's path variable; create assigns "
-                                + "one.")));
+                                "type", "A hidden form field the page does not use; no surface edits it.")));
     }
 
     @ParameterizedTest(name = "{0}")

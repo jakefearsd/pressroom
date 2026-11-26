@@ -400,13 +400,7 @@ class JspConsistencyTest {
      */
     private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
             Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
-            Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
-            Map.entry("core/ProfileController.java", List.of("core/Profile.jsp")),
-            Map.entry("admin/UserEditController.java", List.of("admin/UserEdit.jsp")),
-            Map.entry("admin/BusinessesController.java", List.of("admin/BusinessEdit.jsp")),
-            // The token form's controls, shared by the agent page and Profile -> API tokens.
-            Map.entry("controllers/TokenFormController.java", List.of("core/TokenForm.jsp")),
-            Map.entry("admin/AgentController.java", List.of("admin/AgentCreate.jsp", "admin/Agent.jsp")));
+            Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")));
 
     private static final Path CONTROLLERS =
             Path.of("src/main/java/com/wikantik/pressroom/ui/controllers");
@@ -464,7 +458,7 @@ class JspConsistencyTest {
             }
         }
 
-        assertTrue(idsChecked >= 15,
+        assertTrue(idsChecked >= 5,
                 "Found only " + idsChecked + " addFieldError ids -- the scan is not looking "
                         + "where it thinks it is");
         assertTrue(violations.isEmpty(), String.join("\n", violations));
@@ -504,57 +498,6 @@ class JspConsistencyTest {
     }
 
     // --- B9a: Global Config gets the settings rail ---
-
-    /**
-     * Task B9a: Global Config is the site's other long settings form, and it
-     * now wears the same shape Weblog Settings does -- a
-     * {@code .settings-grid} form with a {@code .settings-rail} holding a
-     * section index and the Save button, so Save is reachable without
-     * scrolling past nine display groups to find it.
-     *
-     * <p>Two things this pins beyond the markers. The section index is built
-     * from {@code globalConfigDef.displayGroups}, so every group heading must
-     * carry the {@code id} the index links to -- a hand-maintained list would
-     * silently stop matching the moment {@code runtimeConfigDefs.xml} grew a
-     * group. And the page's validation is attached with
-     * {@code addEventListener}, not with an inline {@code onchange}/
-     * {@code onkeyup} on every numeric field: the same reason
-     * {@link #oneConfirmIdiomAndOneModalShape} bans inline {@code onsubmit}.
-     *
-     * <p>{@code id="saveButton"} is load-bearing beyond this page:
-     * {@code PressroomIT.setGlobalFlags} -- which every browser test that
-     * permutes a runtime property goes through -- clicks it by that id.
-     */
-    @Test
-    void globalConfigHasTheSettingsRail() throws IOException {
-        String src = Files.readString(JSPS.resolve("admin/GlobalConfig.jsp"), StandardCharsets.UTF_8);
-        String markup = withoutJspComments(src);
-
-        assertTrue(markup.contains("class=\"settings-grid form-stacked\""),
-                "GlobalConfig.jsp's <form> must be the .settings-grid container, "
-                        + "the same shape WeblogConfig.jsp uses");
-        assertEquals(1, countOccurrences(markup, "<aside class=\"settings-rail\">"),
-                "GlobalConfig.jsp must have exactly one .settings-rail");
-        assertTrue(markup.contains("class=\"section-index\""),
-                "the rail must carry a .section-index built from the display groups");
-        assertTrue(markup.contains("href=\"#cfg-${"),
-                "the section index must link to the group headings by id");
-        assertTrue(markup.contains("id=\"cfg-${"),
-                "every display-group heading must carry the id its index entry links to");
-        assertTrue(markup.contains("id=\"saveButton\"") && markup.contains("btn btn-primary w-100"),
-                "Save must be the rail's full-width primary and keep id=saveButton, "
-                        + "which PressroomIT.setGlobalFlags clicks");
-
-        assertFalse(markup.contains("onchange="),
-                "GlobalConfig.jsp still has an inline onchange= -- attach the validation "
-                        + "with one delegated addEventListener instead");
-        assertFalse(markup.contains("onkeyup="),
-                "GlobalConfig.jsp still has an inline onkeyup= -- attach the validation "
-                        + "with one delegated addEventListener instead");
-
-        assertTrue(markup.contains("class=\"form-check\""),
-                "boolean properties render as a .form-check with the label beside the box");
-    }
 
     // --- B10: the weblog switcher in the top bar ---
 
@@ -768,7 +711,7 @@ class JspConsistencyTest {
     private static List<Path> everyServedJsp() throws IOException {
         try (Stream<Path> walk = Files.walk(WEBAPP)) {
             List<Path> all = walk.filter(p -> p.toString().endsWith(".jsp")).sorted().toList();
-            assertTrue(all.size() > 60, "found only " + all.size() + " JSPs under " + WEBAPP);
+            assertTrue(all.size() > 40, "found only " + all.size() + " JSPs under " + WEBAPP);
             return all;
         }
     }
@@ -942,7 +885,7 @@ class JspConsistencyTest {
             }
         }
 
-        assertTrue(hrefsChecked >= 25,
+        assertTrue(hrefsChecked >= 15,
                 "Only " + hrefsChecked + " EL-valued hrefs found -- the scan is not "
                         + "looking where it thinks it is.");
         assertTrue(violations.isEmpty(),
@@ -978,7 +921,7 @@ class JspConsistencyTest {
                 }
             }
         }
-        assertTrue(checked > 40,
+        assertTrue(checked > 15,
                 "only " + checked + " POST forms found -- the scan is not looking where it thinks it is");
         assertTrue(missing.isEmpty(), "POST forms with no <sec:csrfInput/>:\n  " + String.join("\n  ", missing));
     }

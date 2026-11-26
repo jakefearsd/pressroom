@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { call } from '../../api/client';
+import { ApiError } from '../../api/problem';
 import type { components } from '../../api/schema';
 import { useApi } from '../../context';
 
@@ -32,20 +33,21 @@ export function useUsers(kind: Kind, q: string) {
   });
 }
 
-/**
- * One account. The API has no read-one route, so this is the list filtered by the user
- * name; the exact match is the account (the filter also matches names and emails).
- */
+/** One account by user name; null when there is no such account (404 `user.notFound`). */
 export function useUser(userName: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: ['user', userName],
     enabled: userName !== undefined,
     queryFn: async () => {
-      const page = await call(api.GET('/v1/admin/users', {
-        params: { query: { q: userName ?? '', limit: 200 } }
-      }));
-      return page.items.find((u) => u.userName === userName) ?? null;
+      try {
+        return await call(api.GET('/v1/admin/users/{userName}', { params: { path: { userName: userName ?? '' } } }));
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }
     }
   });
 }

@@ -34,7 +34,9 @@ export function UserStatus({ weblog }: { weblog: RailWeblog | undefined }) {
     <>
       <span className="visually-hidden">{t('mainPage.loggedInAs')}:</span>
       <div className="rail-context-name">
-        <a href={contextPath + CHROME_LINKS.profile.legacy}>{user.userName}</a>
+        {CHROME_LINKS.profile.path === undefined
+          ? <a href={contextPath + CHROME_LINKS.profile.legacy}>{user.userName}</a>
+          : <AppLink target={{ kind: 'react', to: CHROME_LINKS.profile.path }}>{user.userName}</AppLink>}
       </div>
     </>
   );

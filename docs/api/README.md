@@ -887,6 +887,8 @@ setting an operator changes shows in the next response.
 | `features.uploads` | Media uploads are switched on. |
 | `features.readerSignIn` | Readers can sign in (single sign-on is configured). |
 | `features.analytics` | An analytics service is configured; `false` is what makes a traffic read answer `NOT_CONFIGURED`. |
+| `features.searchEnabled` | The site's search index is switched on (`search.enabled`); `false` hides the Maintenance screen's Rebuild index. |
+| `features.mailConfigured` | The server can email a set-password link (a mail transport and a site email address are set). |
 | `limits.maxBodyBytes` | The largest JSON request body, in bytes (see Errors, 413). |
 | `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
 | `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
@@ -899,7 +901,8 @@ GET /api/v1/me/profile
 ```
 
 The caller's own account, read-only: `userName`, `screenName`, `fullName`,
-`emailAddress`, `locale`, `timeZone` and `kind` (`PERSON` or `AGENT`). It never
+`emailAddress`, `locale`, `timeZone`, `kind` (`PERSON` or `AGENT`) and `sso` (single-sign-on accounts have no
+password to change). It never
 holds a password, a hash or a token. Changing any of it is done in the admin
 UI, not through the API. The MCP tools do not offer it (a person's contact
 details are nothing an agent acts on; `whoami` names the account); `site_info`
@@ -2210,11 +2213,13 @@ page (both below).
 ```
 GET   /api/v1/admin/users[?enabled=&q=&kind=&offset=&limit=]
 POST  /api/v1/admin/users
+GET   /api/v1/admin/users/{userName}                 one account (404 `user.notFound`); MCP `users` `get`
 PATCH /api/v1/admin/users/{userName}
 POST  /api/v1/admin/users/{userName}/password-link   email the person a set-password link
 GET   /api/v1/admin/users/{userName}/weblogs         the weblogs the account belongs to
 
 GET   /api/v1/admin/config
+GET   /api/v1/admin/site-pages          the site space's pages (slug, title, status), for the front-door choices; not an MCP tool
 GET   /api/v1/admin/config/definitions   the display groups and each property's message key, type and default (what the Global Config screen draws)
 PATCH /api/v1/admin/config
 GET   /api/v1/admin/revisions          what the revision store holds
@@ -2370,6 +2375,11 @@ The user view (`UserView`) carries these fields:
 | `fullName`, `locale`, `timeZone` | The account's profile. |
 | `writer` | Whether the account holds the editor (author) role. |
 | `sso` | `true` when the account signs in with single sign-on (Google). Such an account has no password. An email address patched on such an account is replaced at its next sign-in. |
+| `weblogCount` | How many weblogs the account holds a permission on. |
+| `lastActive` | A person's last sign-in; for an agent, its newest token use. Absent when it never was. |
+
+`POST /api/v1/admin/users` also takes `enabled` (default: true with a typed `password`, false when a link is
+mailed): the create form's Enabled box.
 
 `GET/PATCH /api/v1/admin/config` reads and writes Pressroom's runtime
 properties (`runtimeConfigDefs.xml` is the allowlist — a name that file
@@ -2550,7 +2560,8 @@ three answer **202 Accepted**, not 200:
 rebuilding the index and regenerating renditions are asynchronous
 background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a
-caller never has to special-case one of the three.
+caller never has to special-case one of the three. `regenerate-renditions` also answers
+`count`, the number of media files it processed.
 
 ### Discovery and analytics status
 
@@ -2614,7 +2625,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
 | `traffic` | `get`, `site` |
-| `users` | `list`, `create`, `update`, `weblogs` |
+| `users` | `list`, `get`, `create`, `update`, `weblogs` |
 | `businesses` | `list`, `get`, `create`, `update`, `delete` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |

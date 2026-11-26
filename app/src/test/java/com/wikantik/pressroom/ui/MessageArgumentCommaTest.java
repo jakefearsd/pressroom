@@ -62,7 +62,6 @@ class MessageArgumentCommaTest {
     @Test
     void freeTextArgumentsArePassedAsAList() throws IOException {
         Map<String, String> sites = Map.of(
-                "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
                 "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"");
         List<String> missing = new ArrayList<>();
         for (Map.Entry<String, String> site : sites.entrySet()) {

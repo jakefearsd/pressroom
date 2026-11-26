@@ -143,13 +143,13 @@ class AnalyticsIT extends PressroomIT {
     void maintenanceShowsAnalyticsBlock() {
         loginAsAdmin();
 
-        openPath("/pressroom-ui/admin/maintenance.rol");
+        openPath("/pressroom-ui/app/admin/maintenance");
         $(".maintenance-analytics").should(exist);
         $(".maintenance-analytics h2").should(exactText("Analytics"));
         $(".maintenance-analytics").should(text(ANALYTICS_OFF));
         $(".maintenance-analytics button").shouldNot(exist);
-        $("form[action$='maintenance!syncAnalytics.rol'] button").shouldNot(exist);
 
+        BrowserHealth.current().settle();
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
         logout();

@@ -28,7 +28,7 @@ resolves through the index at the end of `CLAUDE.md`.
   (Bing Webmaster Tools' `msvalidate.01` code, blank for none) is emitted by
   the SEO head macro on every public page, so the root carries it whatever
   the front door is. It is a `RENDERED_PAGE_INPUTS` setting: changing it
-  expires every cached page (`GlobalConfigController`).
+  expires every cached page (`SiteSettingsEffects`, through `PATCH /v1/admin/config`).
 - Site pages have their own sitemap, `/sitemap-site-pages.xml` (404 with no
   site space or no published page; not cached), listed in the `/sitemap.xml`
   index only when it has a published page, with the front door at the root.
@@ -53,7 +53,7 @@ resolves through the index at the end of `CLAUDE.md`.
   context path) changes the cache key instead. Pinned byte for byte by
   `SeoControllerSitemapTest`.
 - **Business profiles.** A site admin owns shared `Business` rows
-  (`/pressroom-ui/admin/businesses.rol`); a blog picks one in Settings and may
+  (the React Businesses screen, `/pressroom-ui/app/admin/businesses`); a blog picks one in Settings and may
   add a place (`placeType` LodgingBusiness, locality, region, country,
   lat/lng, its own booking URL). `BusinessJsonLd` (via
   `UtilitiesModel.businessJsonLd`/`businessPublisherJson`) emits, from
@@ -129,7 +129,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `/v1/admin/businesses`) therefore calls `BusinessRules.invalidateUsers`,
   which invalidates each weblog from `BusinessManager.getWeblogsUsing` after
   the flush. Unit-tested only (`BusinessManagerTest`, `BusinessRecordRulesTest`,
-  `BusinessesControllerTest`, `BusinessesApiTest`): `BusinessProfileIT` does
+  `BusinessesApiTest`): `BusinessProfileIT` does
   not cover cache expiry. The record's field rules are `BusinessRules`, shared
   by both surfaces (docs/dev/api.md, "Business profiles").
 

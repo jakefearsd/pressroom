@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useMeta } from '../api/queries';
 import {
   useAllWeblogs, useAnalyticsStatus, useDiscoveryStatus, useRefreshDiscovery, useRevisionStats, useSiteAction,
   useSweepRevisions, useSyncAnalytics, type SiteAction
@@ -234,6 +235,7 @@ export function Maintenance() {
   const t = useT();
   const weblogs = useAllWeblogs();
   const action = useSiteAction();
+  const searchEnabled = useMeta().data?.features.searchEnabled === true;
   const [handle, setHandle] = useState('');
   const [outcome, setOutcome] = useState<Outcome>(NONE);
   const [asked, setAsked] = useState<SiteAction | null>(null);
@@ -242,11 +244,12 @@ export function Maintenance() {
     setAsked(null);
     setOutcome(NONE);
     action.mutate({ handle, action: which }, {
-      onSuccess: () => {
+      onSuccess: (done) => {
         const key: Record<SiteAction, string> = {
           'flush-cache': t('maintenance.message.flushed'),
           'rebuild-index': t('maintenance.message.indexed'),
-          'regenerate-renditions': t('maintenance.message.renditionsStarted')
+          'regenerate-renditions': t('maintenance.message.renditionsRegenerated',
+            'count' in done ? (done.count ?? 0) : 0)
         };
         setOutcome({ ...NONE, messages: [key[which]] });
       },
@@ -299,7 +302,7 @@ export function Maintenance() {
           </select>
         </div>
         {op('flush-cache')}
-        {op('rebuild-index')}
+        {searchEnabled ? op('rebuild-index') : null}
         {op('regenerate-renditions')}
       </form>
       <DiscoverySection report={setOutcome} />

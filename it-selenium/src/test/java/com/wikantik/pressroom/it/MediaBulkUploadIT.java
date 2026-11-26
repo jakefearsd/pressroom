@@ -87,7 +87,6 @@ class MediaBulkUploadIT extends PressroomIT {
     private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
     private static final String MEDIA_ADD = PagesMediaApp.mediaUpload(WEBLOG_HANDLE);
     private static final String MEDIA_VIEW = PagesMediaApp.media(WEBLOG_HANDLE);
-    private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";
@@ -292,13 +291,12 @@ class MediaBulkUploadIT extends PressroomIT {
      * property through the admin screen keeps this journey on real UI.
      */
     private void enableUploads() {
-        openPath(GLOBAL_CONFIG);
+        openGlobalConfig();
         WebElement checkbox = $("input[name='uploads.enabled']").should(exist).toWebElement();
         if (!checkbox.isSelected()) {
             checkbox.click();
         }
-        $("#saveButton").click();
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#saveButton"));
     }
 
     /**

@@ -13,6 +13,7 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.Memberships;
+import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.controllers.WeblogCreationRules;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import com.wikantik.pressroom.ui.restapi.dto.ThemeDtos;
@@ -117,7 +118,9 @@ public class MetaApi {
                 WebloggerRuntimeConfig.getBooleanProperty("site.allowUserWeblogCreation"),
                 WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled"),
                 SsoSettings.fromConfig().enabled(),
-                weblogger.getAnalyticsManager().getStatus().configured());
+                weblogger.getAnalyticsManager().getStatus().configured(),
+                WebloggerRuntimeConfig.getBooleanProperty("search.enabled"),
+                PasswordLinkMailer.isReady());
         MetaDtos.Limits limits = new MetaDtos.Limits(ApiBodyLimitFilter.MAX_BODY_BYTES, Paging.MAX_LIMIT,
                 ColumnLimits.ENTRY_TEXT);
         return ResponseEntity.ok(new MetaDtos.MetaView(version == null || version.isBlank() ? null : version,
@@ -159,7 +162,7 @@ public class MetaApi {
         User user = requireUser(request);
         return ResponseEntity.ok(new MetaDtos.ProfileView(user.getUserName(), user.getScreenName(),
                 user.getFullName(), user.getEmailAddress(), user.getLocale(), user.getTimeZone(),
-                user.getKind().name()));
+                user.getKind().name(), user.isSsoBound()));
     }
 
     /**

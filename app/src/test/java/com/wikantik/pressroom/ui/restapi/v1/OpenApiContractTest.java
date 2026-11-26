@@ -102,7 +102,7 @@ class OpenApiContractTest {
             "trafficGet", "membersList", "siteTrafficGet", "siteTrafficBlogGet",
             "businessesList", "businessesGet", "businessesCreate", "businessesUpdate", "businessesDelete",
             "weblogBusinessesList",
-            "usersList", "usersCreate", "usersUpdate", "usersSendPasswordLink", "usersListWeblogs",
+            "usersList", "usersGet", "sitePagesList", "usersCreate", "usersUpdate", "usersSendPasswordLink", "usersListWeblogs",
             "discoveryGetStatus", "discoveryRefresh", "analyticsGetStatus", "analyticsSync", "revisionsGetStats", "revisionsSweep", "configList", "configGetDefinitions",
             "configUpdate",
             "maintenanceFlushCache", "maintenanceRebuildIndex", "maintenanceRegenerateRenditions",

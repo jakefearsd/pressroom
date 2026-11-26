@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Administering other people's accounts.
  *
- * <p>{@code modifyUser.rol} is one of the routes the sweep skips for want of a
+ * <p>The React user page ({@code /admin/users/:userName}) is one of the routes the sweep skips for want of a
  * seeded id, so nothing exercised it: an administrator editing somebody's
  * details, and -- the part that matters -- disabling an account. A disable that
  * does not actually stop the person signing in is the kind of failure nobody
@@ -43,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class UserAdminIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
-    private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
+    private static final String CREATE_USER = "/pressroom-ui/app/admin/users/new";
+    private static final String USER_ADMIN = "/pressroom-ui/app/admin/users";
 
     private static final String PASSWORD = "it-user-password";
 
@@ -123,6 +123,8 @@ class UserAdminIT extends PressroomIT {
     private void createUser(String userName) {
         openPath(CREATE_USER);
         $("input[name='bean.userName']").should(visible).setValue(userName);
+        // The mail flag and the locale and time zone lists arrive in their own reads: let them land first.
+        BrowserHealth.current().settle();
         $("input[name='bean.screenName']").setValue("Screen " + userName);
         $("input[name='bean.fullName']").setValue("Full " + userName);
         // "Set a password now" is offered beside the emailed link only while
@@ -135,9 +137,8 @@ class UserAdminIT extends PressroomIT {
         $("input[name='bean.emailAddress']").setValue(userName + "@example.com");
         // Enabled is ticked by default now (spec 2026-10-13, section 4).
         $("input[name='bean.enabled']").shouldBe(checked);
-        $("#save_button").click();
-
-        $("#messages").should(exist);
+        // A React save is an API call, and the screen then moves to the user list with its message there.
+        clickAndAwaitSavedMessage($("#save_button"));
     }
 
     /**
@@ -146,14 +147,13 @@ class UserAdminIT extends PressroomIT {
      */
     private void openUserForEditing(String userName) {
         openPath(USER_ADMIN + "?q=" + userName);
-        clickAndAwaitNewPage($("a[data-username='" + userName + "']"));
+        $("a[data-username='" + userName + "']").click();
 
         $("input[name='bean.userName']").should(visible).shouldHave(value(userName));
     }
 
     private void saveUser() {
-        $("#save_button").shouldBe(visible).click();
-        $("#messages").should(exist);
+        clickAndAwaitSavedMessage($("#save_button").shouldBe(visible));
     }
 
     /** Ticks or unticks the enabled box for a user and saves. */

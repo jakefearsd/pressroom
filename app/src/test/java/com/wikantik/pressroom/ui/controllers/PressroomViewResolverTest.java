@@ -80,16 +80,10 @@ class PressroomViewResolverTest {
                 ".EntryEdit should be registered");
         assertNotNull(resolver.resolveViewName(".Login", Locale.getDefault()),
                 ".Login should be registered");
-        assertNotNull(resolver.resolveViewName(".Profile", Locale.getDefault()),
-                ".Profile should be registered");
         assertNotNull(resolver.resolveViewName(".denied", Locale.getDefault()),
                 ".denied should be registered");
         assertNotNull(resolver.resolveViewName(".tiles-tabbedpage", Locale.getDefault()),
                 ".tiles-tabbedpage should be registered");
-        assertNotNull(resolver.resolveViewName(".Maintenance", Locale.getDefault()),
-                ".Maintenance should be registered");
-        assertNotNull(resolver.resolveViewName(".ApiTokens", Locale.getDefault()),
-                ".ApiTokens should be registered");
     }
 
     @Test
@@ -136,34 +130,6 @@ class PressroomViewResolverTest {
     }
 
     /**
-     * Profile is not weblog-scoped, so it has no tabs to render -- but it is
-     * still a signed-in admin screen, and {@code .tiles-mainmenupage} is the
-     * layout for exactly that (the rail with the account context block and no
-     * tab groups, which is what MainMenu itself uses). On simplepage it
-     * rendered as a bare card with no rail at all.
-     */
-    @Test
-    void profileRendersThroughTheMainMenuLayout() throws Exception {
-        resolver.init();
-
-        MockHttpServletRequest request = renderAndCapture(".Profile");
-
-        assertEquals("/WEB-INF/jsps/core/Profile.jsp", request.getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_sidebar"));
-    }
-
-    /** Profile → API tokens and its reveal are signed-in, un-scoped screens, like Profile itself. */
-    @Test
-    void theTokenScreensRenderThroughTheMainMenuLayout() throws Exception {
-        resolver.init();
-
-        assertEquals("/WEB-INF/jsps/core/ProfileTokens.jsp",
-                renderAndCapture(".ProfileTokens").getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/core/TokenReveal.jsp",
-                renderAndCapture(".TokenReveal").getAttribute("tile_content"));
-    }
-
-    /**
      * The reader's account page is a reader's only admin-UI screen, and a
      * reader has nowhere on the rail to go: its account link opens the
      * profile, which refuses a reader. So it is the plain card under the top
@@ -201,27 +167,11 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
-            case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
+            case ".Comments" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
         };
-    }
-
-    @Test
-    void theAgentScreensRenderThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        assertEquals("/WEB-INF/jsps/admin/AgentCreate.jsp", renderAndCapture(".AgentCreate").getAttribute("tile_content"));
-        assertEquals("/WEB-INF/jsps/admin/Agent.jsp", renderAndCapture(".Agent").getAttribute("tile_content"));
-    }
-
-    @Test
-    void theSiteTokenListRendersThroughTheTabbedLayout() throws Exception {
-        resolver.init();
-
-        assertEquals("/WEB-INF/jsps/admin/ApiTokens.jsp", renderAndCapture(".ApiTokens").getAttribute("tile_content"));
     }
 
     /**

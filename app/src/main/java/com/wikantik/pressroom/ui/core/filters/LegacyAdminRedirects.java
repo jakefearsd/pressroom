@@ -44,6 +44,12 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
         this(legacyPath, reactPath, pathParams, carried, Map.of(), Map.of());
     }
 
+    /** A row with alternative routes for a missing placeholder and no renamed query parameters. */
+    public LegacyAdminRedirects(String legacyPath, String reactPath, Map<String, String> pathParams,
+                                List<String> carried, Map<String, String> otherwise) {
+        this(legacyPath, reactPath, pathParams, carried, otherwise, Map.of());
+    }
+
     /** Where the React app lives, as a servlet path (spec A1). */
     public static final String APP = "/pressroom-ui/app";
 
@@ -83,7 +89,41 @@ public record LegacyAdminRedirects(String legacyPath, String reactPath, Map<Stri
             new LegacyAdminRedirects("/pressroom-ui/authoring/mediaFileEdit.rol", "/weblogs/{weblog}/media/{id}",
                     Map.of("weblog", "weblog", "id", "mediaFileId"), List.of()),
             new LegacyAdminRedirects("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
-                    "/weblogs/{weblog}/media", Map.of("weblog", "weblog"), List.of()));
+                    "/weblogs/{weblog}/media", Map.of("weblog", "weblog"), List.of()),
+            // Wave 4: site admin
+            new LegacyAdminRedirects("/pressroom-ui/admin/globalConfig.rol", "/admin/config", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/setup.rol", "/admin/setup", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/businesses.rol", "/admin/businesses", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/businesses!edit.rol", "/admin/businesses/{id}",
+                    Map.of("id", "id"), List.of(),
+                    Map.of("id", "/admin/businesses/new")),
+            new LegacyAdminRedirects("/pressroom-ui/admin/maintenance.rol", "/admin/maintenance", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/apiTokens.rol", "/admin/tokens", Map.of(), List.of()),
+            // Wave 4: people
+            new LegacyAdminRedirects("/pressroom-ui/admin/userAdmin.rol", "/admin/users", Map.of(),
+                    List.of("kind", "q")),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createUser.rol", "/admin/users/new", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createUser!cancel.rol", "/admin/users", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser!cancel.rol", "/admin/users", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser.rol", "/admin/users/{userName}",
+                    Map.of("userName", "bean.userName"), List.of(),
+                    Map.of("userName", "/admin/users")),
+            new LegacyAdminRedirects("/pressroom-ui/admin/modifyUser!firstSave.rol", "/admin/users/{userName}",
+                    Map.of("userName", "bean.userName"), List.of(),
+                    Map.of("userName", "/admin/users")),
+            new LegacyAdminRedirects("/pressroom-ui/admin/createAgent.rol", "/admin/agents/new", Map.of(),
+                    List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/admin/agent.rol", "/admin/agents/{userName}",
+                    Map.of("userName", "userName"), List.of(),
+                    Map.of("userName", "/admin/users?kind=agents")),
+            // Wave 4: the signed-in account's own screens
+            new LegacyAdminRedirects("/pressroom-ui/profile.rol", "/profile", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/profileTokens.rol", "/profile/tokens", Map.of(), List.of()),
+            new LegacyAdminRedirects("/pressroom-ui/profileTokens!reveal.rol", "/profile/tokens", Map.of(),
+                    List.of()));
 
     /** A weblog-scoped screen with no query: {@code authoring/<action>.rol?weblog=h} to {@code /weblogs/h/<screen>}. */
     private static LegacyAdminRedirects weblogScreen(String action, String screen) {
