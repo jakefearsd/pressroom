@@ -2,11 +2,11 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Trash } from '../../../src/admin/screens/Trash';
-import { BLOG, meHandler, problem, renderScreen, server, useMockApi } from './harness';
+import { BLOG, meHandler, metaHandler, problem, renderScreen, server, useMockApi } from './harness';
 
 const TRASHED = [
-  { id: 't1', title: 'Old news', category: 'News', updateTime: '2026-03-01T09:30:00Z' },
-  { id: 't2', title: "Tom & Jerry's", category: 'Fun', updateTime: '2026-03-02T09:30:00Z' }
+  { id: 't1', title: 'Old news', category: 'News', trashedAt: '2026-03-01T09:30:00Z', updateTime: '2026-02-01T09:30:00Z' },
+  { id: 't2', title: "Tom & Jerry's", category: 'Fun', trashedAt: '2026-03-02T09:30:00Z' }
 ];
 
 function list(items = TRASHED) {
@@ -20,7 +20,7 @@ const show = () => renderScreen('/weblogs/:handle/trash', <Trash />, '/weblogs/b
 
 describe('Trash', () => {
   useMockApi();
-  beforeEach(() => { server.use(meHandler('POST'), list()); });
+  beforeEach(() => { server.use(meHandler('POST'), metaHandler(false, 30), list()); });
 
   it('lists the trashed entries with their category', async () => {
     show();
@@ -30,6 +30,19 @@ describe('Trash', () => {
     expect(within(row).getByText('2026-03-01 09:30 UTC')).toBeInTheDocument();
     expect(screen.getByText("Tom & Jerry's")).toBeInTheDocument();
     expect(document.querySelector('#trash-list-marker')).not.toBeNull();
+  });
+
+  it('says how long trashed entries are kept, in the three cases the retention setting has', async () => {
+    const { unmount } = show();
+    expect(await screen.findByText('Trashed entries are deleted permanently after 30 days.')).toHaveClass('pagetip');
+    unmount();
+    server.use(metaHandler(false, -1));
+    const second = show();
+    expect(await screen.findByText(/kept until you delete them here/)).toBeInTheDocument();
+    second.unmount();
+    server.use(metaHandler(false, 0));
+    show();
+    expect(await screen.findByText(/deleted permanently on the next sweep/)).toBeInTheDocument();
   });
 
   it('pages through a trash longer than one page', async () => {

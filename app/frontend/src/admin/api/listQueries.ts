@@ -22,6 +22,7 @@ export interface EntryFilters {
   text?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
+  sortBy?: string | undefined;
   offset: number;
 }
 
@@ -30,10 +31,10 @@ function present(value: string | undefined): string | undefined {
 }
 
 /** One page of the entries list. A status of ALL (or none) is no filter, as on the JSP. */
-export function useEntryList(handle: string, filters: EntryFilters) {
+export function useEntryList(handle: string, filters: EntryFilters, withViews = false) {
   const api = useApi();
   return useQuery({
-    queryKey: ['entries', handle, 'list', filters],
+    queryKey: ['entries', handle, 'list', filters, withViews],
     queryFn: () => call(api.GET('/v1/weblogs/{handle}/entries', {
       params: {
         path: { handle },
@@ -44,9 +45,10 @@ export function useEntryList(handle: string, filters: EntryFilters) {
           ...(present(filters.text) === undefined ? {} : { text: filters.text as string }),
           ...(present(filters.startDate) === undefined ? {} : { startDate: filters.startDate as string }),
           ...(present(filters.endDate) === undefined ? {} : { endDate: filters.endDate as string }),
+          ...(present(filters.sortBy) === undefined ? {} : { sortBy: filters.sortBy as string }),
           offset: filters.offset,
           limit: ENTRIES_PAGE,
-          fields: LIST_FIELDS
+          fields: withViews ? [...LIST_FIELDS, 'views30d'] : LIST_FIELDS
         }
       }
     }))
@@ -62,7 +64,7 @@ export function useTrash(handle: string) {
       const all: EntryView[] = [];
       for (let offset = 0; ;) {
         const page = await call(api.GET('/v1/weblogs/{handle}/entries', {
-          params: { path: { handle }, query: { status: 'TRASHED', offset, limit: 200, fields: ['anchor', 'title', 'category', 'updateTime'] } }
+          params: { path: { handle }, query: { status: 'TRASHED', offset, limit: 200, fields: ['anchor', 'title', 'category', 'trashedAt'] } }
         }));
         all.push(...page.items);
         if (!page.hasMore || page.items.length === 0) {

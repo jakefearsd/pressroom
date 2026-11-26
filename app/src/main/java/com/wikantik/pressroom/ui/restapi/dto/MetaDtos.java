@@ -83,7 +83,12 @@ public final class MetaDtos {
                     requiredMode = Schema.RequiredMode.REQUIRED)
             Features features,
             @Schema(description = "Sizes the API holds every caller to.", requiredMode = Schema.RequiredMode.REQUIRED)
-            Limits limits) {
+            Limits limits,
+            @Schema(description = "How many days a trashed entry is kept before the nightly sweep deletes it for "
+                    + "good: a negative number keeps it until someone deletes it, 0 deletes it on the next sweep. "
+                    + "Read afresh on every request: a site admin can change it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            int trashRetentionDays) {
     }
 
     /** Feature switches, each read afresh from its setting on every request. */

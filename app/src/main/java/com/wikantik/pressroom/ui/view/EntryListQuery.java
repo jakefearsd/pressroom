@@ -95,6 +95,23 @@ public final class EntryListQuery {
         return Date.from(day.atTime(23, 59, 59, 999_000_000).atZone(ZoneId.systemDefault()).toInstant());
     }
 
+    /** Whether {@code raw} is blank or names a sort the entries page offers (see {@link #pageSort}). */
+    public static boolean offersSort(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return true;
+        }
+        String name = raw.trim();
+        return SortBy.PUBLICATION_TIME.name().equals(name) || SortBy.UPDATE_TIME.name().equals(name);
+    }
+
+    /**
+     * The sort the entries page's select offers: null for blank (the criteria's own order), else
+     * {@code PUBLICATION_TIME} or {@code UPDATE_TIME}, exactly. Check {@link #offersSort} first.
+     */
+    public static SortBy pageSort(String raw) {
+        return raw == null || raw.isBlank() ? null : SortBy.valueOf(raw.trim());
+    }
+
     /** Whether asking for {@code status} reaches the trash: only {@code TRASHED}, by name. */
     public static boolean includesTrash(PubStatus status) {
         return status == PubStatus.TRASHED;

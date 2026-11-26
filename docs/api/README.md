@@ -863,6 +863,7 @@ setting an operator changes shows in the next response.
 | `limits.maxBodyBytes` | The largest JSON request body, in bytes (see Errors, 413). |
 | `limits.maxListLimit` | The largest page a list answers (200); a bigger `limit` is capped to it. |
 | `limits.entryTextMaxChars` | The most characters an entry's text may hold. |
+| `trashRetentionDays` | Days a trashed entry is kept before the sweep deletes it for good: negative keeps it until someone deletes it, 0 deletes it on the next sweep. Read afresh on every request. |
 
 ```
 GET /api/v1/me/profile
@@ -1117,7 +1118,11 @@ never one.
 `?text=` (free-text search), `?locale=`, `?startDate=` and `?endDate=` (a day,
 `yyyy-MM-dd`, in the server's time zone: from the start of `startDate` to the end of `endDate`, as the entries
 page's date range; either may be sent alone, and a malformed one is a 400 `parameter.invalidValue` naming it),
-plus `offset`/`limit`. Naming no
+`?sortBy=` (exactly `PUBLICATION_TIME` or `UPDATE_TIME`, newest first, as the entries page's sort select; without it the
+publication time; anything else is a 400 `parameter.invalidValue` naming it), plus `offset`/`limit`.
+`?fields=views30d` adds each item's page views over the last 30 days (the entries page's Views column): present only
+when analytics is configured and the figure is known, a known 0 once the blog has a complete snapshot, absent
+otherwise; the whole-entry view never carries it. An entry in the trash carries `trashedAt`. Naming no
 `status` at all excludes the trash by construction (`?status=TRASHED` is the
 only way to see it — see [docs/dev/entries.md, "Trash"](../dev/entries.md#trash-soft-delete-w5)
 for why the whole API's trash-safety property lives in that one default).

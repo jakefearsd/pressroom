@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { call } from '../api/client';
+import { useMeta } from '../api/queries';
 import { useTrash, type EntryView } from '../api/listQueries';
 import { BulkProgress } from '../components/BulkProgress';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -22,10 +23,6 @@ function titleOf(entry: EntryView): string {
 /**
  * The entry trash (Trash.jsp): restore, delete forever and empty trash. Emptying runs
  * delete-forever per entry (spec A6) and reports the ones it could not remove in place.
- *
- * Not on /api, so not shown: the retention sentence (trash.retention.*, the
- * entry.trash.retention.days runtime property is not on /v1/meta) and the true trashed-at
- * time (EntryView carries no trashedAt, so the column shows the entry's last update).
  */
 export function Trash() {
   const t = useT();
@@ -33,6 +30,7 @@ export function Trash() {
   const queries = useQueryClient();
   const handle = useParams()['handle'] ?? '';
   const trash = useTrash(handle);
+  const retention = useMeta().data?.trashRetentionDays;
   const [messages, setMessages] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [error, setError] = useState<unknown>(null);
@@ -81,6 +79,11 @@ export function Trash() {
     <>
       <PageTitle>{t('trash.title')}</PageTitle>
       <Subtitle text={t('trash.subtitle', handle)} />
+      {retention === undefined ? null : (
+        <p className="pagetip">
+          {retention < 0 ? t('trash.retention.forever') : retention === 0 ? t('trash.retention.nextSweep') : t('trash.retention.days', retention)}
+        </p>
+      )}
       <div id="trash-list-marker">
         <ProblemBanner messages={messages} errors={errors} error={error ?? trash.error} />
         <BulkProgress progress={bulk.progress} />
@@ -103,7 +106,7 @@ export function Trash() {
                   {entries.map((entry) => (
                     <tr key={entry.id}>
                       <td>{titleOf(entry)}</td>
-                      <td className="data"><DateTime value={entry.updateTime} /></td>
+                      <td className="data"><DateTime value={entry.trashedAt} /></td>
                       <td>{entry.category}</td>
                       <td>
                         <button type="button" className="btn btn-outline-secondary btn-sm" disabled={bulk.progress !== null}

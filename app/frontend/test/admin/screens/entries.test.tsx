@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Entries } from '../../../src/admin/screens/Entries';
-import { BLOG, meHandler, problem, renderScreen, server, useMockApi, whereIs } from './harness';
+import { BLOG, meHandler, metaHandler, problem, renderScreen, server, useMockApi, whereIs } from './harness';
 
 const ITEMS = [
   { id: 'e1', anchor: 'first-post', title: 'First post', status: 'PUBLISHED', category: 'News', tags: ['a'],
@@ -15,7 +15,7 @@ const ITEMS = [
 
 const requests: URL[] = [];
 
-function listHandler(items = ITEMS, hasMore = false) {
+function listHandler(items: object[] = ITEMS, hasMore = false) {
   return http.get(`${BLOG}/entries`, ({ request }) => {
     requests.push(new URL(request.url));
     return HttpResponse.json({ items, offset: 0, limit: 30, hasMore });
@@ -36,7 +36,7 @@ describe('Entries', () => {
   useMockApi();
   beforeEach(() => {
     requests.length = 0;
-    server.use(meHandler('POST'), categories(), listHandler());
+    server.use(meHandler('POST'), metaHandler(), categories(), listHandler());
   });
 
   it('lists the entries as the JSP table did: pill, category, editor link, view link and pinned marker', async () => {
@@ -88,6 +88,41 @@ describe('Entries', () => {
     expect(last.searchParams.get('startDate')).toBe('2026-01-02');
     expect(last.searchParams.get('endDate')).toBe('2026-02-03');
     expect(screen.getByLabelText('Tags')).toHaveValue('a, b');
+  });
+
+  it('sorts by update time by default and by publish time on request, keeping the filter', async () => {
+    const user = userEvent.setup();
+    show('/weblogs/blog/entries?text=x');
+    const select = await screen.findByLabelText('Sort by');
+    expect(select).toHaveValue('UPDATE_TIME');
+    expect(requests[0]?.searchParams.get('sortBy')).toBe('UPDATE_TIME');
+    await user.selectOptions(select, 'PUBLICATION_TIME');
+    await waitFor(() => { expect(requests.at(-1)?.searchParams.get('sortBy')).toBe('PUBLICATION_TIME'); });
+    expect(requests.at(-1)?.searchParams.get('text')).toBe('x');
+    expect(await whereIs()).toBe('/weblogs/blog/entries?text=x&sortBy=PUBLICATION_TIME');
+    await user.click(within(screen.getByRole('navigation', { name: 'Status' })).getByRole('link', { name: 'Drafts' }));
+    await waitFor(() => { expect(requests.at(-1)?.searchParams.get('status')).toBe('DRAFT'); });
+    expect(requests.at(-1)?.searchParams.get('sortBy')).toBe('PUBLICATION_TIME');
+  });
+
+  it('has no views column without analytics', async () => {
+    show();
+    await screen.findByRole('link', { name: 'First post' });
+    expect(screen.queryByText('Views (30d)')).toBeNull();
+    expect(requests[0]?.searchParams.getAll('fields')).not.toContain('views30d');
+  });
+
+  it('shows the 30-day views, a dash where they are not known, when analytics is on', async () => {
+    server.use(metaHandler(true), listHandler([
+      { ...ITEMS[0], views30d: 1234 }, { ...ITEMS[1], views30d: 0 }, ITEMS[2] as object
+    ]));
+    show();
+    expect(await screen.findByText('Views (30d)')).toHaveClass('n');
+    const cells = (title: string) => (screen.getByRole('link', { name: title }).closest('tr') as HTMLElement).querySelector('td.n');
+    await waitFor(() => { expect(cells('First post')).toHaveTextContent('1,234'); });
+    expect(cells("Maiia's trip")).toHaveTextContent('0');
+    expect(cells('Later')).toHaveTextContent('—');
+    expect(requests.at(-1)?.searchParams.getAll('fields')).toContain('views30d');
   });
 
   it('pages with Newer and Older links that carry the filter', async () => {

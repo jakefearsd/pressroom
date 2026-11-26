@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { call } from '../api/client';
+import { useMeta } from '../api/queries';
 import { ENTRIES_PAGE, useCategories, useEntryList, type EntryView } from '../api/listQueries';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { BulkProgress } from '../components/BulkProgress';
@@ -12,7 +13,7 @@ import { ProblemBanner } from '../components/ProblemBanner';
 import { SelectionBar } from '../components/SelectionBar';
 import { StatusPill } from '../components/StatusPill';
 import { Subtitle } from '../components/Subtitle';
-import { useApi } from '../context';
+import { useApi, useBoot } from '../context';
 import { PageTitle } from '../frame/PageTitle';
 import { useT } from '../i18n/messages';
 import { useBulk } from '../lib/bulk';
@@ -27,6 +28,9 @@ const STATUS_CHIPS = [
   { key: 'PENDING', label: 'weblogEntryQuery.label.pendingOnly' },
   { key: 'SCHEDULED', label: 'weblogEntryQuery.label.scheduledOnly' }
 ] as const;
+
+/** The JSP list's own default order (EntriesBean.sortBy); the API's, when none is sent, is the publication time. */
+const DEFAULT_SORT = 'UPDATE_TIME';
 
 const FILTER_PARAMS = ['status', 'category', 'tags', 'text', 'startDate', 'endDate'] as const;
 
@@ -59,9 +63,12 @@ export function Entries() {
     text: params.get('text') ?? undefined,
     startDate: params.get('startDate') ?? undefined,
     endDate: params.get('endDate') ?? undefined,
+    sortBy: params.get('sortBy') ?? DEFAULT_SORT,
     offset: Math.max(0, Number(params.get('offset') ?? 0) || 0)
   };
-  const list = useEntryList(handle, filters);
+  const meta = useMeta();
+  const viewsColumn = meta.data?.features.analytics === true;
+  const list = useEntryList(handle, filters, viewsColumn);
   const categories = useCategories(handle);
   const base = `/weblogs/${encodeURIComponent(handle)}/entries`;
   const filtered = FILTER_PARAMS.some((name) => name === 'status'
@@ -76,6 +83,10 @@ export function Entries() {
       if (typeof value === 'string' && value.trim() !== '') {
         next.set(name, value.trim());
       }
+    }
+    const sort = form.get('sortBy');
+    if (typeof sort === 'string' && sort !== '') {
+      next.set('sortBy', sort);
     }
     setParams(next);
   };
@@ -113,6 +124,14 @@ export function Entries() {
           <label htmlFor="entries_bean_endDateString" className="form-label">{t('weblogEntryQuery.label.endDate')}</label>
           <input type="date" id="entries_bean_endDateString" name="endDate" className="form-control" defaultValue={params.get('endDate') ?? ''} />
         </div>
+        <div className="mb-3">
+          <label htmlFor="entries_bean_sortBy" className="form-label">{t('weblogEntryQuery.label.sortBy')}</label>
+          <select id="entries_bean_sortBy" name="sortBy" className="form-select" defaultValue={filters.sortBy}
+                  onChange={(event) => { setParams(new URLSearchParams(withParam(params, 'sortBy', event.target.value))); }}>
+            <option value="PUBLICATION_TIME">{t('weblogEntryQuery.label.pubTime')}</option>
+            <option value="UPDATE_TIME">{t('weblogEntryQuery.label.updateTime')}</option>
+          </select>
+        </div>
         <button type="submit" className="btn btn-secondary">{t('weblogEntryQuery.button.query')}</button>
       </form>
 
@@ -134,7 +153,8 @@ export function Entries() {
           <>
             <Pager offset={filters.offset} limit={ENTRIES_PAGE} hasMore={list.data.hasMore}
                    hrefFor={(offset) => `${base}${withParam(params, 'offset', offset === 0 ? null : String(offset))}`} />
-            <EntryRows key={search} handle={handle} entries={list.data.items} filtered={filtered} base={base} />
+            <EntryRows key={search} handle={handle} entries={list.data.items} filtered={filtered} base={base}
+                       viewsColumn={viewsColumn} />
             <Pager offset={filters.offset} limit={ENTRIES_PAGE} hasMore={list.data.hasMore}
                    hrefFor={(offset) => `${base}${withParam(params, 'offset', offset === 0 ? null : String(offset))}`} />
           </>
@@ -145,8 +165,11 @@ export function Entries() {
 }
 
 /** The table, its selection and every action on it; remounted (selection cleared) when the list changes. */
-function EntryRows({ handle, entries, filtered, base }: { handle: string; entries: EntryView[]; filtered: boolean; base: string }) {
+function EntryRows({ handle, entries, filtered, base, viewsColumn }: {
+  handle: string; entries: EntryView[]; filtered: boolean; base: string; viewsColumn: boolean;
+}) {
   const t = useT();
+  const boot = useBoot();
   const api = useApi();
   const navigate = useNavigate();
   const queries = useQueryClient();
@@ -293,6 +316,7 @@ function EntryRows({ handle, entries, filtered, base }: { handle: string; entrie
               <th scope="col" className="pressroomtable">{t('weblogEntryQuery.title')}</th>
               <th scope="col" className="pressroomtable" style={{ width: '10%' }}>{t('weblogEdit.status')}</th>
               <th scope="col" className="pressroomtable" style={{ width: '15%' }}>{t('weblogEntryQuery.category')}</th>
+              {viewsColumn ? <th scope="col" className="pressroomtable n" style={{ width: '7%' }}>{t('entries.views30')}</th> : null}
               <th scope="col" className="pressroomtable" style={{ width: '3%' }} />
               <th scope="col" className="pressroomtable" style={{ width: '3%' }} />
             </tr>
@@ -321,6 +345,9 @@ function EntryRows({ handle, entries, filtered, base }: { handle: string; entrie
                   </td>
                   <td><StatusPill status={entry.status ?? 'DRAFT'} when={entry.status === 'SCHEDULED' ? entry.pubTime : null} /></td>
                   <td>{entry.category}</td>
+                  {viewsColumn ? (
+                    <td className="n">{entry.views30d === undefined ? '—' : new Intl.NumberFormat(boot.uiLocale).format(entry.views30d)}</td>
+                  ) : null}
                   <td>
                     {isAuthor ? null : (
                       <button type="button" className="btn btn-link p-0 align-baseline border-0"

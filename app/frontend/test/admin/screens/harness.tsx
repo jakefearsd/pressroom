@@ -26,6 +26,15 @@ export function meHandler(permission: 'POST' | 'EDIT_DRAFT' | 'ADMIN' = 'POST', 
   }));
 }
 
+/** /v1/meta with analytics on or off and a trash retention. */
+export function metaHandler(analytics = false, trashRetentionDays = 30): HttpHandler {
+  return http.get(`${API}/meta`, () => HttpResponse.json({
+    version: '1', features: { customThemes: false, groupBlogging: false, userWeblogCreation: false, uploads: true,
+      readerSignIn: false, analytics },
+    limits: { maxBodyBytes: 1, maxListLimit: 200, entryTextMaxChars: 1 }, trashRetentionDays
+  }));
+}
+
 export function problem(status: number, code: string, detail: string, errors?: { field: string; message: string }[]) {
   return HttpResponse.json({ status, code, detail, ...(errors === undefined ? {} : { errors }) }, {
     status, headers: { 'Content-Type': 'application/problem+json' }
