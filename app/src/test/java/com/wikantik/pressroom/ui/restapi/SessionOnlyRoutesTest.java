@@ -24,7 +24,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -80,30 +79,46 @@ class SessionOnlyRoutesTest {
         return new MockHttpServletRequest(route.method(), "/v1/probe");
     }
 
-    private static void refused(ApiRoute route, String who) {
-        ApiException refusal = assertThrows(ApiException.class, () -> new ApiScopeInterceptor()
-                .preHandle(request(route), new MockHttpServletResponse(), route.handler()), route.key() + " | " + who);
-        assertEquals(403, refusal.getStatus(), route.key() + " | " + who);
-        assertEquals("auth.sessionOnly", refusal.toProblem("/x").code(), route.key() + " | " + who);
+    /** What the guard answers this caller on this route: "refused" or why it was not. */
+    private static String answer(ApiRoute route) {
+        try {
+            new ApiScopeInterceptor().preHandle(request(route), new MockHttpServletResponse(), route.handler());
+            return "let through";
+        } catch (ApiException refusal) {
+            return refusal.getStatus() == 403 && "auth.sessionOnly".equals(refusal.toProblem("/x").code())
+                    ? "refused" : "refused with " + refusal.getStatus();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Collects every route the caller got through (or refused wrongly), so one miss does not hide the rest. */
+    private static void refusedEverywhere(List<String> offenders, String who) {
+        for (ApiRoute route : MARKED) {
+            String answer = answer(route);
+            if (!"refused".equals(answer)) {
+                offenders.add(who + " | " + route.key() + " | " + answer);
+            }
+        }
     }
 
     @Test
     void everyMarkedRouteRefusesEveryTokenAndPasswordAndAnonymousAndUnrecognisedCaller() {
-        for (ApiRoute route : MARKED) {
-            for (ApiToken.Role role : ApiToken.Role.values()) {
-                signIn(new ApiPrincipal("agent", null, role, "token-1"));
-                refused(route, role + " token");
-            }
-            signIn(PasswordCallerDetails.SOURCE.buildDetails(new MockHttpServletRequest()));
-            refused(route, "password");
-            SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken("k", "anon",
-                    AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
-            refused(route, "anonymous");
-            SecurityContextHolder.clearContext();
-            refused(route, "nobody");
-            signIn("some future login mechanism");
-            refused(route, "unrecognised");
+        List<String> offenders = new java.util.ArrayList<>();
+        for (ApiToken.Role role : ApiToken.Role.values()) {
+            signIn(new ApiPrincipal("agent", null, role, "token-1"));
+            refusedEverywhere(offenders, role + " token");
         }
+        signIn(PasswordCallerDetails.SOURCE.buildDetails(new MockHttpServletRequest()));
+        refusedEverywhere(offenders, "password");
+        SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken("k", "anon",
+                AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
+        refusedEverywhere(offenders, "anonymous");
+        SecurityContextHolder.clearContext();
+        refusedEverywhere(offenders, "nobody");
+        signIn("some future login mechanism");
+        refusedEverywhere(offenders, "unrecognised");
+        assertEquals(List.of(), offenders);
     }
 
     @Test

@@ -156,17 +156,43 @@ class StylesheetApiTest {
         verify(weblogs, never()).removeTemplate(any());
     }
 
+    private void onACustomTheme() throws Exception {
+        t.weblog.setEditorTheme(WeblogTheme.CUSTOM);
+        WeblogTheme custom = mock(WeblogTheme.class);
+        when(custom.getStylesheet()).thenReturn(shared);
+        when(t.tier.themeManager().getTheme(t.weblog)).thenReturn(custom);
+        hasOwn();
+    }
+
     @Test
-    void aCustomThemeOwnsItsStylesheetSoCopyRevertAndDeleteAreRefused() throws Exception {
+    void copyFromSharedIsRefusedOnACustomTheme() throws Exception {
+        onACustomTheme();
+        refused(t.send(post(URL + "/copy-from-shared"), null), 409, "stylesheet.customTheme");
+        verify(weblogs, never()).saveTemplate(any());
+    }
+
+    @Test
+    void revertIsRefusedOnACustomTheme() throws Exception {
+        onACustomTheme();
+        refused(t.send(post(URL + "/revert"), null), 409, "stylesheet.customTheme");
+        verify(weblogs, never()).saveTemplate(any());
+    }
+
+    @Test
+    void deleteIsRefusedOnACustomTheme() throws Exception {
+        onACustomTheme();
+        refused(t.send(delete(URL), null), 409, "stylesheet.customTheme");
+        verify(weblogs, never()).removeTemplate(any());
+    }
+
+    @Test
+    void aCustomThemeOwnsItsStylesheetAndSavesItInPlace() throws Exception {
         t.weblog.setEditorTheme(WeblogTheme.CUSTOM);
         WeblogTheme custom = mock(WeblogTheme.class);
         when(custom.getStylesheet()).thenReturn(shared);
         when(t.tier.themeManager().getTheme(t.weblog)).thenReturn(custom);
         hasOwn();
 
-        refused(t.send(post(URL + "/copy-from-shared"), null), 409, "stylesheet.customTheme");
-        refused(t.send(post(URL + "/revert"), null), 409, "stylesheet.customTheme");
-        refused(t.send(delete(URL), null), 409, "stylesheet.customTheme");
         JsonNode view = body(t.send(get(URL), null));
         assertTrue(view.path("customTheme").asBoolean());
         assertFalse(view.path("sharedThemeStylesheet").asBoolean());
