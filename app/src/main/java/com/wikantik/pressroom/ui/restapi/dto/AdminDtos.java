@@ -188,6 +188,25 @@ public final class AdminDtos {
     public record ConfigEntry(String name, String value, String type) {
     }
 
+    /** One runtime property as the Global Config screen draws it: its message key, type and default. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ConfigPropertyDefinition(
+            @Schema(description = "The property's name, as GET and PATCH /v1/admin/config use it.", requiredMode = Schema.RequiredMode.REQUIRED) String name,
+            @Schema(description = "The message key of its label.", requiredMode = Schema.RequiredMode.REQUIRED) String key,
+            @Schema(description = "string, text, boolean, integer or float; anything else is edited as a string.", requiredMode = Schema.RequiredMode.REQUIRED)
+            String type,
+            @Schema(description = "The value used while none is stored.") String defaultValue,
+            @Schema(description = "Rows of the text box for a text property.", requiredMode = Schema.RequiredMode.REQUIRED) int rows,
+            @Schema(description = "Columns of the text box for a text property.", requiredMode = Schema.RequiredMode.REQUIRED) int cols) {
+    }
+
+    /** A display group of runtime properties, in the order the screen shows them. */
+    public record ConfigGroup(
+            @Schema(description = "The group's name.", requiredMode = Schema.RequiredMode.REQUIRED) String name,
+            @Schema(description = "The message key of its heading.", requiredMode = Schema.RequiredMode.REQUIRED) String key,
+            @Schema(description = "Its properties, in display order.", requiredMode = Schema.RequiredMode.REQUIRED) List<ConfigPropertyDefinition> properties) {
+    }
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record WeblogView(String id, String handle, String name, String tagline, String copyright,
                               String emailAddress, String locale, String timeZone,

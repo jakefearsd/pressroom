@@ -3,6 +3,7 @@ import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
 import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
+import { siteAdminRoutes } from './routes/siteRoutes';
 
 const scoped = (scope: FrameHandle['scope']): { handle: FrameHandle } => ({ handle: { scope } });
 
@@ -17,6 +18,7 @@ export const appRoutes: RouteObject[] = [{
     { index: true, element: <Home />, ...scoped('none') },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
     { path: 'admin', element: <AdminHome />, ...scoped('admin') },
+    ...siteAdminRoutes,
     { path: '*', element: <NotFound />, ...scoped('none') }
   ]
 }];

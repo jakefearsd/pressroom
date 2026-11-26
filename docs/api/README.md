@@ -2156,6 +2156,7 @@ POST  /api/v1/admin/users/{userName}/password-link   email the person a set-pass
 GET   /api/v1/admin/users/{userName}/weblogs         the weblogs the account belongs to
 
 GET   /api/v1/admin/config
+GET   /api/v1/admin/config/definitions   the display groups and each property's message key, type and default (what the Global Config screen draws)
 PATCH /api/v1/admin/config
 GET   /api/v1/admin/revisions          what the revision store holds
 POST  /api/v1/admin/revisions/sweep    run the sweep, or report what it would remove
@@ -2298,6 +2299,10 @@ a flat `{"name": "value", ...}` map, not a list of typed objects — the type
 is declared server-side, not asserted by the caller — and every name and
 value in the request is validated *before* anything is saved, so a bad
 request never leaves a partial write behind.
+
+`GET /api/v1/admin/config/definitions` lists the display groups of that file in order, each with its
+properties' `name`, `key` (the message key of the label), `type`, `defaultValue`, `rows` and `cols`:
+the Global Config screen draws its form from it. It is an operator route, not an MCP tool.
 
 > **Changed in 0.16.0: `PATCH /api/v1/admin/config` applies the rules the
 > Global Config screen applies.** Earlier versions checked only each value's
