@@ -159,4 +159,24 @@ public final class CategoryRules {
         }
         return null;
     }
+
+    /**
+     * Whether {@code image} may be a category's icon: an absolute http or https URL with a host, which is what the
+     * Categories page's browser check ({@code isValidUrl} in pressroom.js) accepts. The URL parser decides, not
+     * a pattern, so a host with an unusual top-level domain, an address by IP and {@code localhost:8083} all pass;
+     * the scheme is checked on the text as typed because the parser forgives too much ({@code http:example.com}).
+     * Blank is no image and the caller checks that first.
+     */
+    public static boolean isValidImageUrl(String image) {
+        String text = image.trim();
+        if (!text.regionMatches(true, 0, "http://", 0, 7) && !text.regionMatches(true, 0, "https://", 0, 8)) {
+            return false;
+        }
+        try {
+            String host = new java.net.URI(text).getHost();
+            return host != null && !host.isEmpty();
+        } catch (java.net.URISyntaxException e) {
+            return false;
+        }
+    }
 }

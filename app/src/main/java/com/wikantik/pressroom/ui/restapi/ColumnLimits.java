@@ -71,6 +71,7 @@ public final class ColumnLimits {
     // weblogcategory (V002__baseline_schema.sql)
     public static final int CATEGORY_NAME = ColumnWidths.CATEGORY_NAME;
     public static final int CATEGORY_DESCRIPTION = ColumnWidths.CATEGORY_DESCRIPTION;
+    public static final int CATEGORY_IMAGE = ColumnWidths.CATEGORY_IMAGE;
 
     // pressroom_weblogpage (V014__weblog_pages.sql)
     public static final int PAGE_SLUG = ColumnWidths.PAGE_SLUG;

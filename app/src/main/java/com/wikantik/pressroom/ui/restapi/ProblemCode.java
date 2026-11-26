@@ -77,6 +77,13 @@ public enum ProblemCode {
     ENTRY_NOT_CHANGEABLE("entry.notChangeable", ProblemType.FORBIDDEN, 0),
     /** A member without publish rights asked for field {@code {0}} (pinned, strand, an image import), a publisher's. */
     ENTRY_NEEDS_PUBLISH_RIGHTS("entry.needsPublishRights", ProblemType.FORBIDDEN, 1),
+    ENTRY_NEEDS_SITE_ADMIN("entry.needsSiteAdmin", ProblemType.FORBIDDEN, 1),
+    NEWSLETTER_NOT_PUBLISHED("newsletter.notPublished", ProblemType.CONFLICT, 0),
+    NEWSLETTER_ALREADY_SENT("newsletter.alreadySent", ProblemType.CONFLICT, 0),
+    NEWSLETTER_NO_LIST("newsletter.noList", ProblemType.CONFLICT, 0),
+    NEWSLETTER_NOT_CONFIGURED("newsletter.notConfigured", ProblemType.CONFLICT, 0),
+    NEWSLETTER_SEND_FAILED("newsletter.sendFailed", ProblemType.UPSTREAM_FAILURE, 1),
+    NEWSLETTER_SENT_NOT_RECORDED("newsletter.sentButNotRecorded", ProblemType.CONFLICT, 1),
     /** The page is in the trash; restore it before changing it. */
     PAGE_IN_TRASH("page.trashed", ProblemType.CONFLICT, 0),
     /** Trash was asked for a page already in the trash. */
@@ -345,6 +352,7 @@ public enum ProblemCode {
     CATEGORY_NOT_FOUND("category.notFound", ProblemType.NOT_FOUND, 0),
     /** The weblog already has a category with this {@code name}. */
     CATEGORY_NAME_IN_USE("category.nameInUse", ProblemType.CONFLICT, 1),
+    CATEGORY_IMAGE_INVALID("category.imageInvalid", ProblemType.INVALID_REQUEST, 0),
     /** A category {@code name} may not contain a character HTML escaping would change. */
     CATEGORY_NAME_INVALID("category.nameInvalid", ProblemType.INVALID_REQUEST, 0),
     /** The weblog's last category cannot be deleted. */

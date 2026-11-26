@@ -207,6 +207,10 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/admin/analytics", "Operator maintenance: the admin screen and admin API only."),
             new Exclusion("POST /v1/admin/analytics/sync",
                     "Operator maintenance: starts a registration sync; the admin screen and admin API only."),
+            new Exclusion("POST " + W + "/entries/{id}/duplicate", "An editing-screen convenience: an agent has "
+                    + "the entry's text and fields already, and entries create makes a draft from them."),
+            new Exclusion("POST " + W + "/entries/{id}/send-newsletter", "Emails every subscriber and cannot be "
+                    + "undone: a person's decision, made on the editor or the REST API, never an agent's."),
             new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
                     + "Use media import to add an image by URL."));
 

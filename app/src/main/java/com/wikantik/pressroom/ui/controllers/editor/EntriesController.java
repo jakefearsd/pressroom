@@ -38,6 +38,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.EntryDuplication;
 import com.wikantik.pressroom.ui.controllers.pagers.EntriesPager;
 import com.wikantik.pressroom.ui.view.EntryListQuery;
 import com.wikantik.pressroom.ui.view.EntryListQuery.EntryListPage;
@@ -172,10 +173,8 @@ public class EntriesController extends BaseController {
         }
 
         try {
-            WeblogEntry copy = original.copyAsDraft(getText("weblogEdit.duplicateTitle",
+            WeblogEntry copy = EntryDuplication.duplicate(weblogger, original, getText("weblogEdit.duplicateTitle",
                     new Object[] {original.getTitle()}, request));
-            weblogger.getWeblogEntryManager().saveWeblogEntry(copy);
-            weblogger.flush();
 
             addFlashMessage(redirectAttributes, "weblogEdit.entryDuplicated",
                     copy.getTitle(), request);

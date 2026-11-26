@@ -164,6 +164,18 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   notice goes out only when a write moves the entry into `PENDING` (`notifyReviewers` takes the
   status before the write; final review I1: a contributor's agent patching its pending entry mailed
   them on every PATCH).
+- **Entry actions (React admin migration, Wave 1).** `EntryActionsApi` holds the two POST-level actions on an
+  existing entry, `POST .../entries/{id}/duplicate` and `.../send-newsletter`, in a controller of their own for the
+  same per-controller-permission reason: the entries page's Duplicate (`EntriesController`) and the editor's "Send as
+  newsletter" both need `POST`, where the rest of the entry writes take `EDIT_DRAFT`. Each calls the code the JSP
+  controller calls (`EntryDuplication`, `EntryNewsletter`: the newsletter's outcomes are an enum each screen words
+  its own way, and its "stamp only after the send" rule lives there). Both are MCP `Exclusion`s: duplicate is an
+  editing-screen convenience, and a send emails every subscriber, so it stays a person's decision. Whether
+  send-newsletter belongs on SA-18's session-only list is not decided here; it is token-reachable at `POST`.
+  `GET .../entries` takes `startDate`/`endDate`, the JSP filter's bounds (`EntryListQuery.startOfDay`/`endOfDay`,
+  server time zone), strictly parsed. An entry's `pinnedToMain` is a site administrator's (`ContributorRules.isSiteAdmin`,
+  `entry.needsSiteAdmin`, refused only when the value would change); `locale` is anyone's. A category's `image`
+  is checked as the Categories page's browser check is (`CategoryRules.isValidImageUrl`).
 - **A contributor reads what the editor shows them (owner decisions final review, I3, 0.16.0).**
   The editor lists the categories and tags, and its image chooser (`MediaFileImageChooserController`,
   `EDIT_DRAFT`) the media files and directories, so those five `GET`s live in `CategoriesReadApi`

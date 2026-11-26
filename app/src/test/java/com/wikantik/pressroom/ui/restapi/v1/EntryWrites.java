@@ -40,6 +40,8 @@ final class EntryWrites {
     private String revisionNote;
     private Boolean pinned;
     private String strand;
+    private String locale;
+    private Boolean pinnedToMain;
 
     private EntryWrites() {
     }
@@ -78,12 +80,14 @@ final class EntryWrites {
     EntryWrites revisionNote(String value) { revisionNote = value; return this; }
     EntryWrites pinned(Boolean value) { pinned = value; return this; }
     EntryWrites strand(String value) { strand = value; return this; }
+    EntryWrites locale(String value) { locale = value; return this; }
+    EntryWrites pinnedToMain(Boolean value) { pinnedToMain = value; return this; }
 
     EntryDtos.EntryWrite build() {
         return new EntryDtos.EntryWrite(title, summary, text, status, category, pubTime, tags,
                 metaTitle, searchDescription, canonicalUrl, noindex, featuredImageId, ogImageId,
                 jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation,
                 commentsClosed, anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits,
-                expectedContentHash, revisionNote, pinned, strand);
+                expectedContentHash, revisionNote, pinned, strand, locale, pinnedToMain);
     }
 }

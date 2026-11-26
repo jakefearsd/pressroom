@@ -247,6 +247,9 @@ class ApiAuthorizationMatrixTest {
             row("DELETE /v1/weblogs/{handle}/entries/{id}",           POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/{id}/restore",   POST,  SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/entries/{id}/delete-forever", POST, SITE_LOGIN, ON_POST),
+            // Duplicate and send-newsletter are the entries list's and the editor's own POST-level actions.
+            row("POST   /v1/weblogs/{handle}/entries/{id}/duplicate", POST,  SITE_LOGIN, ON_POST),
+            row("POST   /v1/weblogs/{handle}/entries/{id}/send-newsletter", POST, SITE_LOGIN, ON_POST),
             row("POST   /v1/weblogs/{handle}/entries/{id}/preview",   POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/preview",        POST,  SITE_LOGIN, ON_DRAFT),
             row("POST   /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore", POST, SITE_LOGIN, ON_DRAFT),

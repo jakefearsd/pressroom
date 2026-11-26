@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
+import com.wikantik.pressroom.ui.view.EntryListQuery;
 import com.wikantik.pressroom.util.Utilities;
 
 
@@ -115,14 +116,10 @@ public class EntriesBean {
     }
 
     private static Date toDate(LocalDate localDate, boolean endOfDay) {
-        if (endOfDay) {
-            return Date.from(localDate.atTime(23, 59, 59, 999_000_000)
-                    .atZone(ZoneId.systemDefault()).toInstant());
-        }
-        return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        return endOfDay ? EntryListQuery.endOfDay(localDate) : EntryListQuery.startOfDay(localDate);
     }
-    
-    
+
+
     public String getCategoryName() {
         return categoryName;
     }

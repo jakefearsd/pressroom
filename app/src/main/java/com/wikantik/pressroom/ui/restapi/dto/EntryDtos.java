@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.business.ContentHashes;
 import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -90,7 +91,15 @@ public final class EntryDtos {
             @Schema(description = "True when the entry is pinned to the top of its blog's home listing.")
             Boolean pinned,
             @Schema(description = "Id of the strand page this entry is a part of; absent when it is in none.")
-            String strand) {
+            String strand,
+            @Schema(description = "The entry's locale, for example en_US; a new entry without one has its weblog's.")
+            String locale,
+            @Schema(description = "True when the entry is pinned to the site's main page (a site administrator's "
+                    + "setting).")
+            Boolean pinnedToMain,
+            @Schema(description = "When the entry was sent as a newsletter; absent until it has been (see "
+                    + "POST .../entries/{id}/send-newsletter).")
+            Instant newsletterSentAt) {
     }
 
     public record EntryPage(
@@ -167,7 +176,10 @@ public final class EntryDtos {
                 entry.getEventLocation(),
                 entry.getCommentsClosed(),
                 entry.getPinned(),
-                entry.getStrandPageId());
+                entry.getStrandPageId(),
+                entry.getLocale(),
+                entry.getPinnedToMain(),
+                instant(entry.getNewsletterSentAt()));
     }
 
     /**
@@ -333,7 +345,13 @@ public final class EntryDtos {
             Boolean pinned,
             @Schema(description = "Id of one of this blog's strand pages: the entry joins it as the last part. "
                     + "clear: [\"strand\"] takes it out. Needs publish rights.")
-            String strand) {
+            String strand,
+            @Schema(description = "The entry's locale, at most 20 characters, for example en_US. Omitted on create, "
+                    + "the weblog's locale; blank on update is the same. Not clearable.")
+            String locale,
+            @Schema(description = "True to pin this entry to the site's main page. Needs a site administrator. "
+                    + "Not clearable.")
+            Boolean pinnedToMain) {
 
         /**
          * This write with what the import step produced: the featured image it
@@ -358,7 +376,7 @@ public final class EntryDtos {
                     searchDescription, canonicalUrl, noindex, newFeaturedImageId, ogImageId, jsonLdType,
                     geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed, anchor,
                     featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash,
-                    revisionNote, pinned, strand);
+                    revisionNote, pinned, strand, locale, pinnedToMain);
         }
     }
 
@@ -446,6 +464,17 @@ public final class EntryDtos {
         // The pin limit needs a count, so the controller checks it (checkWrite).
         if (write.pinned() != null) {
             entry.setPinned(write.pinned());
+        }
+        // Whether the caller may pin to the main page is the controller's check (checkWrite), as the pin's is.
+        if (write.pinnedToMain() != null) {
+            entry.setPinnedToMain(write.pinnedToMain());
+        }
+        if (write.locale() != null) {
+            errors.check("locale", () -> {
+                ColumnLimits.requireMaxLength("locale", write.locale(), ColumnLimits.LOCALE);
+                // Blank is no locale: the save fills in the weblog's, as it does for a new entry.
+                entry.setLocale(StringUtils.trimToNull(write.locale()));
+            });
         }
         if (write.featuredImageId() != null) {
             errors.check("featuredImageId", () -> {

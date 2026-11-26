@@ -110,6 +110,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
         boolean mayPublish = mayPublish(weblog, user);
+        boolean siteAdmin = ContributorRules.isSiteAdmin(weblogger.getUserManager(), user);
 
         if (body.clear() != null && !body.clear().isEmpty()) {
             throw ApiException.problemOnField("clear", ProblemCode.FIELD_UPDATE_ONLY, "clear");
@@ -126,7 +127,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (body.anchor() != null) {
             errors.check("anchor", () -> requireAnchorForm(body.anchor()));
         }
-        checkWrite(errors, weblog, entry, body, Set.of(), mayPublish);
+        checkWrite(errors, weblog, entry, body, Set.of(), mayPublish, siteAdmin);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
         EntryImports.Plan importPlan = imports.plan(errors, weblog, body, Set.of(), null, mayPublish);
         errors.throwIfAny();
@@ -182,6 +183,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // restore's DRAFT-only rule entirely. See requireLiveEntry's javadoc.
         WeblogEntry entry = requireLiveEntry(request, id);
         boolean mayPublish = requireChangeable(request, entry);
+        boolean siteAdmin = ContributorRules.isSiteAdmin(weblogger.getUserManager(), requireAuthenticatedUser(request));
         // Before every other check, and so before the import step can fetch:
         // a caller whose view of the text is stale learns that first.
         entryContent().requireUnchanged(entry, sent.expectedContentHash());
@@ -204,7 +206,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (body.anchor() != null && !body.anchor().equals(entry.getAnchor())) {
             errors.add("anchor", ProblemCode.ANCHOR_IMMUTABLE);
         }
-        checkWrite(errors, weblog, entry, body, cleared, mayPublish);
+        checkWrite(errors, weblog, entry, body, cleared, mayPublish, siteAdmin);
         EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
         EntryImports.Plan importPlan = imports.plan(errors, weblog, body, cleared, entry.getText(), mayPublish);
         errors.throwIfAny();
@@ -498,10 +500,13 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * never commit half a write. Problems land in {@code errors}.
      */
     private void checkWrite(FieldErrors errors, Weblog weblog, WeblogEntry entry,
-                            EntryDtos.EntryWrite body, Set<String> cleared, boolean mayPublish)
+                            EntryDtos.EntryWrite body, Set<String> cleared, boolean mayPublish, boolean siteAdmin)
             throws WebloggerException {
         if (!mayPublish) {
             refusePublishersFields(entry, body, cleared);
+        }
+        if (!siteAdmin) {
+            refuseSiteAdminsFields(entry, body);
         }
         WeblogEntry scratch = EntryDtos.scratchOf(entry);
         errors.check(() -> EntryDtos.applyWrite(scratch, body, weblog, cleared));
@@ -550,6 +555,17 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         boolean leaves = cleared.contains("strand") && entry.getStrandPageId() != null;
         if (joins || leaves) {
             throw ApiException.problemOnField("strand", ProblemCode.ENTRY_NEEDS_PUBLISH_RIGHTS, "strand");
+        }
+    }
+
+    /**
+     * Pinning to the main page is a site administrator's, as in the editor, which shows the checkbox to no one
+     * else and keeps what is stored. Over the API a write that would change it is refused, naming the field;
+     * one that sends the stored value back (a view read and returned) changes nothing and passes.
+     */
+    private static void refuseSiteAdminsFields(WeblogEntry entry, EntryDtos.EntryWrite body) {
+        if (body.pinnedToMain() != null && !body.pinnedToMain().equals(entry.getPinnedToMain())) {
+            throw ApiException.problemOnField("pinnedToMain", ProblemCode.ENTRY_NEEDS_SITE_ADMIN, "pinnedToMain");
         }
     }
 

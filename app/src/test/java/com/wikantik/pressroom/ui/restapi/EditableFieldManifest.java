@@ -47,7 +47,7 @@ final class EditableFieldManifest {
                 "title", "summary", "text", "status", "category", "pubTime", "tags", "metaTitle",
                 "searchDescription", "canonicalUrl", "noindex", "featuredImageId", "ogImageId", "jsonLdType",
                 "geoLatitude", "geoLongitude", "eventStart", "eventEnd", "eventLocation", "commentsClosed",
-                "pinned", "strand"),
+                "pinned", "strand", "locale", "pinnedToMain"),
                 new TreeMap<>(Map.of(
                         "anchor", "Where a section edit applies; an agent's way to address part of the text.",
                         "edits", "Anchored partial edits of the text; the editor replaces the whole text.",

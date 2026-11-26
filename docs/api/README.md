@@ -48,6 +48,25 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
     --url https://example.com/pressroom --user admin --password-stdin
 ```
 
+## Changes since 0.16.3
+
+Added for the React admin screens, which use the same routes as any other client (additions only; nothing that
+worked changes):
+
+- `GET .../entries` takes `startDate` and `endDate` (`yyyy-MM-dd`, the entries page's date range); a malformed
+  one is a 400 `parameter.invalidValue` naming it. See [Entries](#entries).
+- `POST .../entries/{id}/duplicate` copies an entry into a new draft, and `POST .../entries/{id}/send-newsletter`
+  mails it to the weblog's list; both need publish rights. See [Entries](#entries).
+- An entry reads and writes `locale` and `pinnedToMain`, and reads `newsletterSentAt`. Changing `pinnedToMain` is
+  a site administrator's: 403 `entry.needsSiteAdmin` otherwise.
+- A category reads and writes `image`, an absolute `http` or `https` URL; anything else is a 400
+  `category.imageInvalid`. See [Categories and tags](#categories-and-tags).
+- New problem codes: `entry.needsSiteAdmin`, `newsletter.notPublished`, `newsletter.alreadySent`,
+  `newsletter.noList`, `newsletter.notConfigured`, `newsletter.sendFailed`, `newsletter.sentButNotRecorded`,
+  `category.imageInvalid`. See [Errors](#errors).
+- Neither new entry route is an MCP action: duplicating is an editing-screen convenience and sending a newsletter
+  is a person's decision. See [MCP](#mcp).
+
 ## Changes in 0.16.3
 
 - A JSON body that declares no length (chunked) and runs past the 4,048,576-byte
@@ -533,6 +552,13 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `entry.deleteForeverNeedsTrash` | 409 | `conflict` | Delete-forever was asked for an entry that is not in the trash. |
 | `entry.notChangeable` | 403 | `forbidden` | A member without publish rights (a contributor) asked to change an entry that is not their own draft or pending entry. |
 | `entry.needsPublishRights` | 403 | `forbidden` | A member without publish rights asked to change `pinned` or `strand`, or to import an image (`featuredImageUrl`, `importExternalImages: true`); the field is named in `errors`. |
+| `entry.needsSiteAdmin` | 403 | `forbidden` | Someone who is not a site administrator asked to change `pinnedToMain`; the field is named in `errors`. |
+| `newsletter.notPublished` | 409 | `conflict` | Send-newsletter was asked for an entry that is not published. |
+| `newsletter.alreadySent` | 409 | `conflict` | Send-newsletter was asked for an entry already sent; an entry is never sent twice. |
+| `newsletter.noList` | 409 | `conflict` | The weblog has no `newsletterListUuid`; set one in its settings first. |
+| `newsletter.notConfigured` | 409 | `conflict` | The site has no Listmonk API credentials. |
+| `newsletter.sendFailed` | 502 | `upstream-failure` | Listmonk refused the campaign or could not be reached; nothing was stamped, so the send can be retried. |
+| `newsletter.sentButNotRecorded` | 409 | `conflict` | The campaign was sent but the entry could not be marked; do not send again. |
 | `page.trashed` | 409 | `conflict` | The page is in the trash; restore it before changing it. |
 | `page.alreadyTrashed` | 409 | `conflict` | Trash was asked for a page already in the trash. |
 | `page.notInTrash` | 409 | `conflict` | Restore was asked for a page that is not in the trash. |
@@ -667,6 +693,7 @@ stable, case-sensitive string of two dotted lowerCamel segments,
 | `focal.pairOnly` | 400 | `invalid-request` | One focal coordinate was sent for a file with no focal point. |
 | `category.notFound` | 404 | `not-found` | No category of the weblog has this id. |
 | `category.nameInUse` | 409 | `conflict` | The weblog already has a category with this `name`. |
+| `category.imageInvalid` | 400 | `invalid-request` | A category `image` is not an absolute `http` or `https` URL. |
 | `category.nameInvalid` | 400 | `invalid-request` | A category `name` contains a character HTML escaping would change (`&`, `<`, `>`, `"`). |
 | `category.lastOne` | 409 | `conflict` | The weblog's last category cannot be deleted. |
 | `category.moveToSelf` | 400 | `invalid-request` | A category delete's `moveTo` names the category itself. |
@@ -859,6 +886,8 @@ PATCH  /api/v1/weblogs/{handle}/entries/{id}              partial update
 DELETE /api/v1/weblogs/{handle}/entries/{id}              trash (not delete)
 POST   /api/v1/weblogs/{handle}/entries/{id}/restore      restore (always to DRAFT)
 POST   /api/v1/weblogs/{handle}/entries/{id}/delete-forever   permanent delete
+POST   /api/v1/weblogs/{handle}/entries/{id}/duplicate    copy into a new draft (publishers)
+POST   /api/v1/weblogs/{handle}/entries/{id}/send-newsletter   mail the entry to the weblog's list (publishers)
 POST   /api/v1/weblogs/{handle}/entries/{id}/preview       preview unsaved text
 POST   /api/v1/weblogs/{handle}/entries/preview            preview text for a new entry
 GET    /api/v1/weblogs/{handle}/entries/{id}/revisions     list revisions, newest first
@@ -910,6 +939,27 @@ entry that is already `PENDING` tells them nothing new, whoever makes it.
 > reviewers again.** Earlier versions mailed them after every write that
 > left the entry `PENDING`, so each `PATCH` of an entry waiting for review
 > sent another notice. Now only the write that submits it does.
+
+**`locale` and `pinnedToMain`.** `locale` is the entry's locale (for example `en_US`, at most 20 characters;
+a new entry without one has its weblog's, and a blank one on update is the same). `pinnedToMain` pins the entry to
+the site's main page and is a site administrator's, as in the editor: for anyone else a write that would change it is
+a 403 `entry.needsSiteAdmin` naming the field, and sending the stored value back changes nothing and passes. Neither
+is clearable. The view carries both, and `newsletterSentAt` (read only; absent until the entry has been sent).
+
+**Duplicate** (`POST .../entries/{id}/duplicate`, publishers only, as the entries page's Duplicate action) copies
+an entry into a new `DRAFT` titled "Copy of ..." with a fresh id and no slug of its own, and answers 201 with the
+new entry and its `Location`. The copy keeps the text, summary, category, tags, images, search fields and
+location; it has no publication time, pin, strand or newsletter stamp, and the original is unchanged. A trashed
+entry is a 409 `entry.trashed` (restore is how it comes back).
+
+**Send newsletter** (`POST .../entries/{id}/send-newsletter`, publishers only, as the editor's "Send as
+newsletter") emails the entry to the weblog's Listmonk list, synchronously, then stamps `newsletterSentAt` and answers the
+entry. It mails every subscriber and cannot be undone, so each precondition is a refusal before anything is sent: the
+entry is not `PUBLISHED` (409 `newsletter.notPublished`), has been sent already (409 `newsletter.alreadySent`),
+the weblog has no `newsletterListUuid` (409 `newsletter.noList`), or the site has no Listmonk API credentials (409
+`newsletter.notConfigured`). A send Listmonk refuses is a 502 `newsletter.sendFailed` with nothing stamped, so a retry
+is safe; one that went but could not be recorded is a 409 `newsletter.sentButNotRecorded`, whose `detail` says not
+to send again.
 
 **Create:**
 
@@ -1064,7 +1114,10 @@ calls: `restore`, then a `PATCH` setting `status` to `PUBLISHED` yourself,
 never one.
 
 `GET .../entries` accepts `?status=`, `?category=`, `?tags=` (repeatable),
-`?text=` (free-text search), `?locale=`, plus `offset`/`limit`. Naming no
+`?text=` (free-text search), `?locale=`, `?startDate=` and `?endDate=` (a day,
+`yyyy-MM-dd`, in the server's time zone: from the start of `startDate` to the end of `endDate`, as the entries
+page's date range; either may be sent alone, and a malformed one is a 400 `parameter.invalidValue` naming it),
+plus `offset`/`limit`. Naming no
 `status` at all excludes the trash by construction (`?status=TRASHED` is the
 only way to see it — see [docs/dev/entries.md, "Trash"](../dev/entries.md#trash-soft-delete-w5)
 for why the whole API's trash-safety property lives in that one default).
@@ -1327,6 +1380,11 @@ weblog: a contributor (`EDIT_DRAFT`) reads them, as the entry editor shows
 them. Creating, changing and deleting a category needs a `POST` or `ADMIN`
 token and publish rights on the weblog, as the Categories page does (category
 structure is blog-wide, not a single draft's business).
+
+A category has an `image`, an icon the Categories page's form takes: an absolute `http` or `https` URL (at most 255
+characters), read in every category view and written on create and update. A blank `image` on update removes it; one
+that is not an absolute `http(s)` URL is a 400 on `image`, code `category.imageInvalid`, and a too-long one a 400
+`field.tooLong`.
 
 Deleting the weblog's last remaining category is a 409 — a weblog with zero
 categories can never save an entry again.
@@ -2433,7 +2491,8 @@ error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid re
 internal-error problem. A
 503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
 through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
-through MCP: minting, listing or revoking tokens, uploading media from local files, and everything in
+through MCP: minting, listing or revoking tokens, uploading media from local files, duplicating an entry,
+sending an entry as a newsletter, and everything in
 [Not available through the API](#not-available-through-the-api).
 
 ## Not available through the API

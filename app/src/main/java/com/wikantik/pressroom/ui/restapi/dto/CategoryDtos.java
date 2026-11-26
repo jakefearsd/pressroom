@@ -14,7 +14,9 @@ public final class CategoryDtos {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record CategoryView(String id, String name, String description, int entryCount) {
+    public record CategoryView(String id, String name, String description, int entryCount,
+            @Schema(description = "The category's icon: an absolute http or https URL; absent when it has none.")
+            String image) {
     }
 
     /**
@@ -28,7 +30,10 @@ public final class CategoryDtos {
             @Schema(description = "The category's name, unique in the weblog. Required on create.")
             String name,
             @Schema(description = "What the category is for.")
-            String description) {
+            String description,
+            @Schema(description = "An icon for the category: an absolute http or https URL, at most 255 "
+                    + "characters. Blank on update removes it.")
+            String image) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -37,7 +42,7 @@ public final class CategoryDtos {
 
     public static CategoryView toView(WeblogCategory category, int entryCount) {
         return new CategoryView(category.getId(), category.getName(),
-                category.getDescription(), entryCount);
+                category.getDescription(), entryCount, category.getImage());
     }
 
     public static TagView toView(TagStat stat) {
