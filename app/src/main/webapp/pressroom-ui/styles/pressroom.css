@@ -1184,8 +1184,8 @@ table.mm_table_actions td {
     padding-top: 10px;
 }
 
-/* The summary, under the title and permalink: one quiet line, taller once
-   focused or written. */
+/* The summary, under the title and permalink: one quiet line, growing with
+   its content (never on focus alone, so focusing it shifts nothing). */
 .editor-summary {
     margin: 0 0 12px;
 }
@@ -1193,7 +1193,9 @@ table.mm_table_actions td {
 .editor-summary-field {
     display: block;
     width: 100%;
-    resize: vertical;
+    resize: none;
+    field-sizing: content;
+    overflow: hidden;
     font: inherit;
     padding: 6px 8px;
     border: 1px solid var(--line);

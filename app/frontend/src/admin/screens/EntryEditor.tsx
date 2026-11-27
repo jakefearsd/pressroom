@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/problem';
@@ -513,16 +513,27 @@ function parseDraft(text: string, current: EntryForm): EntryForm {
   }
 }
 
-/** The summary, directly under the title and permalink: one line until focused or written, then it grows. */
+/**
+ * The summary, directly under the title and permalink: one line while empty, growing with its content. Focus alone
+ * never changes its height, so the click that focuses it moves nothing. Rows follow the line count; the CSS
+ * `field-sizing: content` (or, without it, the layout effect) also follows soft-wrapped lines.
+ */
 function SummaryField({ form, set }: { form: EntryForm; set: Setter }) {
   const t = useT();
-  const [focused, setFocused] = useState(false);
+  const box = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (el === null || (typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content'))) {
+      return;
+    }
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [form.summary]);
   return (
     <div className="editor-summary">
-      <textarea name="bean.summary" id="edit_summary" rows={focused || form.summary !== '' ? 3 : 1}
+      <textarea ref={box} name="bean.summary" id="edit_summary" rows={Math.max(1, form.summary.split('\n').length)}
                 className="editor-summary-field" aria-describedby="edit_summary_tip"
                 aria-label={t('weblogEdit.summary')} placeholder={t('weblogEdit.summary.add')} value={form.summary}
-                onFocus={() => { setFocused(true); }} onBlur={() => { setFocused(false); }}
                 onChange={(e) => { set('summary', e.target.value); }} />
       <div id="edit_summary_tip" className="form-text">{t('weblogEdit.summary.tip')}</div>
     </div>

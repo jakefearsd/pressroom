@@ -77,13 +77,17 @@ describe('the entry editor: loading', () => {
     expect(document.getElementById('collapseSeo')).toHaveClass('show');
   });
 
-  it('shows an empty summary as one line, and grows it on focus', async () => {
+  it('shows an empty summary as one line, unchanged by focus, and grows with multi-line content', async () => {
     open('/weblogs/alpha/entries/e1');
     await loaded();
     const summary = screen.getByPlaceholderText('Add a summary');
     expect(summary).toHaveAttribute('rows', '1');
     await userEvent.click(summary);
+    expect(summary).toHaveAttribute('rows', '1');
+    await userEvent.type(summary, 'one{Enter}two{Enter}three');
     expect(summary).toHaveAttribute('rows', '3');
+    await userEvent.clear(summary);
+    expect(summary).toHaveAttribute('rows', '1');
   });
 
   it('puts the platform shortcut in the title of the save button', async () => {
@@ -93,16 +97,14 @@ describe('the entry editor: loading', () => {
   });
 
   it('shows the Command shortcut in the save button title on a Mac', async () => {
-    const platform = Object.getOwnPropertyDescriptor(Navigator.prototype, 'platform');
     Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
     try {
       open('/weblogs/alpha/entries/e1');
       await loaded();
-      expect(document.querySelector('[data-save-shortcut]')).toHaveAttribute('title', '\u2318+S');
     } finally {
       delete (navigator as { platform?: string }).platform;
-      expect(platform).toBeDefined();
     }
+    expect(document.querySelector('[data-save-shortcut]')).toHaveAttribute('title', '\u2318+S');
   });
 
   it('sends a missing entry to the app home and a trashed one to the Trash', async () => {

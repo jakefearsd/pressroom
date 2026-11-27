@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.it;
 
 import com.codeborne.selenide.Condition;
+import com.codeborne.selenide.WebDriverRunner;
 import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
@@ -26,11 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLocks;
 import org.junit.jupiter.api.parallel.ResourceLock;
-import com.codeborne.selenide.WebDriverRunner;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
-
-import java.time.Duration;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +36,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
