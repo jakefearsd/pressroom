@@ -25,7 +25,10 @@ class ReaderSignInMessagesTest {
 
     private static final Path RESOURCES = Path.of("src/main/resources");
 
-    private static final List<String> PREFIXES = List.of("login.reader.", "reader.signIn.");
+    private static final List<String> PREFIXES = List.of("login.reader.", "reader.signIn.",
+            // 0.18.0 Part E: Save, Follow, the rows and the "You" menu; the account page's reader lists
+            "reader.state.", "reader.menu.", "account.saved.", "account.following.", "account.history.",
+            "account.comments.answeredBy");
 
     private static final List<String> TRANSLATIONS = List.of("de", "es", "fr", "ja", "ko", "ru", "zh_CN");
 
@@ -46,7 +49,7 @@ class ReaderSignInMessagesTest {
                 keys.add(key);
             }
         }
-        assertTrue(keys.size() >= 6, "found only " + keys + " -- the scan is not looking where it thinks it is");
+        assertTrue(keys.size() >= 50, "found only " + keys + " -- the scan is not looking where it thinks it is");
 
         List<String> missing = new ArrayList<>();
         for (String language : TRANSLATIONS) {

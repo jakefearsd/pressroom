@@ -85,7 +85,7 @@
                 #set($cardAspect = 1.0 * $entry.featuredImage.width / $entry.featuredImage.height)
             #end
     <figure class="pf-card"#if($cardAspect) style="--ar:$cardAspect"#end>
-        <a class="pf-card-link" href="$url.entry($entry.anchor)">
+        <a class="pf-card-link" href="$url.entry($entry.anchor)"#showReaderEntryMark($entry)>
             #set($cardAlt = $utils.unescapeHTML($entry.title))
             #if($utils.isNotEmpty($entry.featuredImage.altText))#set($cardAlt = $entry.featuredImage.altText)#end
             #showResponsiveImage($entry.featuredImage $cardAlt "(max-width: 640px) 100vw, 40vw" "pf-card-img")
@@ -113,7 +113,7 @@
                 #set($pfRun = "list")
             #end
     <article class="pf-row">
-        <h2 class="pf-row-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
+        <h2 class="pf-row-title"><a href="$url.entry($entry.anchor)"#showReaderEntryMark($entry)>$entry.title</a></h2>
         <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>#if($pinnedRows) &middot; <span class="entry-pinned">$text.get("entryMeta.pinned")</span>#end &middot; $utils.escapeHTML($entry.category.name) &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
         ## The author's summary, else the search description, else the
         ## post's first couple of sentences (WeblogEntryWrapper#getExcerpt).

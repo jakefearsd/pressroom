@@ -98,6 +98,24 @@ class EditorBundlePomTest {
     }
 
     /**
+     * The signed-in reader's client (0.18.0, Part E) is the content bundle's
+     * twin: built from src/reader.js into the webapp root, git-ignored there,
+     * and loaded by weblog.vm from the site under the context path, versioned.
+     */
+    @Test
+    void theSignedInReaderBundleIsBuiltIgnoredAndLoadedFromTheSite() throws IOException {
+        String build = Files.readString(Path.of("frontend", "build.mjs"));
+        assertTrue(build.contains("entryPoints: ['src/reader.js']"), "build.mjs must bundle the reader client");
+        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/pressroom-reader.js"));
+        String ignore = Files.readString(Path.of("..", ".gitignore"));
+        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-reader.js"),
+                "a build output under src/main/webapp must be git-ignored");
+        String weblogVm = Files.readString(WEBLOG_VM);
+        assertTrue(weblogVm.contains("<script defer src=\"$url.site/pressroom-ui/scripts/pressroom-reader.js?v="),
+                "weblog.vm must load it deferred, under the context path, versioned");
+    }
+
+    /**
      * highlight.js is BSD-3-Clause, which asks a redistribution to carry its
      * copyright notice; every reader's browser receives this bundle, and
      * {@code legalComments: 'none'} strips the library's own comments. Reads

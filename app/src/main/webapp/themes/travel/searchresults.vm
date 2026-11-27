@@ -35,6 +35,7 @@
 
 <header class="tg-header">
     <h1 class="tg-name"><a href="$url.home">$model.weblog.name</a></h1>
+    #showFollowControl($model.weblog "masthead")
     <nav class="tg-nav">
         #showWeblogCategoryLinksList()
         <ul>

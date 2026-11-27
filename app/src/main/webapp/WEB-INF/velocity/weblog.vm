@@ -2677,6 +2677,7 @@ analytics script when a blog has one; they do nothing otherwise.
     <a href="https://www.pinterest.com/pin/create/button/?url=${aeUrl}&amp;media=$utils.encodeComponent($aeEntry.featuredImage.permalink)&amp;description=${aeTitle}" target="_blank" rel="noopener" data-umami-event="share" data-umami-event-via="pinterest">Pinterest</a>
 #end
     <button type="button" class="entry-share-native" hidden data-umami-event="share" data-umami-event-via="device">$text.get("afterEntry.share.device")</button>
+    #showSaveControl($aeEntry)
 </nav>
 <script>
 (function () {
@@ -2705,6 +2706,12 @@ analytics script when a blog has one; they do nothing otherwise.
 })();
 </script>
 #end
+## Save on its own line when the blog has turned the share row off, then
+## the article-end Follow line, above Keep reading (0.18.0, Part E).
+#if(!$aeShare && $utils.readerStateOn($aeEntry.website))
+<p class="entry-save-row">#showSaveControl($aeEntry)</p>
+#end
+#showFollowControl($model.weblog "article-end")
 #if(!$aeReading.nearby.isEmpty())
 <section class="entry-more entry-nearby" aria-labelledby="entry-nearby-label">
     <h2 class="entry-more-label" id="entry-nearby-label">$text.get("afterEntry.nearby")</h2>
@@ -3148,6 +3155,8 @@ a name never leaks between visitors.
 With reader sign-in on (0.18.0) a visitor's way in is the provider's button
 (the showGoogleSignIn macro, via "header") in place of Sign in; authors sign
 in from the colophon's Sign in, one click from their form.
+Signed in with reader sign-in on (0.18.0, Part E), the name, Main Menu and
+Sign out move into the "You" menu (the showYouMenu macro).
 *#
 #macro(showAccountLinks $acctPrefix)
 <span class="${acctPrefix}-account">
@@ -3157,6 +3166,8 @@ in from the colophon's Sign in, one click from their form.
     #else
     <a class="${acctPrefix}-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
     #end
+#elseif($utils.ssoEnabled)
+    #showYouMenu($acctPrefix)
 #else
     #if($utils.authenticatedUser)<span class="${acctPrefix}-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
     #if($utils.isUserAuthor())<a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a>#end
@@ -3245,6 +3256,13 @@ html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-si
   }
 }
 </style>
+#if($utils.isUserAuthenticated())
+## A signed-in page's reader rules (0.18.0, Part E): Save, Follow, their
+## confirmations, the rows, the Read label and the "You" menu, from one
+## static, versioned file. A signed-out page's few control rules live in each
+## article theme's own stylesheet, so an anonymous page gains no request.
+<link rel="stylesheet" href="$url.site/pressroom-ui/styles/pressroom-reader.css?v=$utils.escapeHTML($config.getColophon($model.weblog).version)">
+#end
 <script>
 (function () {
     var start = '$utils.escapeJavaScript($utils.ssoStartUrl)';
@@ -3401,7 +3419,7 @@ through them, never by renaming them.
 #else
 <aside class="more-from-site" aria-label="$text.get("discovery.homeLink")">
 #end
-    <nav class="places-been" hidden data-places aria-labelledby="more-from-site-places-label">
+    <nav class="places-been" hidden data-places#showPlacesSource($weblog) aria-labelledby="more-from-site-places-label">
         <h3 class="places-been-title" id="more-from-site-places-label">$text.get("discovery.placesBeen")</h3>
         #showPlacesNudge()
     </nav>
@@ -3442,9 +3460,14 @@ it has something to show. With no storage, or no JavaScript, nothing shows.
 The attributes are escaped here (the name by WeblogWrapper); the script reads
 them back through getAttribute, so they arrive as plain text. No dollar sign
 and no hash in the script: Velocity would read either.
+
+A signed-in reader with reader sign-in on (0.18.0, Part E) gets neither the
+recording nor this script: their list comes from the server's history (the
+showPlacesSource and showReaderScript macros), and the browser's own list is
+left untouched, to show again after sign-out.
 *#
 #macro(showPlacesYouveBeen $weblog)
-#if($discovery && $weblog)
+#if($discovery && $weblog && !($utils.isUserAuthenticated() && $utils.readerStateOn($weblog)))
 #if(!$weblog.siteSpace)
 <span hidden data-places-record data-handle="$utils.escapeHTML($weblog.handle)" data-name="$weblog.name" data-url="$utils.escapeHTML($weblog.absoluteURL)"></span>
 #end
@@ -3516,6 +3539,170 @@ and no hash in the script: Velocity would read either.
 #end
 
 #**
+The "You" menu (0.18.0, Part E): a signed-in visitor's place in the header,
+with reader sign-in on (the showAccountLinks macro and the frontpage theme's
+top bar call it). Initials and the name in a details/summary disclosure
+(keyboard-operable by itself), then links to the account page's sections,
+the Main menu for an author, and Sign out. The page is cached per signed-in
+user, so the name never reaches another visitor. The name class is the
+prefix plus -who, the marker the older tests pin; you-menu, you-menu-initials
+and you-menu-list are this macro's own. The signed-in reader bundle (the
+showReaderScript macro) closes the menu on a click outside it or Escape, as
+the blogs menu does; without it the disclosure still opens and closes.
+*#
+#macro(showYouMenu $ymPrefix)
+#set($ymName = "")
+#if($utils.authenticatedUser)#set($ymName = $utils.authenticatedUser.screenName)#end
+#set($ymAccount = $utils.escapeHTML($url.action("account", "/pressroom-ui")))
+<details class="you-menu ${ymPrefix}-you">
+    <summary><span class="you-menu-initials" aria-hidden="true">$utils.escapeHTML($utils.initials($ymName))</span><span class="${ymPrefix}-who">$utils.escapeHTML($ymName)</span></summary>
+    <ul class="you-menu-list" aria-label="$utils.escapeHTML($text.get("reader.menu.label"))">
+        <li><a href="${ymAccount}#saved">$text.get("reader.menu.saved")</a></li>
+        <li><a href="${ymAccount}#following">$text.get("reader.menu.following")</a></li>
+        <li><a href="${ymAccount}#history">$text.get("reader.menu.history")</a></li>
+        <li><a href="${ymAccount}#comments">$text.get("reader.menu.comments")</a></li>
+        <li><a href="${ymAccount}#email">$text.get("reader.menu.email")</a></li>
+        #if($utils.isUserAuthor())<li><a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a></li>#end
+        <li><a href="$url.logout">$text.get("navigationBar.logout")</a></li>
+    </ul>
+</details>
+#end
+
+#**
+Save, in a post's share row (the showAfterEntry macro), 0.18.0 Part E. Only
+with reader sign-in on and never on a blog with a custom domain (that host
+carries no site session, and the reader endpoint lives on the site's host).
+The markup is the same for every visitor, neutral (aria-pressed false): the
+reader script (the showReaderScript macro) shows a signed-in reader's state,
+and turns a signed-out click into the provider's button, keeping the intent.
+data-label-off/-on are the button's two words, data-sign-in the provider
+button's. The data-reader-save attribute is the script's marker.
+*#
+#macro(showSaveControl $scEntry)
+#if($scEntry && $utils.readerStateOn($scEntry.website))
+<span class="reader-save" data-reader-save data-entry="$utils.escapeHTML($scEntry.id)" data-via="save" data-label-off="$utils.escapeHTML($text.get("reader.state.save"))" data-label-on="$utils.escapeHTML($text.get("reader.state.saved"))" data-sign-in="$utils.escapeHTML($text.get("reader.signIn.save", [$utils.ssoProviderLabel]))"><button type="button" class="reader-save-button" aria-pressed="false" data-umami-event="save">$text.get("reader.state.save")</button></span>
+#end
+#end
+
+#**
+Follow, for a blog (0.18.0, Part E): "masthead", a compact Follow in each
+article theme's header, or "article-end", the quiet line "Follow {blog}"
+above Keep reading (the showAfterEntry macro), in its own
+p.reader-follow-line. Same rules as the showSaveControl macro (reader
+sign-in on, no custom domain; never the site space). The click is the
+follow event with the place as its via; a signed-out click's sign-in counts
+via "follow" (the masthead) or "article-end". The blog name comes escaped
+from WeblogWrapper.
+*#
+#macro(showFollowControl $fcWeblog $fcPlace)
+#if($utils.readerStateOn($fcWeblog) && !$fcWeblog.siteSpace)
+#if($fcPlace == "article-end")
+#set($fcOff = $text.get("reader.state.followBlog", [$fcWeblog.name]))
+#set($fcOn = $text.get("reader.state.followingBlog", [$fcWeblog.name]))
+#set($fcVia = "article-end")
+#else
+#set($fcOff = $text.get("reader.state.follow"))
+#set($fcOn = $text.get("reader.state.following"))
+#set($fcVia = "follow")
+#end
+#if($fcPlace == "article-end")<p class="reader-follow-line">#end<span class="reader-follow reader-follow-$fcPlace" data-reader-follow data-weblog="$utils.escapeHTML($fcWeblog.handle)" data-via="$fcVia" data-label-off="$fcOff" data-label-on="$fcOn" data-sign-in="$utils.escapeHTML($text.get("reader.signIn.follow", [$utils.ssoProviderLabel]))"><button type="button" class="reader-follow-button" aria-pressed="false" data-umami-event="follow" data-umami-event-via="$fcPlace">$fcOff</button></span>#if($fcPlace == "article-end")</p>#end
+#end
+#end
+
+#**
+"Continue reading" and "From blogs you follow" at the top of a blog's home
+(0.18.0, Part E): rendered only into a signed-in reader's page (pages are
+cached per signed-in user), with reader sign-in on, and not on a category,
+tag or date view. Each row is hidden until the reader script fills it from
+reader.rol, and stays hidden when it would be empty. The front page has its
+own pair (fd-continue, fd-followed in discovery.vm).
+*#
+#macro(showReaderRows $rrWeblog)
+#if($utils.isUserAuthenticated() && $utils.readerStateOn($rrWeblog) && !$model.weblogCategory && !$model.weblogDateLabel && (!$model.tags || $model.tags.isEmpty()))
+<section class="reader-row reader-row-continue" data-reader-row="continue" hidden aria-labelledby="reader-continue-label">
+    <h2 class="reader-row-label" id="reader-continue-label">$text.get("reader.state.continue")</h2>
+    <ul class="reader-row-list"></ul>
+</section>
+<section class="reader-row reader-row-followed" data-reader-row="followed" hidden aria-labelledby="reader-followed-label">
+    <h2 class="reader-row-label" id="reader-followed-label">$text.get("reader.state.followed")</h2>
+    <ul class="reader-row-list"></ul>
+</section>
+#end
+#end
+
+## A list title's hook for the "Read" label (0.18.0, Part E): the attribute
+## data-reader-entry, in a signed-in reader's page only, so a signed-out list
+## is as before. Write it inside the title link's tag.
+#macro(showReaderEntryMark $reEntry)#if($utils.isUserAuthenticated() && $utils.readerStateOn($reEntry.website)) data-reader-entry="$utils.escapeHTML($reEntry.id)"#end#end
+
+## The signed-in Places hook on a places container (0.18.0, Part E): the list
+## then comes from the server (the showReaderScript macro), and the browser's
+## own list is neither read nor written (the showPlacesYouveBeen macro).
+#macro(showPlacesSource $psWeblog)#if($utils.isUserAuthenticated() && $utils.readerStateOn($psWeblog)) data-places-source="server"#end#end
+
+#**
+The reader's page script (0.18.0, Part E), from the colophon, with reader
+sign-in on. Anonymous pages must not get slower or less cacheable (the
+spec's anti-goal), so the two kinds of page get different things.
+
+A signed-out page of a blog without a custom domain gets only the inline
+stub (data-reader-stub, ReaderControlsRenderTest holds it under a budget):
+it drops any stored intent (a sign-in that was cancelled or never finished),
+and a Save or Follow click keeps sessionStorage["pressroom.intent"] =
+{action, entry|weblog, via, at} and puts the provider's button
+(window.pressroomGoogleSignIn, or a plain sso/start link on a page whose
+head never loaded it) in the control's place. The same bytes for everyone.
+
+A signed-in page (rendered and cached per user) gets the hidden data element
+(the server-built endpoint, the words, data-signed-in and, on a post, the
+entry the read beacon records) and the versioned, deferred bundle
+pressroom-reader.js (app/frontend/src/reader.js), which completes the
+intent once and does everything else. The bundle also closes the "You"
+menu, so it loads on any signed-in page; the data element only where the
+blog shows reader state (UtilitiesModel.readerStateOn).
+*#
+#macro(showReaderScript $rsWeblog)
+#if($utils.ssoEnabled && $utils.isUserAuthenticated())
+#if($utils.readerStateOn($rsWeblog))
+<span hidden data-reader data-endpoint="$utils.escapeHTML($utils.readerEndpoint)"#if(!$rsWeblog.siteSpace) data-weblog="$utils.escapeHTML($rsWeblog.handle)"#end data-signed-in#if($model.permalink && $model.weblogEntry) data-read-entry="$utils.escapeHTML($model.weblogEntry.id)"#end
+      data-msg-save-done="$utils.escapeHTML($text.get("reader.state.saveDone"))" data-msg-follow-done="$utils.escapeHTML($text.get("reader.state.followDone"))"
+      data-msg-newsletter="$utils.escapeHTML($text.get("reader.state.newsletter"))" data-msg-newsletter-confirm="$utils.escapeHTML($text.get("reader.state.newsletter.confirm"))"
+      data-msg-newsletter-already="$utils.escapeHTML($text.get("reader.state.newsletter.already"))" data-msg-newsletter-unavailable="$utils.escapeHTML($text.get("reader.state.newsletter.unavailable"))"
+      data-msg-failed="$utils.escapeHTML($text.get("reader.state.failed"))" data-msg-read="$utils.escapeHTML($text.get("reader.state.read"))"></span>
+#end
+<script defer src="$url.site/pressroom-ui/scripts/pressroom-reader.js?v=$utils.escapeHTML($config.getColophon($rsWeblog).version)"></script>
+#elseif($utils.readerStateOn($rsWeblog))
+<script data-reader-stub>
+(function () {
+  var key = 'pressroom.intent';
+  try { window.sessionStorage.removeItem(key); } catch (e) { /* no storage */ }
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest ? e.target.closest('[data-reader-save] > button, [data-reader-follow] > button') : null;
+    if (!button) { return; }
+    var control = button.parentNode, via = control.getAttribute('data-via'), label = control.getAttribute('data-sign-in');
+    var intent = control.hasAttribute('data-reader-save')
+      ? { action: 'save', entry: control.getAttribute('data-entry') }
+      : { action: 'follow', weblog: control.getAttribute('data-weblog'), via: via };
+    intent.at = Date.now();
+    try { window.sessionStorage.setItem(key, JSON.stringify(intent)); } catch (x) { /* the sign-in still works */ }
+    var link;
+    if (typeof window.pressroomGoogleSignIn === 'function') {
+      link = window.pressroomGoogleSignIn(via, label);
+    } else {
+      link = document.createElement('a');
+      link.href = '$utils.escapeJavaScript($utils.ssoStartUrl)?return=' + encodeURIComponent(location.pathname + location.search);
+      link.textContent = label;
+    }
+    control.replaceChild(link, button);
+    link.focus();
+  });
+})();
+</script>
+#end
+#end
+
+
+#**
 The site colophon, the last thing inside each bundled theme's footer:
     #showColophon($model.weblog)
 
@@ -3536,6 +3723,7 @@ print it as "2,026". All words come from the footer.* message keys.
 #macro(showColophon $weblog)
 #showMoreFromSite($weblog)
 #showPlacesYouveBeen($weblog)
+#showReaderScript($weblog)
 #set($colophonFacts = $config.getColophon($weblog))
 #set($colophonHasCopyright = $utils.isNotEmpty($colophonFacts.copyrightText) || $utils.isNotEmpty($colophonFacts.copyrightHolder))
 <div class="colophon">

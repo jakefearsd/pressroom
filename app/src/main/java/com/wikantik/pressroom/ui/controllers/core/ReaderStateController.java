@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,6 +40,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.view.EntryListView;
+import com.wikantik.pressroom.util.Initials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.CacheControl;
@@ -338,21 +338,9 @@ public class ReaderStateController extends BaseController {
         return weblogger.getWeblogManager().getWeblogByHandle(handle, null);
     }
 
-    /**
-     * The first letters of a name's first and last words, upper-cased: "AR"
-     * for "Ann Marie Reader", "J" for "jake", "?" for no name.
-     */
+    /** The first letters of a name's first and last words ({@link Initials}). */
     static String initials(String name) {
-        String[] words = StringUtils.split(StringUtils.defaultString(name));
-        if (words.length == 0) {
-            return "?";
-        }
-        String first = firstLetter(words[0]);
-        return words.length == 1 ? first : first + firstLetter(words[words.length - 1]);
-    }
-
-    private static String firstLetter(String word) {
-        return new String(Character.toChars(word.codePointAt(0))).toUpperCase(Locale.ROOT);
+        return Initials.of(name);
     }
 
     private static ResponseEntity<Map<String, Object>> ok(String key, boolean value) {

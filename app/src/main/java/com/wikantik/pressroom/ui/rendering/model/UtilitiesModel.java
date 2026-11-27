@@ -54,6 +54,7 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.util.Excerpts;
+import com.wikantik.pressroom.util.Initials;
 import com.wikantik.pressroom.util.RegexUtil;
 import com.wikantik.pressroom.business.shortcodes.GalleryMarkup;
 import com.wikantik.pressroom.pojos.Business;
@@ -233,6 +234,36 @@ public class UtilitiesModel implements Model {
     /** The buttons' icon: Google's G for Google, a neutral mark otherwise ({@link SignInMark}). */
     public String getSignInMark() {
         return SignInMark.forProvider(sso());
+    }
+
+    //------------------------------------------------------------ Reader state
+
+    /**
+     * Where the reader script ({@code pressroomReader}, weblog.vm) asks for and
+     * writes a signed-in reader's saves, follows and history, built here so the
+     * script never guesses the context path. The same for every visitor.
+     */
+    public String getReaderEndpoint() {
+        return WebloggerRuntimeConfig.getRelativeContextURL() + "/pressroom-ui/rendering/reader.rol";
+    }
+
+    /**
+     * Whether a page of this weblog shows the reader's Save, Follow, rows and
+     * script: reader sign-in is on, and the weblog has no custom domain (that
+     * host carries no site session, and the reader endpoint and the sign-in
+     * live on the site's host; the comments slot says the same). A static
+     * fact of the weblog, the same for every visitor.
+     */
+    public boolean readerStateOn(WeblogWrapper weblog) {
+        return weblog != null && StringUtils.isBlank(weblog.getCustomDomain()) && isSsoEnabled();
+    }
+
+    /**
+     * The "You" menu's initials for a display name, by the rule reader.rol's
+     * {@code initials} follows ({@link Initials}); raw: templates escape it.
+     */
+    public String initials(String name) {
+        return Initials.of(name);
     }
 
     private static SsoSettings sso() {

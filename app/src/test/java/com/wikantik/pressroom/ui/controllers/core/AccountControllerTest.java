@@ -33,12 +33,16 @@ import com.wikantik.pressroom.boot.SecurityConfig;
 import com.wikantik.pressroom.boot.WebMvcConfig;
 import com.wikantik.pressroom.business.BootstrapException;
 import com.wikantik.pressroom.business.CommentManager;
+import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.business.comments.CommentService;
+import com.wikantik.pressroom.business.reader.ReaderLists;
+import com.wikantik.pressroom.business.reader.ReaderStateService;
+import com.wikantik.pressroom.business.reader.ReaderStateServiceAccess;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.ReaderComment.Status;
@@ -48,6 +52,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.controllers.PressroomHandlerInterceptor;
 import com.wikantik.pressroom.ui.core.security.sso.SsoLogCapture;
 import com.wikantik.pressroom.ui.core.security.sso.PressroomOidcUser;
+import com.wikantik.pressroom.util.GenericThrottle;
 import com.wikantik.pressroom.util.HTMLSanitizer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -188,8 +193,21 @@ class AccountControllerTest {
         }
 
         @Bean
-        AccountController accountController(CommentService comments) {
-            return new AccountController(comments);
+        ReaderStateService readerStateService() {
+            return ReaderStateServiceAccess.service(TestUtils.weblogger(), ReaderStateControllerTest::strategy,
+                    new GenericThrottle(1000, 60_000, 100), TestConfig::unconfiguredListmonk);
+        }
+
+        /** No follows here, so the offer is never asked for; unconfigured all the same. */
+        private static ListmonkClient unconfiguredListmonk() {
+            ListmonkClient client = org.mockito.Mockito.mock(ListmonkClient.class);
+            when(client.isUnconfigured()).thenReturn(true);
+            return client;
+        }
+
+        @Bean
+        AccountController accountController(CommentService comments, ReaderStateService readers) {
+            return new AccountController(comments, readers);
         }
 
         @Bean
@@ -980,7 +998,14 @@ class AccountControllerTest {
     private AccountController mockedController() {
         mocked = MockWeblogger.create();
         ControllerTestFixture.useWeblogger(mocked.weblogger());
-        return withMessages(new AccountController(new CommentService(mocked.weblogger(), comment -> { })));
+        ReaderStateService readers = org.mockito.Mockito.mock(ReaderStateService.class);
+        try {
+            when(readers.lists(any(), any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(
+                    new ReaderLists(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), java.util.Set.of()));
+        } catch (WebloggerException e) {
+            throw new IllegalStateException(e);
+        }
+        return withMessages(new AccountController(new CommentService(mocked.weblogger(), comment -> { }), readers));
     }
 
     private static Weblog weblog(String handle) {

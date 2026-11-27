@@ -58,6 +58,7 @@ app/frontend/node/
 # webapp root, because that is the only static location this deployment
 # serves (see app/frontend/build.mjs).
 app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js
+app/src/main/webapp/pressroom-ui/scripts/pressroom-reader.js
 # React admin bundle (app/frontend/build.mjs) and the types generated from its API snapshot.
 app/src/main/webapp/pressroom-ui/app/admin.js
 app/src/main/webapp/pressroom-ui/app/admin.js.map

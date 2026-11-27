@@ -65,7 +65,7 @@
     ## <time> element, where it belongs.
     <p class="qj-date"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMM d")<br><span class="y">$utils.formatDate($entry.pubTime, "yyyy")</span></time>#if($pinnedRows)<br><span class="entry-pinned">$text.get("entryMeta.pinned")</span>#end</p>
     <div>
-        <h2 class="qj-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
+        <h2 class="qj-title"><a href="$url.entry($entry.anchor)"#showReaderEntryMark($entry)>$entry.title</a></h2>
         ## Every row gets a line of prose -- a row that collapses to a bare
         ## title breaks the list's rhythm. $entry.excerpt is the author's own
         ## summary (the editor's Summary field) when there is one, else the

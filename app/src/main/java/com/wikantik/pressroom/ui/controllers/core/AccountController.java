@@ -17,7 +17,11 @@
  */
 package com.wikantik.pressroom.ui.controllers.core;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import jakarta.servlet.http.Cookie;
@@ -25,16 +29,23 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import org.apache.commons.lang3.StringUtils;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.comments.CommentRules;
 import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.business.comments.DisplayNames;
+import com.wikantik.pressroom.business.reader.ReaderList;
+import com.wikantik.pressroom.business.reader.ReaderLists;
+import com.wikantik.pressroom.business.reader.ReaderStateRefusal;
+import com.wikantik.pressroom.business.reader.ReaderStateService;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.view.EntryListView;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
@@ -52,9 +63,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * The reader's account page: the display name, every comment the account has
- * written, the Email switch (reply-notification emails), and "Delete my
- * account".
+ * The reader's account page ("Your account"), in the spec's order (0.18.0,
+ * Part E): Saved, Following (with "Email me new posts" where the blog has a
+ * list), Reading history (the newest {@value #HISTORY_SHOWN}, "Clear history"
+ * and the "Keep my reading history" switch), every comment the account has
+ * written, the Email switch (reply-notification emails), the display name,
+ * and "Delete my account". Each list action posts back here and lands on its
+ * own section (#saved, #following, #history), the anchors the "You" menu
+ * links to.
  *
  * <p><b>Who gets in.</b> Any signed-in account with the global {@code comment}
  * action, which readers hold and editors and administrators hold too; no
@@ -76,12 +92,25 @@ public class AccountController extends BaseController {
     private static final String VIEW = ".Account";
     private static final String BACK = "redirect:/pressroom-ui/account.rol";
     private static final String STORE_ERROR = "generic.error.check.logs";
+    private static final String SAVED = "#saved";
+    private static final String FOLLOWING = "#following";
+    private static final String HISTORY = "#history";
+    /** The most saves and follows the page lists. */
+    private static final int LIST_SHOWN = 200;
+
+    /** The reading history the page shows: the newest this many. */
+    static final int HISTORY_SHOWN = 50;
 
     private final CommentService comments;
+    private final ReaderStateService readers;
 
-    /** @param comments deletes the account's own comments and expires the weblogs that show them */
-    public AccountController(CommentService comments) {
+    /**
+     * @param comments deletes the account's own comments and expires the weblogs that show them
+     * @param readers  the account's saves, follows and reading history
+     */
+    public AccountController(CommentService comments, ReaderStateService readers) {
         this.comments = comments;
+        this.readers = readers;
     }
 
     // ------------------------------------------------------------- security
@@ -161,6 +190,111 @@ public class AccountController extends BaseController {
             addFlashError(redirectAttributes, STORE_ERROR, request);
         }
         return BACK + "#email";
+    }
+
+    /** Saved's Remove: the save goes, whether or not the entry is still visible. */
+    @PostMapping("/account!unsave.rol")
+    public String unsave(@RequestParam(name = "entry", required = false) String entryId,
+                         HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        try {
+            readers.unsave(account, StringUtils.defaultString(entryId));
+            addFlashMessage(redirectAttributes, "account.saved.removed", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not remove a save for {}", account.getUserName(), ex);
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + SAVED;
+    }
+
+    /** Following's Unfollow, by weblog id: a follow of a blog hidden since is removable too. */
+    @PostMapping("/account!unfollow.rol")
+    public String unfollow(@RequestParam(name = "weblog", required = false) String weblogId,
+                           HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        try {
+            readers.unfollow(account, StringUtils.defaultString(weblogId));
+            addFlashMessage(redirectAttributes, "account.following.removed", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not remove a follow for {}", account.getUserName(), ex);
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + FOLLOWING;
+    }
+
+    /** Reading history's "Clear history". */
+    @PostMapping("/account!clearHistory.rol")
+    public String clearHistory(HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        try {
+            readers.clearHistory(account);
+            addFlashMessage(redirectAttributes, "account.history.cleared", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not clear the reading history of {}", account.getUserName(), ex);
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + HISTORY;
+    }
+
+    /**
+     * "Keep my reading history": on when the box is ticked ({@code keepHistory}
+     * sent), off when it is not. Off clears the history first and then saves
+     * the switch, so a clear that fails leaves both as they were; the beacon
+     * then records nothing ({@link ReaderStateService#recordRead}). A save
+     * that fails is rolled back and reported.
+     */
+    @PostMapping("/account!saveHistorySetting.rol")
+    public String saveHistorySetting(@RequestParam(name = "keepHistory", required = false) String keepHistory,
+                                     HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        boolean on = keepHistory != null;
+        try {
+            if (!on) {
+                // Cleared first: a clear that fails leaves the switch on over the history it kept.
+                readers.clearHistory(account);
+            }
+            account.setKeepHistory(on);
+            weblogger.getUserManager().saveUser(account);
+            weblogger.flush();
+            log.info("account {} turned its reading history {}", account.getUserName(), on ? "on" : "off");
+            addFlashMessage(redirectAttributes, "account.history.saved", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not save the history setting of {}", account.getUserName(), ex);
+            weblogger.release();
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + HISTORY;
+    }
+
+    /**
+     * Following's "Email me new posts": the account's own email to the blog's
+     * listmonk list ({@link ReaderStateService#subscribe}). Every outcome is a
+     * calm line on the Following section: listmonk being down never fails the
+     * page (Review Focus 4). Counted against the account's reader-state write
+     * limit, since each one reaches listmonk.
+     */
+    @PostMapping("/account!subscribe.rol")
+    public String subscribe(@RequestParam(name = "weblog", required = false) String weblogId,
+                            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        try {
+            if (!readers.admitWrite(account)) {
+                addFlashError(redirectAttributes, "account.following.subscribe.unavailable", request);
+                return BACK + FOLLOWING;
+            }
+            Weblog weblog = StringUtils.isBlank(weblogId) ? null : weblogger.getWeblogManager().getWeblog(weblogId);
+            switch (readers.subscribe(account, weblog)) {
+                case CONFIRM -> addFlashMessage(redirectAttributes, "account.following.subscribe.confirm", request);
+                case ALREADY -> addFlashMessage(redirectAttributes, "account.following.subscribe.already", request);
+                case UNAVAILABLE -> addFlashError(redirectAttributes, "account.following.subscribe.unavailable", request);
+            }
+        } catch (ReaderStateRefusal refusal) {
+            addFlashError(redirectAttributes, "account.following.subscribe.notOffered", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not look up a weblog to subscribe {} to", account.getUserName(), ex);
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + FOLLOWING;
     }
 
     @PostMapping("/account!deleteComment.rol")
@@ -298,22 +432,42 @@ public class AccountController extends BaseController {
         model.addAttribute("account", account);
         model.addAttribute("nameValue", nameValue);
         model.addAttribute("comments", List.of());
+        model.addAttribute("saved", List.of());
+        model.addAttribute("following", List.of());
+        model.addAttribute("history", List.of());
+        model.addAttribute("newsletterOffered", Map.of());
+        model.addAttribute("entryTitles", Map.of());
         if (account == null) {
             return;
         }
         model.addAttribute("notifyReplies", account.isNotifyReplies());
+        model.addAttribute("keepHistory", account.isKeepHistory());
+        List<WeblogEntry> labelled = new ArrayList<>();
         try {
+            ReaderLists lists = readers.lists(account, EnumSet.of(ReaderList.SAVED, ReaderList.FOLLOWING), LIST_SHOWN);
+            List<WeblogEntry> history = readers.lists(account, EnumSet.of(ReaderList.HISTORY), HISTORY_SHOWN).history();
+            Map<String, Boolean> offered = new LinkedHashMap<>();
+            for (Weblog w : lists.following()) {
+                offered.put(w.getId(), readers.newsletterOffered(account, w));
+            }
+            model.addAttribute("saved", lists.saved());
+            model.addAttribute("following", lists.following());
+            model.addAttribute("history", history);
+            model.addAttribute("newsletterOffered", offered);
+            labelled.addAll(lists.saved());
+            labelled.addAll(history);
+
             List<ReaderComment> comments = weblogger.getCommentManager().getCommentsByAuthor(account).stream()
                     .filter(c -> !CommentRules.isTombstone(c))
                     .toList();
             model.addAttribute("comments", comments);
-            // Each comment's entry, labelled once through fn:escapeXml (EntryListView.plainTitles).
-            model.addAttribute("entryTitles", EntryListView.plainTitles(comments.stream()
-                    .map(ReaderComment::getEntry).filter(Objects::nonNull).toList()));
+            comments.stream().map(ReaderComment::getEntry).filter(Objects::nonNull).forEach(labelled::add);
             model.addAttribute("deleteRefusal", deletionRefusal(account));
         } catch (WebloggerException ex) {
             log.error("Could not load the account page of {}", account.getUserName(), ex);
             addError(model, STORE_ERROR, request);
         }
+        // Each listed entry, labelled once through fn:escapeXml (EntryListView.plainTitles).
+        model.addAttribute("entryTitles", EntryListView.plainTitles(labelled));
     }
 }

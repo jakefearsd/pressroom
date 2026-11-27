@@ -216,11 +216,6 @@ class AdminAttentionIT extends PressroomIT {
                 "a genuine submission must be accepted");
     }
 
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
-    }
-
     private static String nonce() {
         return Long.toString(System.nanoTime(), 36);
     }

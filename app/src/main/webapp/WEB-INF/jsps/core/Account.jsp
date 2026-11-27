@@ -17,7 +17,10 @@
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
-<%-- The reader's account page (AccountController). Everything a reader typed
+<%-- The reader's account page (AccountController), "Your account": the
+     sections in the spec's order (0.18.0, Part E), each its own anchor the
+     blog header's "You" menu links to: #saved, #following, #history,
+     #comments, #email, #name, #delete. Everything a reader typed
      -- the display name, its echo in the form, and the comment bodies -- goes
      through fn:escapeXml; a body is plain text shown with pre-wrap, never
      HTML. The entry title is the controller's plain-text entryTitles label,
@@ -28,26 +31,117 @@
 <c:url var="deleteCommentUrl" value="/pressroom-ui/account!deleteComment.rol"/>
 <c:url var="deleteAccountUrl" value="/pressroom-ui/account!deleteAccount.rol"/>
 <c:url var="saveEmailUrl" value="/pressroom-ui/account!saveEmailSetting.rol"/>
+<c:url var="unsaveUrl" value="/pressroom-ui/account!unsave.rol"/>
+<c:url var="unfollowUrl" value="/pressroom-ui/account!unfollow.rol"/>
+<c:url var="subscribeUrl" value="/pressroom-ui/account!subscribe.rol"/>
+<c:url var="clearHistoryUrl" value="/pressroom-ui/account!clearHistory.rol"/>
+<c:url var="saveHistoryUrl" value="/pressroom-ui/account!saveHistorySetting.rol"/>
 
 <div id="accountPage">
 
-    <section class="mb-4">
-        <h2 class="section-head"><spring:message code="account.name.heading"/></h2>
-        <p><spring:message code="account.name.current"/> <strong>${fn:escapeXml(account.screenName)}</strong></p>
-        <form id="accountNameForm" class="form-stacked" method="post" action="${saveNameUrl}">
-            <sec:csrfInput/>
-            <div class="mb-3">
-                <label class="form-label" for="screenName"><spring:message code="account.name.label"/></label>
-                <input type="text" id="screenName" name="screenName" class="form-control"
-                       value="${fn:escapeXml(nameValue)}" maxlength="200" required
-                       aria-describedby="screenNameHelp"/>
-                <div class="form-text" id="screenNameHelp"><spring:message code="account.name.help"/></div>
-            </div>
-            <button type="submit" class="btn btn-primary"><spring:message code="account.name.save"/></button>
-        </form>
+    <%-- Saved, Following and Reading history (0.18.0): the reader's own
+         lists, newest first, kept by ReaderStateService. Entry labels are the
+         controller's plain-text entryTitles, escaped once; blog names are
+         stored raw and escaped here. --%>
+    <section id="saved" class="mb-4">
+        <h2 class="section-head"><spring:message code="account.saved.heading"/></h2>
+        <c:choose>
+        <c:when test="${not empty saved}">
+        <ul class="list-unstyled account-list">
+            <c:forEach items="${saved}" var="e">
+            <li class="account-list-item">
+                <span><a href="${urls.entry(e)}">${fn:escapeXml(entryTitles[e.id])}</a>
+                <span class="form-text">${fn:escapeXml(e.website.name)}</span></span>
+                <form method="post" action="${unsaveUrl}">
+                    <sec:csrfInput/>
+                    <input type="hidden" name="entry" value="${fn:escapeXml(e.id)}"/>
+                    <button type="submit" class="btn btn-secondary btn-sm"><spring:message code="account.saved.remove"/></button>
+                </form>
+            </li>
+            </c:forEach>
+        </ul>
+        </c:when>
+        <c:otherwise>
+        <div class="empty-state">
+            <p class="empty-state-title"><spring:message code="account.saved.none"/></p>
+        </div>
+        </c:otherwise>
+        </c:choose>
     </section>
 
-    <section class="mb-4">
+    <section id="following" class="mb-4">
+        <h2 class="section-head"><spring:message code="account.following.heading"/></h2>
+        <c:choose>
+        <c:when test="${not empty following}">
+        <ul class="list-unstyled account-list">
+            <c:forEach items="${following}" var="w">
+            <li class="account-list-item">
+                <span><a href="${urls.weblog(w)}">${fn:escapeXml(w.name)}</a></span>
+                <span class="account-list-actions">
+                <c:if test="${newsletterOffered[w.id]}">
+                <form method="post" action="${subscribeUrl}">
+                    <sec:csrfInput/>
+                    <input type="hidden" name="weblog" value="${fn:escapeXml(w.id)}"/>
+                    <button type="submit" class="btn btn-secondary btn-sm"><spring:message code="account.following.subscribe"/></button>
+                </form>
+                </c:if>
+                <form method="post" action="${unfollowUrl}">
+                    <sec:csrfInput/>
+                    <input type="hidden" name="weblog" value="${fn:escapeXml(w.id)}"/>
+                    <button type="submit" class="btn btn-secondary btn-sm"><spring:message code="account.following.unfollow"/></button>
+                </form>
+                </span>
+            </li>
+            </c:forEach>
+        </ul>
+        </c:when>
+        <c:otherwise>
+        <div class="empty-state">
+            <p class="empty-state-title"><spring:message code="account.following.none"/></p>
+        </div>
+        </c:otherwise>
+        </c:choose>
+    </section>
+
+    <section id="history" class="mb-4">
+        <h2 class="section-head"><spring:message code="account.history.heading"/></h2>
+        <form id="accountHistoryForm" method="post" action="${saveHistoryUrl}" class="mb-3">
+            <sec:csrfInput/>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="keepHistory"
+                       name="keepHistory" value="true" aria-describedby="keepHistoryHelp"
+                       <c:if test="${keepHistory}">checked</c:if>/>
+                <label class="form-check-label" for="keepHistory"><spring:message code="account.history.keep.label"/></label>
+            </div>
+            <div class="form-text mb-2" id="keepHistoryHelp"><spring:message code="account.history.keep.help"/></div>
+            <button type="submit" class="btn btn-secondary btn-sm"><spring:message code="account.history.save"/></button>
+        </form>
+        <c:choose>
+        <c:when test="${not empty history}">
+        <ul class="list-unstyled account-list">
+            <c:forEach items="${history}" var="e">
+            <li class="account-list-item">
+                <span><a href="${urls.entry(e)}">${fn:escapeXml(entryTitles[e.id])}</a>
+                <span class="form-text">${fn:escapeXml(e.website.name)}</span></span>
+            </li>
+            </c:forEach>
+        </ul>
+        <spring:message var="clearHistoryConfirm" code="account.history.clear.confirm"/>
+        <form method="post" action="${clearHistoryUrl}">
+            <sec:csrfInput/>
+            <button type="submit" class="btn btn-danger btn-sm" data-confirm="${fn:escapeXml(clearHistoryConfirm)}">
+                <spring:message code="account.history.clear"/></button>
+        </form>
+        </c:when>
+        <c:otherwise>
+        <div class="empty-state">
+            <p class="empty-state-title"><c:choose><c:when test="${keepHistory}"><spring:message code="account.history.none"/></c:when><c:otherwise><spring:message code="account.history.off"/></c:otherwise></c:choose></p>
+        </div>
+        </c:otherwise>
+        </c:choose>
+    </section>
+
+    <section id="comments" class="mb-4">
         <h2 class="section-head"><spring:message code="account.comments.heading"/></h2>
         <spring:message var="deleteCommentConfirm" code="account.comment.delete.confirm"/>
         <c:choose>
@@ -76,7 +170,10 @@
                     </c:otherwise>
                     </c:choose>
                 </td>
-                <td><div class="pre-wrap">${fn:escapeXml(c.body)}</div></td>
+                <td><div class="pre-wrap">${fn:escapeXml(c.body)}</div>
+                    <c:if test="${not empty c.reply and c.reply.status.name() == 'PUBLISHED' and not empty c.reply.author}">
+                    <div class="form-text account-answered"><spring:message code="account.comments.answeredBy"><spring:argument value="${fn:escapeXml(c.reply.author.screenName)}"/></spring:message></div>
+                    </c:if></td>
                 <td>
                     <a href="${urls.entry(c.entry)}">${fn:escapeXml(entryTitles[c.entry.id])}</a>
                     <div class="form-text">${fn:escapeXml(c.entry.website.name)}</div>
@@ -127,7 +224,23 @@
         </form>
     </section>
 
-    <section id="accountDelete">
+    <section id="name" class="mb-4">
+        <h2 class="section-head"><spring:message code="account.name.heading"/></h2>
+        <p><spring:message code="account.name.current"/> <strong>${fn:escapeXml(account.screenName)}</strong></p>
+        <form id="accountNameForm" class="form-stacked" method="post" action="${saveNameUrl}">
+            <sec:csrfInput/>
+            <div class="mb-3">
+                <label class="form-label" for="screenName"><spring:message code="account.name.label"/></label>
+                <input type="text" id="screenName" name="screenName" class="form-control"
+                       value="${fn:escapeXml(nameValue)}" maxlength="200" required
+                       aria-describedby="screenNameHelp"/>
+                <div class="form-text" id="screenNameHelp"><spring:message code="account.name.help"/></div>
+            </div>
+            <button type="submit" class="btn btn-primary"><spring:message code="account.name.save"/></button>
+        </form>
+    </section>
+
+    <section id="delete">
         <h2 class="section-head"><spring:message code="account.delete.heading"/></h2>
         <c:choose>
         <c:when test="${not empty deleteRefusal}">

@@ -45,6 +45,7 @@
 
 <header class="tg-header">
     <h1 class="tg-name"><a href="$url.home">$model.weblog.name</a></h1>
+    #showFollowControl($model.weblog "masthead")
     #if($utils.isNotEmpty($model.weblog.tagline))
     <p class="tg-tagline">$utils.escapeHTML($model.weblog.tagline)</p>
     #end
@@ -58,6 +59,8 @@
 </header>
 
 <main class="tg-main" id="main">
+    ## Continue reading and From blogs you follow, for a signed-in reader (weblog.vm).
+    #showReaderRows($model.weblog)
     #set($pager = $model.getWeblogEntriesPager())
     ## An entry list with nothing in it rendered as blank space, on the home
     ## page, on a category nobody has filed under, and on a tag page reached

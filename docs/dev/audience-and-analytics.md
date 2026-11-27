@@ -184,9 +184,13 @@ read-only Grafana contract over two databases. Spec:
 - **Reader sign-in clicks are the `sign-in` event** (0.18.0): every
   provider button carries `data-umami-event="sign-in"` and
   `data-umami-event-via` (`login-page`, `header`, `comments`, `places`; Part E
-  adds `save`, `follow`, `article-end`). Template and script markup, not
-  content, so the sanitizer allowlist is not involved. Read `via` as a
-  property of the `sign-in` event.
+  adds `save`, `follow` (the masthead's Follow) and `article-end`). Template
+  and script markup, not content, so the sanitizer allowlist is not involved.
+  Read `via` as a property of the `sign-in` event.
+- **Save and Follow clicks** (0.18.0, Part E) are the `save` event and the
+  `follow` event with `via` `masthead` or `article-end`; "Also email me new
+  posts" is the `newsletter` event with `via` `follow`. They count clicks by
+  anyone, signed in or not (a signed-out click turns into the sign-in).
 - **Same-origin, so the pinned CSPs never moved.** Served via Caddy's
   `/analytics/*` handle, the tracker runs under every theme's
   `script-src 'self'` / `connect-src 'self'`;
@@ -236,3 +240,80 @@ read-only Grafana contract over two databases. Spec:
   server, where the suite creates its `grafana_ro`; that password is set there
   separately. No
   compose file publishes a Postgres host port — tunnel-only.
+
+## Reader state
+
+0.18.0, spec `docs/superpowers/specs/2026-11-26-reader-and-admin-experience-design.md`
+Part E. What a signed-in reader keeps, and how the pages show it without
+making anonymous pages per-visitor.
+
+- **Tables** (`V056__reader_state.sql`): `pressroom_reader_save`,
+  `pressroom_reader_follow`, `pressroom_reader_read`, each keyed by
+  `(user_id, entry_id|weblog_id)`, each `ON DELETE CASCADE` to the user, entry
+  and weblog. The history keeps the newest 500 per reader. Schema, service and
+  endpoint details: `docs/dev/sso.md`, "Reader state".
+- **The endpoint** `GET/POST /pressroom-ui/rendering/reader.rol`
+  (`ReaderStateController`, `no-store`): the page script's only server call.
+- **The visibility rule** (`ReaderVisibility`): published, `pubTime <= now`,
+  not trashed, on an active, visible weblog. Nothing else is saved, followed
+  or recorded, and every list repeats the rule.
+- **The history switch**: "Keep my reading history" (`pressroom_user.keep_history`,
+  V057, on by default) on the account page's Reading history section. Off
+  clears the history and `ReaderStateService.recordRead` records nothing
+  more; Continue reading, read marks and the signed-in Places then come up
+  empty.
+- **The pages** (weblog.vm; only with reader sign-in on, and never on a blog
+  with a custom domain, whose host carries no site session). A signed-out page
+  holds Save (the showSaveControl macro, in the share row, or its own
+  `p.entry-save-row` when the row is off) and Follow (the showFollowControl
+  macro, in each article theme's masthead and on the `p.reader-follow-line`
+  above Keep reading) in their neutral state, the same bytes for every
+  visitor. Everything personal is rendered only into a signed-in page (pages
+  are cached per signed-in user) or filled in the browser: the "You" menu
+  (the showYouMenu macro: initials, name, links to the account page's
+  sections, Main Menu for an author, Sign out, in a `details`), the
+  `data-signed-in` flag and beacon entry on the script's data element, the
+  reader rows (the showReaderRows macro on a blog home; `fd-continue` and
+  `fd-followed` on the front page, directly under the masthead), the
+  `data-reader-entry` hooks for read marks, and `data-places-source="server"`
+  (the browser's own Places script and recording are left out, so
+  `localStorage["pressroom.places"]` is untouched and shows again after
+  sign-out).
+- **Anonymous pages stay small and shared** (the spec's anti-goal; fix round
+  1). The showReaderScript macro (called by the colophon, so every bundled
+  theme and the site's own pages get it) gives a **signed-out** page only an
+  inline stub, `<script data-reader-stub>`, about 1.3 KB, with no inline
+  reader style and no data element (`ReaderControlsRenderTest` holds it under
+  a 2 KB budget and free of bundle code; it was about 20 KB of inline script,
+  style and data before). The stub drops any stored intent (a cancelled
+  sign-in), and a Save or Follow click stores
+  `sessionStorage["pressroom.intent"] = {action, entry|weblog, via, at}` and
+  puts `window.pressroomGoogleSignIn(via, label)` in the control's place, or a
+  plain `sso/start` link on a forked head without the helper. The few
+  signed-out control rules live in each article theme's stylesheet.
+- **A signed-in page** (rendered and cached per user) gets the data element
+  (endpoint, words, `data-signed-in`, the beacon's entry on a post), the
+  reader stylesheet `pressroom-ui/styles/pressroom-reader.css?v=<version>`
+  (head, the showGoogleSignInAssets macro) and the deferred bundle
+  `pressroom-ui/scripts/pressroom-reader.js?v=<version>`, built from
+  `app/frontend/src/reader.js` like `pressroom-content.js` and git-ignored.
+  The bundle closes the "You" menu (so it loads on any signed-in page), then
+  removes the intent **before** posting it (a reload cannot repeat it; one
+  older than 30 minutes is dropped), asks `reader.rol` once for the page's
+  state, completes the intent and confirms inline, offers "Also email me new
+  posts" after a follow when `newsletter.available`, fills the rows, read
+  marks and Places, and posts one `read` per page view after 10 s visible
+  (`visibilitychange`-aware, `fetch` with `keepalive`, since `sendBeacon`
+  cannot carry the CSRF header; a beacon due before the state answer waits
+  for it). Tests: `ReaderControlsRenderTest`, `app/frontend/test/reader.test.mjs`
+  (the bundle's source and the template's stub, run in jsdom), `ReaderStateIT`
+  (both context paths).
+- **No reader controls on a blog with a custom domain** (accepted ruling):
+  that host does not carry the site's session cookie, and `/pressroom-ui` is
+  cross-origin there, as for the comments slot. `UtilitiesModel.readerStateOn`
+  is the one gate.
+- **The "fresh browser" in `ReaderStateIT`** (accepted ruling) is the same
+  driver with every cookie cleared (the provider's too) and the origin's
+  local and session storage emptied: the feature's only client state.
+  `BrowserHealth`'s DevTools session belongs to the driver, so a new one
+  mid-test is not an option.

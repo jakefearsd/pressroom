@@ -67,10 +67,11 @@ newest.
 `quay.io/keycloak/keycloak:26.0` (`it.keycloak.image`), in dev mode on the
 reserved port `it.kc.port`, importing realm `pressroom-it` from
 `it-selenium/src/test/resources/keycloak/pressroom-it-realm.json`: a confidential
-client `pressroom-it` and seven users (`reader-it`, `unverified-it`, `noname-it`,
+client `pressroom-it` and eight users (`reader-it`, `unverified-it`, `noname-it`,
 plus `writer-it` and `disabled-it`, which only the promote and disable tests
-change, and `commenter-it` and `commenter2-it`, which belong to `CommentsIT`
-alone: it renames and deletes their Pressroom accounts). `noname-it`'s email is `nameless-reader@example.com`: a local part
+change, `commenter-it` and `commenter2-it`, which belong to `CommentsIT`
+alone: it renames and deletes their Pressroom accounts, and `saver-it`, which
+belongs to `ReaderStateIT` alone: its saves, follows and reading history). `noname-it`'s email is `nameless-reader@example.com`: a local part
 that is not the username, so criterion 18 tells the email fallback from a
 `preferred_username` one. "Not signed in" is asserted as a 302 **to the login
 page** (`SsoSignInIT.assertSentToLogIn`), never a bare 302: a 302 to

@@ -56,10 +56,25 @@ The Main menu and the entry editor show how many comments are waiting.
 
 ### A reader's own account page
 
-A signed-in reader has an account page where they can change their display
-name, see and delete their own comments, and delete their account. A display
+A signed-in reader has an account page ("Your account", reached from the
+"You" menu in each blog's header) with their saved articles, the blogs they
+follow (with "Email me new posts" where the blog has a newsletter), their
+reading history (with "Clear history" and a "Keep my reading history"
+switch), their own comments (marked "Answered by" when you replied), the
+reply-email switch, their display name, and "Delete my account". A display
 name may not copy the name of a weblog member. An account that holds any weblog
 membership, or has authored posts, cannot delete itself.
+
+### Save, Follow and reading history
+
+With reader sign-in on, every post offers **Save** in its share row and
+**Follow** in the blog's header and at the end of the post. A signed-out
+reader who clicks either is offered the sign-in, and the save or follow
+completes when they come back. A post counts as read after ten seconds on
+the page; blog home pages and the front page then show **Continue reading**
+and **From blogs you follow** to that reader, with a small **Read** label on
+posts they have read. None of this changes what a signed-out visitor sees. A
+blog on its own custom domain does not offer these yet.
 
 ## Contact messages (Inquiries)
 
