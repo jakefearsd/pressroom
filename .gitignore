@@ -67,3 +67,5 @@ app/frontend/src/admin/api/schema.d.ts
 app/frontend/coverage/
 # ESLint's cache (npm test): content-keyed, outside node_modules, which npm ci deletes.
 app/frontend/.eslintcache
+# tsc --incremental's state (npm run build), outside node_modules for the same reason.
+app/frontend/.tsbuildinfo

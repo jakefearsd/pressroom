@@ -179,8 +179,12 @@ class EditorBundlePomTest {
         assertTrue(build.contains("--watch"), "npm run watch is the dev loop (./pressroom dev serves the webapp root)");
         String scripts = Files.readString(PACKAGE_JSON);
         assertTrue(scripts.contains("\"build\": \"openapi-typescript src/admin/api/openapi.json -o "
-                + "src/admin/api/schema.d.ts && tsc --noEmit && node build.mjs\""),
-                "a type error must fail the build, after the types are generated from the snapshot");
+                + "src/admin/api/schema.d.ts && tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo "
+                + "&& node build.mjs\""),
+                "a type error must fail the build, after the types are generated from the snapshot; the "
+                        + "type check is incremental (its state outside node_modules, ignored by git)");
+        assertTrue(Files.readString(Path.of("..", ".gitignore")).contains("app/frontend/.tsbuildinfo"),
+                "the type checker's state is never committed");
         assertTrue(scripts.contains("\"watch\": \"node build.mjs --watch\""));
         assertTrue(scripts.contains("node --test") && scripts.contains("eslint --max-warnings=0")
                 && scripts.contains("vitest run --coverage"),

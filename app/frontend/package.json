@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "openapi-typescript src/admin/api/openapi.json -o src/admin/api/schema.d.ts && tsc --noEmit && node build.mjs",
+    "build": "openapi-typescript src/admin/api/openapi.json -o src/admin/api/schema.d.ts && tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo && node build.mjs",
     "watch": "node build.mjs --watch",
     "test": "node --test \"test/*.test.mjs\" && eslint --max-warnings=0 --cache --cache-strategy content --cache-location .eslintcache . && vitest run --coverage"
   },
