@@ -41,6 +41,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.wikantik.pressroom.testing.UmamiContainer;
+import com.wikantik.pressroom.testing.UsesUmami;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -67,6 +68,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * be re-checked. Spec: {@code docs/superpowers/specs/2026-11-01-analytics-
  * without-admin-steps-design.md}.
  */
+@UsesUmami
 class UmamiApiContractTest {
 
     private static final Path ACCOUNT_SQL = Paths.get("src/test/resources/umami/umami-account.sql");

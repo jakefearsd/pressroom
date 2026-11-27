@@ -73,7 +73,7 @@ public final class UmamiContainer {
     private static final int PORT = 3000;
     private static final ObjectMapper JSON = JsonMapper.builder().build();
 
-    private static volatile UmamiContainer instance;
+    private static final BackgroundStart<UmamiContainer> STARTED = new BackgroundStart<>("umami", UmamiContainer::start);
 
     private final Network network;
     private final PostgreSQLContainer database;
@@ -85,16 +85,14 @@ public final class UmamiContainer {
         this.umami = umami;
     }
 
-    /** The shared instance, started on first call. */
+    /** The shared instance, started on first call or by an earlier {@link #warmUp()}, which this waits for. */
     public static UmamiContainer get() {
-        if (instance == null) {
-            synchronized (UmamiContainer.class) {
-                if (instance == null) {
-                    instance = start();
-                }
-            }
-        }
-        return instance;
+        return STARTED.get();
+    }
+
+    /** Starts the shared instance in the background; {@link UmamiWarmUp} calls it as a run that needs Umami begins. */
+    public static void warmUp() {
+        STARTED.begin();
     }
 
     private static UmamiContainer start() {

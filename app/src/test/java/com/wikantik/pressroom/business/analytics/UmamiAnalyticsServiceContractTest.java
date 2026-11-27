@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.wikantik.pressroom.testing.UmamiContainer;
+import com.wikantik.pressroom.testing.UsesUmami;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -41,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * registration, idempotent re-registration, rename, and a read of one seen
  * pageview. Shares {@link UmamiContainer}'s one instance per JVM.
  */
+@UsesUmami
 class UmamiAnalyticsServiceContractTest {
 
     private static final String BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
