@@ -95,8 +95,18 @@ export function Entries() {
   };
 
   const activeStatus = params.get('status') ?? 'ALL';
-  const [moreOpen, setMoreOpen] = useState(MORE_PARAMS.some((name) => (params.get(name) ?? '') !== '')
-    || (params.get('sortBy') ?? DEFAULT_SORT) !== DEFAULT_SORT);
+  const urlHasMore = MORE_PARAMS.some((name) => (params.get(name) ?? '') !== '')
+    || (params.get('sortBy') ?? DEFAULT_SORT) !== DEFAULT_SORT;
+  const [moreOpen, setMoreOpen] = useState(urlHasMore);
+  // Back/forward to a URL that carries one of those filters must show it; the author's own toggle is left
+  // alone otherwise. Adjusted during render (React's pattern for state derived from a changed value).
+  const [sawUrlMore, setSawUrlMore] = useState(urlHasMore);
+  if (sawUrlMore !== urlHasMore) {
+    setSawUrlMore(urlHasMore);
+    if (urlHasMore) {
+      setMoreOpen(true);
+    }
+  }
   return (
     <>
       <PageTitle>{t('weblogEntryQuery.title')}</PageTitle>

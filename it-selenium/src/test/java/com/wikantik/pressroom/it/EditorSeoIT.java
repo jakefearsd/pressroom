@@ -26,7 +26,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLocks;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import com.codeborne.selenide.WebDriverRunner;
+import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
+
+import java.time.Duration;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +42,8 @@ import java.nio.file.Path;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.Wait;
+import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static com.codeborne.selenide.Selenide.switchTo;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -88,12 +94,30 @@ class EditorSeoIT extends PressroomIT {
         AdminApp.awaitEditor();
         AdminApp.titleField().setValue("IT Sticky " + Long.toString(System.nanoTime(), 36));
         Editor.setText("Line of a long entry.\n\n".repeat(150));
-        com.codeborne.selenide.Selenide.executeJavaScript("window.scrollTo(0, document.documentElement.scrollHeight)");
-        com.codeborne.selenide.Selenide.sleep(300);
-        Boolean inViewport = com.codeborne.selenide.Selenide.executeJavaScript(
-                "const r = arguments[0].getBoundingClientRect();"
-                        + "return r.top >= 0 && r.bottom <= window.innerHeight;", AdminApp.publishButton());
-        assertTrue(Boolean.TRUE.equals(inViewport), "the publish button must be on screen at the foot of a long entry");
+        executeJavaScript("window.scrollTo(0, document.documentElement.scrollHeight)");
+        // Fails with a timeout naming the condition when the publish button is not on screen at the foot of the entry.
+        Wait().withTimeout(Duration.ofSeconds(5)).until(driver -> {
+            Boolean visible = executeJavaScript("const r = arguments[0].getBoundingClientRect();"
+                    + "return r.top >= 0 && r.bottom <= window.innerHeight;", AdminApp.publishButton());
+            return Boolean.TRUE.equals(visible);
+        });
+    }
+
+    /** The entries list starts on the first screen at 1440x800: the filter bar no longer pushes it below the fold. */
+    @Test
+    void entriesListStartsOnTheFirstScreenAt1440x800() {
+        Dimension original = WebDriverRunner.getWebDriver().manage().window().getSize();
+        try {
+            WebDriverRunner.getWebDriver().manage().window().setSize(new Dimension(1440, 800));
+            openPath(AdminApp.entries(WEBLOG_HANDLE));
+            $("#entries-list-marker").should(exist);
+            Number top = executeJavaScript(
+                    "return document.getElementById('entries-list-marker').getBoundingClientRect().top;");
+            assertTrue(top.doubleValue() < 800, "the entries list starts at " + top + "px, below the 800px fold");
+            $("#entries_bean_tagsAsString").shouldNotBe(visible);
+        } finally {
+            WebDriverRunner.getWebDriver().manage().window().setSize(original);
+        }
     }
 
     @Test

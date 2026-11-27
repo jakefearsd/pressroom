@@ -1184,13 +1184,6 @@ table.mm_table_actions td {
     padding-top: 10px;
 }
 
-/* The Summary drawer sits in the main column, directly under the editor's
-   own status line -- unlike the SEO drawer, which is inside an .editor-box
-   in the rail and inherits that box's own top padding. */
-.editor-main > .editor-drawer {
-    margin: 14px 0 0;
-}
-
 /* The summary, under the title and permalink: one quiet line, taller once
    focused or written. */
 .editor-summary {

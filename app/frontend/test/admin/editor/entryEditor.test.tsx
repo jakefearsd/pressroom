@@ -92,6 +92,19 @@ describe('the entry editor: loading', () => {
     expect(document.querySelector('[data-save-shortcut]')).toHaveAttribute('title', 'Ctrl+S');
   });
 
+  it('shows the Command shortcut in the save button title on a Mac', async () => {
+    const platform = Object.getOwnPropertyDescriptor(Navigator.prototype, 'platform');
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+    try {
+      open('/weblogs/alpha/entries/e1');
+      await loaded();
+      expect(document.querySelector('[data-save-shortcut]')).toHaveAttribute('title', '\u2318+S');
+    } finally {
+      delete (navigator as { platform?: string }).platform;
+      expect(platform).toBeDefined();
+    }
+  });
+
   it('sends a missing entry to the app home and a trashed one to the Trash', async () => {
     server.use(http.get(`${API}/weblogs/:handle/entries/:id`, () => problem(404, 'entry.notFound', 'No such entry.')));
     const { router } = open('/weblogs/alpha/entries/gone');

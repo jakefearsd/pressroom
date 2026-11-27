@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { useNavigate } from 'react-router';
 import { Entries } from '../../../src/admin/screens/Entries';
 import { BLOG, meHandler, metaHandler, problem, renderScreen, server, useMockApi, whereIs } from './harness';
 
@@ -118,6 +119,20 @@ describe('Entries', () => {
       expect(screen.getByRole('button', { name: 'More filters' })).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByLabelText('Tags')).toBeVisible();
     });
+
+  it('opens More filters when the URL changes in place to one carrying a filter (back/forward)', async () => {
+    function Jump() {
+      const navigate = useNavigate();
+      return <button type="button" onClick={() => { void navigate('/weblogs/blog/entries?tags=a'); }}>jump</button>;
+    }
+    const user = userEvent.setup();
+    renderScreen('/weblogs/:handle/entries', <><Entries /><Jump /></>, '/weblogs/blog/entries');
+    await screen.findByRole('link', { name: 'First post' });
+    expect(screen.getByRole('button', { name: 'More filters' })).toHaveAttribute('aria-expanded', 'false');
+    await user.click(screen.getByRole('button', { name: 'jump' }));
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'More filters' })).toHaveAttribute('aria-expanded', 'true'); });
+    expect(screen.getByLabelText('Tags')).toBeVisible();
+  });
 
   it('starts with More filters closed for a search text alone or the default sort', async () => {
     show('/weblogs/blog/entries?text=x&sortBy=UPDATE_TIME');
