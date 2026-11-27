@@ -284,7 +284,23 @@ public class CommentService {
         if (c.getStatus() == Status.PENDING) {
             notifier.notifyHeld(c);
         }
+        if (parent != null) {
+            tellReplied(c);
+        }
         return CommentOutcome.stored(c);
+    }
+
+    /**
+     * Tells the notifier about a committed reply. The notifier must not throw;
+     * if one does anyway, the reply is already stored and stays so: the
+     * failure is logged, never returned to the author.
+     */
+    private void tellReplied(ReaderComment reply) {
+        try {
+            notifier.notifyReplied(reply);
+        } catch (RuntimeException ex) {
+            log.error("could not notify about reply {}", reply.getId(), ex);
+        }
     }
 
     /** The new comment: a reply is PUBLISHED; anything else as {@link CommentRules#statusFor} says. */

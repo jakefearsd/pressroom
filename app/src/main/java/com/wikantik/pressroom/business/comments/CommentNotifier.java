@@ -20,9 +20,10 @@ package com.wikantik.pressroom.business.comments;
 import com.wikantik.pressroom.pojos.ReaderComment;
 
 /**
- * Told when a comment is stored {@code PENDING}, so that the weblog's owners
- * can be asked to approve it. Called after the comment is stored and flushed;
- * published comments and replies are never passed here.
+ * Told when a comment needs someone's attention: when it is stored
+ * {@code PENDING}, so that the weblog's owners can be asked to approve it,
+ * and when an author's reply is stored, so that the reader they answered can
+ * be told. Called after the comment is stored and committed.
  *
  * <p>An implementation must not throw and must not block the request: the
  * comment is already stored, and a failure to notify loses nothing.
@@ -32,4 +33,14 @@ public interface CommentNotifier {
 
     /** A comment was stored {@code PENDING}. */
     void notifyHeld(ReaderComment comment);
+
+    /**
+     * A reply was stored (always {@code PUBLISHED}); {@code reply.getReplyTo()}
+     * is the comment it answers. Does nothing unless overridden, so a
+     * notifier that only handles held comments can stay a lambda;
+     * {@link MailCommentNotifier}, the one the site runs, mails the reader.
+     */
+    default void notifyReplied(ReaderComment reply) {
+        // nothing to tell by default
+    }
 }

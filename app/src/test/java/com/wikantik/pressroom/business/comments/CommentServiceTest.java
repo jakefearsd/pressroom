@@ -512,7 +512,50 @@ class CommentServiceTest {
         setStatus(held, Status.PUBLISHED);
         post(reader, ea, BODY);
         post(reader, ea, "");
-        Mockito.verifyNoMoreInteractions(notifier);
+        Mockito.verify(notifier, Mockito.times(1)).notifyHeld(Mockito.any());
+    }
+
+    /**
+     * Part F: every stored reply, from moderation or the API ({@code reply})
+     * and from the public form ({@code post} with {@code replyTo}), tells the
+     * notifier once, after it commits; a top-level comment and a refused reply
+     * tell it nothing.
+     */
+    @Test
+    void storedRepliesTellTheReplyNotifierOnce() throws Exception {
+        ReaderComment first = trust(reader, ea);
+        ReaderComment second = post(reader, ea, BODY).comment();
+
+        CommentOutcome viaPost = post(owner, ea.getId(), "Thanks", first.getId());
+        CommentOutcome refused = post(owner, ea.getId(), "Again", first.getId());
+        CommentOutcome viaReply = service.reply(TestUtils.getManagedUser(owner), fetch(second), "Thanks too");
+        TestUtils.endSession(true);
+
+        assertTrue(viaPost.ok());
+        assertTrue(viaReply.ok());
+        assertSame(CommentRefusal.BAD_REPLY, refused.refusal());
+        ArgumentCaptor<ReaderComment> told = ArgumentCaptor.forClass(ReaderComment.class);
+        Mockito.verify(notifier, Mockito.times(2)).notifyReplied(told.capture());
+        assertEquals(List.of(viaPost.comment().getId(), viaReply.comment().getId()),
+                told.getAllValues().stream().map(ReaderComment::getId).toList());
+        assertEquals(first.getId(), told.getAllValues().get(0).getReplyTo().getId());
+        assertNotNull(mgr().getComment(viaReply.comment().getId()), "told after the reply was stored");
+    }
+
+    /** A notifier that throws despite its contract does not fail the reply, which is already stored. */
+    @Test
+    void aReplyStandsWhenTheNotifierThrows() throws Exception {
+        CommentNotifier throwing = Mockito.mock(CommentNotifier.class);
+        Mockito.doThrow(new IllegalStateException("mail exploded")).when(throwing).notifyReplied(Mockito.any());
+        CommentService withThrowing = new CommentService(TestUtils.weblogger(), throwing, unlimited(), unlimited());
+        ReaderComment parent = trust(reader, ea);
+
+        CommentOutcome out = withThrowing.reply(TestUtils.getManagedUser(owner), fetch(parent), "Thanks");
+        TestUtils.endSession(true);
+
+        assertTrue(out.ok());
+        assertEquals(Status.PUBLISHED, fetch(out.comment()).getStatus());
+        Mockito.verify(throwing).notifyReplied(Mockito.any());
     }
 
     /**

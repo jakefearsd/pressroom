@@ -21,10 +21,14 @@ import jakarta.mail.MessagingException;
 import com.wikantik.pressroom.WebloggerException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -37,11 +41,13 @@ import com.wikantik.pressroom.util.MailUtil;
 import com.wikantik.pressroom.util.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
- * Emails a weblog's {@code ADMIN} members when a comment is held for approval.
+ * Emails a weblog's {@code ADMIN} members when a comment is held for approval,
+ * and a reader when an author replies to their comment.
  *
  * <p>Everything the message says (subject, body, link) is resolved on the
  * calling thread; the member lookup and the sending run on a pooled
@@ -51,6 +57,16 @@ import org.springframework.stereotype.Component;
  * the writer's name is not escaped. A failure is logged with the comment id
  * only (never an address or the body) and never touches the comment, which is
  * already stored.
+ *
+ * <p><b>Reply mail</b> ({@link #notifyReplied}) goes to the answered comment's
+ * author when they have an address, are enabled, have not turned reply emails
+ * off, did not write the reply themselves, and mail is configured with a
+ * {@code site.adminemail} to send from. It is text plus HTML: both comments as
+ * plain text (escaped in the HTML part, never content markup), a link to the
+ * reply on the entry page and a one-click unsubscribe link, both absolute
+ * from the site's address, with the matching {@code List-Unsubscribe} and
+ * {@code List-Unsubscribe-Post} headers. Without the site's absolute address
+ * no link would open, so nothing is sent.
  */
 @Component
 public class MailCommentNotifier implements CommentNotifier {
@@ -61,10 +77,23 @@ public class MailCommentNotifier implements CommentNotifier {
     // A notice is a nudge, not a copy: the full text, up to 4000 characters, is on the Comments page.
     private static final int EXCERPT_LENGTH = 500;
 
-    private final Weblogger weblogger;
+    /** How much of the reader's own comment a reply email quotes, in characters (code points). */
+    private static final int QUOTE_LENGTH = 300;
 
-    public MailCommentNotifier(@Lazy Weblogger weblogger) {
+    private static final String ELLIPSIS = "\u2026";
+
+    private final Weblogger weblogger;
+    private final UnsubscribeTokens tokens;
+
+    /** With unsubscribe links signed by the tier's generated secret. */
+    public MailCommentNotifier(Weblogger weblogger) {
+        this(weblogger, new UnsubscribeTokens(weblogger));
+    }
+
+    @Autowired
+    public MailCommentNotifier(@Lazy Weblogger weblogger, UnsubscribeTokens tokens) {
         this.weblogger = weblogger;
+        this.tokens = tokens;
     }
 
     @Override
@@ -95,6 +124,115 @@ public class MailCommentNotifier implements CommentNotifier {
         } catch (RuntimeException ex) {
             log.error("Could not prepare the held-comment notice for comment {}: {}", commentId, kinds(ex));
         }
+    }
+
+    @Override
+    public void notifyReplied(ReaderComment reply) {
+        String replyId = reply.getId();
+        try {
+            ReaderComment answered = reply.getReplyTo();
+            User reader = answered == null ? null : answered.getAuthor();
+            String from = WebloggerRuntimeConfig.getProperty("site.adminemail");
+            if (!wantsReplyMail(reader, reply.getAuthor()) || !MailUtil.isMailConfigured()
+                    || StringUtils.isBlank(from)) {
+                return;
+            }
+            String site = WebloggerRuntimeConfig.getAbsoluteContextURL();
+            if (StringUtils.isBlank(site)) {
+                log.warn("No reply email for reply {}: the site's absolute address is not known", replyId);
+                return;
+            }
+            ReplyMail message = replyMail(reply, answered, reader, site);
+            String to = reader.getEmailAddress();
+            weblogger.getThreadManager().executeInBackground(() -> sendReply(from, to, message, replyId));
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.error("Could not schedule the reply email for reply {}: {}", replyId, kinds(ex));
+        } catch (RuntimeException ex) {
+            log.error("Could not prepare the reply email for reply {}: {}", replyId, kinds(ex));
+        }
+    }
+
+    /** The reader has an address, is enabled, wants reply emails, and did not write the reply. */
+    private static boolean wantsReplyMail(User reader, User replyAuthor) {
+        return reader != null
+                && reader.isNotifyReplies()
+                && !Boolean.FALSE.equals(reader.getEnabled())
+                && !reader.isAgent()
+                && StringUtils.isNotBlank(reader.getEmailAddress())
+                && (replyAuthor == null || !Objects.equals(reader.getId(), replyAuthor.getId()));
+    }
+
+    /** Everything the reply email says, resolved on the calling thread. */
+    private ReplyMail replyMail(ReaderComment reply, ReaderComment answered, User reader, String site) {
+        WeblogEntry entry = reply.getEntry();
+        Weblog weblog = entry.getWebsite();
+        ResourceBundle resources = ResourceBundle.getBundle("ApplicationResources", weblog.getLocaleInstance());
+        String author = oneLine(reply.getAuthor() == null ? "" : reply.getAuthor().getScreenName());
+        String title = oneLine(Utilities.unescapeHTML(entry.getDisplayTitle()));
+        String quoted = shorten(answered.getBody());
+        String answer = StringUtils.defaultString(reply.getBody());
+        String entryLink = weblogger.getUrlStrategy().getWeblogEntryURL(weblog, null, entry.getAnchor(), true)
+                + "#comment-" + reply.getId();
+        String unsubscribeLink = StringUtils.stripEnd(site, "/") + "/pressroom-ui/unsubscribe.rol?t="
+                + tokens.issue(reader.getId(), UnsubscribeTokens.REPLIES);
+
+        String intro = MessageFormat.format(resources.getString("comments.replied.intro"), author, title);
+        String yours = resources.getString("comments.replied.yours");
+        String wrote = MessageFormat.format(resources.getString("comments.replied.wrote"), author);
+        String see = resources.getString("comments.replied.see");
+        String why = resources.getString("comments.replied.why");
+        String stop = resources.getString("comments.replied.stop");
+
+        String text = intro + "\n\n" + yours + "\n" + quoted + "\n\n" + wrote + "\n" + answer + "\n\n"
+                + see + ": " + entryLink + "\n\n-- \n" + why + "\n" + stop + ": " + unsubscribeLink + "\n";
+        String html = "<!DOCTYPE html><html><body>"
+                + "<p>" + escape(intro) + "</p>"
+                + "<p><strong>" + escape(yours) + "</strong></p>"
+                + "<blockquote style=\"white-space:pre-wrap\">" + escape(quoted) + "</blockquote>"
+                + "<p><strong>" + escape(wrote) + "</strong></p>"
+                + "<blockquote style=\"white-space:pre-wrap\">" + escape(answer) + "</blockquote>"
+                + "<p><a href=\"" + escape(entryLink) + "\">" + escape(see) + "</a></p>"
+                + "<hr><p style=\"font-size:small\">" + escape(why) + " <a href=\"" + escape(unsubscribeLink)
+                + "\">" + escape(stop) + "</a></p>"
+                + "</body></html>";
+        String subject = MessageFormat.format(resources.getString("comments.replied.subject"), author, title);
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("List-Unsubscribe", "<" + unsubscribeLink + ">");
+        headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+        return new ReplyMail(subject, text, html, headers);
+    }
+
+    /** The runnable's body: sends the reply email, logging (never throwing) a failure. */
+    private static void sendReply(String from, String to, ReplyMail message, String replyId) {
+        try {
+            MailUtil.sendAlternativeMessage(from, to, message.subject(), message.text(), message.html(),
+                    message.headers());
+        } catch (MessagingException | RuntimeException ex) {
+            log.error("Could not send the reply email for reply {}: {}", replyId, kinds(ex));
+        }
+    }
+
+    /** At most {@link #QUOTE_LENGTH} code points, with an ellipsis when cut. */
+    private static String shorten(String body) {
+        String text = StringUtils.defaultString(body);
+        if (text.codePointCount(0, text.length()) <= QUOTE_LENGTH) {
+            return text;
+        }
+        return text.substring(0, text.offsetByCodePoints(0, QUOTE_LENGTH)) + ELLIPSIS;
+    }
+
+    /** A subject or name on one line: line breaks become spaces. */
+    private static String oneLine(String value) {
+        return StringUtils.defaultString(value).replaceAll("[\\r\\n]+", " ").strip();
+    }
+
+    private static String escape(String value) {
+        return StringEscapeUtils.escapeHtml4(value);
+    }
+
+    /** A reply email's subject, bodies and headers. */
+    private record ReplyMail(String subject, String text, String html, Map<String, String> headers) {
     }
 
     /**
