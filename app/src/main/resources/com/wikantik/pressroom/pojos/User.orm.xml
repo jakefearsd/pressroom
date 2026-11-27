@@ -106,6 +106,12 @@
                 <column name="last_login" insertable="true" updatable="true" nullable="true"/>
                 <temporal>TIMESTAMP</temporal>
             </basic>
+            <basic name="notifyReplies">
+                <column name="notify_replies" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="keepHistory">
+                <column name="keep_history" insertable="true" updatable="true" nullable="false"/>
+            </basic>
             <basic name="dateCreated">
                 <column name="datecreated" insertable="true" updatable="true" unique="false"/>
                 <temporal>TIMESTAMP</temporal>

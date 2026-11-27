@@ -204,6 +204,44 @@ public class UserTest  {
     }
 
     /**
+     * The reader preferences (V057): reply emails and reading history are on
+     * for a new account and for every account that existed before the
+     * columns, and each switch survives a round trip through the database.
+     */
+    @Test
+    public void readerPreferencesStartOnAndPersist() throws Exception {
+        UserManager mgr = TestUtils.weblogger().getUserManager();
+        User user = TestUtils.setupUser("prefsReader");
+        String name = user.getUserName();
+        try {
+            TestUtils.endSession(true);
+            User stored = mgr.getUserByUserName(name);
+            assertTrue(stored.isNotifyReplies(), "reply emails are on by default");
+            assertTrue(stored.isKeepHistory(), "reading history is on by default");
+
+            stored.setNotifyReplies(false);
+            stored.setKeepHistory(false);
+            mgr.saveUser(stored);
+            TestUtils.endSession(true);
+            try (java.sql.Connection con = com.wikantik.pressroom.business.startup.WebloggerStartup
+                         .getDatabaseProvider().getConnection();
+                 java.sql.PreparedStatement ps = con.prepareStatement(
+                         "SELECT notify_replies, keep_history FROM pressroom_user WHERE username = ?")) {
+                ps.setString(1, name);
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertFalse(rs.getBoolean(1), "notify_replies is written");
+                    assertFalse(rs.getBoolean(2), "keep_history is written");
+                }
+            }
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownUser(name);
+            TestUtils.endSession(true);
+        }
+    }
+
+    /**
      * Test basic user role persistence ... Add, Remove
      */
     @Test
