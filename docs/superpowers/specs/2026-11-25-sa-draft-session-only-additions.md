@@ -1,5 +1,8 @@
 # Decision-log entry (draft, not posted): send-newsletter, the writer role grant and the site-space routes join SA-18
 
+> **Posted 2026-11-27 as SA-25** on `SimpleAgilityDecisionLog`, with decision 4 settled by Jake: `GET /v1/admin/site-pages`
+> stays readable by an ADMIN-scope token. The wiki entry is authoritative; this draft is kept as the record it came from.
+
 Drafted 2026-11-25 for `SimpleAgilityDecisionLog` on Wikantik. **Not posted anywhere**: the SA number is the next
 free one when it is posted, at Jake's instruction. Both decisions below were made as the owner's proxy overnight
 (fail closed, reversible) while building wave 4 of the React admin migration; Jake confirms or reverses them when

@@ -172,7 +172,8 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   its own way, and its "stamp only after the send" rule lives there). Both are MCP `Exclusion`s: duplicate is an
   editing-screen convenience, and a send emails every subscriber, so it stays a person's decision. Send-newsletter
   is `@SessionOnly` (owner decision 2026-11-25, wave 4): irreversible mail to every subscriber, so a token never
-  sends it; the decision-log entry is drafted in `docs/superpowers/specs/2026-11-25-sa-draft-session-only-additions.md`.
+  sends it; recorded as [SA-25](https://wiki.wikantik.com/SimpleAgilityDecisionLog) (posted 2026-11-27; the draft it
+  came from is `docs/superpowers/specs/2026-11-25-sa-draft-session-only-additions.md`).
   `GET .../entries` takes `startDate`/`endDate`, the JSP filter's bounds (`EntryListQuery.startOfDay`/`endOfDay`,
   server time zone), strictly parsed. An entry's `pinnedToMain` is a site administrator's (`ContributorRules.isSiteAdmin`,
   `entry.needsSiteAdmin`, refused only when the value would change); `locale` is anyone's. A category's `image`
