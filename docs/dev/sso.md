@@ -261,10 +261,17 @@ authors included.
   `ListmonkClient.subscribe` and records `NEWSLETTER_SUBSCRIBED` through
   `business.NewsletterEvents.recordSubscribed` (the form's recorder too) on 200
   only: 200 `confirm`, 409 `already`, any other status or an `IOException`
-  503 `{outcome:"unavailable"}` with nothing recorded.
-- **Handles**: `Weblog.hasHandleCharacters` is the one character rule
-  (letters, digits, underscore) for the store, `TokenPins` and `reader.rol`. No list, a blank email
+  503 `{outcome:"unavailable"}` with nothing recorded. No list, a blank email
   or listmonk unconfigured is a 404. Pressroom keeps no subscription state.
+- **Handles**: `Weblog.hasHandleCharacters` is the one character rule
+  (letters, digits, underscore) for the store, `TokenPins` and `reader.rol`.
+- **History switch**: `recordRead` records nothing for an account with
+  `keep_history` off (V057), after the visibility check, so the switch cannot
+  be used to probe a draft. The account page's switch also clears the history.
+- **Where it shows**: the account page's Saved, Following and Reading history
+  (`docs/dev/comments.md`, "The reader's account page") and the blog pages'
+  Save, Follow, rows, read marks, signed-in Places and "You" menu
+  (`docs/dev/audience-and-analytics.md`, "Reader state").
 
 ## Passwords and administration
 

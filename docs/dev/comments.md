@@ -346,14 +346,19 @@ mail to a user (spec: a leaked link can only turn reply mail off).
   `isPublicAudiencePost`): a mail client's POST has no CSRF token, and the
   signed token is the authority. The page's form still carries
   `<sec:csrfInput/>` (`JspConsistencyTest`).
-- `Routes` skips the page in the sweep (it needs a token only a mail carries,
-  and its 400 trips `BrowserHealth`).
+- `RouteSweepIT` skips the page (`Routes`: a valid token needs the
+  database's secret, which only a reply email carries). Its error state is
+  rendered in a real browser by
+  `CommentsIT.aBadUnsubscribeLinkRendersThePagesErrorState`, which declares the
+  400 to `BrowserHealth` (`expectRefusal`); the valid-token paths are covered
+  through the real security chain by `UnsubscribeControllerTest`.
 
 ## The reader's account page
 
 `AccountController`: `/pressroom-ui/account.rol`, `account!saveName.rol`,
 `account!deleteComment.rol`, `account!deleteAccount.rol`,
-`account!saveEmailSetting.rol` (`Account.jsp`). It
+`account!saveEmailSetting.rol` and the reader-state actions below
+(`Account.jsp`). It
 requires the global `comment` action (`requiredGlobalPermissionActions`).
 Display name (the screen name), one rule in `business/comments/DisplayNames`
 shared with a reader's first sign-in (ruling R8): judged in exactly the form
@@ -380,6 +385,27 @@ form (`#accountEmailForm`), URL and `account.email.*` messages, so it moves as
 one block when the page is rebuilt. A ticked `notifyReplies` box turns reply
 emails on; an unticked box sends nothing and turns them off. The save redirects
 to `account.rol#email`; a failed save is rolled back and flashed.
+
+**The page as the reader's hub (0.18.0, Part E).** Title "Your account"; the
+sections in the spec's order, each a `<section id>` the blog header's "You"
+menu links to: `#saved`, `#following`, `#history`, `#comments`, `#email`,
+`#name`, `#delete` (`AccountControllerReaderStateTest` pins the order;
+`AdminChromeJspTest` counts the seven heads). Saved and Following list up to
+200, newest first; Reading history the newest 50 (`HISTORY_SHOWN`). Each
+action posts back and lands on its own section: `account!unsave.rol`
+(`entry`, an id), `account!unfollow.rol` (`weblog`, an id, so a follow of a
+blog hidden since stays removable), `account!clearHistory.rol`,
+`account!saveHistorySetting.rol` ("Keep my reading history": an unticked box
+turns it off, clears the history and stops the beacon recording, through
+`ReaderStateService.recordRead`'s guard) and `account!subscribe.rol`
+("Email me new posts" on a followed blog that has a list, when the account has
+an email and listmonk is configured; each outcome is a calm flash line, and it
+counts against the reader-state write limit). A published owner reply shows
+"Answered by {author}" under the comment (`<spring:argument>` with
+`fn:escapeXml`, so a comma in the name cannot split it). The delete
+confirmation names saves, follows and the reading history, which go by the
+V056 cascade. The rules live in `ReaderStateService` (`docs/dev/sso.md`,
+"Reader state").
 
 ## Hazards found while building
 
