@@ -351,6 +351,49 @@ class MailUtilTest {
         assertEquals(List.of(), replyToAddresses(mail.onlyMessage()));
     }
 
+    // ------------------------------------------------------- text and html
+
+    /**
+     * A reader-facing message goes out as text and HTML alternatives, the
+     * text first (RFC 2046: the plainest part leads), with the list headers
+     * its caller hands in.
+     */
+    @Test
+    void anAlternativeMessageCarriesBothBodiesAndItsHeaders() throws Exception {
+        java.util.Map<String, String> headers = new java.util.LinkedHashMap<>();
+        headers.put("List-Unsubscribe", "<https://site.example.invalid/u?t=abc>");
+        headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+
+        MailUtil.sendAlternativeMessage("sender@example.invalid", "reader@example.invalid",
+                "Rae replied", "plain words", "<p>marked words</p>", headers);
+
+        MimeMessage message = mail.onlyMessage();
+        assertEquals("Rae replied", message.getSubject());
+        assertEquals("sender@example.invalid", message.getFrom()[0].toString());
+        assertEquals(List.of("reader@example.invalid"), addresses(message, Message.RecipientType.TO));
+        assertTrue(message.isMimeType("multipart/alternative"), message.getContentType());
+        jakarta.mail.Multipart parts = (jakarta.mail.Multipart) message.getContent();
+        assertEquals(2, parts.getCount());
+        assertTrue(parts.getBodyPart(0).isMimeType("text/plain"), parts.getBodyPart(0).getContentType());
+        assertEquals("plain words", parts.getBodyPart(0).getContent().toString());
+        assertTrue(parts.getBodyPart(1).isMimeType("text/html"), parts.getBodyPart(1).getContentType());
+        assertEquals("<p>marked words</p>", parts.getBodyPart(1).getContent().toString());
+        assertEquals("<https://site.example.invalid/u?t=abc>", message.getHeader("List-Unsubscribe", null));
+        assertEquals("List-Unsubscribe=One-Click", message.getHeader("List-Unsubscribe-Post", null));
+    }
+
+    @Test
+    void anAlternativeMessageWithNoProviderDoesNothingQuietly() throws Exception {
+        MockMailProvider.uninstall();
+        try {
+            MailUtil.sendAlternativeMessage("from@example.invalid", "to@example.invalid",
+                    "subject", "text", "<p>html</p>", java.util.Map.of());
+        } finally {
+            mail = MockMailProvider.install();
+        }
+        assertTrue(mail.sent().isEmpty());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private static List<String> addresses(MimeMessage message, Message.RecipientType type)

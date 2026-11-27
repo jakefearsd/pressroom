@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.InitializationException;
 import com.wikantik.pressroom.business.PropertiesManager;
+import com.wikantik.pressroom.config.GeneratedSecrets;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
@@ -85,6 +86,8 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
             // if any default props missing from the properties DB table,
             // initialize them and save them to that table.
             initializeMissingProps(props);
+            // Secrets the site makes for itself: rows, but never settings.
+            GeneratedSecrets.seedMissing(props);
             this.saveProperties(props);
 
         } catch (WebloggerException | RuntimeException e) {
