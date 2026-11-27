@@ -746,6 +746,31 @@ class CommentsIT extends PressroomIT {
         $("#accountDelete button").shouldNot(exist);
     }
 
+    /**
+     * Part F: the account page's Email switch, on for a reader by default, round-trips
+     * through the assembled WAR: off, saved and shown off after the reload, then on again.
+     * (The one-click unsubscribe link needs a token only a reply email carries; it is
+     * covered through the real security chain by UnsubscribeControllerTest.)
+     */
+    @Test
+    void theReaderTurnsReplyEmailsOffAndOnAgain() {
+        signInWithKeycloak(READER, open.fullPath());
+        $(TEXTAREA).should(visible);
+
+        openPath(ACCOUNT);
+        $("#email #notifyReplies").should(checked);
+        $("#notifyReplies").click();
+        clickAndAwaitNewPage($("#accountEmailForm button[type='submit']"));
+        $("#messages").shouldHave(text("Your email setting is saved."));
+        $("#notifyReplies").shouldNot(checked);
+
+        openPath(ACCOUNT);
+        $("#notifyReplies").shouldNot(checked);
+        $("#notifyReplies").click();
+        clickAndAwaitNewPage($("#accountEmailForm button[type='submit']"));
+        $("#notifyReplies").should(checked);
+    }
+
     // ---------------------------------------------------------- criterion 26
 
     /**

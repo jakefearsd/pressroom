@@ -170,7 +170,8 @@ class AdminChromeJspTest {
     void theAccountPageRidesTheSharedRoles() {
         String src = jsp("core/Account.jsp");
         assertFalse(src.contains("class=\"h5\""), "a section heading still renders at 20px");
-        assertEquals(3, src.split("<h2 class=\"section-head\">", -1).length - 1, "three caps-label section heads");
+        assertEquals(4, src.split("<h2 class=\"section-head\">", -1).length - 1,
+                "four caps-label section heads: name, comments, email, delete");
         assertTrue(src.contains("id=\"accountNameForm\" class=\"form-stacked\""), "the name form stacks its label");
         assertFalse(src.contains("style=\""), "inline style left on the account page");
         assertTrue(src.contains("class=\"pre-wrap\""));

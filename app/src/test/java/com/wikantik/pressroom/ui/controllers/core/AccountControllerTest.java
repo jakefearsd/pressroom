@@ -121,6 +121,7 @@ class AccountControllerTest {
     private static final String SAVE_NAME = "/pressroom-ui/account!saveName.rol";
     private static final String DELETE_COMMENT = "/pressroom-ui/account!deleteComment.rol";
     private static final String DELETE_ACCOUNT = "/pressroom-ui/account!deleteAccount.rol";
+    private static final String SAVE_EMAIL = "/pressroom-ui/account!saveEmailSetting.rol";
     private static final String ISSUER = "https://issuer.test/account-page";
 
     private static AnnotationConfigWebApplicationContext context;
@@ -267,12 +268,14 @@ class AccountControllerTest {
         for (RequestBuilder request : List.of(get(ACCOUNT),
                 post(SAVE_NAME).with(csrf()).param("screenName", "Taken Over"),
                 post(DELETE_COMMENT).with(csrf()).param("id", mine.getId()),
-                post(DELETE_ACCOUNT).with(csrf()))) {
+                post(DELETE_ACCOUNT).with(csrf()),
+                post(SAVE_EMAIL).with(csrf()))) {
             MvcResult result = perform(request);
             assertEquals(302, result.getResponse().getStatus());
             assertEquals("/pressroom-ui/login.rol", result.getResponse().getRedirectedUrl());
         }
         assertNotNull(comments().getComment(mine.getId()), "nothing was deleted");
+        assertTrue(stored(reader).isNotifyReplies(), "nothing was switched off");
     }
 
     @Test
@@ -304,6 +307,53 @@ class AccountControllerTest {
         assertFalse(ids(result).contains(theirs.getId()));
         assertEquals(reader.getUserName(), ((User) model(result, "account")).getUserName());
         assertNull(model(result, "deleteRefusal"), "a reader may delete their account");
+    }
+
+    // ------------------------------------------------------------- the Email switch (Part F)
+
+    /** The switch round-trips: off (an unticked box sends nothing), shown off, then on again. */
+    @Test
+    void theEmailSwitchRoundTrips() throws Exception {
+        assertEquals(Boolean.TRUE, model(perform(get(ACCOUNT).with(as(reader))), "notifyReplies"),
+                "on for a new account");
+
+        MvcResult off = perform(post(SAVE_EMAIL).with(csrf()).with(as(reader)));
+
+        assertEquals(302, off.getResponse().getStatus());
+        assertEquals("/pressroom-ui/account.rol#email", off.getResponse().getRedirectedUrl());
+        assertEquals(List.of("account.email.saved"), flash(off, "messages"));
+        assertFalse(stored(reader).isNotifyReplies());
+        assertTrue(stored(other).isNotifyReplies(), "only the signed-in account");
+        assertEquals(Boolean.FALSE, model(perform(get(ACCOUNT).with(as(reader))), "notifyReplies"));
+
+        MvcResult on = perform(post(SAVE_EMAIL).with(csrf()).with(as(reader)).param("notifyReplies", "true"));
+
+        assertEquals(302, on.getResponse().getStatus());
+        assertTrue(stored(reader).isNotifyReplies());
+        assertTrue(stored(reader).isKeepHistory(), "the history switch is not this form's");
+    }
+
+    @Test
+    void theEmailSwitchNeedsItsCsrfToken() throws Exception {
+        MvcResult result = perform(post(SAVE_EMAIL).with(as(reader)));
+
+        assertEquals(403, result.getResponse().getStatus());
+        assertTrue(stored(reader).isNotifyReplies());
+    }
+
+    /** A save that cannot run is reported, not shown as saved. */
+    @Test
+    void aFailedEmailSettingSaveIsReported() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        doThrow(new WebloggerException("down")).when(mocked.userManager()).saveUser(account);
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        String view = controller.saveEmailSetting(null, requestFor(account), flash);
+
+        assertEquals("redirect:/pressroom-ui/account.rol#email", view);
+        assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
+        verify(mocked.weblogger()).release();
     }
 
     // ------------------------------------------------------------- the display name (criterion 29)
