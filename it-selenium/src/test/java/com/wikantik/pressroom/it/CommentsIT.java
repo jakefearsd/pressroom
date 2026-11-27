@@ -801,8 +801,9 @@ class CommentsIT extends PressroomIT {
 
         $("#unsubscribePage").should(exist).shouldHave(text("This unsubscribe link does not work."));
         $("#unsubscribeForm").shouldNot(exist);
-        assertEquals(baseUrl() + "/pressroom-ui/account.rol",
-                $("#unsubscribePage a").getAttribute("href"), "the account link carries the context path");
+        assertEquals(baseUrl() + "/pressroom-ui/account.rol#email",
+                $("#unsubscribePage a").getAttribute("href"),
+                "the account link carries the context path and lands on the Email section");
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
     }
