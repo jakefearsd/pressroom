@@ -189,4 +189,19 @@ class EditorBundlePomTest {
                         .contains("thresholds: { lines: 98.2, branches: 91.3, functions: 95.8, statements: 98.0 }"),
                 "the coverage floor on src/admin (ratchet up only)");
     }
+
+    /**
+     * ESLint keeps a cache keyed on file content, so a rebuild relints only what
+     * changed (about 5 s to 0.6 s). It lives outside node_modules, which npm ci
+     * deletes on every build, and git ignores it; CI's fresh checkout has none
+     * and so always lints everything.
+     */
+    @Test
+    void eslintCachesByContentOutsideNodeModules() throws IOException {
+        String scripts = Files.readString(PACKAGE_JSON);
+        assertTrue(scripts.contains("eslint --max-warnings=0 --cache --cache-strategy content "
+                + "--cache-location .eslintcache ."), scripts);
+        assertTrue(Files.readString(Path.of("..", ".gitignore")).contains("app/frontend/.eslintcache"),
+                "the cache is never committed");
+    }
 }

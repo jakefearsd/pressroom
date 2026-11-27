@@ -65,3 +65,5 @@ app/src/main/webapp/pressroom-ui/app/admin.js.map
 app/src/main/webapp/pressroom-ui/app/admin.css
 app/frontend/src/admin/api/schema.d.ts
 app/frontend/coverage/
+# ESLint's cache (npm test): content-keyed, outside node_modules, which npm ci deletes.
+app/frontend/.eslintcache
