@@ -192,9 +192,12 @@ class ReplyNotificationTest {
             for (Level level : Level.values()) {
                 lines.addAll(logs.lines(level));
             }
-            assertTrue(lines.stream().anyMatch(l -> l.contains("r-1")), "the failure is logged by reply id");
+            assertTrue(lines.stream().anyMatch(l -> l.contains("Could not send the reply email for reply r-1")
+                    && l.contains("SendFailedException")),
+                    "the failure names the step, the reply and the exception's class: " + lines);
             for (String line : lines) {
-                assertFalse(line.contains("reader@") || line.contains("Recipient address"), line);
+                assertFalse(line.contains("reader@") || line.contains("Recipient address")
+                        || line.contains("550"), "no address and no exception message: " + line);
                 assertFalse(line.contains("Lovely soup") || line.contains("Thank you!"), line);
             }
             assertTrue(logs.everything().stream().noneMatch(m -> m.contains("reader@")),
@@ -205,9 +208,17 @@ class ReplyNotificationTest {
 
     @Test
     void aFailureBeforeSchedulingIsLoggedNotThrown() {
-        when(mocks.weblogger().getUrlStrategy()).thenThrow(new IllegalStateException("no strategy"));
+        when(mocks.weblogger().getUrlStrategy())
+                .thenThrow(new IllegalStateException("cannot link reader@example.invalid"));
+        try (SsoLogCapture logs = SsoLogCapture.everyLogger()) {
+            notifier.notifyReplied(reply);
 
-        notifier.notifyReplied(reply);
+            List<String> errors = logs.lines(Level.ERROR);
+            assertTrue(errors.stream().anyMatch(l -> l.contains("Could not prepare the reply email for reply r-1")
+                    && l.contains("IllegalStateException")), "names the step, the reply and the class: " + errors);
+            assertTrue(logs.everything().stream().noneMatch(m -> m.contains("reader@") || m.contains("cannot link")),
+                    "neither the message text nor a Throwable carrying it is logged");
+        }
 
         assertTrue(mail.sent().isEmpty());
     }
