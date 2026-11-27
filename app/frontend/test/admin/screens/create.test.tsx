@@ -137,7 +137,8 @@ describe('CreateWeblog', () => {
     await user.click(screen.getByRole('button', { name: 'Create a weblog' }));
     const handle = screen.getByLabelText('Handle');
     await waitFor(() => { expect(handle).toHaveAttribute('aria-invalid', 'true'); });
-    expect(handle).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(handle).toHaveFocus(); });
     expect(screen.getByText('A weblog with that handle already exists.', { selector: '.invalid-feedback' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/weblogs/new');
     expect(screen.getByLabelText('Name')).toHaveValue('N');

@@ -106,7 +106,8 @@ describe('New person', () => {
     const field = await screen.findByLabelText('Username');
     await waitFor(() => { expect(field).toHaveClass('is-invalid'); });
     expect(field).toHaveAttribute('aria-invalid', 'true');
-    expect(field).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(field).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('Username already in use.');
     expect(router.state.location.pathname).toBe('/admin/users/new');
   });
@@ -179,7 +180,8 @@ describe('Edit person', () => {
     await user.click(await screen.findByRole('button', { name: 'Save' }));
     const email = await screen.findByLabelText('Email');
     await waitFor(() => { expect(email).toHaveAttribute('aria-invalid', 'true'); });
-    expect(email).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(email).toHaveFocus(); });
   });
 
   it('shows a single-sign-on account without password or administrator, with the writer box', async () => {

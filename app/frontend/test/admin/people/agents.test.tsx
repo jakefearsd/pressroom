@@ -64,7 +64,8 @@ describe('New agent', () => {
     const field = await screen.findByLabelText('Username');
     await waitFor(() => { expect(field).toHaveAttribute('aria-invalid', 'true'); });
     expect(field).toHaveClass('is-invalid');
-    expect(field).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(field).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('Username already in use.');
     expect(router.state.location.pathname).toBe('/admin/agents/new');
   });

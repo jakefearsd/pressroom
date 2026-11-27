@@ -214,7 +214,8 @@ describe('WeblogSettings', () => {
     const count = screen.getByLabelText('Entries shown per page');
     await waitFor(() => { expect(count).toHaveAttribute('aria-invalid', 'true'); });
     expect(count).toHaveClass('form-control', 'is-invalid');
-    expect(count).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(count).toHaveFocus(); });
     expect(screen.getByText('More than the site allows.', { selector: '.invalid-feedback' })).toBeInTheDocument();
     const banner = document.getElementById('errors') as HTMLElement;
     expect(banner).toHaveTextContent('Check the form.');

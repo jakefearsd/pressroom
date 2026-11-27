@@ -169,7 +169,8 @@ describe('Business edit', () => {
     const field = await screen.findByLabelText('Website');
     await waitFor(() => { expect(field).toHaveAttribute('aria-invalid', 'true'); });
     expect(field).toHaveClass('is-invalid');
-    expect(field).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(field).toHaveFocus(); });
     expect(screen.getAllByText('Website must be a public, full http or https address.').length).toBeGreaterThan(0);
     expect(screen.queryByText('Business saved.')).not.toBeInTheDocument();
   });

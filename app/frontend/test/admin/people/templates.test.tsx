@@ -103,7 +103,8 @@ describe('Templates screen', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => { expect(name).toHaveAttribute('aria-invalid', 'true'); });
     expect(name).toHaveClass('is-invalid');
-    expect(name).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(name).toHaveFocus(); });
     expect(name).toHaveValue('Sitemap');
     expect(screen.getAllByText('The template Sitemap already exists.')).toHaveLength(1);
     expect(screen.getByLabelText('Action')).not.toHaveAttribute('aria-invalid');

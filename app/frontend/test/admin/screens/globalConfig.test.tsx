@@ -248,7 +248,8 @@ describe('Global config', () => {
     expect(await screen.findByText('Popularity window must be between 1 and 90.')).toBeInTheDocument();
     await waitFor(() => { expect(days).toHaveAttribute('aria-invalid', 'true'); });
     expect(days).toHaveClass('is-invalid');
-    expect(days).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(days).toHaveFocus(); });
     expect(days).toHaveValue(500);
     expect(screen.queryByText('Changes saved')).not.toBeInTheDocument();
   });

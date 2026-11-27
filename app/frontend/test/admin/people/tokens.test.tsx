@@ -149,7 +149,8 @@ describe('My tokens', () => {
     const label = await screen.findByLabelText('Label');
     await waitFor(() => { expect(label).toHaveAttribute('aria-invalid', 'true'); });
     expect(label).toHaveClass('is-invalid');
-    expect(label).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(label).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('Give the token a label.');
     expect(screen.queryByLabelText('Token')).toBeNull();
   });

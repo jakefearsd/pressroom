@@ -84,7 +84,8 @@ describe('Profile', () => {
     const confirm = screen.getByLabelText('Confirm password');
     await waitFor(() => { expect(confirm).toHaveAttribute('aria-invalid', 'true'); });
     expect(confirm).toHaveClass('is-invalid');
-    expect(confirm).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(confirm).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('The passwords do not match.');
     expect(seen.filter((s) => s.method !== 'GET')).toEqual([]);
   });
@@ -98,7 +99,8 @@ describe('Profile', () => {
     const email = await screen.findByLabelText('Email');
     await waitFor(() => { expect(email).toHaveAttribute('aria-invalid', 'true'); });
     expect(email).toHaveClass('is-invalid');
-    expect(email).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(email).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid email address.');
   });
 
@@ -115,7 +117,8 @@ describe('Profile', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     const current = screen.getByLabelText('Current password');
     await waitFor(() => { expect(current).toHaveAttribute('aria-invalid', 'true'); });
-    expect(current).toHaveFocus();
+    // focus moves in an effect after the commit that marks the field: wait for it too
+    await waitFor(() => { expect(current).toHaveFocus(); });
     expect(screen.getByRole('alert')).toHaveTextContent('To change your password, enter your current password correctly.');
     expect(screen.queryByRole('status')).toBeNull();
   });
