@@ -502,7 +502,7 @@ the site space included (the weblog route never offers it): site admins only, MC
 shows: per weblog the caller can act on, sorted by handle, `about`, `theme`, `absoluteUrl`, the strongest
 `permission`, the stored `actions` (the role sentence needs the literal actions: a creator holds `admin`
 alone), `canModerate` (implied POST, as the interceptor checks, never the literal action), `entryCount` and
-`pendingComments` (0 unless the caller may moderate); plus `siteSpace` (its handle, created on first read) for
+`pendingComments` and `newInquiries` (unread contact-form messages; both 0 unless the caller may moderate), `drafts`, `scheduled` and `lastPublished` (0.18.0: the admin home and Rail badges read these, no further request); plus `siteSpace` (its handle, created on first read) for
 a site admin with an unpinned token. One call instead of three reads per weblog, and the settings route is the
 weblog owner's while the menu is every member's. A failed count is a 500, not a 0 (the JSP degraded; an API
 must not report a wrong number). `WeblogView` (the settings read) gains `absoluteUrl` through
@@ -854,7 +854,8 @@ Decision: SA-18 in `SimpleAgilityDecisionLog` (Wikantik); drafting record in
   future one is swept without editing the test.
 - Handlers that need a person (`requireAuthenticatedUser`) and weblog permission follow the page they mirror:
   `WeblogAdminApi` (ADMIN on the weblog, global login) is the base for the template, stylesheet and theme routes;
-  `SubmissionsApi` asks POST as the inbox does.
+  `SubmissionsApi` asks POST as the inbox does. Its `POST .../submissions/read` stamps the shared `read_at` (ids of other
+  weblogs ignored, 204); the list flags `unread`.
 - The rules and writes are shared with the JSP controllers, so the two cannot drift: `Memberships`
   (`grant`/`change`/`remove` beside the existing rules), `CustomTemplates`, `ThemeStylesheets`,
   `SharedThemeRules` (`customViolation`, `importTemplates`, `enableCustom`), `WeblogRemoval`,

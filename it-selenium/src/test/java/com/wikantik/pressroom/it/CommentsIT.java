@@ -367,7 +367,7 @@ class CommentsIT extends PressroomIT {
         loginAsAdmin();
         openPath(MENU);
         // The link itself is the pill (it was a link wrapping a .badge).
-        $("a.status-pill[href$='/weblogs/" + otherHandle + "/comments']")
+        $("a.status-pill[href$='/weblogs/" + otherHandle + "/comments?status=PENDING']")
                 .shouldHave(text("awaiting approval"));
         openPath(moderation(otherHandle, null));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);

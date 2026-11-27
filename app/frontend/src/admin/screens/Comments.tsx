@@ -94,7 +94,11 @@ function CommentRows({ handle, status, comments: listed }: { handle: string; sta
   const [deleting, setDeleting] = useState<{ targets: CommentView[]; many: boolean } | null>(null);
   const bulk = useBulk<CommentView>();
 
-  const refresh = () => queries.invalidateQueries({ queryKey: ['comments', handle] });
+  // The menu counts (rail badge, home row) follow every moderation.
+  const refresh = () => Promise.all([
+    queries.invalidateQueries({ queryKey: ['comments', handle] }),
+    queries.invalidateQueries({ queryKey: ['me', 'weblogs'] })
+  ]);
   const path = (c: CommentView) => ({ params: { path: { handle, id: c.id ?? '' } } });
   const reset = () => { setMessages([]); setErrors([]); setError(null); };
   const chosen = comments.filter((c) => c.id !== undefined && selected.has(c.id));

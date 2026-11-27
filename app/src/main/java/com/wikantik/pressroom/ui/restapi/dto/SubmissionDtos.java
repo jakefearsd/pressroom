@@ -29,12 +29,22 @@ public final class SubmissionDtos {
             @Schema(description = "The anchor of the entry the form was on.")
             String entryAnchor,
             @Schema(description = "When it was sent, as an ISO-8601 instant.")
-            java.time.Instant created) {
+            java.time.Instant created,
+            @Schema(description = "True until a member of the weblog has opened the inbox with this message "
+                    + "on screen.", requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean unread) {
     }
 
     public static SubmissionView toView(FormSubmission s) {
         return new SubmissionView(s.getId(), s.getName(), s.getEmail(), s.getSubject(), s.getMessage(),
-                s.getPageSlug(), s.getEntryAnchor(), s.getCreated() == null ? null : s.getCreated().toInstant());
+                s.getPageSlug(), s.getEntryAnchor(), s.getCreated() == null ? null : s.getCreated().toInstant(), s.getReadAt() == null);
+    }
+
+    /** The messages to mark read. */
+    public record MarkRead(
+            @Schema(description = "Ids of messages of this weblog. Ids that are not this weblog's are ignored.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            List<String> ids) {
     }
 
     /** One page of the inbox, newest first. */

@@ -110,7 +110,7 @@ class OpenApiContractTest {
             "membersGrant", "membersChange", "membersRemove",
             "templatesList", "templatesGet", "templatesCreate", "templatesUpdate", "templatesDelete",
             "stylesheetGet", "stylesheetSave", "stylesheetCopyFromShared", "stylesheetRevert", "stylesheetDelete",
-            "submissionsList", "submissionsDelete", "weblogsDelete",
+            "submissionsList", "submissionsDelete", "submissionsMarkRead", "weblogsDelete",
             "agentsList", "agentsCreate", "agentsGet", "agentsUpdate", "agentsMintToken", "agentsRevokeToken",
             "siteTokensList", "siteTokensRevoke", "meProfileUpdate", "mePasswordChange",
             "userWeblogsGrant", "userWeblogsChange", "userWeblogsRemove", "siteThemeGet", "siteThemeSet");

@@ -27,6 +27,8 @@ export const state = {
   comments: [] as object[],
   /** The query string of each comment list read (reads are not in `requests`). */
   commentReads: [] as string[],
+  /** How many times the menu counts (/v1/me/weblogs) were read. */
+  menuReads: 0,
   requests: [] as Recorded[]
 };
 
@@ -47,6 +49,7 @@ export function resetState(): void {
   state.revisions = [];
   state.comments = [];
   state.commentReads = [];
+  state.menuReads = 0;
   state.requests = [];
 }
 
@@ -64,6 +67,7 @@ export { problem };
 export const server = setupServer(
   http.get(`${API}/me`, () => HttpResponse.json(state.me)),
   http.get(`${API}/meta`, () => HttpResponse.json({ version: '1', siteUrl: 'https://blog.example.com', features: { customThemes: true, groupBlogging: true }, limits: {} })),
+  http.get(`${API}/me/weblogs`, () => { state.menuReads += 1; return HttpResponse.json({ weblogs: [] }); }),
   http.get(`${API}/weblogs/:handle`, () => HttpResponse.json(state.weblog)),
   http.get(`${API}/weblogs/:handle/categories`, () => HttpResponse.json(state.categories)),
   http.get(`${API}/weblogs/:handle/pages`, ({ request }) =>

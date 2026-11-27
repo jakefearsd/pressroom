@@ -50,6 +50,7 @@ export const server = setupServer(
   http.get(`${API}/meta`, () => HttpResponse.json({
     version: '1.2.3', siteUrl: 'https://blog.example.com', features: world.features, limits: {}
   })),
+  http.get(`${API}/me/weblogs`, () => HttpResponse.json({ weblogs: [] })),
   http.get(`${API}/weblogs/:handle`, () => HttpResponse.json(world.weblog))
 );
 

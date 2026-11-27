@@ -1,5 +1,5 @@
 import { Outlet, matchPath, useLocation, useMatches } from 'react-router';
-import { useMe, useMeta, useWeblog } from '../api/queries';
+import { useMe, useMeta, useMyWeblogs, useWeblog } from '../api/queries';
 import { ApiError } from '../api/problem';
 import { TimeZoneContext } from '../components/DateTime';
 import { ProblemBanner } from '../components/ProblemBanner';
@@ -49,6 +49,11 @@ export function Frame() {
   const weblogQuery = useWeblog(siteSpace ? undefined : handle);
   const weblogView = weblogQuery.data;
 
+  // The count badges come from the same /v1/me/weblogs read the home uses (one cache entry, shared).
+  const mine = useMyWeblogs();
+  const row = mine.data?.weblogs.find((w) => w.handle === handle);
+  const counts = row === undefined ? undefined : { comments: row.pendingComments, submissions: row.newInquiries };
+
   const membership = me.data?.weblogs.find((w) => w.handle === handle);
   const active = RAIL_ENTRIES.find((e) => e.path !== undefined && matchPath({ path: e.path, end: false }, location.pathname));
   const groups = me.data !== undefined && meta.data !== undefined && scope !== 'none'
@@ -96,7 +101,7 @@ export function Frame() {
               <span className="bi bi-list" aria-hidden="true" /> {t('adminRail.toggle')}
             </button>
             <div className={`collapse d-md-block${railOpen ? ' show' : ''}`} id="adminRailColumn">
-              <Rail weblog={weblog} groups={groups} active={active} />
+              <Rail weblog={weblog} groups={groups} active={active} {...(counts === undefined ? {} : { counts })} />
               {Sidebar === undefined ? null : <aside className="sidebar" id="adminSidebar"><Sidebar /></aside>}
             </div>
           </div>

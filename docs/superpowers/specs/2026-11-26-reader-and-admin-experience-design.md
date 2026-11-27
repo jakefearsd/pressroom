@@ -291,7 +291,7 @@ Deliverable: update `docs/dev/comments.md`/`sso.md`, and draft paragraph text fo
 - they are not the reply's author
 - mail is configured (`MailUtil.isMailConfigured()` and `site.adminemail`)
 
-Mail goes out on the existing background sender, the way `notifyHeld` does. A failure is logged with its stack trace and never fails the reply.
+Mail goes out on the existing background sender, the way `notifyHeld` does. A failure never fails the reply. It is logged with the exception's class (and the failing step), not its message or stack trace: JavaMail messages quote the reader's address, and a reader's address does not belong in server logs (amended 2026-11-27 at review; the SMTP provider's own log holds the detail).
 
 **Schema.** `V057__user_reader_preferences.sql` adds two columns to `pressroom_user`:
 - `notify_replies boolean NOT NULL DEFAULT true`

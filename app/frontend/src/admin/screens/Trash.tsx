@@ -40,7 +40,10 @@ export function Trash() {
   const entries = trash.data ?? [];
 
   const path = (entry: EntryView) => ({ params: { path: { handle, id: entry.id ?? '' } } });
-  const refresh = () => queries.invalidateQueries({ queryKey: ['entries', handle] });
+  const refresh = () => Promise.all([
+    queries.invalidateQueries({ queryKey: ['entries', handle] }),
+    queries.invalidateQueries({ queryKey: ['me', 'weblogs'] })
+  ]);
   const reset = () => { setMessages([]); setErrors([]); setError(null); };
 
   const restore = async (entry: EntryView) => {

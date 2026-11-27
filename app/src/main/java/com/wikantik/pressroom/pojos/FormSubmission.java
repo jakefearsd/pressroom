@@ -19,6 +19,7 @@ package com.wikantik.pressroom.pojos;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.time.Instant;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -43,6 +44,7 @@ public class FormSubmission implements Serializable {
     private String entryAnchor;
     private String clientIp;
     private Timestamp created;
+    private Instant readAt;
 
     public FormSubmission() {
     }
@@ -155,6 +157,17 @@ public class FormSubmission implements Serializable {
 
     public void setCreated(Timestamp created) {
         this.created = created;
+    }
+
+    /**
+     * When a member of the weblog first saw this message in the inbox; null while it is unread.
+     */
+    public Instant getReadAt() {
+        return readAt;
+    }
+
+    public void setReadAt(Instant readAt) {
+        this.readAt = readAt;
     }
 
     // ------------------------------------------------------- Good citizenship

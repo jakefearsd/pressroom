@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { SUBMISSIONS_PAGE_SIZE, useSubmissionActions, useSubmissions, type SubmissionView } from '../../api/people';
+import {
+  SUBMISSIONS_PAGE_SIZE, useMarkSubmissionsRead, useSubmissionActions, useSubmissions, type SubmissionView
+} from '../../api/people';
 import { runBulk } from '../../lib/bulk';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateTime } from '../../components/DateTime';
@@ -45,6 +47,22 @@ function InboxBody({ handle }: { handle: string }) {
   const [problems, setProblems] = useState<string[]>([]);
 
   const items = query.data?.items ?? [];
+  const markRead = useMarkSubmissionsRead(handle);
+  // The rows that were unread when first shown keep their New mark for this visit, whatever a refetch says.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const unseen = items.filter((s) => s.unread && !fresh.has(s.id)).map((s) => s.id);
+  if (unseen.length > 0) {
+    setFresh(new Set([...fresh, ...unseen]));
+  }
+  const { mutate: sendMarkRead } = markRead;
+  const sent = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = (query.data?.items ?? []).filter((s) => s.unread && !sent.current.has(s.id)).map((s) => s.id);
+    if (ids.length > 0) {
+      ids.forEach((id) => sent.current.add(id));
+      sendMarkRead(ids);
+    }
+  }, [query.data, sendMarkRead]);
   const total = query.data?.total ?? 0;
   const base = `/weblogs/${encodeURIComponent(handle)}/inbox`;
   const allChecked = items.length > 0 && items.every((s) => selected.has(s.id));
@@ -147,7 +165,10 @@ function InboxBody({ handle }: { handle: string }) {
                         {s.name}<br />
                         {s.email === undefined ? null : <a href={`mailto:${s.email}`}>{s.email}</a>}
                       </td>
-                      <td>{s.subject}</td>
+                      <td>
+                        {s.subject}
+                        {s.unread || fresh.has(s.id) ? <span className="new-pill">{t('submissions.new')}</span> : null}
+                      </td>
                       <td>
                         {long ? (
                           <>

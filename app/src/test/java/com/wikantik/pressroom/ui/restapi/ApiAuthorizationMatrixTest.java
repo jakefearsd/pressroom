@@ -348,6 +348,7 @@ class ApiAuthorizationMatrixTest {
                     Flag.SESSION_ONLY),
             row("POST   /v1/weblogs/{handle}/stylesheet/revert",      ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
             row("GET    /v1/weblogs/{handle}/submissions",            ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
+            row("POST   /v1/weblogs/{handle}/submissions/read",       ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
             row("DELETE /v1/weblogs/{handle}/submissions/{id}",       ADMIN, SITE_LOGIN, ON_POST,  Flag.SESSION_ONLY),
             row("DELETE /v1/weblogs/{handle}",                        ADMIN, SITE_LOGIN, ON_ADMIN, Flag.SESSION_ONLY),
 

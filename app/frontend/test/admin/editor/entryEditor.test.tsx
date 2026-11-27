@@ -157,6 +157,15 @@ describe('the entry editor: saving', () => {
     await waitFor(() => { expect(bodyOf('PATCH')['expectedContentHash']).toBe('h2'); });
   });
 
+  it.each(['Save draft', 'Publish'])('refreshes the menu counts after %s, so drafts, scheduled and last published follow', async (button) => {
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    await waitFor(() => { expect(state.menuReads).toBe(1); });
+    await click(button);
+    await waitFor(() => { expect(lastRequest('PATCH')).toBeDefined(); });
+    await waitFor(() => { expect(state.menuReads).toBe(2); });
+  });
+
   it('publishes, and offers a link to the live entry', async () => {
     open('/weblogs/alpha/entries/e1');
     await loaded();

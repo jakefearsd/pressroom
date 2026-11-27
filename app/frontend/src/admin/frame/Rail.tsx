@@ -42,11 +42,19 @@ export function UserStatus({ weblog }: { weblog: RailWeblog | undefined }) {
   );
 }
 
+/** The rail entries that carry a waiting count, and the message that names it for a screen reader. */
+const BADGES: Readonly<Record<string, string>> = {
+  comments: 'adminRail.badge.comments',
+  submissions: 'adminRail.badge.inquiries'
+};
+
 /** The rail (`nav#adminRail`): context, then each tool group under its caps-label. */
-export function Rail({ weblog, groups, active }: {
+export function Rail({ weblog, groups, active, counts }: {
   weblog: RailWeblog | undefined;
   groups: readonly VisibleGroup[];
   active: RailEntry | undefined;
+  /** Waiting counts of the weblog in play, by rail entry id; an entry with none above 0 shows no badge. */
+  counts?: Readonly<Record<string, number>>;
 }) {
   const t = useT();
   const { contextPath } = useBoot();
@@ -60,10 +68,15 @@ export function Rail({ weblog, groups, active }: {
           <div className="rail-group-label">{plainText(t(group.key))}</div>
           {group.entries.map((entry) => {
             const selected = entry.id === active?.id;
+            const count = counts?.[entry.id] ?? 0;
+            const badgeKey = BADGES[entry.id];
+            const badged = count > 0 && badgeKey !== undefined;
             return (
               <AppLink key={entry.id} className={`rail-link${selected ? ' rail-active' : ''}`} current={selected}
+                       {...(badged ? { label: plainText(t(badgeKey, count)) } : {})}
                        target={entryTarget(entry, contextPath, weblog?.handle)}>
                 {t(entry.messageKey)}
+                {badged ? <span className="rail-badge" aria-hidden="true">{count}</span> : null}
               </AppLink>
             );
           })}

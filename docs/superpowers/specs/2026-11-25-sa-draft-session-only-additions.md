@@ -92,3 +92,11 @@ admin, or holding a token below the `ADMIN` role, gets `emailAddress`, `creatorU
 `place*` fields and `bookingUrl` absent. Consequence for other repositories: an agent that read those fields with
 a `READ` or `POST` token (it could not before: the route refused it) still cannot; one with a member's session
 or token newly can read the rest of the view. Draft only; not posted to `SimpleAgilityDecisionLog`.
+
+## Further item (draft, 2026-11-27): submissions mark-read joins the session-only list
+
+`POST /v1/weblogs/{handle}/submissions/read` (0.18.0, operationId `submissionsMarkRead`, body `{ids:[...]}`, 204) is
+`@SessionOnly` like the rest of `SubmissionsApi`: it changes the shared inbox's read state, and the inbox is readers'
+personal details that no token or agent may touch. Ids of other weblogs are ignored. It is an MCP exclusion
+(session-only). `GET /v1/me/weblogs` also gains `newInquiries`, `drafts`, `scheduled` and `lastPublished`
+(additive fields; `newInquiries` is 0 without weblog POST). Binds no other repository.
