@@ -125,8 +125,10 @@ class CommentsIT extends PressroomIT {
     /** A custom domain no other class uses; {@code VirtualHostIT} has {@code vhost.example.com}. */
     private static final String VHOST = "comments.example.com";
 
-    /** The page's words, from ApplicationResources.properties. */
-    /** The suite's provider is Keycloak (pressroom-it.properties): the label is the provider's. */
+    /**
+     * The page's words, from ApplicationResources.properties. The suite's provider is
+     * Keycloak (pressroom-it.properties), so the sign-in names it.
+     */
     private static final String SIGN_IN_TEXT = "Sign in with Keycloak to comment";
     private static final String HELD_TEXT = "will appear once it is approved";
     private static final String AWAITING_TEXT = "Awaiting approval";
