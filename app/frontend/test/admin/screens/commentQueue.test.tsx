@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useQuery } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { useMyWeblogs } from '../../../src/admin/api/queries';
 import { CommentQueue } from '../../../src/admin/screens/CommentQueue';
@@ -51,8 +52,11 @@ describe('CommentQueue', () => {
     const user = userEvent.setup();
     let reads = 0;
     let patched = '';
+    let blogListReads = 0;
     function MenuCounts() {
       useMyWeblogs();
+      // Stands in for the approved comment's own blog's list, which must go stale.
+      useQuery({ queryKey: ['comments', 'beta', { status: 'PENDING' }], queryFn: () => { blogListReads += 1; return 0; } });
       return null;
     }
     server.use(
@@ -68,6 +72,14 @@ describe('CommentQueue', () => {
     expect(patched).toBe('{"status":"PUBLISHED"}');
     await waitFor(() => { expect(reads).toBe(2); });
     await waitFor(() => { expect(requests.length).toBe(2); });
+    await waitFor(() => { expect(blogListReads).toBe(2); });
+  });
+
+  it('offers Newer when an approval empties the last page, rather than saying nothing waits anywhere', async () => {
+    server.use(queue([]));
+    show('/comments?offset=30');
+    await screen.findByText('Nothing is waiting for approval on any of your blogs.');
+    expect(screen.getByRole('link', { name: /Newer/ })).toHaveAttribute('href', '/comments');
   });
 
   it('hides a comment on its own blog', async () => {

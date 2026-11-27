@@ -40,6 +40,7 @@ public final class CommentDtos {
     private CommentDtos() {
     }
 
+    /** {@link QueueComment} repeats these fields by hand (QueueCommentShapeTest pins them together). */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record CommentView(String id, String entryId, String entryTitle, String status, String body,
             Instant created, Instant statusChanged, String authorUserName,
@@ -82,7 +83,8 @@ public final class CommentDtos {
             @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
             List<QueueComment> items,
             @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
-            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = "The page size asked for, after the cap of 100.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) int limit,
             @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
             boolean hasMore,
             @Schema(description = "How many comments match across the caller's blogs, whatever the page.",

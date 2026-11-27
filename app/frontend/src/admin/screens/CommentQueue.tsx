@@ -59,7 +59,10 @@ export function CommentQueue() {
       <div id="comment-queue-marker">
         <ProblemBanner messages={done} errors={failed} error={list.error} />
         {list.data === undefined ? null : items.length === 0 ? (
-          <EmptyState title={t('comments.none')} body={t('commentQueue.none')} />
+          <>
+            <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={false} hrefFor={hrefFor} />
+            <EmptyState title={t('comments.none')} body={t('commentQueue.none')} />
+          </>
         ) : (
           <>
             <Pager offset={offset} limit={COMMENTS_PAGE} hasMore={list.data.hasMore} hrefFor={hrefFor} />

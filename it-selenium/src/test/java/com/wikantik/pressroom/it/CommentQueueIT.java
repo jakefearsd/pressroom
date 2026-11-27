@@ -121,6 +121,9 @@ class CommentQueueIT extends PressroomIT {
         logout();
 
         loginAsAdmin();
+        // Blog A's badge is up before the approval, so its later absence is a change, not an unloaded row.
+        openPath(AdminApp.weblog(first, "/entries"));
+        $(RAIL + " a[aria-label='Comments, 1 awaiting approval']").should(visible);
         openPath("/pressroom-ui/app/comments");
         $("#comment-queue-marker").should(exist);
         SelenideElement rowA = $$(ROWS).findBy(text("Held on A " + suffix)).should(visible);
@@ -133,8 +136,11 @@ class CommentQueueIT extends PressroomIT {
         $$(ROWS).findBy(text("Held on A " + suffix)).shouldNot(exist);
         $$(ROWS).findBy(text("Held on B " + suffix)).should(visible);
 
-        openPath(AdminApp.weblog(first, "/entries"));
-        $(RAIL + " a[aria-label='Comments, 1 awaiting approval']").shouldNot(exist);
+        // One page, one counts read: B's "1 awaiting approval" proves the counts have loaded, so only then does
+        // the absence of A's mean the approval decremented it (an unloaded row shows no badge at all).
+        openPath("/pressroom-ui/app/");
+        $$(".weblog-row").findBy(text(second)).$$("a").findBy(text("1 awaiting approval")).should(exist);
+        $$(".weblog-row").findBy(text(first)).should(exist).$$("a").findBy(text("awaiting approval")).shouldNot(exist);
         openPath(AdminApp.weblog(second, "/entries"));
         $(RAIL + " a[aria-label='Comments, 1 awaiting approval']").should(visible);
         BrowserHealth.current().assertNoBrokenResources();
