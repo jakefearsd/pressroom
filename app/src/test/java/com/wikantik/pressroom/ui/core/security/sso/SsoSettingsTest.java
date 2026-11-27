@@ -63,7 +63,7 @@ class SsoSettingsTest {
     @CsvSource(value = {
         "https://accounts.google.com/.well-known/openid-configuration,Google,true",
         "https://accounts.google.com,Sign-in,true",
-        "HTTPS://Accounts.Google.com/,Google,true",
+        "https://accounts.google.com/,Google,true",
         "http://localhost:8180/realms/pressroom-it,Keycloak,false",
         "http://localhost:8180/realms/pressroom-it,Google,false",
         "https://accounts.google.com.evil.example,Google,false"})

@@ -69,7 +69,7 @@ public record SsoSettings(String clientId, String clientSecret, String discovery
      * label: only then may a sign-in button carry Google's G mark.
      */
     public boolean isGoogle() {
-        return GOOGLE_ISSUER.equalsIgnoreCase(issuer());
+        return GOOGLE_ISSUER.equals(issuer());
     }
 
     @Override
