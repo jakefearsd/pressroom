@@ -1,0 +1,48 @@
+/*
+ * The signed-in reader's rules (0.18.0, Part E): Save and Follow, their
+ * inline confirmations, Continue reading and From blogs you follow, the Read
+ * label and the "You" menu. Linked, versioned, only into a signed-in page
+ * (weblog.vm, the showGoogleSignInAssets macro); a signed-out page's control
+ * rules are in each article theme's own stylesheet. currentColor and
+ * color-mix only, so every theme, forked ones included, shows them in its
+ * own colours.
+ */
+.reader-save button, .reader-follow button, .reader-newsletter {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em;
+}
+.reader-save button[aria-pressed="true"], .reader-follow button[aria-pressed="true"] { font-weight: 600; text-decoration: none; }
+.reader-follow-masthead button {
+  padding: .2em .75em; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 99px;
+  font-size: .8125rem; text-decoration: none;
+}
+.reader-follow-masthead { display: inline-block; margin: .5rem 0 0; }
+.reader-note, .reader-newsletter { margin-left: .5em; font-size: .8125rem; }
+.reader-note { color: color-mix(in srgb, currentColor 70%, transparent); }
+.reader-follow-line, .entry-save-row { margin: 1.5rem 0 0; font-size: .875rem; }
+.reader-row { margin: 0 0 1.5rem; padding: 0 0 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.reader-row[hidden], [data-reader-row][hidden] { display: none; }
+.reader-row-label { margin: 0 0 .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 70%, transparent); }
+.reader-row-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
+.reader-row-blog { margin-left: .5em; font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
+.reader-read-mark {
+  display: inline-block; margin-left: .5em; padding: 0 .45em; border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 99px; font-size: .6875rem; font-weight: 600; letter-spacing: .04em; line-height: 1.5; text-transform: uppercase;
+  vertical-align: middle; color: color-mix(in srgb, currentColor 75%, transparent);
+}
+.you-menu { position: relative; flex: none; }
+.you-menu summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; user-select: none; }
+.you-menu summary::-webkit-details-marker { display: none; }
+.you-menu-initials {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 99px;
+  background: color-mix(in srgb, currentColor 14%, transparent); font-size: .6875rem; font-weight: 700; letter-spacing: 0;
+}
+html body .you-menu-list {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: block; min-width: 12rem; margin: 0; padding: 6px;
+  list-style: none; text-align: left; border-radius: 8px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  background: var(--site-bar-surface, Canvas); box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+}
+html body .you-menu-list li { display: block; margin: 0; padding: 0; }
+html body .you-menu-list a { display: block; padding: 7px 10px; border-radius: 5px; font-weight: 500; color: inherit; text-decoration: none; }
+html body .you-menu-list a:hover { background: color-mix(in srgb, currentColor 9%, transparent); }

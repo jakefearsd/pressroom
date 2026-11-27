@@ -367,14 +367,14 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 ## under the masthead, each its own section: a signed-in reader's page only,
 ## hidden until the reader script (weblog.vm) fills them from reader.rol.
 #if($utils.ssoEnabled && $utils.isUserAuthenticated())
-<section class="fd-continue" aria-labelledby="fd-continue-label">
-    <div class="fd-wrap fd-sec fd-reader" data-reader-row="continue" hidden>
+<section class="fd-continue">
+    <div class="fd-wrap fd-sec fd-reader" data-reader-row="continue" hidden role="region" aria-labelledby="fd-continue-label">
         <div class="fd-head"><h2 id="fd-continue-label">$text.get("reader.state.continue")</h2></div>
         <ul class="fd-reader-list"></ul>
     </div>
 </section>
-<section class="fd-followed" aria-labelledby="fd-followed-label">
-    <div class="fd-wrap fd-sec fd-reader" data-reader-row="followed" hidden>
+<section class="fd-followed">
+    <div class="fd-wrap fd-sec fd-reader" data-reader-row="followed" hidden role="region" aria-labelledby="fd-followed-label">
         <div class="fd-head"><h2 id="fd-followed-label">$text.get("reader.state.followed")</h2></div>
         <ul class="fd-reader-list"></ul>
     </div>

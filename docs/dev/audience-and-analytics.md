@@ -279,19 +279,41 @@ making anonymous pages per-visitor.
   (the browser's own Places script and recording are left out, so
   `localStorage["pressroom.places"]` is untouched and shows again after
   sign-out).
-- **The script** (the showReaderScript macro, called by the colophon, so every
-  bundled theme and the site's own pages get it; `<script data-reader-script>`,
-  no dollar or hash characters, every server string set with `textContent`).
-  Signed out it asks the server nothing: a Save or Follow click stores
+- **Anonymous pages stay small and shared** (the spec's anti-goal; fix round
+  1). The showReaderScript macro (called by the colophon, so every bundled
+  theme and the site's own pages get it) gives a **signed-out** page only an
+  inline stub, `<script data-reader-stub>`, about 1.3 KB, with no inline
+  reader style and no data element (`ReaderControlsRenderTest` holds it under
+  a 2 KB budget and free of bundle code; it was about 20 KB of inline script,
+  style and data before). The stub drops any stored intent (a cancelled
+  sign-in), and a Save or Follow click stores
   `sessionStorage["pressroom.intent"] = {action, entry|weblog, via, at}` and
-  puts `window.pressroomGoogleSignIn(via, label)` in the control's place; any
-  intent found on a signed-out load (a cancelled sign-in) is dropped. Signed
-  in it removes the intent **before** posting it (so a reload cannot repeat
-  it, and one older than 30 minutes is dropped), asks `reader.rol` once for
-  the page's state, completes the intent and confirms inline, and after a
-  follow offers "Also email me new posts" when `newsletter.available`. The
-  read beacon posts one `read` per page view after 10 s visible
+  puts `window.pressroomGoogleSignIn(via, label)` in the control's place, or a
+  plain `sso/start` link on a forked head without the helper. The few
+  signed-out control rules live in each article theme's stylesheet.
+- **A signed-in page** (rendered and cached per user) gets the data element
+  (endpoint, words, `data-signed-in`, the beacon's entry on a post), the
+  reader stylesheet `pressroom-ui/styles/pressroom-reader.css?v=<version>`
+  (head, the showGoogleSignInAssets macro) and the deferred bundle
+  `pressroom-ui/scripts/pressroom-reader.js?v=<version>`, built from
+  `app/frontend/src/reader.js` like `pressroom-content.js` and git-ignored.
+  The bundle closes the "You" menu (so it loads on any signed-in page), then
+  removes the intent **before** posting it (a reload cannot repeat it; one
+  older than 30 minutes is dropped), asks `reader.rol` once for the page's
+  state, completes the intent and confirms inline, offers "Also email me new
+  posts" after a follow when `newsletter.available`, fills the rows, read
+  marks and Places, and posts one `read` per page view after 10 s visible
   (`visibilitychange`-aware, `fetch` with `keepalive`, since `sendBeacon`
-  cannot carry the CSRF header). Tests: `ReaderControlsRenderTest`,
-  `app/frontend/test/reader-script.test.mjs` (the template's script run in
-  jsdom), `ReaderStateIT` (both context paths).
+  cannot carry the CSRF header; a beacon due before the state answer waits
+  for it). Tests: `ReaderControlsRenderTest`, `app/frontend/test/reader.test.mjs`
+  (the bundle's source and the template's stub, run in jsdom), `ReaderStateIT`
+  (both context paths).
+- **No reader controls on a blog with a custom domain** (accepted ruling):
+  that host does not carry the site's session cookie, and `/pressroom-ui` is
+  cross-origin there, as for the comments slot. `UtilitiesModel.readerStateOn`
+  is the one gate.
+- **The "fresh browser" in `ReaderStateIT`** (accepted ruling) is the same
+  driver with every cookie cleared (the provider's too) and the origin's
+  local and session storage emptied: the feature's only client state.
+  `BrowserHealth`'s DevTools session belongs to the driver, so a new one
+  mid-test is not an option.

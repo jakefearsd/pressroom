@@ -485,7 +485,7 @@ class AccountControllerReaderStateTest {
         assertEquals(List.of("generic.error.check.logs"), errors(model));
     }
 
-    /** A history switch that cannot be saved is reported, and nothing is cleared. */
+    /** Turning the history on with a save that cannot run is reported; nothing is cleared. */
     @Test
     void aFailedHistorySettingSaveIsReported() throws Exception {
         mocked = MockWeblogger.create();
@@ -497,12 +497,36 @@ class AccountControllerReaderStateTest {
         doThrow(new WebloggerException("down")).when(mocked.userManager()).saveUser(account);
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        String view = controller.saveHistorySetting(null, requestFor(account), flash);
+        String view = controller.saveHistorySetting("true", requestFor(account), flash);
 
         assertEquals("redirect:/pressroom-ui/account.rol#history", view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
         verify(readers, never()).clearHistory(any());
         verify(mocked.weblogger()).release();
+    }
+
+    /**
+     * Turning the history off clears it first and saves the switch only
+     * after: a clear that cannot run leaves the switch on and the history as
+     * it was, never a switch that is off over a history that stayed.
+     */
+    @Test
+    void turningHistoryOffClearsBeforeTheSwitchIsSaved() throws Exception {
+        mocked = MockWeblogger.create();
+        ControllerTestFixture.useWeblogger(mocked.weblogger());
+        ReaderStateService readers = mock(ReaderStateService.class);
+        AccountController controller = withMessages(
+                new AccountController(new CommentService(mocked.weblogger(), comment -> { }), readers));
+        User account = account("reader-x");
+        doThrow(new WebloggerException("down")).when(readers).clearHistory(account);
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        String view = controller.saveHistorySetting(null, requestFor(account), flash);
+
+        assertEquals("redirect:/pressroom-ui/account.rol#history", view);
+        assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
+        verify(mocked.userManager(), never()).saveUser(any());
+        assertTrue(account.isKeepHistory(), "the switch is not turned off over a history that stayed");
     }
 
     /** An unsave, unfollow or clear that cannot run is reported, not shown as done. */

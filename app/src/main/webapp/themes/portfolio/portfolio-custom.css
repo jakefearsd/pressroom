@@ -939,3 +939,17 @@ body.pf { --site-bar-surface: var(--pf-surface); --site-bar-line: var(--pf-line)
 .strand-part { margin: 0 0 1rem; }
 .strand-part-title { font-size: 1.125rem; }
 .strand-part-excerpt { margin: .25rem 0 0; font-size: .9375rem; opacity: .75; }
+
+/* Save and Follow for a signed-out reader (0.18.0, Part E; weblog.vm's
+   showSaveControl and showFollowControl macros). A signed-in page links
+   pressroom-ui/styles/pressroom-reader.css for the rest. */
+.reader-save button, .reader-follow button {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em;
+}
+.reader-follow-masthead { display: inline-block; margin: .5rem 0 0; }
+.reader-follow-masthead button {
+  padding: .2em .75em; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 99px;
+  font-size: .8125rem; text-decoration: none;
+}
+.reader-follow-line, .entry-save-row { margin: 1.5rem 0 0; font-size: .875rem; }

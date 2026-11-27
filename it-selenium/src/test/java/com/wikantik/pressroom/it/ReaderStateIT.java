@@ -44,7 +44,6 @@ import tools.jackson.databind.ObjectMapper;
 import static com.codeborne.selenide.Condition.attribute;
 import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
-import static com.codeborne.selenide.Condition.hidden;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
@@ -268,7 +267,11 @@ class ReaderStateIT extends PressroomIT {
         Post post = blogB.posts().get(0);
         signInWithKeycloak(READER, contextPath() + post.path());
         $(READY).should(exist);
-        Selenide.sleep(11_500);
+        Selenide.sleep(10_500);
+        // The read is posted with keepalive after ten visible seconds: wait for the server to
+        // have it before signing out, so a loaded machine cannot turn this into a flake.
+        Selenide.Wait().withTimeout(Duration.ofSeconds(15)).until(driver ->
+                state("include=continue").get("continueReading").toString().contains(post.id()));
         // A fresh browser: every cookie gone (the site's and the provider's: logout clears the
         // browser's whole jar and ends the server session), and this origin's storage emptied.
         // Not a new driver: BrowserHealth's DevTools session belongs to this one.
@@ -306,13 +309,17 @@ class ReaderStateIT extends PressroomIT {
         executeJavaScript("localStorage.removeItem('pressroom.places');");
     }
 
-    /** An anonymous visitor's page has no reader rows and asks the endpoint nothing. */
+    /**
+     * An anonymous visitor's page has no reader rows, no reader data and no
+     * bundle: only the inline stub, so it asks the endpoint nothing.
+     */
     @Test
     void anAnonymousHomeHasNoRows() {
         openPath("/" + blogA.handle() + "/");
         $("[data-reader-row]").shouldNot(exist);
-        $("[data-reader]").should(exist).shouldBe(hidden);
-        $("[data-reader][data-signed-in]").shouldNot(exist);
+        $("[data-reader]").shouldNot(exist);
+        $("script[data-reader-stub]").should(exist);
+        $("script[src*='pressroom-reader.js']").shouldNot(exist);
     }
 
     // ------------------------------------------------------------- helpers

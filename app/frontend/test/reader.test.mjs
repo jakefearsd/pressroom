@@ -3,18 +3,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
-/* The reader script (pressroomReader) lives inline in weblog.vm, in the
-   showReaderScript macro, between <script data-reader-script> and </script>.
-   It holds no Velocity references (no dollar or hash characters, which
-   ReaderControlsRenderTest pins), so the template's text IS the script the
-   browser runs. Each test builds a page as the macros render it, gives the
-   window a scripted fetch, a fake clock and a fake setTimeout, and runs the
-   script the way the browser does: once per page load. */
+/* The reader's two scripts (0.18.0, Part E), run the way the browser runs
+   them: once per page load, in a jsdom window with a scripted fetch, a fake
+   clock and a fake setTimeout.
+   - BUNDLE, src/reader.js (built to pressroom-reader.js), loads only into a
+     signed-in page; a plain script, so its source IS what the browser runs.
+   - STUB, the inline signed-out script in weblog.vm's showReaderScript
+     macro, between <script data-reader-stub> and </script>. Its one
+     Velocity reference, the sign-in's URL inside a string, is given a value
+     here. */
 
+const BUNDLE = readFileSync(new URL('../src/reader.js', import.meta.url), 'utf8');
 const TEMPLATE = readFileSync(new URL('../../src/main/webapp/WEB-INF/velocity/weblog.vm', import.meta.url), 'utf8');
-const START = '<script data-reader-script>';
-const SCRIPT = TEMPLATE.slice(TEMPLATE.indexOf(START) + START.length,
-  TEMPLATE.indexOf('</script>', TEMPLATE.indexOf(START)));
+const START = '<script data-reader-stub>';
+const STUB = TEMPLATE.slice(TEMPLATE.indexOf(START) + START.length,
+  TEMPLATE.indexOf('</script>', TEMPLATE.indexOf(START)))
+  .replace('$utils.escapeJavaScript($utils.ssoStartUrl)', '\\/pressroom-ui\\/sso\\/start');
 
 const ENDPOINT = '/pressroom-ui/rendering/reader.rol';
 const MSGS = ' data-msg-save-done="Saved to your account." data-msg-follow-done="You follow this blog."'
@@ -33,8 +37,8 @@ function page({ signedIn = false, readEntry = null, extra = '' } = {}) {
     + control('save', 'data-entry="e1" data-via="save"', 'Save')
     + control('follow', 'data-weblog="blog1" data-via="follow"', 'Follow')
     + extra
-    + `<span hidden data-reader data-endpoint="${ENDPOINT}" data-weblog="blog1"`
-    + (signedIn ? ' data-signed-in' : '') + (readEntry ? ` data-read-entry="${readEntry}"` : '') + MSGS + '></span>'
+    + (signedIn ? `<span hidden data-reader data-endpoint="${ENDPOINT}" data-weblog="blog1" data-signed-in`
+      + (readEntry ? ` data-read-entry="${readEntry}"` : '') + MSGS + '></span>' : '')
     + '</body></html>';
 }
 
@@ -45,7 +49,7 @@ const STATE = {
 };
 
 /** A page load: a fresh DOM over the given sessionStorage contents, the script run once. */
-function load(html, { state = STATE, storage = {}, answers = {} } = {}) {
+function load(html, { state = STATE, storage = {}, answers = {}, helper = true, visible = true, hold = false, bundle = null } = {}) {
   const dom = new JSDOM(html, { url: 'https://site.test/blog1/entry/one', runScripts: 'outside-only' });
   const { window } = dom;
   for (const [k, v] of Object.entries(storage)) {
@@ -54,7 +58,8 @@ function load(html, { state = STATE, storage = {}, answers = {} } = {}) {
   const calls = [];
   const clock = { now: 1_000_000 };
   const timers = [];
-  let visibility = 'visible';
+  let visibility = visible ? 'visible' : 'hidden';
+  const held = [];
   Object.defineProperty(window.document, 'visibilityState', { get: () => visibility, configurable: true });
   window.Date.now = () => clock.now;
   window.setTimeout = (fn, ms) => { const t = { fn, at: clock.now + ms, live: true }; timers.push(t); return t; };
@@ -69,22 +74,29 @@ function load(html, { state = STATE, storage = {}, answers = {} } = {}) {
     if (body && answers[body.action]) {
       ({ status, json } = answers[body.action]);
     }
-    return Promise.resolve({
+    const response = {
       ok: status >= 200 && status < 300,
       status,
       headers: { get: () => 'application/json' },
       json: () => Promise.resolve(json)
-    });
+    };
+    if (hold && method === 'GET') {
+      return new Promise((resolve) => held.push(() => resolve(response)));
+    }
+    return Promise.resolve(response);
   };
-  window.pressroomGoogleSignIn = (via, label) => {
-    const a = window.document.createElement('a');
-    a.className = 'g-signin';
-    a.setAttribute('data-umami-event-via', via);
-    a.textContent = label;
-    return a;
-  };
-  window.eval(SCRIPT);
+  if (helper) {
+    window.pressroomGoogleSignIn = (via, label) => {
+      const a = window.document.createElement('a');
+      a.className = 'g-signin';
+      a.setAttribute('data-umami-event-via', via);
+      a.textContent = label;
+      return a;
+    };
+  }
+  window.eval((bundle ?? !!window.document.querySelector('[data-signed-in]')) ? BUNDLE : STUB);
   return {
+    release: () => held.splice(0).forEach((go) => go()),
     window, document: window.document, calls, storage: window.sessionStorage,
     posts: () => calls.filter((c) => c.method === 'POST'),
     advance(ms) {
@@ -108,10 +120,13 @@ async function settled() {
   }
 }
 
-test('the script in the template has no Velocity references and sets server strings as text', () => {
-  assert.ok(SCRIPT.length > 1000, 'found the script');
-  assert.ok(!SCRIPT.includes('$') && !SCRIPT.includes('#'));
-  assert.ok(!SCRIPT.includes('innerHTML'));
+test('the bundle sets server strings as text; the stub is small and holds none of the bundle', () => {
+  assert.ok(BUNDLE.length > 5000, 'found the bundle');
+  assert.ok(!BUNDLE.includes('innerHTML'));
+  assert.ok(STUB.length > 300 && STUB.length < 1600, `the stub is ${STUB.length} characters`);
+  for (const part of ['reader.rol', 'fetch(', 'visibilitychange', 'data-reader-row', 'innerHTML', '#']) {
+    assert.ok(!STUB.includes(part), part);
+  }
 });
 
 test('signed out: a stale intent is dropped, and a click keeps the intent and shows the sign-in in place', async () => {
@@ -150,9 +165,15 @@ test('intentCompletesOnce: back signed in, the intent is removed before it is po
   assert.ok(first.document.querySelector('[data-reader]').hasAttribute('data-ready'), 'marked ready once shown');
   assert.equal(first.document.querySelector('[data-reader-save] .reader-note').textContent, 'Saved to your account.');
 
-  const reload = load(page({ signedIn: true }), { storage: {} });
+  assert.equal(first.storage.getItem('pressroom.intent'), null, 'the key is cleared');
+  const carried = {};
+  for (let i = 0; i < first.storage.length; i++) {
+    carried[first.storage.key(i)] = first.storage.getItem(first.storage.key(i));
+  }
+
+  const reload = load(page({ signedIn: true }), { storage: carried });
   await settled();
-  assert.equal(reload.posts().length, 0, 'the reload posts nothing');
+  assert.equal(reload.posts().length, 0, 'the reload, over the same storage, posts nothing');
 });
 
 test('an intent older than half an hour is dropped, not completed', async () => {
@@ -270,4 +291,61 @@ test('a signed-out state answer (an expired session) changes nothing', async () 
   p.document.querySelector('[data-reader-save] button').click();
   await settled();
   assert.equal(p.posts().length, 0);
+});
+
+test('a signed-out click without the head helper still offers a plain sign-in link', async () => {
+  const p = load(page(), { helper: false });
+  p.document.querySelector('[data-reader-follow] button').click();
+  const link = p.document.querySelector('[data-reader-follow] a');
+  assert.ok(link, 'a link replaces the button');
+  assert.equal(link.getAttribute('href'), '/pressroom-ui/sso/start?return=%2Fblog1%2Fentry%2Fone');
+  assert.equal(link.textContent, 'Sign in to follow');
+  assert.equal(JSON.parse(p.storage.getItem('pressroom.intent')).action, 'follow');
+});
+
+test('a follow intent confirms on the control the reader clicked (by via)', async () => {
+  const extra = control('follow', 'data-weblog="blog1" data-via="article-end"', 'Follow');
+  const intent = JSON.stringify({ action: 'follow', weblog: 'blog1', via: 'article-end', at: 1_000_000 });
+  const p = load(page({ signedIn: true, extra }), { storage: { 'pressroom.intent': intent } });
+  await settled();
+  const [masthead, end] = p.document.querySelectorAll('[data-reader-follow]');
+  assert.equal(p.posts().filter((c) => c.body.action === 'follow').length, 1);
+  assert.equal(masthead.querySelector('button').getAttribute('aria-pressed'), 'true', 'every control shows it');
+  assert.equal(masthead.querySelector('.reader-note'), null);
+  assert.equal(end.querySelector('.reader-note').textContent, 'You follow this blog.');
+});
+
+test('a beacon due before the state answer waits for it, then posts once', async () => {
+  const p = load(page({ signedIn: true, readEntry: 'e1' }), { hold: true });
+  p.advance(10_000);
+  await settled();
+  assert.equal(p.posts().length, 0, 'no CSRF token yet');
+  p.release();
+  await settled();
+  assert.equal(p.posts().filter((c) => c.body.action === 'read').length, 1);
+});
+
+test('a page loaded in a hidden tab starts counting only once it is shown', async () => {
+  const p = load(page({ signedIn: true, readEntry: 'e1' }), { visible: false });
+  await settled();
+  p.advance(60_000);
+  assert.equal(p.posts().length, 0);
+  p.setVisibility('visible');
+  p.advance(10_000);
+  await settled();
+  assert.equal(p.posts().filter((c) => c.body.action === 'read').length, 1);
+});
+
+test('the You menu closes on a click outside it and on Escape (any signed-in page, data element or not)', () => {
+  const html = '<!doctype html><html><body><details class="you-menu" open><summary>IR</summary>'
+    + '<ul><li><a href="/x">Saved</a></li></ul></details><p id="out">elsewhere</p></body></html>';
+  const p = load(html, { bundle: true });
+  const menu = p.document.querySelector('details.you-menu');
+  menu.querySelector('a').dispatchEvent(new p.window.MouseEvent('click', { bubbles: true }));
+  assert.equal(menu.open, true, 'a click inside keeps it open');
+  p.document.getElementById('out').dispatchEvent(new p.window.MouseEvent('click', { bubbles: true }));
+  assert.equal(menu.open, false);
+  menu.open = true;
+  menu.dispatchEvent(new p.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(menu.open, false);
 });

@@ -66,4 +66,12 @@ await build({
   outfile: '../src/main/webapp/pressroom-ui/scripts/pressroom-content.js'
 });
 
+// The signed-in reader's client (0.18.0, Part E): weblog.vm's reader-script
+// macro loads it, deferred and versioned, into signed-in pages only.
+await build({
+  ...common,
+  entryPoints: ['src/reader.js'],
+  outfile: '../src/main/webapp/pressroom-ui/scripts/pressroom-reader.js'
+});
+
 await build({ ...admin, minify: true });

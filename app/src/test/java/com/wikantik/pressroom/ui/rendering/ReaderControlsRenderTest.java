@@ -159,7 +159,8 @@ class ReaderControlsRenderTest {
                 assertTrue(first.contains("data-reader-follow data-weblog=\"" + current.getHandle() + "\""),
                         theme + ": the Follow control");
                 assertTrue(first.contains("aria-pressed=\"false\""), theme + ": neutral");
-                assertTrue(first.contains("<span hidden data-reader "), theme + ": the script's data");
+                assertTrue(first.contains("<script data-reader-stub>"), theme + ": the signed-out stub");
+                assertFalse(first.contains("<span hidden data-reader "), theme + ": no data element signed out");
                 String markup = withoutReaderScript(first.substring(first.indexOf("</head>")));
                 for (String personal : List.of("data-signed-in", "data-read-entry=", "data-reader-row=",
                         "data-reader-entry=", "data-places-source=", "aria-pressed=\"true\"", "<details class=\"you-menu")) {
@@ -245,7 +246,7 @@ class ReaderControlsRenderTest {
             useTheme(current, "journal");
             String body = page(permalink);
             for (String part : List.of("data-reader-save", "data-reader-follow", "<span hidden data-reader ",
-                    "<script data-reader-script>")) {
+                    "<script data-reader-stub>", "pressroom-reader.js")) {
                 assertFalse(body.contains(part), part + ":\n" + body);
             }
         }
@@ -362,22 +363,58 @@ class ReaderControlsRenderTest {
 
     // ------------------------------------------------------------- the script
 
+    /** The most inline reader script, style and data a signed-out page may carry (fix round 1: the anti-goal). */
+    private static final int SIGNED_OUT_BUDGET = 2048;
+
     /**
-     * The reader script, once per page: no dollar or hash characters (Velocity
-     * would read them), server strings set as text, the intent removed before
-     * it is posted, and the beacon's ten visible seconds.
+     * Anonymous pages must not get slower (the spec's anti-goal): a signed-out
+     * page carries only the inline stub, under {@link #SIGNED_OUT_BUDGET}
+     * bytes with no inline reader style and no data element, and none of the
+     * signed-in bundle's code; the bundle and its stylesheet are not even
+     * linked. One stub, no hash in it (Velocity would read one).
      */
     @Test
-    void theReaderScriptIsOnePageScriptVelocityLeavesAlone() throws Exception {
+    void theSignedOutReaderPayloadStaysUnderBudget() throws Exception {
+        try (var _ = ssoOn()) {
+            for (String theme : THEMES) {
+                useTheme(current, theme);
+                for (String path : List.of(permalink, home)) {
+                    String body = page(path);
+                    assertEquals(1, body.split("<script data-reader-stub>", -1).length - 1, theme + path);
+                    String stub = between(body, "<script data-reader-stub>", "</script>") + "</script>";
+                    int inline = stub.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    assertTrue(inline < SIGNED_OUT_BUDGET, theme + path + ": the stub is " + inline + " bytes");
+                    assertFalse(stub.contains("#"), stub);
+                    for (String bundleCode : List.of("reader.rol", "fetch(", "visibilitychange", "data-reader-row",
+                            "readIds", "subscribe")) {
+                        assertFalse(stub.contains(bundleCode), theme + path + ": bundle code in the stub: " + bundleCode);
+                    }
+                    for (String absent : List.of("pressroom-reader.js", "pressroom-reader.css", "<span hidden data-reader ",
+                            ".you-menu-list", ".reader-row")) {
+                        assertFalse(body.contains(absent), theme + path + ": " + absent);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * A signed-in page (rendered per user) loads the versioned, deferred
+     * bundle and the reader stylesheet from the site, and no stub; the
+     * bundle loads even where the blog shows no reader state, for the "You"
+     * menu.
+     */
+    @Test
+    void aSignedInPageLoadsTheVersionedBundleAndStylesheetInsteadOfTheStub() throws Exception {
         try (var _ = ssoOn()) {
             useTheme(current, "journal");
-            String body = page(permalink);
-            assertEquals(1, body.split("<script data-reader-script>", -1).length - 1, body);
-            String script = between(body, "<script data-reader-script>", "</script>");
-            assertFalse(script.contains("$") || script.contains("#"), script);
-            assertFalse(script.contains("innerHTML"), "server strings go in as text:\n" + script);
-            assertTrue(script.contains("'pressroom.intent'"), script);
-            assertTrue(script.contains("visibilitychange") && script.contains("10000"), script);
+            String body = pageAs(reader.getUserName(), permalink);
+            assertTrue(Pattern.compile("<script defer src=\"[^\"]*/pressroom-ui/scripts/pressroom-reader\\.js\\?v=[^\"]+\"></script>")
+                    .matcher(body).find(), body);
+            assertTrue(Pattern.compile("<link rel=\"stylesheet\" href=\"[^\"]*/pressroom-ui/styles/pressroom-reader\\.css\\?v=[^\"]+\">")
+                    .matcher(between(body, "<head>", "</head>")).find(), "in the head");
+            assertFalse(body.contains("<script data-reader-stub>"), body);
+            assertEquals(1, body.split("pressroom-reader.js", -1).length - 1, "once per page");
         }
     }
 

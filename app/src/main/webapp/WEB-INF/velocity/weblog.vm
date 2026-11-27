@@ -3256,7 +3256,13 @@ html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-si
   }
 }
 </style>
-#showReaderStyles()
+#if($utils.isUserAuthenticated())
+## A signed-in page's reader rules (0.18.0, Part E): Save, Follow, their
+## confirmations, the rows, the Read label and the "You" menu, from one
+## static, versioned file. A signed-out page's few control rules live in each
+## article theme's own stylesheet, so an anonymous page gains no request.
+<link rel="stylesheet" href="$url.site/pressroom-ui/styles/pressroom-reader.css?v=$utils.escapeHTML($config.getColophon($model.weblog).version)">
+#end
 <script>
 (function () {
     var start = '$utils.escapeJavaScript($utils.ssoStartUrl)';
@@ -3540,9 +3546,9 @@ top bar call it). Initials and the name in a details/summary disclosure
 the Main menu for an author, and Sign out. The page is cached per signed-in
 user, so the name never reaches another visitor. The name class is the
 prefix plus -who, the marker the older tests pin; you-menu, you-menu-initials
-and you-menu-list are this macro's own. The little script closes the menu on
-a click outside it or Escape, as the blogs menu does; no dollar sign and no
-hash in it.
+and you-menu-list are this macro's own. The signed-in reader bundle (the
+showReaderScript macro) closes the menu on a click outside it or Escape, as
+the blogs menu does; without it the disclosure still opens and closes.
 *#
 #macro(showYouMenu $ymPrefix)
 #set($ymName = "")
@@ -3560,24 +3566,6 @@ hash in it.
         <li><a href="$url.logout">$text.get("navigationBar.logout")</a></li>
     </ul>
 </details>
-<script>
-(function () {
-    var menus = document.querySelectorAll('details.you-menu');
-    Array.prototype.forEach.call(menus, function (menu) {
-        document.addEventListener('click', function (e) {
-            if (menu.open && !menu.contains(e.target)) {
-                menu.open = false;
-            }
-        });
-        menu.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && menu.open) {
-                menu.open = false;
-                menu.querySelector('summary').focus();
-            }
-        });
-    });
-})();
-</script>
 #end
 
 #**
@@ -3645,7 +3633,7 @@ own pair (fd-continue, fd-followed in discovery.vm).
 ## A list title's hook for the "Read" label (0.18.0, Part E): the attribute
 ## data-reader-entry, in a signed-in reader's page only, so a signed-out list
 ## is as before. Write it inside the title link's tag.
-#macro(showReaderEntryMark $reEntry)#if($utils.ssoEnabled && $utils.isUserAuthenticated()) data-reader-entry="$utils.escapeHTML($reEntry.id)"#end#end
+#macro(showReaderEntryMark $reEntry)#if($utils.isUserAuthenticated() && $utils.readerStateOn($reEntry.website)) data-reader-entry="$utils.escapeHTML($reEntry.id)"#end#end
 
 ## The signed-in Places hook on a places container (0.18.0, Part E): the list
 ## then comes from the server (the showReaderScript macro), and the browser's
@@ -3653,510 +3641,66 @@ own pair (fd-continue, fd-followed in discovery.vm).
 #macro(showPlacesSource $psWeblog)#if($utils.isUserAuthenticated() && $utils.readerStateOn($psWeblog)) data-places-source="server"#end#end
 
 #**
-The reader script (0.18.0, Part E), once per page from the colophon, with
-reader sign-in on and not on a custom-domain blog. The hidden data element
-carries the server-built endpoint, the words, and, in a signed-in page only,
-data-signed-in and the entry the read beacon records (a post page).
+The reader's page script (0.18.0, Part E), from the colophon, with reader
+sign-in on. Anonymous pages must not get slower or less cacheable (the
+spec's anti-goal), so the two kinds of page get different things.
 
-Signed out the script asks the server nothing: a Save or Follow click keeps
-sessionStorage["pressroom.intent"] and shows the provider's button in place;
-an intent found on a signed-out load is dropped (a cancelled sign-in).
-Signed in it removes the intent BEFORE posting it, so a reload cannot repeat
-it, asks reader.rol once for the page's state, fills the controls, the rows,
-the read marks and the server's Places, completes the intent and confirms
-inline (after a follow, "Also email me new posts" when the blog offers it),
-and posts one read after ten visible seconds. Every server string goes in
-with textContent; every link must be a path on this site. No dollar sign and
-no hash in the script: Velocity would read either (ReaderControlsRenderTest);
-app/frontend/test/reader-script.test.mjs runs this very text in jsdom.
+A signed-out page of a blog without a custom domain gets only the inline
+stub (data-reader-stub, ReaderControlsRenderTest holds it under a budget):
+it drops any stored intent (a sign-in that was cancelled or never finished),
+and a Save or Follow click keeps sessionStorage["pressroom.intent"] =
+{action, entry|weblog, via, at} and puts the provider's button
+(window.pressroomGoogleSignIn, or a plain sso/start link on a page whose
+head never loaded it) in the control's place. The same bytes for everyone.
+
+A signed-in page (rendered and cached per user) gets the hidden data element
+(the server-built endpoint, the words, data-signed-in and, on a post, the
+entry the read beacon records) and the versioned, deferred bundle
+pressroom-reader.js (app/frontend/src/reader.js), which completes the
+intent once and does everything else. The bundle also closes the "You"
+menu, so it loads on any signed-in page; the data element only where the
+blog shows reader state (UtilitiesModel.readerStateOn).
 *#
 #macro(showReaderScript $rsWeblog)
+#if($utils.ssoEnabled && $utils.isUserAuthenticated())
 #if($utils.readerStateOn($rsWeblog))
-<span hidden data-reader data-endpoint="$utils.escapeHTML($utils.readerEndpoint)"#if(!$rsWeblog.siteSpace) data-weblog="$utils.escapeHTML($rsWeblog.handle)"#end#if($utils.isUserAuthenticated()) data-signed-in#if($model.permalink && $model.weblogEntry) data-read-entry="$utils.escapeHTML($model.weblogEntry.id)"#end#end
+<span hidden data-reader data-endpoint="$utils.escapeHTML($utils.readerEndpoint)"#if(!$rsWeblog.siteSpace) data-weblog="$utils.escapeHTML($rsWeblog.handle)"#end data-signed-in#if($model.permalink && $model.weblogEntry) data-read-entry="$utils.escapeHTML($model.weblogEntry.id)"#end
       data-msg-save-done="$utils.escapeHTML($text.get("reader.state.saveDone"))" data-msg-follow-done="$utils.escapeHTML($text.get("reader.state.followDone"))"
       data-msg-newsletter="$utils.escapeHTML($text.get("reader.state.newsletter"))" data-msg-newsletter-confirm="$utils.escapeHTML($text.get("reader.state.newsletter.confirm"))"
       data-msg-newsletter-already="$utils.escapeHTML($text.get("reader.state.newsletter.already"))" data-msg-newsletter-unavailable="$utils.escapeHTML($text.get("reader.state.newsletter.unavailable"))"
       data-msg-failed="$utils.escapeHTML($text.get("reader.state.failed"))" data-msg-read="$utils.escapeHTML($text.get("reader.state.read"))"></span>
-<script data-reader-script>
+#end
+<script defer src="$url.site/pressroom-ui/scripts/pressroom-reader.js?v=$utils.escapeHTML($config.getColophon($rsWeblog).version)"></script>
+#elseif($utils.readerStateOn($rsWeblog))
+<script data-reader-stub>
 (function () {
-    var data = document.querySelector('[data-reader]');
-    if (!data) {
-        return;
+  var key = 'pressroom.intent';
+  try { window.sessionStorage.removeItem(key); } catch (e) { /* no storage */ }
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest ? e.target.closest('[data-reader-save] > button, [data-reader-follow] > button') : null;
+    if (!button) { return; }
+    var control = button.parentNode, via = control.getAttribute('data-via'), label = control.getAttribute('data-sign-in');
+    var intent = control.hasAttribute('data-reader-save')
+      ? { action: 'save', entry: control.getAttribute('data-entry') }
+      : { action: 'follow', weblog: control.getAttribute('data-weblog'), via: via };
+    intent.at = Date.now();
+    try { window.sessionStorage.setItem(key, JSON.stringify(intent)); } catch (x) { /* the sign-in still works */ }
+    var link;
+    if (typeof window.pressroomGoogleSignIn === 'function') {
+      link = window.pressroomGoogleSignIn(via, label);
+    } else {
+      link = document.createElement('a');
+      link.href = '$utils.escapeJavaScript($utils.ssoStartUrl)?return=' + encodeURIComponent(location.pathname + location.search);
+      link.textContent = label;
     }
-    var endpoint = data.getAttribute('data-endpoint');
-    var signedIn = data.hasAttribute('data-signed-in');
-    var KEY = 'pressroom.intent';
-    var MAX_AGE = 30 * 60 * 1000;
-    var VISIBLE_MS = 10000;
-    var saves = Array.prototype.slice.call(document.querySelectorAll('[data-reader-save]'));
-    var follows = Array.prototype.slice.call(document.querySelectorAll('[data-reader-follow]'));
-
-    function words(name) {
-        return data.getAttribute('data-msg-' + name) || '';
-    }
-
-    // A link from the server must stay on this site: a path, on this origin.
-    function sameOrigin(url) {
-        if (typeof url !== 'string' || url.charAt(0) !== '/') {
-            return false;
-        }
-        try {
-            return new URL(url, window.location.href).origin === window.location.origin;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    function element(tag, className, text) {
-        var node = document.createElement(tag);
-        if (className) {
-            node.className = className;
-        }
-        if (text) {
-            node.textContent = text;
-        }
-        return node;
-    }
-
-    if (!sameOrigin(endpoint)) {
-        return;
-    }
-
-    // The intent is read and removed in one step, BEFORE anything is posted:
-    // a reload, a second tab or a failed post can never repeat it. An intent
-    // older than half an hour, or one found while signed out (a sign-in that
-    // was cancelled or never finished), is simply dropped.
-    function takeIntent() {
-        var raw = null;
-        try {
-            raw = window.sessionStorage.getItem(KEY);
-            window.sessionStorage.removeItem(KEY);
-        } catch (e) {
-            return null;
-        }
-        var intent = null;
-        try {
-            intent = JSON.parse(raw || 'null');
-        } catch (e) {
-            return null;
-        }
-        if (!intent || typeof intent.at !== 'number' || Date.now() - intent.at > MAX_AGE) {
-            return null;
-        }
-        if (intent.action === 'save' && typeof intent.entry === 'string') {
-            return intent;
-        }
-        if (intent.action === 'follow' && typeof intent.weblog === 'string') {
-            return intent;
-        }
-        return null;
-    }
-
-    function note(control, text) {
-        var line = control.querySelector('.reader-note');
-        if (!line) {
-            line = element('span', 'reader-note');
-            line.setAttribute('role', 'status');
-            control.appendChild(line);
-        }
-        line.textContent = text;
-        return line;
-    }
-
-    // ------------------------------------------------------------ signed out
-    // A click keeps what the reader wanted in this tab's sessionStorage and
-    // puts the provider's button in the control's place; nothing else changes.
-    if (!signedIn) {
-        takeIntent();
-        var wire = function (control, intent) {
-            var button = control.querySelector('button');
-            if (!button) {
-                return;
-            }
-            button.addEventListener('click', function () {
-                if (typeof window.pressroomGoogleSignIn !== 'function') {
-                    return;
-                }
-                intent.at = Date.now();
-                try {
-                    window.sessionStorage.setItem(KEY, JSON.stringify(intent));
-                } catch (e) {
-                    // no storage: the sign-in still works, the action is just not completed
-                }
-                var link = window.pressroomGoogleSignIn(control.getAttribute('data-via'),
-                    control.getAttribute('data-sign-in'));
-                control.replaceChild(link, button);
-                link.focus();
-            });
-        };
-        saves.forEach(function (control) {
-            wire(control, { action: 'save', entry: control.getAttribute('data-entry') });
-        });
-        follows.forEach(function (control) {
-            wire(control, { action: 'follow', weblog: control.getAttribute('data-weblog'),
-                via: control.getAttribute('data-via') });
-        });
-        return;
-    }
-
-    // ------------------------------------------------------------ signed in
-    var intent = takeIntent();
-    var state = null;
-    var waiting = [];
-
-    function readJson(response) {
-        var type = response.headers.get('Content-Type') || '';
-        return type.indexOf('application/json') === -1 ? Promise.resolve(null) : response.json();
-    }
-
-    // Every write, with the CSRF header the state answer named; resolves to
-    // the status and the JSON body (or null).
-    function send(payload, keepalive) {
-        var headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
-        headers[state.csrf.header] = state.csrf.token;
-        return fetch(endpoint, { method: 'POST', credentials: 'same-origin', headers: headers,
-            body: JSON.stringify(payload), keepalive: !!keepalive })
-            .then(function (response) {
-                return readJson(response).then(function (body) {
-                    return { status: response.status, body: body };
-                }, function () {
-                    return { status: response.status, body: null };
-                });
-            });
-    }
-
-    function whenReady(work) {
-        if (state) {
-            work();
-        } else {
-            waiting.push(work);
-        }
-    }
-
-    function press(control, on) {
-        var button = control.querySelector('button');
-        if (!button) {
-            return;
-        }
-        button.setAttribute('aria-pressed', on ? 'true' : 'false');
-        button.textContent = control.getAttribute(on ? 'data-label-on' : 'data-label-off');
-    }
-
-    function saveControlsFor(entry) {
-        return saves.filter(function (c) { return c.getAttribute('data-entry') === entry; });
-    }
-
-    function followControlsFor(handle) {
-        return follows.filter(function (c) { return c.getAttribute('data-weblog') === handle; });
-    }
-
-    function setSaved(entry, on, confirmOn) {
-        return send({ action: on ? 'save' : 'unsave', entry: entry }).then(function (answer) {
-            var ok = answer.status === 200;
-            saveControlsFor(entry).forEach(function (control) {
-                if (ok) {
-                    press(control, on);
-                }
-                if (control === confirmOn) {
-                    note(control, ok ? (on ? words('save-done') : '') : words('failed'));
-                }
-            });
-        }, function () {
-            if (confirmOn) {
-                note(confirmOn, words('failed'));
-            }
-        });
-    }
-
-    function offerNewsletter(control, handle) {
-        if (!state.newsletter || state.newsletter.available !== true) {
-            return;
-        }
-        var offer = element('button', 'reader-newsletter', words('newsletter'));
-        offer.type = 'button';
-        offer.setAttribute('data-umami-event', 'newsletter');
-        offer.setAttribute('data-umami-event-via', 'follow');
-        offer.addEventListener('click', function () {
-            offer.disabled = true;
-            send({ action: 'subscribe', weblog: handle }).then(function (answer) {
-                var outcome = answer.body && answer.body.outcome;
-                var text = outcome === 'confirm' ? words('newsletter-confirm')
-                    : outcome === 'already' ? words('newsletter-already')
-                        : outcome === 'unavailable' ? words('newsletter-unavailable') : words('failed');
-                offer.remove();
-                note(control, text);
-            }, function () {
-                offer.disabled = false;
-                note(control, words('newsletter-unavailable'));
-            });
-        });
-        control.appendChild(offer);
-    }
-
-    function setFollowing(handle, on, confirmOn) {
-        return send({ action: on ? 'follow' : 'unfollow', weblog: handle }).then(function (answer) {
-            var ok = answer.status === 200;
-            followControlsFor(handle).forEach(function (control) {
-                if (ok) {
-                    press(control, on);
-                }
-                var offer = control.querySelector('.reader-newsletter');
-                if (offer && !on) {
-                    offer.remove();
-                }
-                if (control === confirmOn) {
-                    note(control, ok ? (on ? words('follow-done') : '') : words('failed'));
-                    if (ok && on) {
-                        offerNewsletter(control, handle);
-                    }
-                }
-            });
-        }, function () {
-            if (confirmOn) {
-                note(confirmOn, words('failed'));
-            }
-        });
-    }
-
-    function wireSignedIn() {
-        saves.forEach(function (control) {
-            var button = control.querySelector('button');
-            button.addEventListener('click', function () {
-                setSaved(control.getAttribute('data-entry'), button.getAttribute('aria-pressed') !== 'true', control);
-            });
-        });
-        follows.forEach(function (control) {
-            var button = control.querySelector('button');
-            button.addEventListener('click', function () {
-                setFollowing(control.getAttribute('data-weblog'), button.getAttribute('aria-pressed') !== 'true',
-                    control);
-            });
-        });
-    }
-
-    // The rows: Continue reading and From blogs you follow, each hidden
-    // while it would be empty. Titles and blog names are text, links paths.
-    function fillRows() {
-        var rows = document.querySelectorAll('[data-reader-row]');
-        Array.prototype.forEach.call(rows, function (row) {
-            var kind = row.getAttribute('data-reader-row');
-            var items = kind === 'continue' ? state.continueReading : state.followedPosts;
-            var list = row.querySelector('ul');
-            if (!Array.isArray(items) || !list) {
-                return;
-            }
-            items.forEach(function (item) {
-                if (!item || !sameOrigin(item.url)) {
-                    return;
-                }
-                var li = element('li', 'reader-row-item');
-                var link = element('a', 'reader-row-title', item.title);
-                link.href = item.url;
-                li.appendChild(link);
-                li.appendChild(element('span', 'reader-row-blog', item.weblogName));
-                list.appendChild(li);
-            });
-            row.hidden = list.children.length === 0;
-        });
-    }
-
-    // A small Read label after each list title the reader has read.
-    function markRead() {
-        if (!Array.isArray(state.readIds)) {
-            return;
-        }
-        var read = {};
-        state.readIds.forEach(function (id) { read[id] = true; });
-        var titles = document.querySelectorAll('[data-reader-entry]');
-        Array.prototype.forEach.call(titles, function (title) {
-            var next = title.nextElementSibling;
-            if (read[title.getAttribute('data-reader-entry')] === true
-                    && !(next && next.classList.contains('reader-read-mark'))) {
-                title.insertAdjacentElement('afterend', element('span', 'reader-read-mark', words('read')));
-            }
-        });
-    }
-
-    // Places you've been, from the reader's history on the server: the same
-    // on every device. The browser's own list is not read or written here.
-    function fillPlaces() {
-        if (!Array.isArray(state.places)) {
-            return;
-        }
-        var here = data.getAttribute('data-weblog');
-        var others = state.places.filter(function (p) {
-            return p && p.handle !== here && sameOrigin(p.url);
-        }).slice(0, 5);
-        var lists = document.querySelectorAll('[data-places]');
-        Array.prototype.forEach.call(lists, function (container) {
-            if (!others.length || container.querySelector('ul')) {
-                return;
-            }
-            var ul = element('ul', 'places-been-list');
-            others.forEach(function (p) {
-                var li = element('li');
-                var link = element('a', null, p.name);
-                link.href = p.url;
-                li.appendChild(link);
-                ul.appendChild(li);
-            });
-            container.appendChild(ul);
-            container.hidden = false;
-        });
-    }
-
-    // The read beacon: one read per page view, after ten seconds the page has
-    // been visible (time in a background tab does not count).
-    function startBeacon() {
-        var entry = data.getAttribute('data-read-entry');
-        if (!entry) {
-            return;
-        }
-        var seen = 0;
-        var since = 0;
-        var timer = null;
-        var sent = false;
-        function fire() {
-            timer = null;
-            sent = true;
-            document.removeEventListener('visibilitychange', change);
-            whenReady(function () {
-                send({ action: 'read', entry: entry }, true).catch(function () {});
-            });
-        }
-        function change() {
-            if (sent) {
-                return;
-            }
-            if (document.visibilityState === 'visible') {
-                if (!timer) {
-                    since = Date.now();
-                    timer = setTimeout(fire, Math.max(0, VISIBLE_MS - seen));
-                }
-            } else if (timer) {
-                clearTimeout(timer);
-                timer = null;
-                seen += Date.now() - since;
-            }
-        }
-        document.addEventListener('visibilitychange', change);
-        change();
-    }
-
-    function complete() {
-        if (!intent) {
-            return;
-        }
-        if (intent.action === 'save') {
-            setSaved(intent.entry, true, saveControlsFor(intent.entry)[0] || null);
-        } else {
-            var controls = followControlsFor(intent.weblog);
-            var at = controls.filter(function (c) { return c.getAttribute('data-via') === intent.via; })[0];
-            setFollowing(intent.weblog, true, at || controls[0] || null);
-        }
-    }
-
-    var query = [];
-    if (saves.length) {
-        query.push('entry=' + encodeURIComponent(saves[0].getAttribute('data-entry')));
-    }
-    if (follows.length) {
-        query.push('weblog=' + encodeURIComponent(follows[0].getAttribute('data-weblog')));
-    }
-    var include = [];
-    if (document.querySelector('[data-reader-row="continue"]')) {
-        include.push('continue');
-    }
-    if (document.querySelector('[data-reader-row="followed"]')) {
-        include.push('followed');
-    }
-    if (document.querySelector('[data-reader-entry]')) {
-        include.push('readIds');
-    }
-    if (document.querySelector('[data-places-source]')) {
-        include.push('places');
-    }
-    if (include.length) {
-        query.push('include=' + include.join(','));
-    }
-    startBeacon();
-    fetch(endpoint + (query.length ? '?' + query.join('&') : ''), {
-        credentials: 'same-origin',
-        cache: 'no-store',
-        headers: { 'Accept': 'application/json' }
-    }).then(function (response) {
-        return response.ok ? readJson(response) : null;
-    }).then(function (answer) {
-        if (!answer || answer.signedIn !== true || !answer.csrf) {
-            return;
-        }
-        state = answer;
-        saves.forEach(function (control) { press(control, answer.saved === true); });
-        follows.forEach(function (control) { press(control, answer.following === true); });
-        fillRows();
-        markRead();
-        fillPlaces();
-        wireSignedIn();
-        complete();
-        waiting.splice(0).forEach(function (work) { work(); });
-        data.setAttribute('data-ready', '');
-    }).catch(function () {});
+    control.replaceChild(link, button);
+    link.focus();
+  });
 })();
 </script>
 #end
 #end
 
-#**
-The reader controls' rules (0.18.0, Part E), emitted into the head by the
-showGoogleSignInAssets macro, so only with reader sign-in on: Save and
-Follow, their inline confirmations, the reader rows, the Read label and the
-"You" menu. currentColor and color-mix only, no theme token and no hex
-colour (a hash before a word is a directive here), so a forked theme shows
-them styled.
-*#
-#macro(showReaderStyles)
-<style>
-.reader-save button, .reader-follow button, .reader-newsletter {
-  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em;
-}
-.reader-save button[aria-pressed="true"], .reader-follow button[aria-pressed="true"] { font-weight: 600; text-decoration: none; }
-.reader-follow-masthead button {
-  padding: .2em .75em; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 99px;
-  font-size: .8125rem; text-decoration: none;
-}
-.reader-follow-masthead { display: inline-block; margin: .5rem 0 0; }
-.reader-note, .reader-newsletter { margin-left: .5em; font-size: .8125rem; }
-.reader-note { color: color-mix(in srgb, currentColor 70%, transparent); }
-.reader-follow-line, .entry-save-row { margin: 1.5rem 0 0; font-size: .875rem; }
-.reader-row { margin: 0 0 1.5rem; padding: 0 0 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
-.reader-row[hidden], [data-reader-row][hidden] { display: none; }
-.reader-row-label { margin: 0 0 .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-  color: color-mix(in srgb, currentColor 70%, transparent); }
-.reader-row-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
-.reader-row-blog { margin-left: .5em; font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
-.reader-read-mark {
-  display: inline-block; margin-left: .5em; padding: 0 .45em; border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  border-radius: 99px; font-size: .6875rem; font-weight: 600; letter-spacing: .04em; line-height: 1.5; text-transform: uppercase;
-  vertical-align: middle; color: color-mix(in srgb, currentColor 75%, transparent);
-}
-.you-menu { position: relative; flex: none; }
-.you-menu summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; user-select: none; }
-.you-menu summary::-webkit-details-marker { display: none; }
-.you-menu-initials {
-  display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 99px;
-  background: color-mix(in srgb, currentColor 14%, transparent); font-size: .6875rem; font-weight: 700; letter-spacing: 0;
-}
-html body .you-menu-list {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: block; min-width: 12rem; margin: 0; padding: 6px;
-  list-style: none; text-align: left; border-radius: 8px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
-  background: var(--site-bar-surface, Canvas); box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
-}
-html body .you-menu-list li { display: block; margin: 0; padding: 0; }
-html body .you-menu-list a { display: block; padding: 7px 10px; border-radius: 5px; font-weight: 500; color: inherit; text-decoration: none; }
-html body .you-menu-list a:hover { background: color-mix(in srgb, currentColor 9%, transparent); }
-</style>
-#end
 
 #**
 The site colophon, the last thing inside each bundled theme's footer:

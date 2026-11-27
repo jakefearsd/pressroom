@@ -174,7 +174,6 @@
 
 
 
-
                 <a href="/pressroom-ui/authoring/entryAdd.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.newEntry)</a>
 &nbsp;|&nbsp;                <a href="/pressroom-ui/authoring/entries.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.archives)</a>
 &nbsp;|&nbsp;                <a href="/pressroom-ui/authoring/trash.rol">T(tabbedmenu.weblog):T(tabbedmenu.trash)</a>

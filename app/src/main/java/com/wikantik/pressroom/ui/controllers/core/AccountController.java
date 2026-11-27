@@ -238,10 +238,10 @@ public class AccountController extends BaseController {
 
     /**
      * "Keep my reading history": on when the box is ticked ({@code keepHistory}
-     * sent), off when it is not. Off also clears the history, after the switch
-     * is saved; the beacon then records nothing
-     * ({@link ReaderStateService#recordRead}). A save that fails is rolled back,
-     * reported, and clears nothing.
+     * sent), off when it is not. Off clears the history first and then saves
+     * the switch, so a clear that fails leaves both as they were; the beacon
+     * then records nothing ({@link ReaderStateService#recordRead}). A save
+     * that fails is rolled back and reported.
      */
     @PostMapping("/account!saveHistorySetting.rol")
     public String saveHistorySetting(@RequestParam(name = "keepHistory", required = false) String keepHistory,
@@ -249,12 +249,13 @@ public class AccountController extends BaseController {
         User account = getAuthenticatedUser(request);
         boolean on = keepHistory != null;
         try {
+            if (!on) {
+                // Cleared first: a clear that fails leaves the switch on over the history it kept.
+                readers.clearHistory(account);
+            }
             account.setKeepHistory(on);
             weblogger.getUserManager().saveUser(account);
             weblogger.flush();
-            if (!on) {
-                readers.clearHistory(account);
-            }
             log.info("account {} turned its reading history {}", account.getUserName(), on ? "on" : "off");
             addFlashMessage(redirectAttributes, "account.history.saved", request);
         } catch (WebloggerException ex) {
