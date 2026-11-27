@@ -25,8 +25,8 @@ import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
-import org.junit.jupiter.api.parallel.ResourceLocks;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.ResourceLocks;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 

@@ -25,7 +25,7 @@
      controller's verified one, escaped as any request value. --%>
 
 <c:url var="unsubscribeUrl" value="/pressroom-ui/unsubscribe.rol"/>
-<c:url var="accountUrl" value="/pressroom-ui/account.rol"/>
+<c:url var="emailUrl" value="/pressroom-ui/account.rol#email"/>
 
 <div id="unsubscribePage">
     <c:choose>
@@ -41,7 +41,7 @@
     <c:when test="${unsubscribeState == 'done'}">
         <h2 class="section-head"><spring:message code="unsubscribe.done.heading"/></h2>
         <p><spring:message code="unsubscribe.done.body"/></p>
-        <p><a href="${accountUrl}"><spring:message code="unsubscribe.account"/></a></p>
+        <p><a href="${emailUrl}"><spring:message code="unsubscribe.account"/></a></p>
     </c:when>
     <c:when test="${unsubscribeState == 'error'}">
         <div class="empty-state">
@@ -51,7 +51,7 @@
     <c:otherwise>
         <div class="empty-state">
             <p class="empty-state-title"><spring:message code="unsubscribe.invalid"/></p>
-            <p><a href="${accountUrl}"><spring:message code="unsubscribe.account"/></a></p>
+            <p><a href="${emailUrl}"><spring:message code="unsubscribe.account"/></a></p>
         </div>
     </c:otherwise>
     </c:choose>

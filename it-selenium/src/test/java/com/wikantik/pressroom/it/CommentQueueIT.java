@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
@@ -138,12 +139,17 @@ class CommentQueueIT extends PressroomIT {
         // One page, one counts read: B's "1 awaiting approval" proves the counts have loaded, so only then does
         // the absence of A's mean the approval decremented it (an unloaded row shows no badge at all).
         openPath("/pressroom-ui/app/");
-        $$(".weblog-row").findBy(text(second)).$$("a").findBy(text("1 awaiting approval")).should(exist);
-        $$(".weblog-row").findBy(text(first)).should(exist).$$("a").findBy(text("awaiting approval")).shouldNot(exist);
+        weblogRow(second).$$("a").findBy(text("1 awaiting approval")).should(exist);
+        weblogRow(first).should(exist).$$("a").findBy(text("awaiting approval")).shouldNot(exist);
         openPath(AdminApp.weblog(second, "/entries"));
         $(RAIL + " a[aria-label='Comments, 1 awaiting approval']").should(visible);
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
+    }
+
+    /** The home-page row whose handle label (the heading's data span) is exactly this handle (a prefix of another handle must not match). */
+    private static SelenideElement weblogRow(String handle) {
+        return $$(".weblog-row h2 .data").findBy(exactText(handle)).closest(".weblog-row");
     }
 
     /** Posts a comment as the signed-in reader on the page shown; it must be held, not published. */
