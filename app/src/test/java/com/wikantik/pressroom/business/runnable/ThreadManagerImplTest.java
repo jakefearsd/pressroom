@@ -32,8 +32,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -231,5 +233,53 @@ class ThreadManagerImplTest {
         assertTrue(manager.registerLease(task));
         assertTrue(manager.unregisterLease(task));
         manager.release();
+    }
+
+    @Test
+    void awaitBackgroundIdleWaitsForRunningAndNotYetStartedWork() throws Exception {
+        manager = new InMemoryThreadManager();
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean done = new AtomicBoolean();
+        manager.executeInBackground(() -> {
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            done.set(true);
+        });
+
+        assertFalse(manager.awaitBackgroundIdle(100, TimeUnit.MILLISECONDS),
+                "work in flight means not idle");
+        release.countDown();
+        assertTrue(manager.awaitBackgroundIdle(10, TimeUnit.SECONDS));
+        assertTrue(done.get(), "idle means the work has finished, not merely started");
+    }
+
+    @Test
+    void awaitBackgroundIdleCountsWorkThatThrew() throws Exception {
+        manager = new InMemoryThreadManager();
+        manager.executeInBackground(() -> {
+            throw new IllegalStateException("expected by the test");
+        });
+
+        assertTrue(manager.awaitBackgroundIdle(10, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void awaitBackgroundIdleIsImmediateWhenNothingRan() throws Exception {
+        manager = new InMemoryThreadManager();
+        assertTrue(manager.awaitBackgroundIdle(0, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void awaitBackgroundIdleIgnoresWorkTheShutDownPoolRefused() throws Exception {
+        manager = new InMemoryThreadManager();
+        manager.shutdown();
+
+        assertThrows(java.util.concurrent.RejectedExecutionException.class,
+                () -> manager.executeInBackground(() -> { }));
+
+        assertTrue(manager.awaitBackgroundIdle(0, TimeUnit.SECONDS), "refused work is not in flight");
     }
 }

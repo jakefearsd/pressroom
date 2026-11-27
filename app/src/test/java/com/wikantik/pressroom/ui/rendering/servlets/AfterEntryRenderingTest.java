@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -124,27 +124,29 @@ class AfterEntryRenderingTest {
      * the related list takes the index's picks first (FurtherReadingTest
      * covers that). These tests pin the tag-and-category rule, which rendered
      * either way depending on whether indexing had finished by render time.
-     * So wait until every published post is indexed -- nothing is left in
-     * flight to re-add one -- then take the blog out of the index.
+     *
+     * <p>So wait for the background pool to go idle -- every queued index
+     * write has finished and committed, none left to re-add a post later --
+     * then take the blog out of the index and wait for that to land too.
+     * Counting hits is not a wait: each post is saved twice (two re-index
+     * jobs on an unordered pool), so "all posts found" can hold while a job
+     * is still queued, and that job then re-adds a post after the removal.
      */
     private void settleIndex() throws Exception {
         IndexManager index = TestUtils.weblogger().getIndexManager();
-        awaitIndexed(index, published);
+        awaitBackgroundIdle();
+        assertEquals(published, indexed(index), "posts in the index once indexing is idle");
         index.removeWeblogIndex(TestUtils.getManagedWebsite(weblog));
         TestUtils.endSession(true);
-        awaitIndexed(index, 0);
-        // a later call waits only for posts made since this one
+        awaitBackgroundIdle();
+        assertEquals(0, indexed(index), "posts in the index once the blog is removed");
+        // a later call checks only the posts made since this one
         published = 0;
     }
 
-    private void awaitIndexed(IndexManager index, int expected) throws Exception {
-        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
-        int found = indexed(index);
-        while (found != expected && System.nanoTime() < deadline) {
-            Thread.sleep(50);
-            found = indexed(index);
-        }
-        assertEquals(expected, found, "posts in the index");
+    private static void awaitBackgroundIdle() throws Exception {
+        assertTrue(TestUtils.weblogger().getThreadManager().awaitBackgroundIdle(60, TimeUnit.SECONDS),
+                "background index work did not finish");
     }
 
     private int indexed(IndexManager index) throws Exception {

@@ -221,6 +221,25 @@ class RebuildWebsiteIndexOperationFailureTest {
         assertEquals(List.of("r1"), indexedIds());
     }
 
+    /**
+     * A blog renamed and then deleted before its queued rebuild runs is gone
+     * when the job re-reads it. The re-read came back null, which the job
+     * took for "rebuild the whole site": it emptied the index and re-added
+     * every blog. A job whose blog no longer exists must do nothing (the
+     * deletion removes that blog's documents on its own).
+     */
+    @Test
+    void aRebuildOfABlogThatNoLongerExistsLeavesTheIndexAlone() throws Exception {
+        index(entry("r1"));
+        when(weblogs.getWeblog(blog.getId())).thenReturn(null);
+        when(entries.getWeblogEntries(any())).thenReturn(List.of());
+
+        manager.rebuildWeblogIndex(blog);
+
+        assertEquals(List.of("r1"), indexedIds(),
+                "a vanished blog's job must not turn into a site-wide rebuild");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** The entry id of every live document, one per document, sorted. */

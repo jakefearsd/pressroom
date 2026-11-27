@@ -84,8 +84,16 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         if (this.website != null) {
             log.debug("Reindexining weblog {}", website.getHandle());
             try {
-                this.website = pressroom.getWeblogManager().getWeblog(
+                Weblog current = pressroom.getWeblogManager().getWeblog(
                         this.website.getId());
+                if (current == null) {
+                    // deleted since the job was queued: a null website means
+                    // "rebuild the whole site", so stop here. The deletion
+                    // removes the blog's documents itself.
+                    log.debug("Weblog {} no longer exists; nothing to rebuild", website.getHandle());
+                    return false;
+                }
+                this.website = current;
             } catch (WebloggerException ex) {
                 log.error("Error getting website object", ex);
                 return false;

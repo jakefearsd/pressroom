@@ -51,6 +51,17 @@ public interface ThreadManager {
     
     
     /**
+     * Waits until every task handed to {@link #executeInBackground} has
+     * finished (run to the end or thrown), not merely started. Work that
+     * those tasks hand over in turn counts too, provided it is handed over
+     * before they finish. For callers that must know background writes
+     * (index updates) have landed.
+     *
+     * @return true once idle, false if the timeout passed first
+     */
+    boolean awaitBackgroundIdle(long timeout, java.util.concurrent.TimeUnit unit) throws InterruptedException;
+
+    /**
      * The background pool as a plain {@link Executor} (an Adapter over
      * {@link #executeInBackground}); an interrupt while scheduling restores the
      * flag and surfaces as a {@link RejectedExecutionException}.
