@@ -68,7 +68,7 @@ public final class TokenPins {
         if (handle == null || handle.isBlank()) {
             return true;
         }
-        if (!isHandle(handle)) {
+        if (!Weblog.hasHandleCharacters(handle)) {
             return false;
         }
         Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle, null);
@@ -77,11 +77,6 @@ public final class TokenPins {
         }
         return isSiteAdmin(weblogger, owner)
                 || weblogger.getUserManager().getWeblogPermission(weblog, owner) != null;
-    }
-
-    /** The character rule the weblog store applies to a handle: letters, digits and underscore. */
-    private static boolean isHandle(String handle) {
-        return handle.chars().allMatch(c -> Character.isLetterOrDigit(c) || c == '_');
     }
 
     private static boolean isSiteAdmin(Weblogger weblogger, User owner) throws WebloggerException {

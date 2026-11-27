@@ -169,13 +169,17 @@ authors included.
   (`ReaderStateRefusal.NOT_VISIBLE`, a 404 on the wire). Every list repeats
   the rule in SQL, so its limit counts only visible rows, and checks each row
   again. A row whose entry or blog is hidden later stays, and shows again
-  once visible. Saves and follows are idempotent; a read is an upsert, and the
-  history keeps the newest 500 (trimmed on each write). `mayUse` re-reads the
-  account (enabled, holds `comment`).
+  once visible; `isSaved`/`isFollowing` answer false for it meanwhile. Saves
+  and follows are idempotent; a read is an upsert, and the history keeps the
+  newest 500 (trimmed on each write). `mayUse` re-reads the account (enabled,
+  holds `comment`).
 - **Lists** (`ReaderList`): `SAVED`, `FOLLOWING`, `HISTORY` take the caller's
-  limit; `PLACES` (last 5 distinct blogs read), `CONTINUE` (3 most recent
-  reads), `FOLLOWED_POSTS` (6 newest across followed blogs) and `READ_IDS`
-  (the whole history) are fixed.
+  limit (at least 1); `PLACES` (last 5 distinct blogs read), `CONTINUE` (3
+  most recent reads), `FOLLOWED_POSTS` (6 newest across followed blogs) and
+  `READ_IDS` (the whole history) are fixed. `lists(user, wanted)` without a
+  limit serves only the fixed ones and refuses the others
+  (`IllegalArgumentException`), so a new include name cannot come back
+  silently empty.
 - **`reader.rol`** (`ReaderStateController`, beside `CommentsController`):
   GET `?entry=<id>&weblog=<handle>&include=places,continue,followed,readIds`
   answers `{signedIn:false}` or `{signedIn, name, initials, author, csrf}`
@@ -183,18 +187,28 @@ authors included.
   `newsletter:{available}` with `weblog`). POST JSON `{action, entry?,
   weblog?}`: `save`/`unsave`/`read` take an entry id, `follow`/`unfollow`/
   `subscribe` a weblog handle. 401 signed out, 403 without CSRF (the UI
-  chain's filter) or without `comment`, 400 malformed, 404 invisible, 429
-  over the write limit. Both verbs are `no-store`. Titles go out as plain
+  chain's filter) or without `comment`, 400 malformed or unreadable, 415 not
+  JSON, 404 invisible, 429 over the write limit. **`unfollow` answers
+  `200 {following:false}` for any handle**, known, hidden, inactive or
+  unknown: a 404 for unknown only would reveal that a hidden blog's handle
+  exists, and a follow made before a blog went hidden must stay removable.
+  Both verbs are `no-store`, including the 400/415 Spring raises while
+  reading the body (the mapping has no `consumes`, so they arise inside the
+  handler's call and its `@ExceptionHandler` answers them). Titles go out as plain
   text (`EntryListView.plainTitle`) for `textContent`.
 - **Write limit**: per account, `reader.throttle.window.limit` (default 120)
   per `reader.throttle.window.seconds` (default 600), counted on every POST
-  before anything else is checked. Reads are unlimited, as the comment session
+  before anything else is checked, under a per-account lock stripe (as
+  `CommentService`'s), so concurrent writes cannot overshoot it. Reads are unlimited, as the comment session
   is. The browser suite lifts it (`pressroom-it.properties`).
-- **Subscribe** forwards the account's own email with
+- **Subscribe** is `ReaderStateService.subscribe` (with `newsletterOffered`,
+  for the account page to reuse). It forwards the account's own email with
   `ListmonkClient.subscribe` and records `NEWSLETTER_SUBSCRIBED` through
-  `NewsletterController.recordSubscribed` (the form's own recorder) on 200
+  `business.NewsletterEvents.recordSubscribed` (the form's recorder too) on 200
   only: 200 `confirm`, 409 `already`, any other status or an `IOException`
-  503 `{outcome:"unavailable"}` with nothing recorded. No list, a blank email
+  503 `{outcome:"unavailable"}` with nothing recorded.
+- **Handles**: `Weblog.hasHandleCharacters` is the one character rule
+  (letters, digits, underscore) for the store, `TokenPins` and `reader.rol`. No list, a blank email
   or listmonk unconfigured is a 404. Pressroom keeps no subscription state.
 
 ## Passwords and administration

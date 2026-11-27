@@ -68,15 +68,16 @@ final class ReaderStore {
     private static final String SAVE = "INSERT INTO pressroom_reader_save (user_id, entry_id, created)"
             + " VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING";
     private static final String UNSAVE = "DELETE FROM pressroom_reader_save WHERE user_id = ?1 AND entry_id = ?2";
-    private static final String IS_SAVED =
-            "SELECT count(*) FROM pressroom_reader_save WHERE user_id = ?1 AND entry_id = ?2";
+    private static final String IS_SAVED = "SELECT count(*) FROM pressroom_reader_save x" + ENTRY_JOIN
+            + " WHERE x.user_id = ?1" + VISIBLE + " AND x.entry_id = ?3";
 
     private static final String FOLLOW = "INSERT INTO pressroom_reader_follow (user_id, weblog_id, created)"
             + " VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING";
     private static final String UNFOLLOW =
             "DELETE FROM pressroom_reader_follow WHERE user_id = ?1 AND weblog_id = ?2";
-    private static final String IS_FOLLOWING =
-            "SELECT count(*) FROM pressroom_reader_follow WHERE user_id = ?1 AND weblog_id = ?2";
+    private static final String IS_FOLLOWING = "SELECT count(*) FROM pressroom_reader_follow x"
+            + " JOIN weblog w ON w.id = x.weblog_id WHERE x.user_id = ?1 AND x.weblog_id = ?2"
+            + " AND w.isactive = true AND w.visible = true";
 
     private static final String READ = "INSERT INTO pressroom_reader_read (user_id, entry_id, read_at)"
             + " VALUES (?1, ?2, ?3) ON CONFLICT (user_id, entry_id) DO UPDATE SET read_at = EXCLUDED.read_at";
@@ -124,8 +125,10 @@ final class ReaderStore {
         write(query(UNSAVE).setParameter(1, userId).setParameter(2, entryId));
     }
 
-    boolean isSaved(String userId, String entryId) throws WebloggerException {
-        return exists(IS_SAVED, userId, entryId);
+    /** Whether the reader saved this entry and it is visible at {@code now}. */
+    boolean isSaved(String userId, String entryId, Instant now) throws WebloggerException {
+        return count(query(IS_SAVED).setParameter(1, userId).setParameter(2, Timestamp.from(now))
+                .setParameter(3, entryId)) > 0;
     }
 
     void follow(String userId, String weblogId, Instant at) throws WebloggerException {
@@ -136,8 +139,9 @@ final class ReaderStore {
         write(query(UNFOLLOW).setParameter(1, userId).setParameter(2, weblogId));
     }
 
+    /** Whether the reader follows this weblog and it is visible. */
     boolean isFollowing(String userId, String weblogId) throws WebloggerException {
-        return exists(IS_FOLLOWING, userId, weblogId);
+        return count(query(IS_FOLLOWING).setParameter(1, userId).setParameter(2, weblogId)) > 0;
     }
 
     /** Upserts the read, then keeps only the newest {@code keep} of this reader's. */
@@ -156,10 +160,9 @@ final class ReaderStore {
         return ids(query(sql).setParameter(1, userId).setParameter(2, Timestamp.from(now)).setParameter(3, limit));
     }
 
-    private boolean exists(String sql, String userId, String otherId) throws WebloggerException {
+    private static long count(Query q) throws WebloggerException {
         try {
-            Number n = (Number) query(sql).setParameter(1, userId).setParameter(2, otherId).getSingleResult();
-            return n.longValue() > 0;
+            return ((Number) q.getSingleResult()).longValue();
         } catch (PersistenceException e) {
             throw new WebloggerException("reader state could not be read", e);
         }

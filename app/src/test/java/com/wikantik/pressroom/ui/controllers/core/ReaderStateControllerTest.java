@@ -117,7 +117,8 @@ class ReaderStateControllerTest {
 
     private final List<String> userNames = new ArrayList<>();
     private final List<String> weblogIds = new ArrayList<>();
-    private ListmonkClient listmonk;
+    /** Listmonk as the service sees it; each test sets its own. */
+    private static volatile ListmonkClient listmonk;
     private User owner;
     private User reader;
     private Weblog blog;
@@ -164,7 +165,7 @@ class ReaderStateControllerTest {
         @Bean
         ReaderStateService readerStateService() {
             return ReaderStateServiceAccess.service(TestUtils.weblogger(), ReaderStateControllerTest::strategy,
-                    new GenericThrottle(ALLOWED_WRITES, 60_000, 100));
+                    new GenericThrottle(ALLOWED_WRITES, 60_000, 100), () -> listmonk);
         }
 
         @Bean
@@ -206,7 +207,6 @@ class ReaderStateControllerTest {
     void setUp() throws Exception {
         listmonk = mock(ListmonkClient.class);
         when(listmonk.isUnconfigured()).thenReturn(false);
-        context.getBean(ReaderStateController.class).setListmonkClient(listmonk);
         owner = TestUtils.setupUser("rcowner");
         userNames.add(owner.getUserName());
         blog = newWeblog("rcblog");
@@ -408,20 +408,68 @@ class ReaderStateControllerTest {
     }
 
     @Test
-    void anUnknownOrHiddenWeblogIs404() throws Exception {
+    void followRefusesAnUnknownOrHiddenWeblog() throws Exception {
         for (String handle : List.of("no_such_blog", "not a handle", "site-space")) {
             assertEquals(404, postAs(as(reader), Map.of("action", "follow", "weblog", handle))
                     .getResponse().getStatus(), handle);
-            assertEquals(404, postAs(as(reader), Map.of("action", "unfollow", "weblog", handle))
-                    .getResponse().getStatus(), handle);
         }
-        postAs(as(reader), Map.of("action", "follow", "weblog", "rcblog"));
         setVisible(blog, false);
         assertEquals(404, postAs(as(reader), Map.of("action", "follow", "weblog", "rcblog"))
                 .getResponse().getStatus(), "a hidden blog cannot be followed");
-        assertEquals(Map.of("ok", true, "following", false),
-                json(postAs(as(reader), Map.of("action", "unfollow", "weblog", "rcblog"))),
-                "but it can be unfollowed");
+    }
+
+    /**
+     * Review minor 1, ruled: unfollow answers 200 {following:false} for any
+     * handle, so a hidden or inactive blog's handle cannot be told from an
+     * unknown one, and a follow made before a blog went hidden can always be
+     * removed (the account page lists it by handle).
+     */
+    @Test
+    void unfollowAnswersAlikeForUnknownHiddenAndStaleHandles() throws Exception {
+        Weblog inactive = newWeblog("rcinactive");
+        setActive(inactive, false);
+        Map<String, Object> answer = Map.of("ok", true, "following", false);
+        for (String handle : List.of("no_such_blog", "not a handle", "site-space", "rcinactive")) {
+            MvcResult result = postAs(as(reader), Map.of("action", "unfollow", "weblog", handle));
+            assertEquals(200, result.getResponse().getStatus(), handle);
+            assertEquals("no-store", result.getResponse().getHeader("Cache-Control"));
+            assertEquals(answer, json(result), handle);
+        }
+
+        postAs(as(reader), Map.of("action", "follow", "weblog", "rcblog"));
+        setVisible(blog, false);
+        assertEquals(answer, json(postAs(as(reader), Map.of("action", "unfollow", "weblog", "rcblog"))),
+                "a stale follow of a blog hidden since is removed");
+        setVisible(blog, true);
+        assertFalse(readers().isFollowing(reader, blog.getId()), "the row is gone, not just hidden");
+    }
+
+    @Test
+    void savedIsFalseOnceTheEntryIsUnpublished() throws Exception {
+        postAs(as(reader), Map.of("action", "save", "entry", entry.getId()));
+        WeblogEntry managed = TestUtils.getManagedWeblogEntry(entry);
+        managed.setStatus(PubStatus.DRAFT);
+        TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertEquals(false, json(perform(get(PATH).param("entry", entry.getId()).with(as(reader)))).get("saved"),
+                "the constraint is for every row: an invisible entry is not reported saved");
+    }
+
+    /** Review minor 6: refusals Spring makes before the handler runs are no-store too. */
+    @Test
+    void anUnreadableBodyOrTheWrongTypeIsRefusedNoStore() throws Exception {
+        MvcResult malformed = perform(post(PATH).with(csrf()).with(as(reader))
+                .contentType(MediaType.APPLICATION_JSON).content("{not json"));
+        assertEquals(400, malformed.getResponse().getStatus());
+        assertEquals("no-store", malformed.getResponse().getHeader("Cache-Control"));
+
+        MvcResult text = perform(post(PATH).with(csrf()).with(as(reader))
+                .contentType(MediaType.TEXT_PLAIN).content("save"));
+        assertEquals(415, text.getResponse().getStatus());
+        assertEquals("no-store", text.getResponse().getHeader("Cache-Control"));
+        assertFalse(readers().isSaved(reader, entry.getId()));
     }
 
     @Test
@@ -489,7 +537,7 @@ class ReaderStateControllerTest {
 
         ListmonkClient failing = mock(ListmonkClient.class);
         when(failing.subscribe(anyString(), anyString())).thenReturn(500);
-        context.getBean(ReaderStateController.class).setListmonkClient(failing);
+        listmonk = failing;
         MvcResult error = subscribe(reader);
         assertEquals(503, error.getResponse().getStatus());
         assertEquals(Map.of("outcome", "unavailable"), json(error));
@@ -664,6 +712,14 @@ class ReaderStateControllerTest {
     private static void setVisible(Weblog weblog, boolean visible) throws Exception {
         Weblog w = TestUtils.getManagedWebsite(weblog);
         w.setVisible(visible);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(w);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    private static void setActive(Weblog weblog, boolean active) throws Exception {
+        Weblog w = TestUtils.getManagedWebsite(weblog);
+        w.setActive(active);
         TestUtils.weblogger().getWeblogManager().saveWeblog(w);
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);

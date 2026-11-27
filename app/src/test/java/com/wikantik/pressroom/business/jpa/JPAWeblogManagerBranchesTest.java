@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -96,6 +97,18 @@ class JPAWeblogManagerBranchesTest {
     void aHandleThatIsNullOrNotAlphanumericIsRefusedBeforeAnyLookup() {
         assertThrows(WebloggerException.class, () -> mgr.getWeblogByHandle(null, Boolean.TRUE));
         assertThrows(WebloggerException.class, () -> mgr.getWeblogByHandle("not a handle!", Boolean.TRUE));
+    }
+
+    /**
+     * Characterisation (fix round 1 of 0.18.0 Part E, moving the handle rule to
+     * {@code Weblog.hasHandleCharacters}): written first and passing against
+     * the old code. An empty handle is looked up and found missing, never
+     * refused, and the site space's handle is let through by name.
+     */
+    @Test
+    void anEmptyHandleIsLookedUpAndTheSiteSpaceIsLetThroughByName() throws Exception {
+        assertNull(mgr.getWeblogByHandle("", null));
+        assertDoesNotThrow(() -> mgr.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null));
     }
 
     @Test

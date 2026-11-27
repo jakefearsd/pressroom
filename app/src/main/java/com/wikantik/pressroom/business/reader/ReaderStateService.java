@@ -17,10 +17,12 @@
  */
 package com.wikantik.pressroom.business.reader;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +30,8 @@ import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.ListmonkClient;
+import com.wikantik.pressroom.business.NewsletterEvents;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
@@ -61,6 +65,8 @@ import org.springframework.stereotype.Component;
  *   <li>Each write commits at once. Deleting an account, entry or weblog
  *       removes its rows by the database's cascade (V056).</li>
  *   <li>Writes are rate limited per account ({@link #admitWrite}).</li>
+ *   <li>A newsletter subscribe goes to listmonk with the account's own email
+ *       ({@link #subscribe}); its failure is an outcome, never an error.</li>
  * </ul>
  *
  * <p>Users are identified by id only. Entries and weblogs passed in, and those
@@ -88,10 +94,30 @@ public class ReaderStateService {
     /** As CommentService's throttles: the most recently active accounts, the rest forgotten. */
     private static final int TRACKED_ACCOUNTS = 1000;
 
+    /** Per-account locks (by id hash) around the write count, as CommentService has. */
+    private static final int LOCK_STRIPES = 64;
+    /** The lists whose size the caller gives. */
+    private static final Set<ReaderList> CALLER_LIMITED =
+            Collections.unmodifiableSet(EnumSet.of(ReaderList.SAVED, ReaderList.FOLLOWING, ReaderList.HISTORY));
+    private static final int LISTMONK_CREATED = 200;
+    private static final int LISTMONK_CONFLICT = 409;
+
     private final Weblogger weblogger;
     private final ReaderStore store;
     private final Clock clock;
     private final GenericThrottle writes;
+    private final Supplier<ListmonkClient> listmonk;
+    private final Object[] stripes = new Object[LOCK_STRIPES];
+
+    /** What a subscribe came to; each surface words it its own way. */
+    public enum SubscribeOutcome {
+        /** A new subscription: listmonk sends its confirmation mail. */
+        CONFIRM,
+        /** The address was already on the list. */
+        ALREADY,
+        /** Listmonk could not be reached or refused; nothing was recorded. */
+        UNAVAILABLE
+    }
 
     /**
      * With the write limit pressroom.properties configures.
@@ -102,16 +128,46 @@ public class ReaderStateService {
      */
     @Autowired
     public ReaderStateService(@Lazy Weblogger weblogger, ObjectProvider<JPAPersistenceStrategy> strategy) {
-        this(weblogger, strategy::getObject, Clock.systemUTC(), writeThrottle(ConfigSource.staticConfig()));
+        this(weblogger, strategy::getObject, Clock.systemUTC(), writeThrottle(ConfigSource.staticConfig()),
+                memoized(ListmonkClient::fromConfig));
     }
 
-    /** With every collaborator supplied, so a test controls the time and the limit. */
+    /** With every collaborator supplied, so a test controls the time, the limit and listmonk. */
     ReaderStateService(Weblogger weblogger, Supplier<JPAPersistenceStrategy> strategy, Clock clock,
-            GenericThrottle writes) {
+            GenericThrottle writes, Supplier<ListmonkClient> listmonk) {
         this.weblogger = weblogger;
         this.store = new ReaderStore(strategy);
         this.clock = clock;
         this.writes = writes;
+        this.listmonk = listmonk;
+        for (int i = 0; i < stripes.length; i++) {
+            stripes[i] = new Object();
+        }
+    }
+
+    /**
+     * {@code factory}'s value, built on first use and kept: the listmonk
+     * client reads configuration, which may not be loaded at wiring.
+     */
+    static <T> Supplier<T> memoized(Supplier<T> factory) {
+        return new Supplier<>() {
+            private volatile T value;
+
+            @Override
+            public T get() {
+                T v = value;
+                if (v == null) {
+                    synchronized (this) {
+                        v = value;
+                        if (v == null) {
+                            v = factory.get();
+                            value = v;
+                        }
+                    }
+                }
+                return v;
+            }
+        };
     }
 
     // ------------------------------------------------------------- the account
@@ -137,7 +193,11 @@ public class ReaderStateService {
      * {@code reader.throttle.window.limit} times in the window.
      */
     public boolean admitWrite(User user) {
-        return !writes.processHit(user.getId());
+        // GenericThrottle's count is not atomic; under the account's stripe concurrent writes cannot
+        // overshoot the limit. 64 stripes, not a lock per account: no unbounded lock map to clean up.
+        synchronized (stripes[Math.floorMod(user.getId().hashCode(), stripes.length)]) {
+            return !writes.processHit(user.getId());
+        }
     }
 
     // ------------------------------------------------------------- saves
@@ -158,9 +218,12 @@ public class ReaderStateService {
         weblogger.flush();
     }
 
-    /** Whether the reader has saved this entry, visible now or not. */
+    /**
+     * Whether the reader has saved this entry and readers may see it now. A
+     * save of an entry hidden since stays stored but is not reported.
+     */
     public boolean isSaved(User user, String entryId) throws WebloggerException {
-        return StringUtils.isNotBlank(entryId) && store.isSaved(user.getId(), entryId);
+        return StringUtils.isNotBlank(entryId) && store.isSaved(user.getId(), entryId, clock.instant());
     }
 
     // ------------------------------------------------------------- follows
@@ -180,7 +243,10 @@ public class ReaderStateService {
         weblogger.flush();
     }
 
-    /** Whether the reader follows this weblog, visible now or not. */
+    /**
+     * Whether the reader follows this weblog and readers may see it. A follow
+     * of a weblog hidden since stays stored but is not reported.
+     */
     public boolean isFollowing(User user, String weblogId) throws WebloggerException {
         return StringUtils.isNotBlank(weblogId) && store.isFollowing(user.getId(), weblogId);
     }
@@ -211,15 +277,39 @@ public class ReaderStateService {
     // ------------------------------------------------------------- lists
 
     /**
+     * The fixed-size lists ({@link ReaderList#PLACES}, {@link ReaderList#CONTINUE},
+     * {@link ReaderList#FOLLOWED_POSTS}, {@link ReaderList#READ_IDS}), for a
+     * caller that has no limit to give.
+     *
+     * @throws IllegalArgumentException when {@code wanted} holds a list whose
+     *         size the caller must give
+     */
+    public ReaderLists lists(User user, Set<ReaderList> wanted) throws WebloggerException {
+        if (!Collections.disjoint(wanted, CALLER_LIMITED)) {
+            throw new IllegalArgumentException("these lists need a limit: " + wanted);
+        }
+        return build(user, wanted, 0);
+    }
+
+    /**
      * The reader's lists, each holding only what readers may see now. A list
      * not in {@code wanted} is empty.
      *
      * @param limit the most {@link ReaderList#SAVED}, {@link ReaderList#FOLLOWING}
      *              and {@link ReaderList#HISTORY} hold; the other lists have
      *              their own fixed sizes ({@link #PLACES}, {@link #CONTINUE},
-     *              {@link #FOLLOWED_POSTS}, {@link #HISTORY_CAP})
+     *              {@link #FOLLOWED_POSTS}, {@link #HISTORY_CAP}); at least 1
+     *              when one of those three is wanted
+     * @throws IllegalArgumentException for a caller-limited list without a limit
      */
     public ReaderLists lists(User user, Set<ReaderList> wanted, int limit) throws WebloggerException {
+        if (limit < 1 && !Collections.disjoint(wanted, CALLER_LIMITED)) {
+            throw new IllegalArgumentException("a limit of at least 1 is needed for " + wanted);
+        }
+        return build(user, wanted, limit);
+    }
+
+    private ReaderLists build(User user, Set<ReaderList> wanted, int limit) throws WebloggerException {
         Instant now = clock.instant();
         String id = user.getId();
         return new ReaderLists(
@@ -257,6 +347,54 @@ public class ReaderStateService {
             }
         }
         return weblogs;
+    }
+
+    // ------------------------------------------------------------- newsletter
+
+    /**
+     * Whether "Also email me new posts" can be offered for this weblog: it has
+     * a listmonk list, the account has an email address, and listmonk is
+     * configured. Pressroom keeps no subscription state.
+     */
+    public boolean newsletterOffered(User user, Weblog weblog) {
+        return weblog != null
+                && StringUtils.isNotBlank(weblog.getNewsletterListUuid())
+                && StringUtils.isNotBlank(user.getEmailAddress())
+                && !listmonk.get().isUnconfigured();
+    }
+
+    /**
+     * Subscribes the account's own email to the weblog's list through
+     * listmonk's public call, as the form does, and records
+     * {@code NEWSLETTER_SUBSCRIBED} for a new subscription only. A failure is
+     * an outcome, never an exception: listmonk being down must not fail the
+     * reader's action (Review Focus 4).
+     *
+     * @throws ReaderStateRefusal {@code NOT_VISIBLE} for a weblog readers may
+     *         not see, or one where {@link #newsletterOffered} is false
+     */
+    public SubscribeOutcome subscribe(User user, Weblog weblog) throws ReaderStateRefusal {
+        if (!ReaderVisibility.isVisible(weblog) || !newsletterOffered(user, weblog)) {
+            throw ReaderStateRefusal.NOT_VISIBLE;
+        }
+        int status;
+        try {
+            status = listmonk.get().subscribe(user.getEmailAddress().trim(), weblog.getNewsletterListUuid());
+        } catch (IOException ex) {
+            log.error("Could not forward a reader's newsletter subscription to Listmonk for weblog {}",
+                    weblog.getHandle(), ex);
+            return SubscribeOutcome.UNAVAILABLE;
+        }
+        if (status == LISTMONK_CREATED) {
+            NewsletterEvents.recordSubscribed(weblogger, weblog);
+            return SubscribeOutcome.CONFIRM;
+        }
+        if (status == LISTMONK_CONFLICT) {
+            return SubscribeOutcome.ALREADY;
+        }
+        log.warn("Listmonk answered {} to a reader's newsletter subscription for weblog {}", status,
+                weblog.getHandle());
+        return SubscribeOutcome.UNAVAILABLE;
     }
 
     // ------------------------------------------------------------- the limit

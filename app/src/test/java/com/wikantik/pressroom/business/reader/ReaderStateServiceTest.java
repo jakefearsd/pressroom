@@ -91,7 +91,7 @@ class ReaderStateServiceTest {
         a2 = newEntry(a, "rsa2");
         b1 = newEntry(b, "rsb1");
         service = new ReaderStateService(TestUtils.weblogger(), ReaderStateServiceTest::strategy, ticking(),
-                new GenericThrottle(1000, 60_000, 100));
+                new GenericThrottle(1000, 60_000, 100), () -> null);
     }
 
     @AfterEach
@@ -322,7 +322,10 @@ class ReaderStateServiceTest {
         assertFalse(ids(lists.followedPosts()).contains(b1.getId()), "a hidden blog's posts never show");
         assertEquals(List.of(a.getId()), weblogIdsOf(lists.following()), "a hidden blog is not listed");
         assertEquals(List.of(), lists.places(), "the only read is invisible now");
-        assertTrue(service.isSaved(reader, a1.getId()), "the row stays: it shows again once republished");
+        assertEquals(1, count("pressroom_reader_save"), "the row stays: it shows again once republished");
+        assertFalse(service.isSaved(reader, a1.getId()), "but it is not answered as saved while invisible");
+        assertFalse(service.isFollowing(reader, b.getId()), "nor a hidden blog as followed");
+        assertEquals(2, count("pressroom_reader_follow"), "whose row stays too");
     }
 
     @Test
@@ -391,7 +394,7 @@ class ReaderStateServiceTest {
     @Test
     void writesAreThrottledPerAccount() throws Exception {
         ReaderStateService limited = new ReaderStateService(TestUtils.weblogger(),
-                ReaderStateServiceTest::strategy, ticking(), new GenericThrottle(2, 60_000, 100));
+                ReaderStateServiceTest::strategy, ticking(), new GenericThrottle(2, 60_000, 100), () -> null);
         assertTrue(limited.admitWrite(reader));
         assertTrue(limited.admitWrite(reader));
         assertFalse(limited.admitWrite(reader), "a third write in the window is refused");
@@ -415,6 +418,73 @@ class ReaderStateServiceTest {
         assertTrue(three.processHit("a"), "at most the configured count: the fourth is over");
     }
 
+    /**
+     * The limit holds under concurrent writes from one account: the count is
+     * taken under the account's lock, as CommentService's is (review minor 3).
+     */
+    @Test
+    void concurrentWritesNeverOvershootTheLimit() throws Exception {
+        ReaderStateService limited = new ReaderStateService(TestUtils.weblogger(),
+                ReaderStateServiceTest::strategy, ticking(), new GenericThrottle(1000, 60_000, 100), () -> null);
+        int threads = 8;
+        int each = 500;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        AtomicLong admitted = new AtomicLong();
+        List<java.util.concurrent.Future<?>> runs = new ArrayList<>();
+        for (int t = 0; t < threads; t++) {
+            runs.add(pool.submit(() -> {
+                start.await();
+                for (int i = 0; i < each; i++) {
+                    if (limited.admitWrite(reader)) {
+                        admitted.incrementAndGet();
+                    }
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (java.util.concurrent.Future<?> run : runs) {
+            run.get();
+        }
+        pool.shutdown();
+        assertEquals(1000, admitted.get(), "exactly the configured count, however the writes interleave");
+    }
+
+    /** The overload without a limit serves only the fixed-size lists (review minor 4). */
+    @Test
+    void listsWithoutALimitRefuseTheCallerLimitedLists() throws Exception {
+        service.recordRead(reader, managed(a1));
+        TestUtils.endSession(true);
+
+        assertEquals(List.of(a.getId()), weblogIdsOf(service.lists(reader, EnumSet.of(ReaderList.PLACES)).places()));
+        for (ReaderList limited : List.of(ReaderList.SAVED, ReaderList.FOLLOWING, ReaderList.HISTORY)) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.lists(reader, EnumSet.of(ReaderList.PLACES, limited)), limited.name());
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> service.lists(reader, EnumSet.of(ReaderList.SAVED), 0), "a caller-limited list needs a limit");
+    }
+
+    /**
+     * The production listmonk client is built on first use, once, and kept.
+     * Written after {@code memoized} (fix round 1's coverage gap), so it
+     * passed the first time it ran: a characterisation of the helper, not a
+     * test seen failing.
+     */
+    @Test
+    void theListmonkClientIsBuiltOnceOnFirstUse() {
+        AtomicLong builds = new AtomicLong();
+        java.util.function.Supplier<Object> client = ReaderStateService.memoized(() -> {
+            builds.incrementAndGet();
+            return new Object();
+        });
+        assertEquals(0, builds.get(), "nothing is built at wiring");
+        Object first = client.get();
+        assertSame(first, client.get());
+        assertEquals(1, builds.get());
+    }
+
     /** A check that could not run is a failure, never "not saved" or an empty list. */
     @Test
     void aDatabaseFailureIsAWebloggerException() {
@@ -426,7 +496,7 @@ class ReaderStateServiceTest {
         JPAPersistenceStrategy strategy = mock(JPAPersistenceStrategy.class);
         when(strategy.getNativeQuery(anyString())).thenReturn(broken);
         ReaderStateService failing = new ReaderStateService(TestUtils.weblogger(), () -> strategy, ticking(),
-                new GenericThrottle(1000, 60_000, 100));
+                new GenericThrottle(1000, 60_000, 100), () -> null);
 
         assertThrows(WebloggerException.class, () -> failing.isSaved(reader, a1.getId()));
         assertThrows(WebloggerException.class, () -> failing.unsave(reader, a1.getId()));

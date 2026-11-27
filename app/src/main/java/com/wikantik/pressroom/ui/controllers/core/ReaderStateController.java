@@ -17,7 +17,6 @@
  */
 package com.wikantik.pressroom.ui.controllers.core;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -31,7 +30,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.reader.ReaderList;
 import com.wikantik.pressroom.business.reader.ReaderLists;
@@ -47,13 +45,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationTrustResolver;
 import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,17 +82,17 @@ import org.springframework.web.bind.annotation.RequestParam;
  * {@code unfollow}, {@code read}, {@code subscribe}. 401 signed out, 403 for
  * an account disabled since sign-in or without the global {@code comment}
  * action, 429 over the write limit (counted before anything else is
- * checked), 400 for an unknown action or a missing field, 404 for an entry or
- * weblog a reader may not see. {@code unfollow} finds a hidden weblog too, so
- * a reader can always let go of one.
+ * checked), 400 for an unknown action, a missing field or an unreadable body,
+ * 415 for a body that is not JSON, 404 for an entry or weblog a reader may not
+ * see. {@code unfollow} answers {@code 200 {following:false}} for any handle,
+ * known or not: a hidden or inactive weblog's handle cannot be told from an
+ * unknown one, and a follow made before a weblog went hidden can always be
+ * removed.
  *
- * <p><b>Subscribe</b> forwards the account's own email to the weblog's
- * listmonk list, as the public form does, and records
- * {@code NEWSLETTER_SUBSCRIBED} only for a new subscription: 200
- * {@code confirm}, 409 {@code already}, anything else or no answer 503
- * {@code unavailable} (Review Focus 4: a failure is calm and records
- * nothing). No list, no email or no listmonk is a 404. Pressroom keeps no
- * subscription state.
+ * <p><b>Subscribe</b> is {@link ReaderStateService#subscribe}: 200
+ * {@code confirm} or {@code already}, 503 {@code unavailable} (Review Focus 4:
+ * a failure is calm and records nothing), 404 where no subscription can be
+ * offered.
  *
  * <p><b>CSRF</b> is the UI chain's, as on {@code comments.rol}: a POST without
  * the token is refused (403) before it gets here, and the GET hands the
@@ -106,8 +106,6 @@ public class ReaderStateController extends BaseController {
 
     private static final AuthenticationTrustResolver TRUST = new AuthenticationTrustResolverImpl();
 
-    private static final int LISTMONK_CREATED = 200;
-    private static final int LISTMONK_CONFLICT = 409;
     private static final String OUTCOME = "outcome";
 
     /** The {@code include} names and the lists they ask for. */
@@ -118,9 +116,6 @@ public class ReaderStateController extends BaseController {
             "readIds", ReaderList.READ_IDS);
 
     private final ReaderStateService readers;
-
-    /** Built on first use, as {@code NewsletterController}'s is: config may not be loaded at wiring. */
-    private volatile ListmonkClient listmonkClient;
 
     /** @param readers every reader-state rule */
     public ReaderStateController(ReaderStateService readers) {
@@ -178,7 +173,7 @@ public class ReaderStateController extends BaseController {
             if (StringUtils.isNotBlank(handle)) {
                 Weblog weblog = visibleWeblog(handle);
                 body.put("following", weblog != null && readers.isFollowing(user, weblog.getId()));
-                body.put("newsletter", Map.of("available", weblog != null && newsletterOffered(user, weblog)));
+                body.put("newsletter", Map.of("available", readers.newsletterOffered(user, weblog)));
             }
             putLists(body, user, wanted(include));
             return noStore(HttpStatus.OK).body(body);
@@ -189,7 +184,9 @@ public class ReaderStateController extends BaseController {
     }
 
     /** One write; see the class comment for the actions and answers. */
-    @PostMapping(value = "/reader.rol", consumes = MediaType.APPLICATION_JSON_VALUE)
+    // No "consumes": the body converter refuses a non-JSON body inside the handler's call, where
+    // refused() below can mark it no-store; a mapping condition would answer 415 before any handler.
+    @PostMapping("/reader.rol")
     public ResponseEntity<Map<String, Object>> act(@RequestBody ReaderAction payload, HttpServletRequest request) {
         User user = getAuthenticatedUser(request);
         if (user == null) {
@@ -242,39 +239,28 @@ public class ReaderStateController extends BaseController {
             }
             case "unfollow" -> {
                 Weblog weblog = anyWeblog(handle);
-                if (weblog == null) {
-                    throw ReaderStateRefusal.NOT_VISIBLE;
+                if (weblog != null) {
+                    readers.unfollow(user, weblog.getId());
                 }
-                readers.unfollow(user, weblog.getId());
                 yield ok("following", false);
             }
-            default -> subscribe(user, visibleWeblog(handle));
+            default -> subscribed(readers.subscribe(user, visibleWeblog(handle)));
         };
     }
 
-    /** Forwards the account's email to the weblog's list; never fails the reader's action loudly. */
-    private ResponseEntity<Map<String, Object>> subscribe(User user, Weblog weblog) throws ReaderStateRefusal {
-        if (weblog == null || !newsletterOffered(user, weblog)) {
-            throw ReaderStateRefusal.NOT_VISIBLE;
-        }
-        int status;
-        try {
-            status = listmonk().subscribe(user.getEmailAddress().trim(), weblog.getNewsletterListUuid());
-        } catch (IOException ex) {
-            log.error("Could not forward a reader's newsletter subscription to Listmonk for weblog {}",
-                    weblog.getHandle(), ex);
-            return unavailable();
-        }
-        if (status == LISTMONK_CREATED) {
-            NewsletterController.recordSubscribed(weblogger, weblog);
-            return noStore(HttpStatus.OK).body(Map.of("ok", true, OUTCOME, "confirm"));
-        }
-        if (status == LISTMONK_CONFLICT) {
-            return noStore(HttpStatus.OK).body(Map.of("ok", true, OUTCOME, "already"));
-        }
-        log.warn("Listmonk answered {} to a reader's newsletter subscription for weblog {}", status,
-                weblog.getHandle());
-        return unavailable();
+    private static ResponseEntity<Map<String, Object>> subscribed(ReaderStateService.SubscribeOutcome outcome) {
+        return switch (outcome) {
+            case CONFIRM -> noStore(HttpStatus.OK).body(Map.of("ok", true, OUTCOME, "confirm"));
+            case ALREADY -> noStore(HttpStatus.OK).body(Map.of("ok", true, OUTCOME, "already"));
+            case UNAVAILABLE -> noStore(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(OUTCOME, "unavailable"));
+        };
+    }
+
+    /** A body Spring could not read as a {@link ReaderAction}: 400, or 415 when it is not JSON. */
+    @ExceptionHandler({HttpMessageNotReadableException.class, HttpMediaTypeNotSupportedException.class})
+    public ResponseEntity<Void> refused(Exception ex) {
+        return noStore(ex instanceof HttpMediaTypeNotSupportedException
+                ? HttpStatus.UNSUPPORTED_MEDIA_TYPE : HttpStatus.BAD_REQUEST).build();
     }
 
     // ------------------------------------------------------------- reads
@@ -283,9 +269,7 @@ public class ReaderStateController extends BaseController {
         if (wanted.isEmpty()) {
             return;
         }
-        // Only the fixed-size lists are asked for here, so the limit (for saved,
-        // following and history) does not apply.
-        ReaderLists lists = readers.lists(user, wanted, 0);
+        ReaderLists lists = readers.lists(user, wanted);
         URLStrategy urls = weblogger.getUrlStrategy();
         if (wanted.contains(ReaderList.PLACES)) {
             List<Map<String, Object>> places = new ArrayList<>();
@@ -337,13 +321,6 @@ public class ReaderStateController extends BaseController {
         return wanted;
     }
 
-    /** Whether "Also email me new posts" can be offered: a list, an email and listmonk. */
-    private boolean newsletterOffered(User user, Weblog weblog) {
-        return StringUtils.isNotBlank(weblog.getNewsletterListUuid())
-                && StringUtils.isNotBlank(user.getEmailAddress())
-                && !listmonk().isUnconfigured();
-    }
-
     /** The weblog with this handle when readers may see it, else null. */
     private Weblog visibleWeblog(String handle) throws WebloggerException {
         Weblog weblog = anyWeblog(handle);
@@ -355,15 +332,10 @@ public class ReaderStateController extends BaseController {
      * cannot be a handle is unknown, not an error: the lookup would throw.
      */
     private Weblog anyWeblog(String handle) throws WebloggerException {
-        if (!isHandle(handle)) {
+        if (!Weblog.hasHandleCharacters(handle)) {
             return null;
         }
         return weblogger.getWeblogManager().getWeblogByHandle(handle, null);
-    }
-
-    /** The characters a weblog handle is made of (as {@code JPAWeblogManagerImpl} checks them). */
-    private static boolean isHandle(String handle) {
-        return handle.chars().allMatch(c -> Character.isLetterOrDigit(c) || c == '_');
     }
 
     /**
@@ -387,10 +359,6 @@ public class ReaderStateController extends BaseController {
         return noStore(HttpStatus.OK).body(Map.of("ok", true, key, value));
     }
 
-    private static ResponseEntity<Map<String, Object>> unavailable() {
-        return noStore(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(OUTCOME, "unavailable"));
-    }
-
     /**
      * True when a principal is signed in but the interceptor found no enabled
      * account for it: the account was disabled or removed since sign-in.
@@ -401,27 +369,6 @@ public class ReaderStateController extends BaseController {
 
     private static ResponseEntity.BodyBuilder noStore(HttpStatus status) {
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore());
-    }
-
-    // ------------------------------------------------------------- listmonk
-
-    /** Package-private so the test can stand in for listmonk, as {@code NewsletterController}'s does. */
-    void setListmonkClient(ListmonkClient client) {
-        this.listmonkClient = client;
-    }
-
-    private ListmonkClient listmonk() {
-        ListmonkClient client = listmonkClient;
-        if (client == null) {
-            synchronized (this) {
-                client = listmonkClient;
-                if (client == null) {
-                    client = ListmonkClient.fromConfig();
-                    listmonkClient = client;
-                }
-            }
-        }
-        return client;
     }
 
     /** The JSON body the page script and the account page post. */

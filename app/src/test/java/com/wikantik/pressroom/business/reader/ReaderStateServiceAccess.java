@@ -20,6 +20,7 @@ package com.wikantik.pressroom.business.reader;
 import java.time.Clock;
 import java.util.function.Supplier;
 
+import com.wikantik.pressroom.business.ListmonkClient;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
 import com.wikantik.pressroom.util.GenericThrottle;
@@ -30,9 +31,9 @@ public final class ReaderStateServiceAccess {
     private ReaderStateServiceAccess() {
     }
 
-    /** The service on the real clock, with {@code writes} as its write limit. */
+    /** The service on the real clock, with {@code writes} as its write limit and {@code listmonk} as listmonk. */
     public static ReaderStateService service(Weblogger weblogger, Supplier<JPAPersistenceStrategy> strategy,
-            GenericThrottle writes) {
-        return new ReaderStateService(weblogger, strategy, Clock.systemUTC(), writes);
+            GenericThrottle writes, Supplier<ListmonkClient> listmonk) {
+        return new ReaderStateService(weblogger, strategy, Clock.systemUTC(), writes, listmonk);
     }
 }
