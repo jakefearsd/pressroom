@@ -50,6 +50,7 @@ import java.util.regex.Pattern;
 import static com.codeborne.selenide.Condition.checked;
 import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.webdriver;
 import static com.codeborne.selenide.WebDriverConditions.urlContaining;
@@ -606,11 +607,30 @@ public abstract class PressroomIT {
     }
 
     /**
+     * Opens the sign-in page's collapsed "Author sign-in" section with its one
+     * click, when the page shows it closed. Reader sign-in (SSO) is on for the
+     * whole suite, so the password form starts collapsed under the provider's
+     * button unless the URL has {@code ?author} or the sign-in failed
+     * (0.18.0, Part D). Call it on the sign-in page before typing into
+     * {@code #j_username}.
+     */
+    protected static void openAuthorSignIn() {
+        SelenideElement section = $("#authorSignIn");
+        if (section.exists() && section.getAttribute("open") == null) {
+            section.$("summary").click();
+        }
+        $("#j_username").should(visible);
+    }
+
+    /**
      * Signs in as any user. Journeys that create users need this; everything
      * else wants {@link #loginAsAdmin()}.
      */
     protected void loginAs(String username, String password) {
-        openPath(LOGIN_PATH);
+        // ?author opens the collapsed "Author sign-in" section: reader sign-in
+        // (SSO) is on for the whole suite, so the password form is not shown
+        // by default (0.18.0, Part D).
+        openPath(LOGIN_PATH + "?author");
 
         $("#j_username").setValue(username);
         $("#j_password").setValue(password);

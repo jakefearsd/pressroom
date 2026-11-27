@@ -50,10 +50,14 @@ import org.openqa.selenium.Cookie;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static com.codeborne.selenide.Condition.attribute;
 import static com.codeborne.selenide.Condition.checked;
+import static com.codeborne.selenide.Condition.cssClass;
+import static com.codeborne.selenide.Condition.disabled;
 import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.focused;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
@@ -122,7 +126,8 @@ class CommentsIT extends PressroomIT {
     private static final String VHOST = "comments.example.com";
 
     /** The page's words, from ApplicationResources.properties. */
-    private static final String SIGN_IN_TEXT = "Sign in with Google to comment";
+    /** The suite's provider is Keycloak (pressroom-it.properties): the label is the provider's. */
+    private static final String SIGN_IN_TEXT = "Sign in with Keycloak to comment";
     private static final String HELD_TEXT = "will appear once it is approved";
     private static final String AWAITING_TEXT = "Awaiting approval";
     private static final String CLOSED_TEXT = "Comments are closed.";
@@ -317,8 +322,10 @@ class CommentsIT extends PressroomIT {
     // ---------------------------------------------------------- criterion 21
 
     /**
-     * Criterion 21, first part: an anonymous visitor sees "Sign in with Google to comment",
-     * a sign-in that returns to this entry, and no form.
+     * Criterion 21, first part: an anonymous visitor sees "Sign in with {provider} to comment",
+     * a sign-in that returns to this entry's comments, and no form. Since 0.18.0 (Part D) the
+     * sign-in is the provider's button, counted as a sign-in via the comments, under a greyed
+     * composer that cannot be typed in.
      */
     @Test
     void anAnonymousVisitorSeesTheSignInLink() {
@@ -328,7 +335,12 @@ class CommentsIT extends PressroomIT {
         String href = link.getAttribute("href");
         assertNotNull(href, "the sign-in link has no href");
         assertEquals(contextPath() + SSO_START, URI.create(href).getPath(), "not a sign-in link: " + href);
-        assertEquals(open.fullPath(), queryParameter(href, "return"), "the sign-in does not return here: " + href);
+        assertEquals(open.fullPath() + "#comments", queryParameter(href, "return"),
+                "the sign-in does not return to the comments: " + href);
+        link.shouldHave(cssClass("g-signin"), attribute("data-umami-event", "sign-in"),
+                attribute("data-umami-event-via", "comments"));
+        link.$("svg.g-signin-mark").should(exist);
+        $(SLOT + " textarea.comments-locked").should(visible).shouldBe(disabled);
         $(TEXTAREA).shouldNot(exist);
     }
 
@@ -349,8 +361,11 @@ class CommentsIT extends PressroomIT {
         clickAndAwaitNewPage($(SLOT + " a.comments-sign-in").should(visible));
         new KeycloakLoginPage().signIn(READER2, KeycloakLoginPage.passwordOf(READER2));
         assertEquals(other.fullPath(), currentPath(), "the sign-in did not return to the entry");
+        assertEquals("comments", URI.create(WebDriverRunner.url()).getFragment(), "back at the comments");
+        // Part D: back from signing in to comment, the composer has the focus.
+        $(TEXTAREA).should(visible).shouldBe(focused);
 
-        $(TEXTAREA).should(visible).setValue(body);
+        $(TEXTAREA).setValue(body);
         $(POST_BUTTON).click();
         $(MESSAGE).shouldHave(text(HELD_TEXT));
         SelenideElement held = $$(".comments-pending .comment-pending").findBy(text(body)).should(exist);

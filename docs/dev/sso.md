@@ -50,10 +50,64 @@ no remember-me for SSO sign-ins.
 (added by the page's Sign in link, `docs/dev/discovery.md`) puts a path that
 `ReturnPaths.sanitize` leaves unchanged in the model as `returnPath`;
 `Login.jsp` posts it as the hidden `return` field and adds it to the Google
-button's `sso/start?return=`. Password sign-in uses
+button's `sso/start?return=` (both kept by the 0.18.0 reader-first layout below). Password sign-in uses
 `ReturnPathLoginSuccessHandler` (it replaces `defaultSuccessUrl`): a valid
 `return` wins and spends any saved request; otherwise the saved request,
 else `login-redirect.rol` as before.
+
+## Google-first sign-in surfaces (0.18.0)
+
+Everything here renders only when `SsoSettings.enabled()`; with SSO off every
+surface is as in 0.17.1 (`LoginPageSsoOffCharacterisationTest` for the
+sign-in page; `SiteBarRenderingTest`, `FrontpageHeaderRenderingTest`,
+`DiscoveryFrontPageRenderingTest`, `CommentsSectionRenderingTest` for the
+blogs, which run with the suite's SSO-off config).
+
+- **Provider-correct, never "Google" by default.** The label is
+  `sso.provider.label` ("Continue with {0}" on the sign-in page, "Sign in with
+  {0}" elsewhere, escaped once). The multicolour G is only for Google:
+  `SsoSettings.isGoogle()` compares the **issuer** with
+  `https://accounts.google.com`, never the label (an operator could label
+  Keycloak "Google"). `SignInMark.forProvider` gives the G or a neutral arrow
+  in `currentColor`; it is Java so no hex colour reaches a Velocity template,
+  and one line with no `'` so it can sit in a JS string. The browser suite's
+  provider is Keycloak, so its pages say Keycloak and show the neutral mark.
+- **Sign-in page.** `LoginController` adds `siteName` (escaped), `ssoMark`,
+  `authorSignInOpen` (`?error` or `?author`), and sets `pageTitle` to
+  `getText("login.reader.title", siteName)`: the layout prints `pageTitle` as a
+  code with itself as the fallback text, so "Sign in to {site}" prints as is.
+  `Login.jsp` then shows the tagline, the full-width `#ssoSignIn` (white,
+  Google's branding when Google; `data-umami-event="sign-in"`,
+  `-via="login-page"`; `return` carried as before) as the first control, and
+  the password form inside `details#authorSignIn` with the lost-password link.
+  An inline script opens it when `localStorage["pressroom.authorSignIn"]` is
+  `"1"` (set on the password form's submit) and only then focuses a field.
+  No JSP unit render is possible, so `LoginPageReaderFirstTest` and the
+  characterisation test read the source through `LoginJsp`, which keeps or
+  drops each `ssoEnabled` block; `LoginPageIT` drives it.
+- **Blog pages.** `$utils.ssoEnabled`, `ssoStartUrl` (the Absolute URL plus
+  `/pressroom-ui/sso/start`, as the header's old Sign in), `ssoProviderLabel`,
+  `signInMark`. The showGoogleSignIn macro (`weblog.vm`, `$gsVia`,
+  `$gsLabelKey`) emits `a.g-signin[data-umami-event=sign-in][data-umami-event-via][data-sign-in-return]`
+  and the return script (`showSignInReturnScript("g-signin[data-sign-in-return]")`):
+  the path and query are added in the browser, only on the link's own host,
+  so anonymous HTML stays byte-identical. It replaces Sign in in the
+  showAccountLinks macro (blog site bar, site masthead) and the frontpage
+  theme's top bar (via `header`), and sits under Places you've been for a
+  signed-out reader (via `places`; the places script inserts the list above
+  it). The colophon's Sign in stays the authors' plain link, now to
+  `login.rol` with the return script (SSO off it is still `$url.login`).
+- **`window.pressroomGoogleSignIn(via, label)`** (the showGoogleSignInAssets
+  macro, from `showContentAssets` and the site pages' heads, with the
+  `.g-signin` rules) returns the same element built in the browser; `label` is
+  the finished text (`textContent`), and `return` is the page's path, query
+  and hash, on the link's host only. Defined only with SSO on. Part E's Save
+  and Follow use it and the macro; their names and signatures are a contract.
+- **Comments.** The session's `signInUrl` returns to `<entry>#comments`; the
+  script shows a greyed `textarea.comments-locked[disabled]` and the helper's
+  button (via `comments`, class `comments-sign-in` kept), or a plain link if
+  the helper is missing; back at `#comments`, the composer takes the focus.
+  `comments.signIn` is "Sign in with {0} to comment".
 
 ## Configuration
 

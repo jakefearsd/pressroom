@@ -53,6 +53,8 @@ class ForgotPasswordIT extends PressroomIT {
     void forgotAndResetDegradeHonestlyWithoutMailConfigured() {
         // --- the link from the login page -------------------------------------
         openPath(LOGIN_PATH);
+        // The lost-password link is the authors': under the collapsed Author sign-in (SSO is on).
+        openAuthorSignIn();
         $("a[href$='/pressroom-ui/forgotPassword.rol']").should(exist).click();
         $("#forgotPasswordForm").should(exist);
         BrowserHealth.current().settle();

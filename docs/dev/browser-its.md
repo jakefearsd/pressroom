@@ -78,7 +78,18 @@ access-denied is how a signed-in account is refused. The wait is the realm's dis
 after the import (about 15 s). `pressroom-it.properties` points `sso.oidc.*` at
 `http://localhost:${it.kc.port}` (localhost, because Keycloak takes its
 issuer from the Host it is asked on), so **SSO is on for the whole suite**
-and every login page shows "Sign in with Keycloak". The client secret and
+and every login page shows "Continue with Keycloak" (0.18.0; the neutral mark,
+never Google's G, since the issuer is not Google's). **The password form is
+therefore collapsed** under "Author sign-in" on every login page the suite
+opens: a test that types into `#j_username` opens `login.rol?author` (as
+`loginAs` does) or calls `PressroomIT.openAuthorSignIn()`, the one click a
+person makes. **The SSO-off login page and blog surfaces cannot be driven
+here**: the WAR reads the client once at startup and the run has one app, so
+SSO off would need a second app per context path; they are pinned by unit
+render tests (`LoginPageSsoOffCharacterisationTest`, the rendering tests
+named in `docs/dev/sso.md`). `LoginPageIT` and `ReaderSignInSurfacesIT` drive
+the SSO-on surfaces; `LoginPageIT` clears `localStorage["pressroom.authorSignIn"]`
+after each test, since classes share a browser. The client secret and
 passwords are test-only values, kept in those two files. `VERIFY_PROFILE` is
 disabled in the realm, or Keycloak 24+ stops a user with no name at an
 "Update Account Information" form. `SsoSignInIT` drives it at both context

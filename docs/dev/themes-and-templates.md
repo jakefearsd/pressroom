@@ -427,6 +427,14 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeColophonRenderingTest` renders the three blog themes end to end.
 - Styling is per theme (`body.qj/tg/pf/fd .colophon`), small and muted from
   that theme's own tokens.
+- **With reader sign-in on (0.18.0)** the colophon's Sign in gets the class
+  `colophon-sign-in`, links to `login.rol` (not `$url.login`, which drops a
+  return) and carries the page's return path; it is then the authors' way in,
+  the header's being the provider's button. Under Places you've been a
+  signed-out reader gets the provider's button (the showPlacesNudge macro).
+  The shared button, its rules and its JS twin are the showGoogleSignIn and
+  showGoogleSignInAssets macros (`docs/dev/sso.md`); a forked theme gets the
+  rules from `showContentAssets`.
 - **The colophon opens with "more from the site" and the places recording**
   (the showMoreFromSite and showPlacesYouveBeen macros), so a forked theme
   that still calls the colophon inherits both. The block,

@@ -86,6 +86,7 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void aWrongPasswordDoesNotSignAnyoneIn() {
         openPath("/pressroom-ui/login.rol");
+        openAuthorSignIn();
         $("#j_username").setValue(ADMIN_USERNAME);
         $("#j_password").setValue("definitely-not-the-password");
         // The refusal is a new page (login.rol?error=true). Waiting for it is what makes
