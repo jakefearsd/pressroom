@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
-import { API, open, problem, recordCalls, resetWorld, server, world, writes } from './harness';
+import { API, calls, open, problem, recordCalls, resetWorld, server, world, writes } from './harness';
 
-interface Sub { id: string; name?: string; email?: string; subject?: string; message?: string; pageSlug?: string; entryAnchor?: string; created?: string }
+interface Sub { unread?: boolean; id: string; name?: string; email?: string; subject?: string; message?: string; pageSlug?: string; entryAnchor?: string; created?: string }
 let all: Sub[];
 
 const make = (n: number): Sub[] => Array.from({ length: n }, (_v, i) => ({
@@ -158,5 +158,43 @@ describe('Inbox screen', () => {
     world.permission = 'EDIT_DRAFT';
     open('/weblogs/alpha/inbox');
     expect(await screen.findByText('That page does not exist.')).toBeInTheDocument();
+  });
+
+  describe('unread state', () => {
+    const readCalls = () => writes().filter((c) => c.path.endsWith('/submissions/read'));
+
+    beforeEach(() => {
+      server.use(http.post(`${API}/weblogs/alpha/submissions/read`, () => new HttpResponse(null, { status: 204 })));
+    });
+
+    it('marks the unread rows on the page read, once, and shows a New pill on them', async () => {
+      all = make(3).map((s, i) => ({ ...s, unread: i !== 1 }));
+      open('/weblogs/alpha/inbox');
+      await screen.findByText('Sender 0');
+      await waitFor(() => { expect(readCalls()).toHaveLength(1); });
+      expect(readCalls()[0]?.body).toEqual({ ids: ['s0', 's2'] });
+      expect(readCalls()[0]?.csrf).toBe('tok');
+      const pills = [...document.querySelectorAll('.new-pill')];
+      expect(pills.map((p) => p.textContent)).toEqual(['New', 'New']);
+      expect(screen.getByText('Sender 1').closest('tr')?.querySelector('.new-pill')).toBeNull();
+    });
+
+    it('makes no call when every row is already read', async () => {
+      all = make(2).map((s) => ({ ...s, unread: false }));
+      open('/weblogs/alpha/inbox');
+      await screen.findByText('Sender 0');
+      expect(document.querySelector('.new-pill')).toBeNull();
+      expect(readCalls()).toHaveLength(0);
+    });
+
+    it('refreshes the counts (me/weblogs) but not the open list, so New stays until the next visit', async () => {
+      all = make(2).map((s) => ({ ...s, unread: true }));
+      open('/weblogs/alpha/inbox');
+      await screen.findByText('Sender 0');
+      await waitFor(() => { expect(readCalls()).toHaveLength(1); });
+      await waitFor(() => { expect(calls.filter((c) => c.path === '/me/weblogs').length).toBeGreaterThan(1); });
+      expect(calls.filter((c) => c.method === 'GET' && c.path === '/weblogs/alpha/submissions')).toHaveLength(1);
+      expect(document.querySelectorAll('.new-pill')).toHaveLength(2);
+    });
   });
 });

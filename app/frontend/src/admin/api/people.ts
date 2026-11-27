@@ -149,6 +149,21 @@ export function useSubmissions(handle: string, page: number) {
   });
 }
 
+/**
+ * Marks inquiries read for every member of the weblog. It refreshes the menu counts (`['me','weblogs']`:
+ * home row and rail badge) and deliberately NOT the open inbox page, so the New marks stay until the next visit.
+ */
+export function useMarkSubmissionsRead(handle: string) {
+  const api = useApi();
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => call(api.POST('/v1/weblogs/{handle}/submissions/read', {
+      params: handlePath(handle), body: { ids }
+    })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ['me', 'weblogs'] })
+  });
+}
+
 export function useSubmissionActions(handle: string) {
   const api = useApi();
   const queries = useQueryClient();
