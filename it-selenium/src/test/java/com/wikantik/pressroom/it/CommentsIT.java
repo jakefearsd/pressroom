@@ -744,7 +744,7 @@ class CommentsIT extends PressroomIT {
         $("#accountPage").shouldHave(text(body));
         String session = sessionCookie();
         awaitNewPageAfter(() -> {
-            $("#accountDelete button[data-confirm]").click();
+            $("section#delete button[data-confirm]").click();
             Selenide.confirm();
         });
 
@@ -757,8 +757,8 @@ class CommentsIT extends PressroomIT {
         // refusal is the one named first: either way, no delete button.
         loginAsAdmin();
         openPath(ACCOUNT);
-        $("#accountDelete").shouldHave(text("Leave your weblogs first"));
-        $("#accountDelete button").shouldNot(exist);
+        $("section#delete").shouldHave(text("Leave your weblogs first"));
+        $("section#delete button").shouldNot(exist);
     }
 
     /**

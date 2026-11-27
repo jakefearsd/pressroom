@@ -256,12 +256,18 @@ public class ReaderStateService {
     /**
      * Records that the reader read the entry now: a first read adds it to the
      * history, a later one moves it to the top. The history then keeps its
-     * newest {@value #HISTORY_CAP}.
+     * newest {@value #HISTORY_CAP}. Nothing is recorded for an account that
+     * has turned "Keep my reading history" off ({@link User#isKeepHistory});
+     * visibility is still refused first, so the switch tells nothing about
+     * an entry a reader may not see.
      */
     public void recordRead(User user, WeblogEntry entry) throws WebloggerException, ReaderStateRefusal {
         Instant now = clock.instant();
         if (!ReaderVisibility.isVisible(entry, now)) {
             throw ReaderStateRefusal.NOT_VISIBLE;
+        }
+        if (!user.isKeepHistory()) {
+            return;
         }
         store.read(user.getId(), entry.getId(), now, HISTORY_CAP);
         weblogger.flush();

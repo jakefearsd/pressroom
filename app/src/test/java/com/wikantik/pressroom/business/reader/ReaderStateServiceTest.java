@@ -239,6 +239,28 @@ class ReaderStateServiceTest {
         assertEquals(List.of(), ids(lists(ReaderList.HISTORY).history()));
     }
 
+    /**
+     * "Keep my reading history" off (V057's {@code keep_history}): a read is
+     * not recorded, and nothing already there is touched by the read; the
+     * account page's switch clears the history itself.
+     */
+    @Test
+    void historyNotRecordedWhenKeepHistoryOff() throws Exception {
+        service.recordRead(reader, managed(a1));
+        TestUtils.endSession(true);
+        reader.setKeepHistory(false);
+
+        service.recordRead(reader, managed(b1));
+        service.recordRead(reader, managed(a1));
+        TestUtils.endSession(true);
+
+        assertEquals(List.of(a1.getId()), ids(lists(ReaderList.HISTORY).history()),
+                "no new read, and the old one is not moved");
+        assertSame(ReaderStateRefusal.NOT_VISIBLE, assertThrows(ReaderStateRefusal.class,
+                () -> service.recordRead(reader, managed(newEntry(a, "rsrkhdraft", PubStatus.DRAFT)))),
+                "visibility is still refused first: the switch is no way to probe a draft");
+    }
+
     @Test
     void historyTrimsTo500() throws Exception {
         assertEquals(500, ReaderStateService.HISTORY_CAP);
