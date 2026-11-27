@@ -259,8 +259,8 @@ class ReaderStateIT extends PressroomIT {
     }
 
     /**
-     * Ten visible seconds on an entry record it; in a fresh browser (a new
-     * driver: no cookies, no storage) the same reader, signed in again, finds
+     * Ten visible seconds on an entry record it; in a fresh browser (no
+     * cookies, the provider's included, and no storage) the same reader, signed in again, finds
      * it under "Continue reading" on the blog home, with its Read mark.
      */
     @Test
@@ -269,8 +269,13 @@ class ReaderStateIT extends PressroomIT {
         signInWithKeycloak(READER, contextPath() + post.path());
         $(READY).should(exist);
         Selenide.sleep(11_500);
+        // A fresh browser: every cookie gone (the site's and the provider's: logout clears the
+        // browser's whole jar and ends the server session), and this origin's storage emptied.
+        // Not a new driver: BrowserHealth's DevTools session belongs to this one.
         logout();
-        Selenide.closeWebDriver();
+        openPath("/" + blogB.handle() + "/");
+        executeJavaScript("localStorage.clear(); sessionStorage.clear();");
+        $("[data-reader][data-signed-in]").shouldNot(exist);
 
         signInWithKeycloak(READER, contextPath() + "/" + blogB.handle() + "/");
         SelenideElement row = $("[data-reader-row='continue']").should(visible);
