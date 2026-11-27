@@ -340,3 +340,12 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **New message keys go into all eight bundles** (English until translated);
   `AgentAccountMessagesTest` checks the `userList.`, `personForm.`, `userWeblogs.`, `apiTokens.` and
   `agent.` prefixes.
+
+## Needs-attention counts (0.18.0)
+
+`GET /v1/me/weblogs` rows carry `pendingComments`, `newInquiries`, `drafts`, `scheduled` and `lastPublished`. The home
+(`Home.tsx`, ordered by `homeOrder.ts`) and the rail badges (`Frame` hands `Rail` the row for the current handle; no
+extra request, same `['me','weblogs']` cache entry) read them. Whatever changes a count invalidates that key:
+comment moderation (`Comments.tsx` `refresh`) and `useMarkSubmissionsRead`. The inbox marks the page's unread rows
+read on load (shared `read_at`) and invalidates only `['me','weblogs']`, never the open list, so the "New" pills stay
+until the next visit. A test that renders `Frame` must stub `/v1/me/weblogs` (the people harness does).
