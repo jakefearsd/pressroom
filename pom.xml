@@ -340,6 +340,16 @@ limitations under the License.
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <!-- Instrument Pressroom's classes only: the report and
+                                 the floors count nothing else, and instrumenting
+                                 Spring, EclipseLink, Lucene and Mockito too cost
+                                 about a quarter of the unit suite's time
+                                 (QualityGatePomTest pins this). -->
+                            <includes>
+                                <include>com.wikantik.pressroom.*</include>
+                            </includes>
+                        </configuration>
                     </execution>
                     <!-- Coverage floor, ratcheted from measured coverage. Later
                          stages only ever raise jacoco.line.minimum /

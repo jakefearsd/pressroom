@@ -102,6 +102,27 @@ class QualityGatePomTest {
                 "the disabled javac lints are a closed set");
     }
 
+    /**
+     * The JaCoCo agent instruments only Pressroom's own classes. The report and
+     * the floors count nothing else, so instrumenting Spring, EclipseLink,
+     * Lucene and Mockito as well only slowed the unit suite (about a quarter of
+     * its time, measured 2026-11-27) without changing a single coverage figure.
+     */
+    @Test
+    void theCoverageAgentInstrumentsOnlyPressroomClasses() throws IOException {
+        String parentPom = read("pom.xml");
+        int id = parentPom.indexOf("<id>prepare-agent</id>");
+        assertTrue(id >= 0, "the jacoco prepare-agent execution is missing from the parent pom");
+        String execution = parentPom.substring(id, parentPom.indexOf("</execution>", id));
+        List<String> includes = new ArrayList<>();
+        Matcher m = Pattern.compile("<include>([^<]+)</include>").matcher(execution);
+        while (m.find()) {
+            includes.add(m.group(1));
+        }
+        assertEquals(List.of("com.wikantik.pressroom.*"), includes,
+                "the agent instruments Pressroom's classes and nothing else");
+    }
+
     @Test
     void everyPmdExclusionIsPermittedAndCarriesAReason() throws IOException {
         String ruleset = read("config/pmd/ruleset.xml");
