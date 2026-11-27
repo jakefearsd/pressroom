@@ -112,15 +112,14 @@ public class LoginController extends BaseController {
 
     /**
      * With reader sign-in on, the page is the readers' door (0.18.0): the
-     * heading ("Sign in to {site}") names the site, the provider's button comes first with its mark,
-     * and the password form waits in a collapsed "Author sign-in" section that
+     * heading ("Sign in to {site}") names the site, the provider's button
+     * comes first with its mark, and the password form waits in a collapsed "Author sign-in" section that
      * a failed password or {@code ?author} opens. With SSO off none of this is
      * in the model, so the page renders as it did before.
      */
     private void readerFirst(HttpServletRequest request, Model model, boolean authorFormOpen) {
         String siteName = HtmlUtils.htmlEscape(StringUtils.defaultIfBlank(
                 WebloggerRuntimeConfig.getProperty("site.name"), "Pressroom").trim());
-        model.addAttribute("siteName", siteName);
         // The layout prints pageTitle as a message code with itself as the
         // fallback text, so bundle text with the escaped name in it prints as is.
         model.addAttribute("pageTitle", getText("login.reader.title", new Object[] {siteName}, request));

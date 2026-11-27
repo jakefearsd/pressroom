@@ -3176,15 +3176,16 @@ $gsLabelKey is a message key whose one argument is the provider's label
 Google ($utils.signInMark), and the label is the provider's own.
 
 The link goes straight to the provider (sso/start on the site's absolute
-URL); the return-path script below adds the page's path and query in the
-browser, so a cached page carries no per-request value. A button built in
+URL); one script in the head (the showGoogleSignInAssets macro) adds the
+page's path and query to every such link once the page has parsed, so a
+cached page carries no per-request value and no script repeats per button. A button built in
 the browser comes from window.pressroomGoogleSignIn (the
 showGoogleSignInAssets macro), which makes the same element. The classes
 g-signin and g-signin-mark and the data-sign-in-return attribute are stable
 markers the rendering tests and the browser suite pin.
 *#
 #macro(showGoogleSignIn $gsVia $gsLabelKey)
-<a class="g-signin" data-umami-event="sign-in" data-umami-event-via="$gsVia" data-sign-in-return href="$utils.escapeHTML($utils.ssoStartUrl)">$utils.signInMark<span>$utils.escapeHTML($text.get($gsLabelKey, [$utils.ssoProviderLabel]))</span></a>#showSignInReturnScript("g-signin[data-sign-in-return]")
+<a class="g-signin" data-umami-event="sign-in" data-umami-event-via="$gsVia" data-sign-in-return href="$utils.escapeHTML($utils.ssoStartUrl)">$utils.signInMark<span>$utils.escapeHTML($text.get($gsLabelKey, [$utils.ssoProviderLabel]))</span></a>
 #end
 
 #**
@@ -3203,6 +3204,12 @@ Part E's Save and Follow): label is the finished text, set with textContent;
 return is the page's path, query and hash, added only when the page is on
 the sign-in's host (a custom domain's page would come back on the site's).
 The mark is the server's own constant markup, never a reader's string.
+
+The same script gives every server-rendered button (the showGoogleSignIn
+macro, wherever it sits in the body) the page's path and query as its
+return once the page has parsed, on the same host only, keeping a return a
+link already has. Without it (a forked head that skips the showContentAssets
+macro) a button still signs in and lands on the front page.
 *#
 #macro(showGoogleSignInAssets)
 #if($utils.ssoEnabled)
@@ -3246,6 +3253,21 @@ html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-si
         a.appendChild(words);
         return a;
     };
+    function addReturn() {
+        var links = document.querySelectorAll('a.g-signin[data-sign-in-return]');
+        for (var i = 0; i < links.length; i++) {
+            var link = links[i];
+            if (link.host === window.location.host && link.search.indexOf('return=') < 0) {
+                link.search = (link.search ? link.search + '&' : '?') + 'return='
+                    + encodeURIComponent(window.location.pathname + window.location.search);
+            }
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addReturn);
+    } else {
+        addReturn();
+    }
 })();
 </script>
 #end
@@ -3253,10 +3275,9 @@ html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-si
 
 #**
 Sends a visitor back to this page after signing in: every link with the
-given class (or class and attribute selector, as the showGoogleSignIn macro
-passes), on this host, gets the page's path and query as "return" on its
-way to the sign-in page or the provider. A link that already carries a
-return (the comments' sign-in, built from the session answer) keeps it. Done in the browser so a cached page, shared by
+given class, on this host, gets the page's path and query as "return" on its
+way to the sign-in page. (The provider's buttons get theirs from the
+showGoogleSignInAssets macro's script, once per page.) Done in the browser so a cached page, shared by
 every visitor of one URL, carries no per-request value; without script the
 link still signs in and lands where it always did. LoginController and the
 success handlers keep only a path under the context. No dollar sign but the

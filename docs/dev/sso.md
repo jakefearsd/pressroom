@@ -72,9 +72,9 @@ blogs, which run with the suite's SSO-off config).
   in `currentColor`; it is Java so no hex colour reaches a Velocity template,
   and one line with no `'` so it can sit in a JS string. The browser suite's
   provider is Keycloak, so its pages say Keycloak and show the neutral mark.
-- **Sign-in page.** `LoginController` adds `siteName` (escaped), `ssoMark`,
+- **Sign-in page.** `LoginController` adds `ssoMark` and
   `authorSignInOpen` (`?error` or `?author`), and sets `pageTitle` to
-  `getText("login.reader.title", siteName)`: the layout prints `pageTitle` as a
+  `getText("login.reader.title", <site.name, escaped; "Pressroom" when blank>)`: the layout prints `pageTitle` as a
   code with itself as the fallback text, so "Sign in to {site}" prints as is.
   `Login.jsp` then shows the tagline, the full-width `#ssoSignIn` (white,
   Google's branding when Google; `data-umami-event="sign-in"`,
@@ -89,9 +89,10 @@ blogs, which run with the suite's SSO-off config).
   `/pressroom-ui/sso/start`, as the header's old Sign in), `ssoProviderLabel`,
   `signInMark`. The showGoogleSignIn macro (`weblog.vm`, `$gsVia`,
   `$gsLabelKey`) emits `a.g-signin[data-umami-event=sign-in][data-umami-event-via][data-sign-in-return]`
-  and the return script (`showSignInReturnScript("g-signin[data-sign-in-return]")`):
-  the path and query are added in the browser, only on the link's own host,
-  so anonymous HTML stays byte-identical. It replaces Sign in in the
+  and nothing else: one script in the head (the showGoogleSignInAssets macro)
+  adds the page's path and query to every such link once the page has
+  parsed, only on the link's own host, so anonymous HTML stays byte-identical
+  and no script repeats per button. It replaces Sign in in the
   showAccountLinks macro (blog site bar, site masthead) and the frontpage
   theme's top bar (via `header`), and sits under Places you've been for a
   signed-out reader (via `places`; the places script inserts the list above

@@ -185,7 +185,7 @@ class LoginControllerTest {
         // title is login.reader.title's text, which the layout prints as the
         // code's fallback, with the name escaped once.
         assertEquals("login.reader.title[Maiia &amp; &lt;Co&gt;]", model.getAttribute("pageTitle"));
-        assertEquals("Maiia &amp; &lt;Co&gt;", model.getAttribute("siteName"));
+        assertFalse(model.containsAttribute("siteName"), "the title carries the name; nothing else reads it");
     }
 
     @Test
@@ -202,7 +202,6 @@ class LoginControllerTest {
         open(new SsoSettings("", "", "", ""), null, null);
 
         assertEquals("loginPage.title", model.getAttribute("pageTitle"));
-        assertFalse(model.containsAttribute("siteName"));
         assertFalse(model.containsAttribute("ssoMark"));
         assertFalse(model.containsAttribute("authorSignInOpen"));
     }

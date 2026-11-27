@@ -158,9 +158,27 @@ class GoogleSignInRenderTest {
                 assertTrue(bar.contains(SignInMark.forProvider(google()) + "<span>Sign in with Google</span></a>"),
                         theme + ": the G and the label:\n" + bar);
                 assertFalse(bar.contains("site-bar-sign-in"), theme + ": no password Sign in in the header:\n" + bar);
-                assertTrue(bar.contains("document.querySelectorAll('a.g-signin[data-sign-in-return]')"),
-                        theme + ": the return-path script:\n" + bar);
+                assertFalse(bar.contains("<script"), theme + ": no script per button:\n" + bar);
             }
+        }
+    }
+
+    /**
+     * One return-path script per page, in the head, for every server-rendered
+     * button wherever it sits (the header, the places nudge, Part E's), run
+     * once the page has parsed; not one script per button.
+     */
+    @Test
+    void oneReturnPathScriptServesEveryButton() throws Exception {
+        try (var _ = ssoOn()) {
+            useTheme(current, "journal");
+            String body = page(permalink);
+            String selector = "document.querySelectorAll('a.g-signin[data-sign-in-return]')";
+            assertEquals(1, body.split(java.util.regex.Pattern.quote(selector), -1).length - 1, body);
+            assertTrue(head(body).contains(selector), "in the head:\n" + head(body));
+            assertTrue(head(body).contains("document.addEventListener('DOMContentLoaded', addReturn)"), head(body));
+            assertTrue(body.split("data-sign-in-return href=", -1).length - 1 >= 2,
+                    "the header and the places nudge both carry a button:\n" + body);
         }
     }
 
