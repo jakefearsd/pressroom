@@ -23,10 +23,9 @@ import com.codeborne.selenide.SelenideElement;
 import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static com.codeborne.selenide.Condition.exactText;
@@ -44,10 +43,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * rail badge, and the other blog's stays.
  *
  * <p>Set up as {@link AdminAttentionIT} is: the reader is the run's Keycloak {@code reader-it}, the Absolute
- * URL is the run's base URL, and the class holds {@link PressroomIT#GLOBAL_CONFIG} exclusively.
+ * URL is the run's base URL (seeded), and the class holds {@link PressroomIT#GLOBAL_CONFIG} for read.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ResourceLock(PressroomIT.GLOBAL_CONFIG)
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class CommentQueueIT extends PressroomIT {
 
     private static final String READER = "reader-it";
@@ -68,37 +67,6 @@ class CommentQueueIT extends PressroomIT {
             "        headers: headers, body: JSON.stringify({entry: entry, body: body})});",
             "  })",
             "  .then(function (r) { return r.text().then(function (t) { return r.status + ' ' + t; }); });");
-
-    private boolean fixtureStarted;
-    private boolean fixtureBuilt;
-    private boolean absoluteUrlSet;
-    private String priorAbsoluteUrl;
-
-    /** Sets the Absolute URL once, for the reader sign-in; see the class javadoc. */
-    @BeforeEach
-    void setTheAbsoluteUrlOnce() {
-        if (fixtureStarted) {
-            assertTrue(fixtureBuilt, "the class fixture failed in an earlier test; see that failure");
-            return;
-        }
-        fixtureStarted = true;
-        loginAsAdmin();
-        priorAbsoluteUrl = setSiteAbsoluteUrl(baseUrl());
-        absoluteUrlSet = true;
-        logout();
-        fixtureBuilt = true;
-    }
-
-    @AfterAll
-    void restoreTheAbsoluteUrl() {
-        inBrowserAfterAll(() -> {
-            if (absoluteUrlSet) {
-                loginAsAdmin();
-                setSiteAbsoluteUrl(priorAbsoluteUrl);
-                logout();
-            }
-        });
-    }
 
     @Test
     void commentsOnTwoBlogsQueueTogetherAndApprovingOneDropsItsBadge() {

@@ -37,10 +37,9 @@ import com.wikantik.pressroom.it.support.KeycloakLoginPage;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import com.wikantik.pressroom.it.support.Routes;
 import com.wikantik.pressroom.it.support.Routes.Route;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openqa.selenium.Cookie;
 import tools.jackson.databind.JsonNode;
@@ -66,12 +65,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * docs/superpowers/specs/2026-10-11-reader-sign-in-design.md; criterion 1 (SSO off) is
  * unit-tested only, because SSO is on for this whole suite.
  *
- * <p><b>The Absolute URL is set for the whole class.</b> The callback Pressroom hands the
+ * <p><b>The Absolute URL comes from the IT seed.</b> The callback Pressroom hands the
  * provider is built from {@code site.absoluteurl}, and with it blank every sign-in
- * answers {@code sso=unavailable}. It is global, so the class holds
- * {@link PressroomIT#GLOBAL_CONFIG} exclusively, sets it to {@link #baseUrl()} once (the
- * guarded {@code @BeforeEach}, as {@code VirtualHostIT} does, because a
- * {@code @BeforeAll} has no browser yet) and restores it in {@code @AfterAll}.
+ * answers {@code sso=unavailable}. The seed sets it to {@link #baseUrl()}, as production
+ * always has it set; it is global, so the class holds {@link PressroomIT#GLOBAL_CONFIG}
+ * for read, which keeps {@code VirtualHostIT} (which changes it) from running alongside.
  *
  * <p><b>Each test starts at the Keycloak form.</b> {@code BrowserHealth.attach()} clears
  * every cookie, the provider's included, before each test, and {@link #logout()} does the
@@ -97,7 +95,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * "Hazards found while building it").
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ResourceLock(PressroomIT.GLOBAL_CONFIG)
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class SsoSignInIT extends PressroomIT {
 
     private static final String START = "/pressroom-ui/sso/start";
@@ -140,36 +138,6 @@ class SsoSignInIT extends PressroomIT {
             .followRedirects(HttpClient.Redirect.NEVER)
             .connectTimeout(Duration.ofSeconds(10))
             .build();
-
-    private boolean absoluteUrlSet;
-
-    /** {@code site.absoluteurl} on arrival, restored by {@link #restoreTheAbsoluteUrl()}. */
-    private String priorAbsoluteUrl;
-
-    // ------------------------------------------------------------- fixture
-
-    @BeforeEach
-    void pointTheAbsoluteUrlAtThisSiteOnce() {
-        if (absoluteUrlSet) {
-            return;
-        }
-        loginAsAdmin();
-        priorAbsoluteUrl = setSiteAbsoluteUrl(baseUrl());
-        absoluteUrlSet = true;
-        logout();
-    }
-
-    @AfterAll
-    void restoreTheAbsoluteUrl() {
-        if (!absoluteUrlSet) {
-            return;
-        }
-        inBrowserAfterAll(() -> {
-            loginAsAdmin();
-            setSiteAbsoluteUrl(priorAbsoluteUrl);
-            logout();
-        });
-    }
 
     // -------------------------------------------------------- criteria 5, 12
 

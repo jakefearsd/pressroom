@@ -95,11 +95,19 @@ passwords are test-only values, kept in those two files. `VERIFY_PROFILE` is
 disabled in the realm, or Keycloak 24+ stops a user with no name at an
 "Update Account Information" form. `SsoSignInIT` drives it at both context
 paths, and `CommentsIT` signs its readers in through it with the shared
-`PressroomIT.signInWithKeycloak`. The sign-in callback is built from the Absolute URL, so the class
-sets `site.absoluteurl` to `baseUrl()` (`PressroomIT.setSiteAbsoluteUrl`) once,
-restores it in `@AfterAll`, and holds `GLOBAL_CONFIG` **write** for the
-whole class, as `VirtualHostIT` does: anything that writes
-`site.absoluteurl` takes that lock.
+`PressroomIT.signInWithKeycloak` (as do `AdminAttentionIT`, `CommentQueueIT`
+and `ReaderStateIT`). The sign-in callback is built from the Absolute URL
+(blank, every sign-in answers `sso=unavailable`), so **the seed sets
+`site.absoluteurl`** to the run's base URL, as production always has it set:
+`pg-seed-it-data` passes `site_url` (the same string as `it.base.url`) and
+`seed-it-data.sql` upserts it without the trailing slash, so it equals
+`PressroomIT.baseUrl()` at both context paths. The app adds only missing
+runtime properties at startup, never overwrites one. The sign-in classes
+therefore hold `GLOBAL_CONFIG` **read**; only a class that changes
+`site.absoluteurl` (`VirtualHostIT`, through `setSiteAbsoluteUrl`) takes it
+**write**, and puts back the value it found. Until 2026-11-27 each sign-in
+class set it itself under the write lock, which serialised five classes
+(`CommentsIT` alone is ~85 s) against the ~40 others.
 
 `PressroomPostgresContainer` (the unit suite's shared, never-stopped container)
 adds a JVM shutdown hook behind Ryuk, one process that can be missing.
@@ -173,9 +181,8 @@ a race:
   (`CUSTOM_THEMES_ALLOWED`), `ThemeMatrixIT` (`uploads.enabled`), `ApiIT`,
   `VirtualHostIT`, and `McpIT` (`uploads.enabled`, on its one import-refusal
   method only; its two weblog-creating methods hold it **read**, the rest
-  none), and by `SsoSignInIT` and `CommentsIT`, which set `site.absoluteurl`
-  through `setSiteAbsoluteUrl` as `VirtualHostIT` also does (both sign readers
-  in, and the sign-in callback is built from it). One shared app instance holds
+  none); `VirtualHostIT` also writes `site.absoluteurl` (seeded to the base
+  URL, see Keycloak above) and restores what it found. One shared app instance holds
   one set of runtime properties, so two overlapping would each see the
   other's flag. **A seventh `setGlobalFlag` class must take this lock** —
   nothing enforces it,
@@ -194,7 +201,10 @@ a race:
   buttons, and the failure reads
   `Element not found {button[formaction$='entryAddWithMediaFile.rol']}`).
   `MarkdownContentIT`'s publishing test holds it read too, as McpIT's
-  weblog-creating methods do: it creates a weblog.
+  weblog-creating methods do: it creates a weblog. So do the five classes
+  that sign readers in through Keycloak (`SsoSignInIT`, `CommentsIT`,
+  `AdminAttentionIT`, `CommentQueueIT`, `ReaderStateIT`): they read the
+  seeded `site.absoluteurl`, so only its writer must be kept away.
 - **`PressroomIT.SHARED_MEDIA`** — held **write** by the five classes that
   upload, crop or delete media on the shared `WEBLOG_HANDLE` (`GalleryIT`,
   `MediaCropIT`, `MediaBulkUploadIT`, `EditorSeoIT`, `EditorUploadIT`); **read** by

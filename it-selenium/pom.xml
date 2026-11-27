@@ -527,8 +527,10 @@ limitations under the License.
                         </configuration>
                     </execution>
                     <!-- Seeds the admin user, weblog and category the sweep logs in
-                         with. Must run before Tomcat starts: Pressroom caches
-                         aggressively in-process. -->
+                         with, and site.absoluteurl (site_url: the same string as
+                         it.base.url below; the seed strips the trailing slash, as
+                         PressroomIT.baseUrl() does). Must run before Tomcat starts:
+                         Pressroom caches aggressively in-process. -->
                     <execution>
                         <id>pg-seed-it-data</id>
                         <phase>pre-integration-test</phase>
@@ -537,6 +539,7 @@ limitations under the License.
                             <executable>psql</executable>
                             <arguments>
                                 <argument>-v</argument><argument>ON_ERROR_STOP=1</argument>
+                                <argument>-v</argument><argument>site_url=http://127.0.0.1:${it.http.port}/${it.context.path}</argument>
                                 <argument>-h</argument><argument>localhost</argument>
                                 <argument>-p</argument><argument>${it.db.port}</argument>
                                 <argument>-U</argument><argument>${it.db.user}</argument>

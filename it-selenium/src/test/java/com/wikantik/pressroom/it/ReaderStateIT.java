@@ -36,6 +36,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import tools.jackson.databind.JsonNode;
@@ -67,16 +68,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><b>The fixture</b> (two journal blogs, two posts each) is built through
  * the API by the first test and removed in {@code @AfterAll}; removing a blog
  * removes the reader's rows for it (V056's cascade). The sign-in callback is
- * built from the Absolute URL, so the class points it at {@link #baseUrl()}
- * and holds {@link PressroomIT#GLOBAL_CONFIG} exclusively, as {@code
- * CommentsIT} does; that also keeps the front page the discovery page.
+ * built from the Absolute URL, which the IT seed sets to {@link #baseUrl()}.
+ * The class holds {@link PressroomIT#GLOBAL_CONFIG} for read, so no class
+ * that changes it runs alongside; that also keeps the front page the
+ * discovery page.
  *
  * <p>Every behaviour was driven out first by {@code ReaderControlsRenderTest},
  * {@code reader-script.test.mjs} and the controller tests; a failure here
  * means the assembled WAR does not behave as those said it would.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ResourceLock(PressroomIT.GLOBAL_CONFIG)
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class ReaderStateIT extends PressroomIT {
 
     private static final String READER = "saver-it";
@@ -113,8 +115,6 @@ class ReaderStateIT extends PressroomIT {
 
     private boolean fixtureStarted;
     private boolean fixtureBuilt;
-    private boolean absoluteUrlSet;
-    private String priorAbsoluteUrl;
     private AdminToken token;
     private final List<String> handles = new ArrayList<>();
     private Blog blogA;
@@ -137,10 +137,6 @@ class ReaderStateIT extends PressroomIT {
             return;
         }
         fixtureStarted = true;
-        loginAsAdmin();
-        priorAbsoluteUrl = setSiteAbsoluteUrl(baseUrl());
-        absoluteUrlSet = true;
-        logout();
         token = AdminToken.mint("ReaderStateIT admin", "ADMIN");
         blogA = blog("rsa", "Reader State Alpha");
         blogB = blog("rsb", "Reader State Beta");
@@ -157,13 +153,6 @@ class ReaderStateIT extends PressroomIT {
             if (token != null) {
                 token.close();
             }
-            inBrowserAfterAll(() -> {
-                if (absoluteUrlSet) {
-                    loginAsAdmin();
-                    setSiteAbsoluteUrl(priorAbsoluteUrl);
-                    logout();
-                }
-            });
         }
     }
 

@@ -28,10 +28,9 @@ import com.codeborne.selenide.SelenideElement;
 import com.wikantik.pressroom.it.support.AdminApp;
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static com.codeborne.selenide.Condition.exactText;
@@ -50,11 +49,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * away; a contact-form inquiry does the same for Inquiries until the inbox has been opened.
  *
  * <p>The reader comes from the run's Keycloak ({@code reader-it}); the sign-in callback is built from the
- * Absolute URL, so the class sets {@code site.absoluteurl} to the run's base URL and holds
- * {@link PressroomIT#GLOBAL_CONFIG} exclusively, as {@code CommentsIT} does. Each test owns a weblog.
+ * Absolute URL, which the IT seed sets to the run's base URL, as production always has it set. The class
+ * holds {@link PressroomIT#GLOBAL_CONFIG} for read, so no class that changes the Absolute URL (or any other
+ * global setting) runs beside it. Each test owns a weblog.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ResourceLock(PressroomIT.GLOBAL_CONFIG)
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class AdminAttentionIT extends PressroomIT {
 
     private static final String READER = "reader-it";
@@ -77,37 +77,6 @@ class AdminAttentionIT extends PressroomIT {
             "  .then(function (r) { return r.text().then(function (t) { return r.status + ' ' + t; }); });");
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
-
-    private boolean fixtureStarted;
-    private boolean fixtureBuilt;
-    private boolean absoluteUrlSet;
-    private String priorAbsoluteUrl;
-
-    /** Sets the Absolute URL once, for the reader sign-in; see the class javadoc. */
-    @BeforeEach
-    void setTheAbsoluteUrlOnce() {
-        if (fixtureStarted) {
-            assertTrue(fixtureBuilt, "the class fixture failed in an earlier test; see that failure");
-            return;
-        }
-        fixtureStarted = true;
-        loginAsAdmin();
-        priorAbsoluteUrl = setSiteAbsoluteUrl(baseUrl());
-        absoluteUrlSet = true;
-        logout();
-        fixtureBuilt = true;
-    }
-
-    @AfterAll
-    void restoreTheAbsoluteUrl() {
-        inBrowserAfterAll(() -> {
-            if (absoluteUrlSet) {
-                loginAsAdmin();
-                setSiteAbsoluteUrl(priorAbsoluteUrl);
-                logout();
-            }
-        });
-    }
 
     @Test
     void aHeldCommentBadgesCommentsAndApprovingItClearsTheBadge() throws Exception {

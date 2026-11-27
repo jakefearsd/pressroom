@@ -109,3 +109,17 @@ VALUES ('it-entry-0000-0000-0000-000000000001', 'it-seeded-entry', 'it_admin',
         true, NULL, false, false,
         'en_US', 'PUBLISHED', NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
+
+-- The Absolute URL, set as production always has it. The reader sign-in
+-- callback is built from it (blank, every sign-in answers sso=unavailable),
+-- so seeding it lets the classes that sign readers in hold GLOBAL_CONFIG for
+-- read instead of each setting it under the exclusive lock. site_url comes
+-- from it-selenium/pom.xml, the same string as it.base.url; the trailing
+-- slash is stripped so the value equals PressroomIT.baseUrl() exactly (the
+-- root context: no slash; /pressroom: ending in /pressroom). The app only
+-- adds missing runtime properties at startup, never overwrites one
+-- (JPAPropertiesManagerImpl.initializeMissingProps). An upsert, so a re-run
+-- on a new port takes the new URL.
+INSERT INTO pressroom_properties (name, value)
+VALUES ('site.absoluteurl', rtrim(:'site_url', '/'))
+ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;

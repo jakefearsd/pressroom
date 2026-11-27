@@ -63,8 +63,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Holds {@code GLOBAL_CONFIG} in READ mode: the site root is the directory
  * or a front-page weblog depending on {@code ColophonIT}'s setting, and
- * {@code site.absoluteurl} writers ({@code VirtualHostIT}, {@code SsoSignInIT},
- * {@code CommentsIT}) change every rendered URL. Readers do not exclude each
+ * {@code VirtualHostIT}, which writes {@code site.absoluteurl}, changes every
+ * rendered URL. Readers do not exclude each
  * other, so this costs no parallelism against the other READ classes.
  */
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)

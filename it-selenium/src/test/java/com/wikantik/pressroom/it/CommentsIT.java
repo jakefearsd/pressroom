@@ -44,6 +44,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openqa.selenium.Cookie;
 import tools.jackson.databind.JsonNode;
@@ -75,8 +76,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>The fixture is built once, by the first test</b> (the guarded {@code @BeforeEach},
  * as {@code SsoSignInIT} and {@code VirtualHostIT} do it, because a {@code @BeforeAll} has
- * no browser yet): {@code site.absoluteurl} pointed at {@link #baseUrl()} (the sign-in
- * callback is built from it), and three weblogs with comments on, each with its entries.
+ * no browser yet): three weblogs with comments on, each with its entries. The sign-in
+ * callback is built from {@code site.absoluteurl}, which the IT seed sets to
+ * {@link #baseUrl()}.
  * <ul>
  *   <li>{@code main}: an open entry, which most tests comment on, and a closed one,
  *       carrying the owner's comment from before it closed (criterion 19).</li>
@@ -106,14 +108,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * class's browser ({@link #mapTheCustomDomain()}); {@code jdk.httpclient.allowRestrictedHeaders}
  * (set on the failsafe JVM) lets the raw HTTP checks send its {@code Host} header.
  *
- * <p>The class holds {@link PressroomIT#GLOBAL_CONFIG} exclusively, since it sets
- * {@code site.absoluteurl} and restores it in {@code @AfterAll}.
+ * <p>The class holds {@link PressroomIT#GLOBAL_CONFIG} for read: it changes no global
+ * setting, but its sign-ins need the seeded {@code site.absoluteurl} left alone.
  *
  * <p>Acceptance testing: every behaviour here was driven out by unit tests first, so a
  * failure means the assembled WAR does not behave as those said it would.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ResourceLock(PressroomIT.GLOBAL_CONFIG)
+@ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class CommentsIT extends PressroomIT {
 
     /** Keycloak readers of this class alone; see pressroom-it-realm.json. */
@@ -219,8 +221,6 @@ class CommentsIT extends PressroomIT {
     /** The admin's API token for this class: minted on first use, revoked after the class. */
     private AdminToken adminToken;
     private boolean fixtureBuilt;
-    private boolean absoluteUrlSet;
-    private String priorAbsoluteUrl;
 
     private String mainHandle;
     private Entry open;
@@ -264,8 +264,6 @@ class CommentsIT extends PressroomIT {
         }
         fixtureStarted = true;
         loginAsAdmin();
-        priorAbsoluteUrl = setSiteAbsoluteUrl(baseUrl());
-        absoluteUrlSet = true;
 
         mainHandle = createWeblogWithComments("cmtmain");
         open = publishEntry(mainHandle, "Open to comments " + nonce());
@@ -296,23 +294,18 @@ class CommentsIT extends PressroomIT {
     }
 
     /**
-     * Removes the custom-domain weblog, restores the Absolute URL, and undoes
+     * Removes the custom-domain weblog and undoes
      * {@link #mapTheCustomDomain()}. One method because the order matters: the teardown
      * needs the browser this then closes.
      */
     @AfterAll
     void tearDown() {
         inBrowserAfterAll(() -> {
-            if (!absoluteUrlSet && vhostHandle == null) {
+            if (vhostHandle == null) {
                 return;
             }
             loginAsAdmin();
-            if (vhostHandle != null) {
-                removeWeblog(vhostHandle);
-            }
-            if (absoluteUrlSet) {
-                setSiteAbsoluteUrl(priorAbsoluteUrl);
-            }
+            removeWeblog(vhostHandle);
             logout();
         });
         Selenide.closeWebDriver();

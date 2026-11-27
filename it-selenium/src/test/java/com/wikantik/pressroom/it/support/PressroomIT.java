@@ -80,6 +80,15 @@ public abstract class PressroomIT {
      * against each other while still allowing the classes that touch no global
      * state to run alongside them.
      *
+     * <p>A class that only <em>reads</em> global settings holds this lock in
+     * {@code ResourceAccessMode.READ}: readers exclude the writers, not each
+     * other. That includes the classes that sign readers in through Keycloak,
+     * whose callback is built from {@code site.absoluteurl}: the IT seed
+     * ({@code seed-it-data.sql}) sets it to {@link #baseUrl()}, as production
+     * always has it set, so they read it and never write it. Only a class that
+     * changes it ({@code VirtualHostIT}) takes the lock for write, and puts
+     * back the value it found.
+     *
      * <p>This is not {@code @Isolated} on purpose: isolation would stall all 34
      * classes for the duration of each of these five, which is most of the
      * benefit of running in parallel at all.
@@ -596,8 +605,9 @@ public abstract class PressroomIT {
      * returning once the provider's answer has replaced the page.
      *
      * <p>Needs {@code site.absoluteurl} pointed at {@link #baseUrl()}, since the callback
-     * is built from it; the caller holds {@link #GLOBAL_CONFIG} exclusively and sets it.
-     * Shared by {@code SsoSignInIT} and {@code CommentsIT}.
+     * is built from it. The IT seed sets it; the caller holds {@link #GLOBAL_CONFIG} for
+     * read, so no class that changes it runs alongside. Shared by the classes that sign
+     * readers in ({@code SsoSignInIT}, {@code CommentsIT} and others).
      *
      * @param user     a username from pressroom-it-realm.json
      * @param returnTo the path, context path included, the sign-in should land on
@@ -870,10 +880,11 @@ public abstract class PressroomIT {
      * property (that helper only covers checkboxes).
      *
      * <p>Global like every setting on that page, so the caller holds {@link #GLOBAL_CONFIG}
-     * exclusively and puts the old value back. Two classes need it: {@code VirtualHostIT}
-     * (the control-plane redirect has to name a site host) and {@code SsoSignInIT} (the
-     * sign-in callback is built from this URL; with it blank, sign-in answers
-     * {@code sso=unavailable}). Requires an administrator session.
+     * exclusively and puts the old value back. Only {@code VirtualHostIT} needs it (its
+     * control-plane redirect has to name a site host, and one test clears it). The classes
+     * that sign readers in need it set too, since the sign-in callback is built from it, but
+     * the IT seed sets it to {@link #baseUrl()} before the app starts, so they never call
+     * this. Requires an administrator session.
      *
      * @param value the new Absolute URL; {@code null} or empty clears it
      * @return the value it had on arrival
