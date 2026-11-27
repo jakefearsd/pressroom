@@ -264,6 +264,7 @@ public final class McpToolCatalog {
             sessionOnly("GET /v1/admin/tokens"),
             sessionOnly("DELETE /v1/admin/tokens/{id}"),
             sessionOnly("PATCH /v1/me/profile"),
+            sessionOnly("GET /v1/me/comments"),
             sessionOnly("PUT /v1/me/password"),
             sessionOnly("GET /v1/admin/site-theme"),
             sessionOnly("PUT /v1/admin/site-theme"),

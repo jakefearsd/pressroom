@@ -229,6 +229,10 @@ class ApiAuthorizationMatrixTest {
             row("GET    /v1/meta",                                    READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/me/profile",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
             row("GET    /v1/me/weblogs",                              READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
+            // The cross-blog comment queue: no weblog named, so a pinned token passes the pin only on the
+            // exemption, then is refused as session-only like every token.
+            row("GET    /v1/me/comments",                             READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT,
+                    Flag.SESSION_ONLY),
             row("GET    /v1/meta/weblog-options",                     READ,  NO_GLOBAL,  NO_WEBLOG, Flag.PIN_EXEMPT),
 
             // --- The token resource: a password too. Not pin-exempt, and the

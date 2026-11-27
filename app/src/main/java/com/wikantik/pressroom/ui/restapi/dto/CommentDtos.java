@@ -58,6 +58,32 @@ public final class CommentDtos {
             long total) {
     }
 
+    /** The blog a queued comment is on: what the approval queue names it by and acts on it with. */
+    public record QueueWeblog(String handle, String name) {
+    }
+
+    /**
+     * A comment in the cross-blog approval queue: every {@link CommentView} field, plus the blog it is on and the
+     * entry's address, so a row can be read and acted on without another call.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record QueueComment(String id, String entryId, String entryTitle, String status, String body,
+            Instant created, Instant statusChanged, String authorUserName,
+            String authorDisplayName, boolean authorIsOwner, String replyTo, String reply,
+            QueueWeblog weblog, String entryPermalink) {
+    }
+
+    public record QueuePage(
+            @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            List<QueueComment> items,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = Paging.LIMIT_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore,
+            @Schema(description = "How many comments match across the caller's blogs, whatever the page.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) long total) {
+    }
+
     /** {@code "PUBLISHED"} or {@code "HIDDEN"}; anything else is a 400. */
     public record CommentPatch(
             @Schema(description = "On update: PUBLISHED or HIDDEN, the only statuses a comment can be set to.")
@@ -85,6 +111,13 @@ public final class CommentDtos {
                 c.isAuthorIsOwner(),
                 c.getReplyTo() == null ? null : c.getReplyTo().getId(),
                 c.getReply() == null ? null : c.getReply().getId());
+    }
+
+    public static QueueComment toQueue(ReaderComment c, String weblogName, String entryPermalink) {
+        CommentView v = toView(c);
+        return new QueueComment(v.id(), v.entryId(), v.entryTitle(), v.status(), v.body(), v.created(),
+                v.statusChanged(), v.authorUserName(), v.authorDisplayName(), v.authorIsOwner(), v.replyTo(),
+                v.reply(), new QueueWeblog(c.getEntry().getWebsite().getHandle(), weblogName), entryPermalink);
     }
 
     private static Instant instant(Date date) {

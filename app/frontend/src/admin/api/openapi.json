@@ -66,6 +66,9 @@
     "name" : "Traffic",
     "description" : "A weblog's visitor figures, from the site's analytics."
   }, {
+    "name" : "Comment queue",
+    "description" : "Comments awaiting approval across the caller's blogs (session only: the admin app, never a token)."
+  }, {
     "name" : "Audits",
     "description" : "Work lists for one weblog: entries with SEO gaps, and images without alt text."
   }, {
@@ -5663,6 +5666,62 @@
         }
       }
     },
+    "/v1/me/comments" : {
+      "get" : {
+        "tags" : [ "Comment queue" ],
+        "summary" : "Comments across every blog the caller may moderate, newest first (session only).",
+        "operationId" : "meCommentsList",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "PENDING"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QueuePage"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/traffic" : {
       "get" : {
         "tags" : [ "Site traffic" ],
@@ -9192,6 +9251,98 @@
           }
         },
         "required" : [ "weblogs" ]
+      },
+      "QueueComment" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "entryId" : {
+            "type" : "string"
+          },
+          "entryTitle" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "statusChanged" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "authorUserName" : {
+            "type" : "string"
+          },
+          "authorDisplayName" : {
+            "type" : "string"
+          },
+          "authorIsOwner" : {
+            "type" : "boolean"
+          },
+          "replyTo" : {
+            "type" : "string"
+          },
+          "reply" : {
+            "type" : "string"
+          },
+          "weblog" : {
+            "$ref" : "#/components/schemas/QueueWeblog"
+          },
+          "entryPermalink" : {
+            "type" : "string"
+          }
+        }
+      },
+      "QueuePage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "This page of the list.",
+            "items" : {
+              "$ref" : "#/components/schemas/QueueComment"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many items before this page were skipped: the offset asked for."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The page size asked for, after the cap of 200."
+          },
+          "hasMore" : {
+            "type" : "boolean",
+            "description" : "True while items remain beyond this page: page until it is false, not until a short page arrives."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "How many comments match across the caller's blogs, whatever the page."
+          }
+        },
+        "required" : [ "hasMore", "items", "limit", "offset", "total" ]
+      },
+      "QueueWeblog" : {
+        "type" : "object",
+        "properties" : {
+          "handle" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
       },
       "UserPage" : {
         "type" : "object",
