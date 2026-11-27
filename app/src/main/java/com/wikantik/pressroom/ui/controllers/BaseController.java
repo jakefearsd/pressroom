@@ -338,7 +338,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * offers them no "Main Menu" link that the app home would refuse.
      * A display path: a check that cannot run answers "not an author".
      */
-    private boolean isAuthor(User user) {
+    protected boolean isAuthor(User user) {
         if (user == null) {
             return false;
         }

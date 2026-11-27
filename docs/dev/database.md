@@ -98,7 +98,8 @@ weakly. **Entries 5000, revisions 100, everything else 1000.** Until
 - **Never stale, by construction.** Pressroom is one JVM and writes through
   JPA, which merges into the cache at commit (nothing on rollback); JPQL
   bulk updates and deletes invalidate their class. The only native writes go
-  to `pressroom_weblogentrytagagg`, which is `cacheable="false"`. A row changed
+  to `pressroom_weblogentrytagagg`, which is `cacheable="false"`, and to the
+  `pressroom_reader_*` tables (V056), which no entity maps. A row changed
   with SQL behind the app's back (the admin account tool, a hand edit) stays
   stale until a restart; a bigger cache makes that window longer, not new.
 - **The anchor map checks the anchor.** A hit whose entry now has another

@@ -269,8 +269,10 @@ public class ReaderStateService {
         int allowed = writeLimit(config);
         int seconds = writeWindowSeconds(config);
         log.info("reader state write limit: {} per {}s per account", allowed, seconds);
-        // GenericThrottle refuses once hits EXCEED the threshold, so "at most allowed" is one lower.
-        return new GenericThrottle(allowed - 1, seconds * PressroomConstants.SEC_IN_MS, TRACKED_ACCOUNTS);
+        // admitWrite counts the hit first and GenericThrottle.processHit answers true once the count
+        // EXCEEDS the threshold, so "at most allowed" is a threshold of allowed (CommentService, which
+        // checks before it counts, uses one lower).
+        return new GenericThrottle(allowed, seconds * PressroomConstants.SEC_IN_MS, TRACKED_ACCOUNTS);
     }
 
     /** {@code reader.throttle.window.limit}: writes allowed in a window, default 120. */

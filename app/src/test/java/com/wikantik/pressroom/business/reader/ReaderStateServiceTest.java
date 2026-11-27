@@ -31,6 +31,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
@@ -42,6 +43,8 @@ import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.util.GenericThrottle;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import jakarta.persistence.PersistenceException;
+import jakarta.persistence.Query;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,6 +52,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Saves, follows and reading history against the database: the rules of
@@ -366,6 +374,10 @@ class ReaderStateServiceTest {
         assertFalse(service.mayUse(null));
         User ghost = new User();
         assertFalse(service.mayUse(ghost), "no username: no account");
+        ghost.setUserName("reader-rs-no-such-account");
+        assertFalse(service.mayUse(ghost), "an account removed since sign-in");
+        assertFalse(service.isSaved(reader, " "), "a blank id is nothing saved");
+        assertFalse(service.isFollowing(reader, null));
 
         UserManager users = TestUtils.weblogger().getUserManager();
         User current = users.getUserByUserName(reader.getUserName(), null);
@@ -394,6 +406,32 @@ class ReaderStateServiceTest {
         assertEquals(120, ReaderStateService.writeLimit(key -> "0"), "an unusable value falls back");
         assertEquals(600, ReaderStateService.writeWindowSeconds(key -> "86401"));
         assertEquals(30, ReaderStateService.writeWindowSeconds(key -> "30"));
+
+        GenericThrottle three = ReaderStateService.writeThrottle(key -> ReaderStateService.WRITE_LIMIT.equals(key)
+                ? "3" : null);
+        assertFalse(three.processHit("a"));
+        assertFalse(three.processHit("a"));
+        assertFalse(three.processHit("a"));
+        assertTrue(three.processHit("a"), "at most the configured count: the fourth is over");
+    }
+
+    /** A check that could not run is a failure, never "not saved" or an empty list. */
+    @Test
+    void aDatabaseFailureIsAWebloggerException() {
+        Query broken = mock(Query.class);
+        when(broken.setParameter(anyInt(), any())).thenReturn(broken);
+        when(broken.getResultList()).thenThrow(new PersistenceException("down"));
+        when(broken.getSingleResult()).thenThrow(new PersistenceException("down"));
+        when(broken.executeUpdate()).thenThrow(new PersistenceException("down"));
+        JPAPersistenceStrategy strategy = mock(JPAPersistenceStrategy.class);
+        when(strategy.getNativeQuery(anyString())).thenReturn(broken);
+        ReaderStateService failing = new ReaderStateService(TestUtils.weblogger(), () -> strategy, ticking(),
+                new GenericThrottle(1000, 60_000, 100));
+
+        assertThrows(WebloggerException.class, () -> failing.isSaved(reader, a1.getId()));
+        assertThrows(WebloggerException.class, () -> failing.unsave(reader, a1.getId()));
+        assertThrows(WebloggerException.class,
+                () -> failing.lists(reader, EnumSet.of(ReaderList.READ_IDS), 50));
     }
 
     // ------------------------------------------------------------- helpers

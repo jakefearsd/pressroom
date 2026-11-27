@@ -254,6 +254,10 @@ public final class Routes {
                             + "entry= naming a published entry, and none is seeded, so "
                             + "without one it answers 404. CommentsControllerTest pins "
                             + "its contract."),
+            new SkippedRoute("/pressroom-ui/rendering/reader.rol", Role.ANONYMOUS,
+                    "JSON for the reader-state page script and the account page, not a "
+                            + "page: it renders no markup a selector could find. "
+                            + "ReaderStateControllerTest pins its contract."),
             new SkippedRoute("/pressroom-ui/login-redirect.rol", Role.EDITOR,
                     "A redirect: a signed-in user lands on the React admin's home, a "
                             + "visitor on the login page (SsoSignInIT and AuthoringJourneyIT "

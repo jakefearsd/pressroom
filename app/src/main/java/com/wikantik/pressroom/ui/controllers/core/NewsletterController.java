@@ -30,6 +30,7 @@ import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.FormSubmissionManager;
 import com.wikantik.pressroom.business.ListmonkClient;
+import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -180,7 +181,7 @@ public class NewsletterController extends BaseController {
         }
 
         if (status == 200) {
-            recordEventBestEffort(weblog);
+            recordSubscribed(weblogger, weblog);
         }
         return ResponseEntity.status(status).build();
     }
@@ -212,9 +213,10 @@ public class NewsletterController extends BaseController {
      * Records a {@code NEWSLETTER_SUBSCRIBED} event. Best-effort per
      * {@code EventManager}'s own contract: an event insert must never fail
      * the request that produced it, so any failure here is logged and
-     * swallowed.
+     * swallowed. Shared with {@code ReaderStateController}'s subscribe, so a
+     * signed-in reader's subscription counts exactly as the form's does.
      */
-    private void recordEventBestEffort(Weblog weblog) {
+    static void recordSubscribed(Weblogger weblogger, Weblog weblog) {
         try {
             PressroomEvent event = new PressroomEvent();
             event.setWeblog(weblog);
