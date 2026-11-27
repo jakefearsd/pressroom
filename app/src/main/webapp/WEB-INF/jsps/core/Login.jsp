@@ -27,14 +27,36 @@
      password), so the links line up with the fields rather than the page
      edge. --%>
 <div class="form-signin">
+<%-- Reader sign-in on (0.18.0): the page is the readers' door. The heading
+     (the page title, "Sign in to {site}", from LoginController) has one line
+     under it, the provider's button comes first, and the password form waits
+     in a collapsed "Author sign-in" section that a failed password, ?author,
+     or this browser's last password sign-in (the script below) opens. The
+     button follows Google's branding (white, the G, "Continue with Google")
+     only when the provider is Google: the label and the mark are the
+     provider's. With SSO off none of this renders and the page is 0.17.1's
+     (LoginPageSsoOffCharacterisationTest). --%>
+<c:if test="${ssoEnabled}">
+    <p class="login-reader-tagline"><spring:message code="login.reader.tagline"/></p>
+    <c:url var="ssoStartUrl" value="/pressroom-ui/sso/start">
+        <c:if test="${not empty returnPath}"><c:param name="return" value="${returnPath}"/></c:if>
+    </c:url>
+    <a class="sso-continue" id="ssoSignIn" href="${fn:escapeXml(ssoStartUrl)}"
+       data-umami-event="sign-in" data-umami-event-via="login-page">${ssoMark}<span><spring:message code="login.reader.continueWith" arguments="${ssoLabelArgs}"/></span></a>
+    <details id="authorSignIn" class="author-sign-in"<c:if test="${authorSignInOpen}"> open</c:if>>
+        <summary><spring:message code="login.reader.authorSignIn"/></summary>
+</c:if>
         <form method="post" id="loginForm"
               action="<c:url value='/pressroom_j_security_check'/>">
 
             <%-- .section-head, not <legend>: a legend outside a fieldset is
                  invalid anyway, and the browser's default sizing for it put a
                  heading well above the 20px page title on the one page a
-                 first-time visitor sees. --%>
+                 first-time visitor sees. With SSO on the section's summary
+                 names the form instead. --%>
+            <c:if test="${not ssoEnabled}">
             <h2 class="section-head"><spring:message code="loginPage.prompt"/></h2>
+            </c:if>
 
             <div class="mb-3">
                 <label for="j_username" class="form-label"> <spring:message code="loginPage.userName"/> </label>
@@ -72,21 +94,37 @@
 
         </form>
 
-<c:if test="${ssoEnabled}">
-    <p class="mt-3">
-        <c:url var="ssoStartUrl" value="/pressroom-ui/sso/start">
-            <c:if test="${not empty returnPath}"><c:param name="return" value="${returnPath}"/></c:if>
-        </c:url>
-        <a class="btn btn-secondary" id="ssoSignIn" href="${fn:escapeXml(ssoStartUrl)}">
-            <spring:message code="loginPage.ssoSignIn" arguments="${ssoLabelArgs}"/>
-        </a>
-    </p>
-</c:if>
-
 <p class="mt-3"><a href="<c:url value='/pressroom-ui/forgotPassword.rol'/>">
     <spring:message code="loginPage.forgotPassword"/></a></p>
+<c:if test="${ssoEnabled}">
+    </details>
+</c:if>
 </div><%-- .form-signin --%>
 
+<c:if test="${ssoEnabled}">
+<script>
+    // The third way the Author sign-in section opens: this browser last signed
+    // in with a password (the flag is set on that form's submit). Storage that
+    // cannot be read or written leaves the section as the server rendered it.
+    (function () {
+        var author = document.getElementById("authorSignIn");
+        try {
+            if (!author.open && window.localStorage.getItem("pressroom.authorSignIn") === "1") {
+                author.open = true;
+            }
+        } catch (e) {
+            // storage refused
+        }
+        document.getElementById("loginForm").addEventListener("submit", function () {
+            try {
+                window.localStorage.setItem("pressroom.authorSignIn", "1");
+            } catch (e) {
+                // storage refused: the section stays collapsed next time
+            }
+        });
+    })();
+</script>
+</c:if>
 <script>
 
     // There used to be a second, OpenID login form on this page, and
@@ -97,12 +135,18 @@
     // username is a convenience, so it must never be the reason the login page
     // throws: guard on the helpers being there rather than assuming a load
     // order between an external script and this inline one.
+<c:if test="${ssoEnabled}"><%-- the fields of a closed Author sign-in section take no focus --%>
+    if (document.getElementById("authorSignIn").open) {
+</c:if>
     if (typeof getCookie === "function" && getCookie("username") != null) {
         document.getElementById("j_username").value = getCookie("username");
         document.getElementById("j_password").focus();
     } else {
         document.getElementById("j_username").focus();
     }
+<c:if test="${ssoEnabled}">
+    }
+</c:if>
 
     function saveUsername(theForm) {
         if (typeof setCookie !== "function") {

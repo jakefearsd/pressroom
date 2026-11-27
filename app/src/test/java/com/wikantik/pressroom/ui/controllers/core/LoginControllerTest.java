@@ -20,6 +20,8 @@ package com.wikantik.pressroom.ui.controllers.core;
 import java.util.List;
 
 import com.wikantik.pressroom.business.MockWeblogger;
+import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
+import com.wikantik.pressroom.ui.core.security.sso.SignInMark;
 import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link LoginController}, the sign-in page.
@@ -58,7 +61,7 @@ class LoginControllerTest {
 
     @Test
     void theSignInPageStartsWithNoComplaint() {
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null);
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null, null);
 
         assertEquals(".Login", view);
         assertEquals(List.of(), ControllerTestFixture.errors(model),
@@ -70,7 +73,7 @@ class LoginControllerTest {
     void comingBackWithAnErrorParameterShowsTheFailureMessage() {
         // Spring Security bounces a failed login back to /login.rol?error, and
         // this is the only thing that tells the user their attempt failed.
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "", null, null);
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "", null, null, null);
 
         assertEquals(".Login", view);
         assertEquals(List.of("error.password.mismatch"), ControllerTestFixture.errors(model));
@@ -86,7 +89,7 @@ class LoginControllerTest {
 
     private String runWith(SsoSettings settings, String sso) {
         LoginController c = ControllerTestFixture.withMessages(new LoginController(settings));
-        return c.execute(ControllerTestFixture.requestFor(null), model, null, sso, null);
+        return c.execute(ControllerTestFixture.requestFor(null), model, null, sso, null, null);
     }
 
     @Test
@@ -133,7 +136,7 @@ class LoginControllerTest {
      */
     @Test
     void aReturnPathUnderTheContextIsHandedToTheForm() {
-        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, "/investing/entry/x?y=1");
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, "/investing/entry/x?y=1", null);
 
         assertEquals("/investing/entry/x?y=1", model.getAttribute("returnPath"));
     }
@@ -141,15 +144,91 @@ class LoginControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {"//evil.example/", "https://evil.example/", "/a\r\nX: y", ""})
     void anythingElseIsDropped(String hostile) {
-        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, hostile);
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, hostile, null);
 
         assertEquals(null, model.getAttribute("returnPath"), hostile);
     }
 
     @Test
     void noReturnPathMeansNone() {
-        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null);
+        controller.execute(ControllerTestFixture.requestFor(null), model, null, null, null, null);
 
         assertEquals(null, model.getAttribute("returnPath"));
+    }
+
+    // ------------------------------------------------ reader-first page (0.18.0, Part D)
+
+    private static final SsoSettings GOOGLE = new SsoSettings("id", "s", SsoSettings.GOOGLE_DISCOVERY, "Google");
+    private static final SsoSettings KEYCLOAK =
+            new SsoSettings("id", "s", "http://localhost:8180/realms/pressroom-it", "Keycloak");
+
+    private void siteNamed(String name) throws Exception {
+        when(weblogger.propertiesManager().getProperty("site.name"))
+                .thenReturn(new RuntimeConfigProperty("site.name", name));
+    }
+
+    private void open(SsoSettings settings, String error, String author) {
+        LoginController c = ControllerTestFixture.withMessages(new LoginController(settings));
+        c.execute(ControllerTestFixture.requestFor(null), model, error, null, null, author);
+    }
+
+    /**
+     * With SSO on the page is the readers' door: its heading names the site
+     * (escaped here, since spring:message arguments are not escaped).
+     */
+    @Test
+    void ssoOnHeadsThePageSignInToTheSiteName() throws Exception {
+        siteNamed("Maiia & <Co>");
+        open(GOOGLE, null, null);
+
+        // The fixture's message source echoes the key and its arguments: the
+        // title is login.reader.title's text, which the layout prints as the
+        // code's fallback, with the name escaped once.
+        assertEquals("login.reader.title[Maiia &amp; &lt;Co&gt;]", model.getAttribute("pageTitle"));
+        assertEquals("Maiia &amp; &lt;Co&gt;", model.getAttribute("siteName"));
+    }
+
+    @Test
+    void aBlankSiteNameFallsBackToTheProductName() throws Exception {
+        siteNamed("  ");
+        open(GOOGLE, null, null);
+
+        assertEquals("login.reader.title[Pressroom]", model.getAttribute("pageTitle"));
+    }
+
+    /** SSO off: the page title and the model are what 0.17.1 rendered from. */
+    @Test
+    void ssoOffKeepsTheOldTitleAndAddsNothing() {
+        open(new SsoSettings("", "", "", ""), null, null);
+
+        assertEquals("loginPage.title", model.getAttribute("pageTitle"));
+        assertFalse(model.containsAttribute("siteName"));
+        assertFalse(model.containsAttribute("ssoMark"));
+        assertFalse(model.containsAttribute("authorSignInOpen"));
+    }
+
+    @Test
+    void theMarkFollowsTheProvider() {
+        open(GOOGLE, null, null);
+        assertEquals(SignInMark.forProvider(GOOGLE), model.getAttribute("ssoMark"));
+
+        model = new ExtendedModelMap();
+        open(KEYCLOAK, null, null);
+        assertEquals(SignInMark.forProvider(KEYCLOAK), model.getAttribute("ssoMark"));
+    }
+
+    /** The author form is collapsed, and opens by itself on a failed password or {@code ?author}. */
+    @Test
+    void theAuthorFormOpensOnAnErrorOrAuthorParameter() {
+        open(GOOGLE, null, null);
+        assertEquals(Boolean.FALSE, model.getAttribute("authorSignInOpen"));
+
+        model = new ExtendedModelMap();
+        open(GOOGLE, "", null);
+        assertEquals(Boolean.TRUE, model.getAttribute("authorSignInOpen"), "?error");
+
+        model = new ExtendedModelMap();
+        open(GOOGLE, null, "");
+        assertEquals(Boolean.TRUE, model.getAttribute("authorSignInOpen"), "?author");
     }
 }

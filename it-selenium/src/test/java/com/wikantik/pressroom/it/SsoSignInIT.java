@@ -208,7 +208,7 @@ class SsoSignInIT extends PressroomIT {
     @Test
     void theLoginPageOffersTheProvider() throws Exception {
         openPath(LOGIN);
-        $("#ssoSignIn").shouldHave(exactText("Sign in with Keycloak"));
+        $("#ssoSignIn").shouldHave(exactText("Continue with Keycloak"));
         assertEquals(contextPath() + START, URI.create($("#ssoSignIn").getAttribute("href")).getPath());
 
         clickAndAwaitNewPage($("#ssoSignIn"));

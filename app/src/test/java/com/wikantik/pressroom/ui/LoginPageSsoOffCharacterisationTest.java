@@ -56,7 +56,7 @@ class LoginPageSsoOffCharacterisationTest {
         }
     }
 
-    /** The page heading comes from the controller's title; SSO off, it has no argument to substitute. */
+    /** The page heading is the controller's title, as before. */
     @Test
     void theHeadingIsThePageTitleMessage() throws IOException {
         String tile = Files.readString(LOGIN_TILE, StandardCharsets.UTF_8);
