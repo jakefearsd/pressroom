@@ -43,6 +43,15 @@ public final class BlurHash {
     static final int COMPONENTS_X = 4;
     static final int COMPONENTS_Y = 3;
 
+    /** {@link #sRGBToLinear} for each 8-bit channel value, computed once. */
+    private static final double[] LINEAR = new double[256];
+
+    static {
+        for (int value = 0; value < LINEAR.length; value++) {
+            LINEAR[value] = sRGBToLinear(value);
+        }
+    }
+
     private BlurHash() {
     }
 
@@ -81,13 +90,7 @@ public final class BlurHash {
         int width = image.getWidth();
         int height = image.getHeight();
 
-        double[][] factors = new double[componentsX * componentsY][];
-        int index = 0;
-        for (int y = 0; y < componentsY; y++) {
-            for (int x = 0; x < componentsX; x++) {
-                factors[index++] = multiplyBasisFunction(image, width, height, x, y);
-            }
-        }
+        double[][] factors = basisFactors(image, width, height, componentsX, componentsY);
 
         double[] dc = factors[0];
         int acCount = factors.length - 1;
@@ -146,30 +149,61 @@ public final class BlurHash {
     }
 
     /**
-     * Sums {@code cos(pi*xComponent*x/width) * cos(pi*yComponent*y/height)}-weighted
-     * linear-light RGB over every pixel, normalised so the (0,0) "DC" basis yields
-     * the plain average and every other basis is scaled by 2 per the BlurHash spec.
+     * For every component, sums {@code cos(pi*xComponent*x/width) * cos(pi*yComponent*y/height)}-weighted
+     * linear-light RGB over every pixel, normalised so the (0,0) "DC" basis yields the plain average and every
+     * other basis is scaled by 2 per the BlurHash spec. Returned in component order, x fastest.
+     *
+     * <p>One pass over the pixels, a row at a time: each pixel is read and converted to linear light once, and
+     * the cosines come from per-axis tables, where the straightforward form re-read every pixel and called
+     * {@code Math.cos} twice per pixel for each of the twelve components. Each sum still adds its terms in the
+     * same pixel order, from the same expressions, so the result is bit-identical
+     * ({@code BlurHashEquivalenceTest} holds it to the straightforward encoder).
      */
-    private static double[] multiplyBasisFunction(BufferedImage image, int width, int height,
-            int xComponent, int yComponent) {
-        double r = 0;
-        double g = 0;
-        double b = 0;
-        double normalisation = (xComponent == 0 && yComponent == 0) ? 1 : 2;
-
-        for (int y = 0; y < height; y++) {
+    private static double[][] basisFactors(BufferedImage image, int width, int height,
+            int componentsX, int componentsY) {
+        double[][] cosX = new double[componentsX][width];
+        for (int xComponent = 0; xComponent < componentsX; xComponent++) {
             for (int x = 0; x < width; x++) {
-                double basis = Math.cos(Math.PI * xComponent * x / width)
-                        * Math.cos(Math.PI * yComponent * y / height);
-                int rgb = image.getRGB(x, y);
-                r += basis * sRGBToLinear((rgb >> 16) & 0xFF);
-                g += basis * sRGBToLinear((rgb >> 8) & 0xFF);
-                b += basis * sRGBToLinear(rgb & 0xFF);
+                cosX[xComponent][x] = Math.cos(Math.PI * xComponent * x / width);
             }
         }
-
-        double scale = normalisation / (width * height);
-        return new double[] { r * scale, g * scale, b * scale };
+        double[][] cosY = new double[componentsY][height];
+        for (int yComponent = 0; yComponent < componentsY; yComponent++) {
+            for (int y = 0; y < height; y++) {
+                cosY[yComponent][y] = Math.cos(Math.PI * yComponent * y / height);
+            }
+        }
+        int count = componentsX * componentsY;
+        double[] r = new double[count];
+        double[] g = new double[count];
+        double[] b = new double[count];
+        int[] row = new int[width];
+        for (int y = 0; y < height; y++) {
+            image.getRGB(0, y, width, 1, row, 0, width);
+            for (int x = 0; x < width; x++) {
+                int rgb = row[x];
+                double red = LINEAR[(rgb >> 16) & 0xFF];
+                double green = LINEAR[(rgb >> 8) & 0xFF];
+                double blue = LINEAR[rgb & 0xFF];
+                int component = 0;
+                for (int yComponent = 0; yComponent < componentsY; yComponent++) {
+                    double cosine = cosY[yComponent][y];
+                    for (int xComponent = 0; xComponent < componentsX; xComponent++, component++) {
+                        double basis = cosX[xComponent][x] * cosine;
+                        r[component] += basis * red;
+                        g[component] += basis * green;
+                        b[component] += basis * blue;
+                    }
+                }
+            }
+        }
+        double[][] factors = new double[count][];
+        for (int component = 0; component < count; component++) {
+            double normalisation = component == 0 ? 1 : 2;
+            double scale = normalisation / (width * height);
+            factors[component] = new double[] { r[component] * scale, g[component] * scale, b[component] * scale };
+        }
+        return factors;
     }
 
     private static double sRGBToLinear(int value) {
