@@ -198,14 +198,25 @@ describe('Home (the main menu)', () => {
 describe('Home sidebar', () => {
   const sidebar = () => document.getElementById('adminSidebar') as HTMLElement;
 
-  it('offers a plain editor their profile only', async () => {
+  it('offers a plain editor their profile, and the comment queue when they may moderate a blog', async () => {
     features = { ...features, groupBlogging: false };
     renderRoutes(appRoutes, '/', { boot: editorBoot });
     const profile = await screen.findByRole('link', { name: 'Your profile' });
     expect(profile).toHaveAttribute('href', '/profile');
     await screen.findByText('Author Blog');
-    expect(sidebar().querySelectorAll('.sidebar-group')).toHaveLength(1);
+    expect(sidebar().querySelectorAll('.sidebar-group')).toHaveLength(2);
     expect(sidebar().querySelector('.bi-person')).not.toBeNull();
+    expect(within(sidebar()).getByRole('link', { name: 'Comments' })).toHaveAttribute('href', '/comments');
+  });
+
+  it('offers a limited member their profile only: no comment queue without a blog to moderate', async () => {
+    features = { ...features, groupBlogging: false };
+    home = { weblogs: [limited] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByRole('link', { name: 'Your profile' });
+    await screen.findByText('Limited Blog');
+    expect(sidebar().querySelectorAll('.sidebar-group')).toHaveLength(1);
+    expect(within(sidebar()).queryByRole('link', { name: 'Comments' })).toBeNull();
   });
 
   it('offers weblog creation when users may create them and group blogging is on, even with weblogs', async () => {

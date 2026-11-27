@@ -367,6 +367,9 @@ public final class Routes {
             // The moderation list: its wrapper, emitted for an empty tab as for a full one.
             new Route("/pressroom-ui/app/weblogs/it_weblog/comments", Role.EDITOR, "", "#comments-list-marker"),
 
+            // The cross-blog approval queue: its wrapper, emitted for an empty queue as for a full one.
+            new Route("/pressroom-ui/app/comments", Role.EDITOR, "", "#comment-queue-marker"),
+
             // The category table itself (seed-it-data.sql seeds a category, so it renders).
             new Route("/pressroom-ui/app/weblogs/it_weblog/categories", Role.EDITOR, "", "table#category-table")
     );

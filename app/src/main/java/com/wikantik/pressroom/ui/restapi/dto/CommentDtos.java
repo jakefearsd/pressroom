@@ -59,7 +59,11 @@ public final class CommentDtos {
     }
 
     /** The blog a queued comment is on: what the approval queue names it by and acts on it with. */
-    public record QueueWeblog(String handle, String name) {
+    public record QueueWeblog(
+            @Schema(description = "The blog's handle: the {handle} of the per-blog comment routes that act on the row.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) String handle,
+            @Schema(description = "The blog's name, as the main menu shows it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) String name) {
     }
 
     /**
@@ -70,6 +74,7 @@ public final class CommentDtos {
     public record QueueComment(String id, String entryId, String entryTitle, String status, String body,
             Instant created, Instant statusChanged, String authorUserName,
             String authorDisplayName, boolean authorIsOwner, String replyTo, String reply,
+            @Schema(description = "The blog the comment is on.", requiredMode = Schema.RequiredMode.REQUIRED)
             QueueWeblog weblog, String entryPermalink) {
     }
 

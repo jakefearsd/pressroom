@@ -5,6 +5,7 @@ import type { components } from './schema';
 
 export type EntryView = components['schemas']['EntryView'];
 export type CommentView = components['schemas']['CommentView'];
+export type QueueComment = components['schemas']['QueueComment'];
 export type CategoryView = components['schemas']['CategoryView'];
 
 /** Entries per page, as the JSP list's COUNT. */
@@ -107,5 +108,14 @@ export function useComments(handle: string, filters: CommentFilters) {
         }
       }
     }))
+  });
+}
+
+/** One page of the cross-blog approval queue: comments of one status on every blog the caller may moderate. */
+export function useCommentQueue(status: string, offset: number) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['commentQueue', status, offset],
+    queryFn: () => call(api.GET('/v1/me/comments', { params: { query: { status, offset, limit: COMMENTS_PAGE } } }))
   });
 }

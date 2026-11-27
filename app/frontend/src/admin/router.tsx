@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { Frame, type FrameHandle } from './frame/Frame';
 import { AdminHome, WeblogHome } from './screens/Placeholders';
+import { CommentQueue } from './screens/CommentQueue';
 import { Home, HomeSidebar } from './screens/Home';
 import { SiteTraffic } from './screens/traffic/SiteTraffic';
 import { WeblogTraffic } from './screens/traffic/WeblogTraffic';
@@ -41,6 +42,7 @@ export const appRoutes: RouteObject[] = [{
   element: <Frame />,
   children: [
     { index: true, element: <Home />, ...scoped('none', HomeSidebar) },
+    { path: 'comments', element: <CommentQueue />, ...scoped('none', HomeSidebar) },
     { path: 'weblogs/:handle', element: <WeblogHome />, ...scoped('weblog') },
     { path: 'weblogs/:handle/traffic', element: <WeblogTraffic />, ...scoped('weblog') },
     { path: 'weblogs/:handle/entries', element: <Entries />, ...scoped('weblog') },

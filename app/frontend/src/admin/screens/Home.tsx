@@ -209,6 +209,9 @@ export function HomeSidebar() {
   return (
     <>
       {group('bi-person', react('/profile'), t('yourWebsites.editProfile'), t('yourWebsites.editProfile.desc'))}
+      {mine.data?.weblogs.some((w) => w.canModerate) === true
+        ? group('bi-chat-left-text', react('/comments'), t('yourWebsites.comments'), t('yourWebsites.comments.desc'))
+        : null}
       {creation ? group('bi-plus-lg', react('/weblogs/new'), t('yourWebsites.createWeblog'),
         t('yourWebsites.createWeblog.desc')) : null}
       {user.globalPermission === 'admin'

@@ -9294,12 +9294,14 @@
             "type" : "string"
           },
           "weblog" : {
-            "$ref" : "#/components/schemas/QueueWeblog"
+            "$ref" : "#/components/schemas/QueueWeblog",
+            "description" : "The blog the comment is on."
           },
           "entryPermalink" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "weblog" ]
       },
       "QueuePage" : {
         "type" : "object",
@@ -9337,12 +9339,15 @@
         "type" : "object",
         "properties" : {
           "handle" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The blog's handle: the {handle} of the per-blog comment routes that act on the row."
           },
           "name" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The blog's name, as the main menu shows it."
           }
-        }
+        },
+        "required" : [ "handle", "name" ]
       },
       "UserPage" : {
         "type" : "object",
