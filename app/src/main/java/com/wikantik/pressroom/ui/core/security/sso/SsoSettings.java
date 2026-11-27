@@ -20,6 +20,7 @@ public record SsoSettings(String clientId, String clientSecret, String discovery
     public static final String GOOGLE_DISCOVERY = "https://accounts.google.com/.well-known/openid-configuration";
 
     private static final String WELL_KNOWN = "/.well-known/openid-configuration";
+    private static final String GOOGLE_ISSUER = "https://accounts.google.com";
     private static final String DEFAULT_LABEL = "Google";
 
     /** Trims every value and applies the defaults for a blank discovery URI or label. */
@@ -61,6 +62,14 @@ public record SsoSettings(String clientId, String clientSecret, String discovery
             s = s.substring(0, s.length() - 1);
         }
         return s;
+    }
+
+    /**
+     * True when the provider is Google, told by the issuer and never by the
+     * label: only then may a sign-in button carry Google's G mark.
+     */
+    public boolean isGoogle() {
+        return GOOGLE_ISSUER.equalsIgnoreCase(issuer());
     }
 
     @Override
