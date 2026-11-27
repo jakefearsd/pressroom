@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Criterion 25 (spec 2026-10-13): every message key the agent-accounts work
- * adds is in all eight bundles. MessageKeyTest checks only the base bundle
+ * adds is in all eight bundles; the reply-email keys of 0.18.0 (Part F) since. MessageKeyTest checks only the base bundle
  * and ApplicationResourcesTest runs nothing, so without this a translation
  * silently falls back to English -- or, for a key a later task forgets,
  * to nothing it can be checked against.
@@ -44,7 +44,9 @@ class AgentAccountMessagesTest {
     private static final Path RESOURCES = Path.of("src/main/resources");
 
     private static final List<String> PREFIXES =
-            List.of("userList.", "personForm.", "userWeblogs.", "apiTokens.", "agent.");
+            List.of("userList.", "personForm.", "userWeblogs.", "apiTokens.", "agent.",
+                    // 0.18.0 Part F: reply emails, the unsubscribe page, the account's Email switch
+                    "comments.replied.", "unsubscribe.", "account.email.");
 
     private static final Set<String> NAMED_KEYS = Set.of("tabbedmenu.admin.apiTokens");
 
