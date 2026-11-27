@@ -52,6 +52,7 @@ import static com.codeborne.selenide.Selenide.executeAsyncJavaScript;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -187,7 +188,7 @@ class ReaderStateIT extends PressroomIT {
 
         $(SAVE_BUTTON).shouldHave(attribute("aria-pressed", "true"));
         $(SAVE + " .reader-note").shouldHave(exactText("Saved to your account."));
-        assertEquals(null, executeJavaScript("return sessionStorage.getItem('pressroom.intent');"));
+        assertNull(executeJavaScript("return sessionStorage.getItem('pressroom.intent');"));
         assertTrue(state("entry=" + post.id()).get("saved").asBoolean());
 
         assertEquals("200", endpoint("{\"action\":\"unsave\",\"entry\":\"" + post.id() + "\"}", null));
