@@ -61,7 +61,7 @@ class MailCommentNotifierTest {
     void setUp() throws Exception {
         mocks = MockWeblogger.attached();
         mail = MockMailProvider.install();
-        notifier = new MailCommentNotifier(mocks.weblogger());
+        notifier = new MailCommentNotifier(mocks.weblogger(), new UnsubscribeTokens(() -> "held-notice-test-key"));
         property("site.adminemail", "admin@example.invalid");
         property("site.absoluteurl", "https://blog.example.invalid");
 

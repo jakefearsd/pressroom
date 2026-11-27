@@ -49,6 +49,8 @@ public class User implements Serializable {
     private Kind    kind = Kind.PERSON;
     private String  notes;
     private Date    lastLogin;
+    private boolean notifyReplies = true;
+    private boolean keepHistory = true;
 
     public User() {
     }
@@ -261,6 +263,28 @@ public class User implements Serializable {
     /** True for an agent account: no password, no sign-in, API tokens only. */
     public boolean isAgent() {
         return kind == Kind.AGENT;
+    }
+
+    /**
+     * Whether this account is emailed when an author replies to one of its
+     * comments (V057, on by default). The account page's Email switch and the
+     * one-click unsubscribe link turn it off.
+     */
+    public boolean isNotifyReplies() {
+        return notifyReplies;
+    }
+
+    public void setNotifyReplies(boolean notifyReplies) {
+        this.notifyReplies = notifyReplies;
+    }
+
+    /** Whether this account keeps a reading history (V057, on by default). */
+    public boolean isKeepHistory() {
+        return keepHistory;
+    }
+
+    public void setKeepHistory(boolean keepHistory) {
+        this.keepHistory = keepHistory;
     }
 
     /** An agent's purpose, shown only in the admin UI; null for a person. */

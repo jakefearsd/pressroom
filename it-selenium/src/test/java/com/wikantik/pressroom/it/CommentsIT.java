@@ -746,6 +746,52 @@ class CommentsIT extends PressroomIT {
         $("#accountDelete button").shouldNot(exist);
     }
 
+    /**
+     * Part F: the account page's Email switch, on for a reader by default, round-trips
+     * through the assembled WAR: off, saved and shown off after the reload, then on again.
+     * (The one-click unsubscribe link needs a token only a reply email carries; it is
+     * covered through the real security chain by UnsubscribeControllerTest.)
+     */
+    @Test
+    void theReaderTurnsReplyEmailsOffAndOnAgain() {
+        signInWithKeycloak(READER, open.fullPath());
+        $(TEXTAREA).should(visible);
+
+        openPath(ACCOUNT);
+        $("#email #notifyReplies").should(checked);
+        $("#notifyReplies").click();
+        clickAndAwaitNewPage($("#accountEmailForm button[type='submit']"));
+        $("#messages").shouldHave(text("Your email setting is saved."));
+        $("#notifyReplies").shouldNot(checked);
+
+        openPath(ACCOUNT);
+        $("#notifyReplies").shouldNot(checked);
+        $("#notifyReplies").click();
+        clickAndAwaitNewPage($("#accountEmailForm button[type='submit']"));
+        $("#notifyReplies").should(checked);
+    }
+
+    /**
+     * Part F: the unsubscribe page renders through its tiles definition for an anonymous
+     * visitor. A token that does not verify gets the page's own error state, with 400 by
+     * design, and the account link resolves under the context path. The confirmation and
+     * done states need a token signed with the site's generated secret, which only a reply
+     * email carries; UnsubscribeControllerTest covers them through the real security chain.
+     */
+    @Test
+    void aBadUnsubscribeLinkRendersThePagesErrorState() {
+        BrowserHealth.current().expectRefusal("/pressroom-ui/unsubscribe.rol");
+
+        openPath("/pressroom-ui/unsubscribe.rol?t=garbage");
+
+        $("#unsubscribePage").should(exist).shouldHave(text("This unsubscribe link does not work."));
+        $("#unsubscribeForm").shouldNot(exist);
+        assertEquals(baseUrl() + "/pressroom-ui/account.rol",
+                $("#unsubscribePage a").getAttribute("href"), "the account link carries the context path");
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+    }
+
     // ---------------------------------------------------------- criterion 26
 
     /**

@@ -53,7 +53,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * The reader's account page: the display name, every comment the account has
- * written, and "Delete my account".
+ * written, the Email switch (reply-notification emails), and "Delete my
+ * account".
  *
  * <p><b>Who gets in.</b> Any signed-in account with the global {@code comment}
  * action, which readers hold and editors and administrators hold too; no
@@ -136,6 +137,30 @@ public class AccountController extends BaseController {
         }
         show(account, screenName, request, model);
         return VIEW;
+    }
+
+    /**
+     * The Email section's switch: reply-notification emails on when the box
+     * is ticked ({@code notifyReplies} sent), off when it is not (an unticked
+     * box sends nothing). A save that fails is rolled back and reported.
+     */
+    @PostMapping("/account!saveEmailSetting.rol")
+    public String saveEmailSetting(@RequestParam(name = "notifyReplies", required = false) String notifyReplies,
+                                   HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        User account = getAuthenticatedUser(request);
+        boolean on = notifyReplies != null;
+        try {
+            account.setNotifyReplies(on);
+            weblogger.getUserManager().saveUser(account);
+            weblogger.flush();
+            log.info("account {} turned reply emails {}", account.getUserName(), on ? "on" : "off");
+            addFlashMessage(redirectAttributes, "account.email.saved", request);
+        } catch (WebloggerException ex) {
+            log.error("Could not save the email setting of {}", account.getUserName(), ex);
+            weblogger.release();
+            addFlashError(redirectAttributes, STORE_ERROR, request);
+        }
+        return BACK + "#email";
     }
 
     @PostMapping("/account!deleteComment.rol")
@@ -276,6 +301,7 @@ public class AccountController extends BaseController {
         if (account == null) {
             return;
         }
+        model.addAttribute("notifyReplies", account.isNotifyReplies());
         try {
             List<ReaderComment> comments = weblogger.getCommentManager().getCommentsByAuthor(account).stream()
                     .filter(c -> !CommentRules.isTombstone(c))

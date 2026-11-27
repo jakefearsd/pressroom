@@ -27,6 +27,7 @@
 <c:url var="saveNameUrl" value="/pressroom-ui/account!saveName.rol"/>
 <c:url var="deleteCommentUrl" value="/pressroom-ui/account!deleteComment.rol"/>
 <c:url var="deleteAccountUrl" value="/pressroom-ui/account!deleteAccount.rol"/>
+<c:url var="saveEmailUrl" value="/pressroom-ui/account!saveEmailSetting.rol"/>
 
 <div id="accountPage">
 
@@ -101,6 +102,29 @@
         </div>
         </c:otherwise>
         </c:choose>
+    </section>
+
+    <%-- The Email section: self-contained (its own form, URL and messages), so
+         it moves as one block when the page is rebuilt. The menu's "Email
+         settings" link and the unsubscribe page point at #email. --%>
+    <section id="email" class="mb-4">
+        <h2 class="section-head"><spring:message code="account.email.heading"/></h2>
+        <form id="accountEmailForm" method="post" action="${saveEmailUrl}">
+            <sec:csrfInput/>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="notifyReplies"
+                       name="notifyReplies" value="true" aria-describedby="notifyRepliesHelp"
+                       <c:if test="${notifyReplies}">checked</c:if>/>
+                <label class="form-check-label" for="notifyReplies"><spring:message code="account.email.replies.label"/></label>
+            </div>
+            <div class="form-text mb-3" id="notifyRepliesHelp">
+                <c:choose>
+                <c:when test="${empty account.emailAddress}"><spring:message code="account.email.noAddress"/></c:when>
+                <c:otherwise><spring:message code="account.email.replies.help"/></c:otherwise>
+                </c:choose>
+            </div>
+            <button type="submit" class="btn btn-primary"><spring:message code="account.email.save"/></button>
+        </form>
     </section>
 
     <section id="accountDelete">

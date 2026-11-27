@@ -21,6 +21,7 @@ package com.wikantik.pressroom.util;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
@@ -29,7 +30,9 @@ import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.Address;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,10 +213,46 @@ public final class MailUtil {
         if (mailProvider == null) {
             return;
         }
+        MimeMessage message = addressed(mailProvider.getSession(), from, replyTo, to, cc, bcc, subject);
+        message.setContent(content, mimeType);
+        deliver(mailProvider, message);
+    }
 
-        Session session = mailProvider.getSession();
+    /**
+     * Sends one message to one recipient as text and HTML alternatives, the
+     * text part first, with extra headers (a reader's reply notification and
+     * its {@code List-Unsubscribe} pair). Does nothing when mail is not
+     * configured.
+     *
+     * @param headers header name to value, each value already a single line
+     */
+    public static void sendAlternativeMessage(String from, String to, String subject, String text, String html,
+            Map<String, String> headers) throws MessagingException {
+
+        MailProvider mailProvider = WebloggerStartup.getMailProvider();
+        if (mailProvider == null) {
+            return;
+        }
+        MimeMessage message = addressed(mailProvider.getSession(), from, null, new String[] {to}, null, null,
+                subject);
+        MimeBodyPart plain = new MimeBodyPart();
+        plain.setText(text, "UTF-8");
+        MimeBodyPart rich = new MimeBodyPart();
+        rich.setText(html, "UTF-8", "html");
+        MimeMultipart alternatives = new MimeMultipart("alternative");
+        alternatives.addBodyPart(plain);
+        alternatives.addBodyPart(rich);
+        message.setContent(alternatives);
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            message.setHeader(header.getKey(), header.getValue());
+        }
+        deliver(mailProvider, message);
+    }
+
+    /** A message with its sender, reply-to, recipients and subject set, and no body yet. */
+    private static MimeMessage addressed(Session session, String from, String replyTo, String[] to, String[] cc,
+            String[] bcc, String subject) throws MessagingException {
         MimeMessage message = new MimeMessage(session);
-
         // n.b. any default from address is expected to be determined by caller.
         if (! StringUtils.isEmpty(from)) {
             InternetAddress sentFrom = new InternetAddress(from);
@@ -259,7 +298,11 @@ public final class MailUtil {
             message.setRecipients(Message.RecipientType.BCC, copyTo);
         }
         message.setSubject((subject == null) ? "(no subject)" : subject, "UTF-8");
-        message.setContent(content, mimeType);
+        return message;
+    }
+
+    /** Dates and finishes the message, then hands it to the transport, retrying the addresses still valid. */
+    private static void deliver(MailProvider mailProvider, MimeMessage message) throws MessagingException {
         message.setSentDate(new java.util.Date());
 
         // Update the headers from the content just set. Transport.sendMessage

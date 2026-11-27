@@ -313,16 +313,16 @@ public class SecurityConfig {
                 // default. See security.xml's own comment on this same rule
                 // for why an implicit deny-by-default here would be wrong.
                 .anyRequest().permitAll())
-            // The CSRF exemption in this application: submitting the
-            // contact/subscribe forms.
-            //
-            // isPublicAudiencePost is deliberately narrow -- see its own
-            // comment below for what it matches and why the exemption is
-            // safe. A second exemption used to sit here for anonymous comment
-            // posting; it was removed with the comment subsystem, and
-            // isPublicAudiencePost is now the only entry in this list.
+            // The CSRF exemptions in this application, each one exact path:
+            // submitting the contact/subscribe forms (isPublicAudiencePost),
+            // and the one-click unsubscribe POST from a reply email
+            // (isOneClickUnsubscribe). Both are deliberately narrow -- see
+            // their own comments below for what they match and why the
+            // exemption is safe. A third used to sit here for anonymous
+            // comment posting; it was removed with the comment subsystem.
             .csrf(csrf -> csrf.ignoringRequestMatchers(
-                    SecurityConfig::isPublicAudiencePost))
+                    SecurityConfig::isPublicAudiencePost,
+                    SecurityConfig::isOneClickUnsubscribe))
             .formLogin(form -> form
                 .loginPage("/pressroom-ui/login.rol")
                 .loginProcessingUrl("/pressroom_j_security_check")
@@ -681,5 +681,21 @@ public class SecurityConfig {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         return "/pressroom-ui/rendering/contact.rol".equals(path)
                 || "/newsletter/subscribe".equals(path);
+    }
+
+    /**
+     * The unsubscribe link in a reply email, POSTed by the page's button or
+     * by the reader's mail client (RFC 8058 one-click, which carries no CSRF
+     * token and no cookie of ours). The signed token in the URL is the whole
+     * authority, and all it can do is turn that account's reply emails off,
+     * which the account page turns back on, so a forged cross-site POST gains
+     * nothing a leaked link would not. Exactly POST, exactly this path.
+     */
+    private static boolean isOneClickUnsubscribe(HttpServletRequest request) {
+        if (!"POST".equals(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return "/pressroom-ui/unsubscribe.rol".equals(path);
     }
 }

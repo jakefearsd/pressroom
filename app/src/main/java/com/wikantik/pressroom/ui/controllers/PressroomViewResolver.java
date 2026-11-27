@@ -241,6 +241,11 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                 .content("/WEB-INF/jsps/core/Account.jsp")
                 .register();
 
+        // The unsubscribe link in a reply email: anonymous, like the site directory.
+        define(".Unsubscribe").on(SIMPLE)
+                .content("/WEB-INF/jsps/core/Unsubscribe.jsp")
+                .register();
+
         define(".GenericError").on(SIMPLE)
                 .content("/WEB-INF/jsps/core/GenericError.jsp")
                 .register();
