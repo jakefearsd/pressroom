@@ -433,12 +433,12 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
                 ) : null}
               </p>
             )}
+            <SummaryField form={form} set={set} />
             <EditorSurface editorRef={editor} handle={handle} entryId={entryId} contextPath={contextPath} text={form.text}
                            onTextChange={(text) => { set('text', text); }} saveState={saveState}
                            primaryActionKey="weblogEdit.post" saveActionKey={live ? 'weblogEdit.update' : 'weblogEdit.save'}
                            onSave={onShortcutSave} onPublish={onShortcutPublish}
                            onChooseMedia={() => { setChooser('insert'); }} />
-            <SummaryDrawer form={form} set={set} />
           </div>
           <div className="editor-rail">
             <PublishBox form={form} set={set} errors={errors} status={status} updateTime={server?.updateTime}
@@ -513,24 +513,18 @@ function parseDraft(text: string, current: EntryForm): EntryForm {
   }
 }
 
-/** The summary, in a quiet drawer under the editor; open from the start when one has been written. */
-function SummaryDrawer({ form, set }: { form: EntryForm; set: Setter }) {
+/** The summary, directly under the title and permalink: one line until focused or written, then it grows. */
+function SummaryField({ form, set }: { form: EntryForm; set: Setter }) {
   const t = useT();
-  const [opened, setOpened] = useState(form.summary !== '');
+  const [focused, setFocused] = useState(false);
   return (
-    <>
-      <button type="button" className={`editor-drawer${opened ? '' : ' collapsed'}`} aria-expanded={opened}
-              aria-controls="collapseSummaryEditor" onClick={() => { setOpened((o) => !o); }}>
-        {t('weblogEdit.summary')}
-      </button>
-      <div id="collapseSummaryEditor" className={`collapse${opened ? ' show' : ''}`}>
-        <div className="editor-drawer-body">
-          <textarea name="bean.summary" id="edit_summary" rows={3} className="col-sm-12" aria-describedby="edit_summary_tip"
-                    aria-label={t('weblogEdit.summary')} value={form.summary}
-                    onChange={(e) => { set('summary', e.target.value); }} />
-          <div id="edit_summary_tip" className="form-text">{t('weblogEdit.summary.tip')}</div>
-        </div>
-      </div>
-    </>
+    <div className="editor-summary">
+      <textarea name="bean.summary" id="edit_summary" rows={focused || form.summary !== '' ? 3 : 1}
+                className="editor-summary-field" aria-describedby="edit_summary_tip"
+                aria-label={t('weblogEdit.summary')} placeholder={t('weblogEdit.summary.add')} value={form.summary}
+                onFocus={() => { setFocused(true); }} onBlur={() => { setFocused(false); }}
+                onChange={(e) => { set('summary', e.target.value); }} />
+      <div id="edit_summary_tip" className="form-text">{t('weblogEdit.summary.tip')}</div>
+    </div>
   );
 }

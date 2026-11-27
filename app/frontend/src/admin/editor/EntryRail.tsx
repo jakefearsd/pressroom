@@ -55,6 +55,7 @@ interface PublishProps {
 export function PublishBox(p: PublishProps) {
   const t = useT();
   const live = p.canPublish && p.status === 'PUBLISHED';
+  const shortcut = `${/Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '\u2318' : 'Ctrl'}+S`;
   const publishKey = live ? 'weblogEdit.update' : p.canPublish ? 'weblogEdit.post' : 'weblogEdit.submitForReview';
   return (
     <div className="editor-box">
@@ -70,9 +71,9 @@ export function PublishBox(p: PublishProps) {
              value={p.form.pubTime} onChange={(e) => { p.set('pubTime', e.target.value); }} />
       <div className="editor-tz">{p.tz}</div>
       <div className="editor-btnrow">
-        <button type="button" className="btn btn-primary" disabled={p.saving} {...(live ? { 'data-save-shortcut': true } : {})}
+        <button type="button" className="btn btn-primary" disabled={p.saving} {...(live ? { 'data-save-shortcut': true, title: shortcut } : {})}
                 onClick={() => { p.onSave('publish'); }}>{t(publishKey)}</button>
-        <button type="button" className="btn btn-secondary" disabled={p.saving} {...(live ? {} : { 'data-save-shortcut': true })}
+        <button type="button" className="btn btn-secondary" disabled={p.saving} {...(live ? {} : { 'data-save-shortcut': true, title: shortcut })}
                 onClick={() => { p.onSave('draft'); }}>{t(live ? 'weblogEdit.unpublish' : 'weblogEdit.save')}</button>
       </div>
       {p.entryId === undefined ? null : (

@@ -60,16 +60,36 @@ describe('the entry editor: loading', () => {
     expect(window.getSelection()?.toString()).toBe(state.entry['permalink']);
   });
 
-  it('opens the summary drawer when a summary was written, and keeps the drawers closed otherwise', async () => {
+  it('shows the summary under the permalink, with its hint, and the SEO drawer closed', async () => {
     state.entry['summary'] = 'A short one.';
     open('/weblogs/alpha/entries/e1');
     await loaded();
-    expect(screen.getByRole('button', { name: 'Summary (optional)' })).toHaveAttribute('aria-expanded', 'true');
-    expect(document.getElementById('collapseSummaryEditor')).toHaveClass('show');
-    expect(screen.getByLabelText('Summary (optional)')).toHaveValue('A short one.');
+    const summary = screen.getByLabelText('Summary (optional)');
+    expect(summary).toHaveValue('A short one.');
+    expect(summary).toHaveAttribute('id', 'edit_summary');
+    const permalink = document.querySelector('.editor-permalink') as HTMLElement;
+    expect(permalink.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const surface = document.querySelector('.editor-surface, .cm-editor') as HTMLElement;
+    expect(summary.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.getElementById('edit_summary_tip')).toHaveTextContent('lists of entries, in search results');
     expect(document.getElementById('collapseSeo')).not.toHaveClass('show');
     await userEvent.click(screen.getByRole('button', { name: 'SEO and sharing' }));
     expect(document.getElementById('collapseSeo')).toHaveClass('show');
+  });
+
+  it('shows an empty summary as one line, and grows it on focus', async () => {
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    const summary = screen.getByPlaceholderText('Add a summary');
+    expect(summary).toHaveAttribute('rows', '1');
+    await userEvent.click(summary);
+    expect(summary).toHaveAttribute('rows', '3');
+  });
+
+  it('puts the platform shortcut in the title of the save button', async () => {
+    open('/weblogs/alpha/entries/e1');
+    await loaded();
+    expect(document.querySelector('[data-save-shortcut]')).toHaveAttribute('title', 'Ctrl+S');
   });
 
   it('sends a missing entry to the app home and a trashed one to the Trash', async () => {

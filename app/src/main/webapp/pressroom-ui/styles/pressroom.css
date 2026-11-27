@@ -829,6 +829,11 @@ table.mm_table_actions td {
     column-gap: 26px;
     row-gap: 14px;
     align-items: start;
+    /* Row 1 (the rail) is the flexible one, so it is as tall as the writing
+       surface that spans the rows: that height is the range the sticky rail
+       travels in. The newsletter, revisions and delete cards follow in
+       implicit rows at the foot of the column. */
+    grid-template-rows: 1fr;
 }
 
 .editor-form {
@@ -847,6 +852,12 @@ table.mm_table_actions td {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    /* The publish panel stays on screen while a long entry scrolls; a rail
+       taller than the viewport scrolls inside itself. */
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
 }
 
 .editor-rail-extra {
@@ -882,6 +893,14 @@ table.mm_table_actions td {
     .editor-rail-extra {
         grid-column: 1;
         grid-row: auto;
+    }
+    .editor-grid {
+        grid-template-rows: none;
+    }
+    .editor-rail {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
     }
 }
 
@@ -1170,6 +1189,48 @@ table.mm_table_actions td {
    in the rail and inherits that box's own top padding. */
 .editor-main > .editor-drawer {
     margin: 14px 0 0;
+}
+
+/* The summary, under the title and permalink: one quiet line, taller once
+   focused or written. */
+.editor-summary {
+    margin: 0 0 12px;
+}
+
+.editor-summary-field {
+    display: block;
+    width: 100%;
+    resize: vertical;
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: transparent;
+}
+
+.editor-summary .form-text {
+    margin-top: 4px;
+}
+
+/* The entries filter: search, Filter and the More filters toggle on one
+   row, the status chips under it, the rarer fields behind the toggle. */
+.entries-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.entries-filter-text {
+    flex: 1 1 260px;
+    max-width: 420px;
+}
+
+.entries-more-fields:not([hidden]) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0 14px;
 }
 
 /* Quiet destructive action: a text link, not a red button. Shared -- the

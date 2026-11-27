@@ -32,6 +32,9 @@ const STATUS_CHIPS = [
 /** The JSP list's own default order (EntriesBean.sortBy); the API's, when none is sent, is the publication time. */
 const DEFAULT_SORT = 'UPDATE_TIME';
 
+/** The fields behind "More filters"; the toggle starts open when any is set (sortBy counts when not the default). */
+const MORE_PARAMS = ['category', 'tags', 'startDate', 'endDate'] as const;
+
 const FILTER_PARAMS = ['status', 'category', 'tags', 'text', 'startDate', 'endDate'] as const;
 
 function titleOf(entry: EntryView): string {
@@ -92,50 +95,26 @@ export function Entries() {
   };
 
   const activeStatus = params.get('status') ?? 'ALL';
+  const [moreOpen, setMoreOpen] = useState(MORE_PARAMS.some((name) => (params.get(name) ?? '') !== '')
+    || (params.get('sortBy') ?? DEFAULT_SORT) !== DEFAULT_SORT);
   return (
     <>
       <PageTitle>{t('weblogEntryQuery.title')}</PageTitle>
       <p className="subtitle"><Markup text={t('weblogEntryQuery.subtitle', markupArg(handle))} /></p>
       <p className="pagetip">{t('weblogEntryQuery.tip')}</p>
 
-      <form className="form-stacked entries-filter mb-3" key={search} onSubmit={submitFilter}>
-        <p className="sidebar-label">{t('weblogEntryQuery.sidebarTitle')}</p>
-        <p>{t('weblogEntryQuery.sidebarDescription')}</p>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_categoryName" className="form-label">{t('weblogEntryQuery.label.category')}</label>
-          <select id="entries_bean_categoryName" name="category" className="form-select" defaultValue={params.get('category') ?? ''}>
-            <option value="">{t('weblogEntryQuery.label.anyCategory')}</option>
-            {(categories.data ?? []).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
+      <form className="form-stacked entries-filter mb-3" key={search} onSubmit={submitFilter}
+            aria-label={t('weblogEntryQuery.sidebarTitle')}>
+        <div className="entries-filter-bar">
+          <div className="entries-filter-text">
+            <label htmlFor="entries_bean_text" className="form-label">{t('weblogEntryQuery.label.text')}</label>
+            <input type="text" id="entries_bean_text" name="text" className="form-control" defaultValue={params.get('text') ?? ''} />
+          </div>
+          <button type="submit" className="btn btn-secondary">{t('weblogEntryQuery.button.query')}</button>
+          <button type="button" id="entries-more-filters" className="btn btn-link entries-more-toggle" aria-expanded={moreOpen}
+                  aria-controls="entries-more-fields" title={t('weblogEntryQuery.sidebarDescription')}
+                  onClick={() => { setMoreOpen((open) => !open); }}>{t('weblogEntryQuery.moreFilters')}</button>
         </div>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_tagsAsString" className="form-label">{t('weblogEntryQuery.label.tags')}</label>
-          <input type="text" id="entries_bean_tagsAsString" name="tags" className="form-control" defaultValue={params.get('tags') ?? ''} />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_text" className="form-label">{t('weblogEntryQuery.label.text')}</label>
-          <input type="text" id="entries_bean_text" name="text" className="form-control" defaultValue={params.get('text') ?? ''} />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_startDateString" className="form-label">{t('weblogEntryQuery.label.startDate')}</label>
-          <input type="date" id="entries_bean_startDateString" name="startDate" className="form-control" defaultValue={params.get('startDate') ?? ''} />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_endDateString" className="form-label">{t('weblogEntryQuery.label.endDate')}</label>
-          <input type="date" id="entries_bean_endDateString" name="endDate" className="form-control" defaultValue={params.get('endDate') ?? ''} />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="entries_bean_sortBy" className="form-label">{t('weblogEntryQuery.label.sortBy')}</label>
-          <select id="entries_bean_sortBy" name="sortBy" className="form-select" defaultValue={filters.sortBy}
-                  onChange={(event) => { setParams(new URLSearchParams(withParam(params, 'sortBy', event.target.value))); }}>
-            <option value="PUBLICATION_TIME">{t('weblogEntryQuery.label.pubTime')}</option>
-            <option value="UPDATE_TIME">{t('weblogEntryQuery.label.updateTime')}</option>
-          </select>
-        </div>
-        <button type="submit" className="btn btn-secondary">{t('weblogEntryQuery.button.query')}</button>
-      </form>
-
-      <div id="entries-list-marker">
         <nav className="entries-status-chips d-flex flex-wrap gap-2 mb-3" aria-label={t('weblogEdit.status')}>
           {STATUS_CHIPS.map((chip) => {
             const active = chip.key === activeStatus || (chip.key === 'ALL' && activeStatus === '');
@@ -148,6 +127,38 @@ export function Entries() {
             );
           })}
         </nav>
+        <div id="entries-more-fields" className="entries-more-fields" hidden={!moreOpen}>
+          <div className="mb-3">
+            <label htmlFor="entries_bean_categoryName" className="form-label">{t('weblogEntryQuery.label.category')}</label>
+            <select id="entries_bean_categoryName" name="category" className="form-select" defaultValue={params.get('category') ?? ''}>
+              <option value="">{t('weblogEntryQuery.label.anyCategory')}</option>
+              {(categories.data ?? []).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label htmlFor="entries_bean_tagsAsString" className="form-label">{t('weblogEntryQuery.label.tags')}</label>
+            <input type="text" id="entries_bean_tagsAsString" name="tags" className="form-control" defaultValue={params.get('tags') ?? ''} />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="entries_bean_startDateString" className="form-label">{t('weblogEntryQuery.label.startDate')}</label>
+            <input type="date" id="entries_bean_startDateString" name="startDate" className="form-control" defaultValue={params.get('startDate') ?? ''} />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="entries_bean_endDateString" className="form-label">{t('weblogEntryQuery.label.endDate')}</label>
+            <input type="date" id="entries_bean_endDateString" name="endDate" className="form-control" defaultValue={params.get('endDate') ?? ''} />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="entries_bean_sortBy" className="form-label">{t('weblogEntryQuery.label.sortBy')}</label>
+            <select id="entries_bean_sortBy" name="sortBy" className="form-select" defaultValue={filters.sortBy}
+                    onChange={(event) => { setParams(new URLSearchParams(withParam(params, 'sortBy', event.target.value))); }}>
+              <option value="PUBLICATION_TIME">{t('weblogEntryQuery.label.pubTime')}</option>
+              <option value="UPDATE_TIME">{t('weblogEntryQuery.label.updateTime')}</option>
+            </select>
+          </div>
+        </div>
+      </form>
+
+      <div id="entries-list-marker">
         {list.error !== null ? <ProblemBanner error={list.error} /> : null}
         {list.data === undefined ? null : (
           <>

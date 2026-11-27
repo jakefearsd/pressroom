@@ -81,6 +81,21 @@ class EditorSeoIT extends PressroomIT {
         loginAsAdmin();
     }
 
+    /** The publish panel is sticky: a long entry scrolled to its end still shows the publish button. */
+    @Test
+    void publishPanelStaysVisibleOnLongEntry() {
+        openPath(ENTRY_ADD);
+        AdminApp.awaitEditor();
+        AdminApp.titleField().setValue("IT Sticky " + Long.toString(System.nanoTime(), 36));
+        Editor.setText("Line of a long entry.\n\n".repeat(150));
+        com.codeborne.selenide.Selenide.executeJavaScript("window.scrollTo(0, document.documentElement.scrollHeight)");
+        com.codeborne.selenide.Selenide.sleep(300);
+        Boolean inViewport = com.codeborne.selenide.Selenide.executeJavaScript(
+                "const r = arguments[0].getBoundingClientRect();"
+                        + "return r.top >= 0 && r.bottom <= window.innerHeight;", AdminApp.publishButton());
+        assertTrue(Boolean.TRUE.equals(inViewport), "the publish button must be on screen at the foot of a long entry");
+    }
+
     @Test
     void seoFieldsSetInTheEditorReachThePublicHead() {
         String suffix = Long.toString(System.nanoTime(), 36);

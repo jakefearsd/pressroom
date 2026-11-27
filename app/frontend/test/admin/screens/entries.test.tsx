@@ -75,6 +75,7 @@ describe('Entries', () => {
     const user = userEvent.setup();
     show();
     await screen.findByRole('link', { name: 'First post' });
+    await user.click(screen.getByRole('button', { name: 'More filters' }));
     await user.selectOptions(await screen.findByLabelText('Category', { selector: 'select' }), 'Travel');
     await user.type(screen.getByLabelText('Tags'), 'a, b');
     await user.type(screen.getByLabelText('Search text'), 'beach');
@@ -90,9 +91,44 @@ describe('Entries', () => {
     expect(screen.getByLabelText('Tags')).toHaveValue('a, b');
   });
 
+  it('shows the search and status chips up front and keeps the other fields behind More filters', async () => {
+    const user = userEvent.setup();
+    show();
+    await screen.findByRole('link', { name: 'First post' });
+    const toggle = screen.getByRole('button', { name: 'More filters' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('Search text')).toBeVisible();
+    expect(within(screen.getByRole('navigation', { name: 'Status' })).getByRole('link', { name: 'Drafts' })).toBeVisible();
+    for (const label of ['Tags', 'Start date', 'End date', 'Sort by']) {
+      expect(screen.getByLabelText(label)).not.toBeVisible();
+    }
+    expect(screen.getByLabelText('Category', { selector: 'select' })).not.toBeVisible();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    for (const id of ['entries_bean_categoryName', 'entries_bean_tagsAsString', 'entries_bean_text',
+      'entries_bean_startDateString', 'entries_bean_endDateString', 'entries_bean_sortBy']) {
+      expect(document.getElementById(id)).toBeVisible();
+    }
+  });
+
+  it.each(['category=News', 'tags=a', 'startDate=2026-01-01', 'endDate=2026-02-01', 'sortBy=PUBLICATION_TIME'])(
+    'starts with More filters open when %s is in the URL', async (query) => {
+      show(`/weblogs/blog/entries?${query}`);
+      await screen.findByRole('link', { name: 'First post' });
+      expect(screen.getByRole('button', { name: 'More filters' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByLabelText('Tags')).toBeVisible();
+    });
+
+  it('starts with More filters closed for a search text alone or the default sort', async () => {
+    show('/weblogs/blog/entries?text=x&sortBy=UPDATE_TIME');
+    await screen.findByRole('link', { name: 'First post' });
+    expect(screen.getByRole('button', { name: 'More filters' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('sorts by update time by default and by publish time on request, keeping the filter', async () => {
     const user = userEvent.setup();
     show('/weblogs/blog/entries?text=x');
+    await user.click(await screen.findByRole('button', { name: 'More filters' }));
     const select = await screen.findByLabelText('Sort by');
     expect(select).toHaveValue('UPDATE_TIME');
     expect(requests[0]?.searchParams.get('sortBy')).toBe('UPDATE_TIME');
