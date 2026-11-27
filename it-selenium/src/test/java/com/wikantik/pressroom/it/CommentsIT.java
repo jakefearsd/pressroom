@@ -771,6 +771,27 @@ class CommentsIT extends PressroomIT {
         $("#notifyReplies").should(checked);
     }
 
+    /**
+     * Part F: the unsubscribe page renders through its tiles definition for an anonymous
+     * visitor. A token that does not verify gets the page's own error state, with 400 by
+     * design, and the account link resolves under the context path. The confirmation and
+     * done states need a token signed with the site's generated secret, which only a reply
+     * email carries; UnsubscribeControllerTest covers them through the real security chain.
+     */
+    @Test
+    void aBadUnsubscribeLinkRendersThePagesErrorState() {
+        BrowserHealth.current().expectRefusal("/pressroom-ui/unsubscribe.rol");
+
+        openPath("/pressroom-ui/unsubscribe.rol?t=garbage");
+
+        $("#unsubscribePage").should(exist).shouldHave(text("This unsubscribe link does not work."));
+        $("#unsubscribeForm").shouldNot(exist);
+        assertEquals(baseUrl() + "/pressroom-ui/account.rol",
+                $("#unsubscribePage a").getAttribute("href"), "the account link carries the context path");
+        BrowserHealth.current().assertNoBrokenResources();
+        BrowserHealth.current().assertNoFailedRequests();
+    }
+
     // ---------------------------------------------------------- criterion 26
 
     /**
