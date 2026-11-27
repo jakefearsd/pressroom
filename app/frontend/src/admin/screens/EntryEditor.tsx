@@ -284,6 +284,9 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
     void queries.invalidateQueries({ queryKey: revisionsKey(handle, view.id ?? '') });
   };
 
+  // Drafts, scheduled and last-published on the home and rail follow every save, publish and removal.
+  const refreshCounts = () => { void queries.invalidateQueries({ queryKey: ['me', 'weblogs'] }); };
+
   const save = (intent: 'draft' | 'publish') => run(async () => {
     const body = buildWrite(form, { isNew: server === undefined, intent, canPublish, siteAdmin, tz, now: Date.now(),
       ...(server === undefined ? {} : { original: server }) });
@@ -295,6 +298,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
     if (server === undefined) {
       const created = await call(api.POST('/v1/weblogs/{handle}/entries', { params: { path: { handle } }, body }));
       keeper.clear();
+      refreshCounts();
       void navigate(`/weblogs/${encodeURIComponent(handle)}/entries/${encodeURIComponent(created.id ?? '')}`,
         { replace: true, state: { notice: 'saved', status: created.status ?? 'DRAFT' } satisfies RouteState });
       return;
@@ -303,6 +307,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
       params: { path: { handle, id: server.id ?? '' } }, body
     }));
     adopt(updated, { kind: 'saved', status: updated.status ?? 'DRAFT' });
+    refreshCounts();
   });
 
   const sendNewsletter = () => run(async () => {
@@ -316,6 +321,7 @@ function EntryEditorForm({ handle, entry, weblog, categories, level, siteAdmin, 
   const trash = () => run(async () => {
     await call(api.DELETE('/v1/weblogs/{handle}/entries/{id}', { params: { path: { handle, id: pathId } } }));
     keeper.clear();
+    refreshCounts();
     setDeleting(false);
     // The list shows the removed message above itself: the one flash channel, router state {message}.
     void navigate(`/weblogs/${encodeURIComponent(handle)}/entries`,

@@ -195,6 +195,15 @@ describe('delete (move to the Trash)', () => {
     expect(lastRequest('DELETE')?.path).toBe('/weblogs/alpha/entries/e1');
   });
 
+  it('refreshes the menu counts after moving an entry to the trash', async () => {
+    open('/weblogs/alpha/entries/e1');
+    await ready();
+    await waitFor(() => { expect(state.menuReads).toBe(1); });
+    await click(/Delete entry/);
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Move to Trash/i }));
+    await waitFor(() => { expect(state.menuReads).toBeGreaterThanOrEqual(2); });
+  });
+
   it('shows a refused delete in place and keeps the editor', async () => {
     server.use(http.delete(`${API}/weblogs/:handle/entries/:id`, () => problem(409, 'entry.alreadyTrashed', 'Already in the trash.')));
     const { router } = open('/weblogs/alpha/entries/e1');
