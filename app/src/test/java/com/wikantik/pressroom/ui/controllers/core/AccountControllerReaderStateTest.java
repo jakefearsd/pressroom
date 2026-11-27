@@ -485,6 +485,47 @@ class AccountControllerReaderStateTest {
         assertEquals(List.of("generic.error.check.logs"), errors(model));
     }
 
+    /**
+     * A reader-state failure degrades those sections only: "Your comments" still loads, and the delete
+     * refusal is still worked out (a member's page does not grow a Delete button).
+     */
+    @Test
+    void aReaderStateFailureStillShowsCommentsAndTheDeleteRefusal() throws Exception {
+        mocked = MockWeblogger.create();
+        ControllerTestFixture.useWeblogger(mocked.weblogger());
+        ReaderStateService failing = mock(ReaderStateService.class);
+        when(failing.lists(any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenThrow(new WebloggerException("down"));
+        com.wikantik.pressroom.pojos.ReaderComment mine = new com.wikantik.pressroom.pojos.ReaderComment();
+        when(mocked.commentManager().getCommentsByAuthor(any())).thenReturn(List.of(mine));
+        when(mocked.userManager().getWeblogPermissions(any(User.class)))
+                .thenReturn(List.of(mock(com.wikantik.pressroom.pojos.WeblogPermission.class)));
+        AccountController controller = withMessages(
+                new AccountController(new CommentService(mocked.weblogger(), comment -> { }), failing));
+        org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+
+        controller.execute(requestFor(account("reader-x")), model);
+
+        assertEquals(List.of(mine), model.get("comments"));
+        assertEquals("account.delete.member", model.get("deleteRefusal"));
+        assertEquals(List.of("generic.error.check.logs"), errors(model));
+    }
+
+    /** The delete refusal fails closed: when it cannot be worked out, the page hides the Delete button. */
+    @Test
+    void aDeleteRefusalThatCannotBeWorkedOutHidesTheButton() throws Exception {
+        mocked = MockWeblogger.create();
+        ControllerTestFixture.useWeblogger(mocked.weblogger());
+        when(mocked.userManager().getWeblogPermissions(any(User.class))).thenThrow(new WebloggerException("down"));
+        AccountController controller = withMessages(
+                new AccountController(new CommentService(mocked.weblogger(), comment -> { }), emptyLists()));
+        org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+
+        controller.execute(requestFor(account("reader-x")), model);
+
+        assertEquals("generic.error.check.logs", model.get("deleteRefusal"));
+    }
+
     /** Turning the history on with a save that cannot run is reported; nothing is cleared. */
     @Test
     void aFailedHistorySettingSaveIsReported() throws Exception {
@@ -664,6 +705,14 @@ class AccountControllerReaderStateTest {
         userNames.add(userName);
         TestUtils.endSession(true);
         return u;
+    }
+
+    /** A reader-state service whose every list is empty. */
+    private static ReaderStateService emptyLists() throws Exception {
+        ReaderStateService empty = mock(ReaderStateService.class);
+        when(empty.lists(any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(new com.wikantik.pressroom.business.reader.ReaderLists(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), java.util.Set.of()));
+        return empty;
     }
 
     private static User account(String userName) {

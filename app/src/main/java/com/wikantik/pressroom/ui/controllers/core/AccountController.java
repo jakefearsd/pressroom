@@ -456,16 +456,28 @@ public class AccountController extends BaseController {
             model.addAttribute("newsletterOffered", offered);
             labelled.addAll(lists.saved());
             labelled.addAll(history);
-
+        } catch (WebloggerException ex) {
+            log.error("Could not load the reader lists of {}", account.getUserName(), ex);
+            addError(model, STORE_ERROR, request);
+        }
+        // The comments and the delete refusal do not depend on the reader state, so a failure there
+        // degrades only those lists above (0.17.1 showed comments regardless).
+        try {
             List<ReaderComment> comments = weblogger.getCommentManager().getCommentsByAuthor(account).stream()
                     .filter(c -> !CommentRules.isTombstone(c))
                     .toList();
             model.addAttribute("comments", comments);
             comments.stream().map(ReaderComment::getEntry).filter(Objects::nonNull).forEach(labelled::add);
+        } catch (WebloggerException ex) {
+            log.error("Could not load the comments of {}", account.getUserName(), ex);
+            addError(model, STORE_ERROR, request);
+        }
+        try {
             model.addAttribute("deleteRefusal", deletionRefusal(account));
         } catch (WebloggerException ex) {
-            log.error("Could not load the account page of {}", account.getUserName(), ex);
-            addError(model, STORE_ERROR, request);
+            // Fail closed: a refusal that cannot be worked out hides the Delete button (the action re-checks).
+            log.error("Could not work out whether {} may be deleted", account.getUserName(), ex);
+            model.addAttribute("deleteRefusal", STORE_ERROR);
         }
         // Each listed entry, labelled once through fn:escapeXml (EntryListView.plainTitles).
         model.addAttribute("entryTitles", EntryListView.plainTitles(labelled));
