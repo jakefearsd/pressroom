@@ -180,7 +180,7 @@ class UserAdminIT extends PressroomIT {
      * error message cannot turn this green.
      */
     private boolean loginIsRefused(String userName) {
-        openPath("/pressroom-ui/login.rol");
+        openPath("/pressroom-ui/login.rol?author");
         $("#j_username").setValue(userName);
         $("#j_password").setValue(PASSWORD);
         // Wait for the sign-in's answer before asking for the menu: a menu

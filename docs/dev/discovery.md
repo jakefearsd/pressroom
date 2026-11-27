@@ -258,7 +258,10 @@ as `return` in the browser, so a cached page carries nothing per request; the
 sign-in page keeps only a path `ReturnPaths.sanitize` accepts, and both
 password and Google sign-in go back there (`docs/dev/sso.md`). Not on the site
 space (no bar there) nor on a custom-domain blog's own host (the script skips
-a link to another host). The colophon's links are unchanged.
+a link to another host). The colophon's links are unchanged. **With reader
+sign-in on (0.18.0)** the visitor's Sign in is the provider's button instead
+(the showGoogleSignIn macro, via `header`), and the colophon's Sign in is the
+authors' way in, carrying the return path (`docs/dev/sso.md`).
 
 ## Places you've been
 

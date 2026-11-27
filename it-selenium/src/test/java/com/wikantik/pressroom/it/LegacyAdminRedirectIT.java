@@ -247,7 +247,8 @@ class LegacyAdminRedirectIT extends PressroomIT {
     @Test
     void anOldBookmarkWhileSignedOutSignsInAndArrivesAtTheNewScreen() {
         openPath("/pressroom-ui/authoring/traffic.rol?weblog=" + WEBLOG_HANDLE);
-        $("#j_username").should(exist).setValue(ADMIN_USERNAME);
+        openAuthorSignIn();
+        $("#j_username").setValue(ADMIN_USERNAME);
         $("#j_password").setValue(ADMIN_PASSWORD);
         $("#login").click();
 
@@ -260,6 +261,7 @@ class LegacyAdminRedirectIT extends PressroomIT {
     @Test
     void aSignInWithNothingToReturnToLandsOnTheAppHome() {
         openPath("/pressroom-ui/login.rol");
+        openAuthorSignIn();
         $("#j_username").setValue(ADMIN_USERNAME);
         $("#j_password").setValue(ADMIN_PASSWORD);
         $("#login").click();

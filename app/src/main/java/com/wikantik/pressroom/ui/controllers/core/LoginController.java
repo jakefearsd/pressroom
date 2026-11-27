@@ -22,9 +22,12 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.core.security.sso.ReturnPaths;
+import com.wikantik.pressroom.ui.core.security.sso.SignInMark;
 import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -71,7 +74,8 @@ public class LoginController extends BaseController {
     public String execute(HttpServletRequest request, Model model,
                           @RequestParam(value = "error", required = false) String error,
                           @RequestParam(value = "sso", required = false) String ssoCode,
-                          @RequestParam(value = "return", required = false) String returnPath) {
+                          @RequestParam(value = "return", required = false) String returnPath,
+                          @RequestParam(value = "author", required = false) String author) {
 
         populateCommonModel(request, model);
 
@@ -100,6 +104,26 @@ public class LoginController extends BaseController {
         // An Object[] is used as the argument array as-is; a String would be split on ','.
         model.addAttribute("ssoLabelArgs", new Object[] {label});
 
+        if (sso.enabled()) {
+            readerFirst(request, model, error != null || author != null);
+        }
         return ".Login";
+    }
+
+    /**
+     * With reader sign-in on, the page is the readers' door (0.18.0): the
+     * heading ("Sign in to {site}") names the site, the provider's button
+     * comes first with its mark, and the password form waits in a collapsed "Author sign-in" section that
+     * a failed password or {@code ?author} opens. With SSO off none of this is
+     * in the model, so the page renders as it did before.
+     */
+    private void readerFirst(HttpServletRequest request, Model model, boolean authorFormOpen) {
+        String siteName = HtmlUtils.htmlEscape(StringUtils.defaultIfBlank(
+                WebloggerRuntimeConfig.getProperty("site.name"), "Pressroom").trim());
+        // The layout prints pageTitle as a message code with itself as the
+        // fallback text, so bundle text with the escaped name in it prints as is.
+        model.addAttribute("pageTitle", getText("login.reader.title", new Object[] {siteName}, request));
+        model.addAttribute("ssoMark", SignInMark.forProvider(sso));
+        model.addAttribute("authorSignInOpen", authorFormOpen);
     }
 }

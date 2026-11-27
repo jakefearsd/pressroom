@@ -54,4 +54,25 @@ class SsoSettingsTest {
         assertEquals("id", new SsoSettings(" id ", "s", " https://x.example/ ", " L ").clientId());
         assertEquals("https://x.example", new SsoSettings("i", "s", " https://x.example/ ", "L").issuer());
     }
+
+    /**
+     * The G mark and the word "Google" belong only to Google: the provider is
+     * told by its issuer, never by the label an operator types.
+     */
+    @ParameterizedTest
+    @CsvSource(value = {
+        "https://accounts.google.com/.well-known/openid-configuration,Google,true",
+        "https://accounts.google.com,Sign-in,true",
+        "https://accounts.google.com/,Google,true",
+        "http://localhost:8180/realms/pressroom-it,Keycloak,false",
+        "http://localhost:8180/realms/pressroom-it,Google,false",
+        "https://accounts.google.com.evil.example,Google,false"})
+    void googleIsToldByTheIssuerNotTheLabel(String discovery, String label, boolean google) {
+        assertEquals(google, new SsoSettings("id", "s", discovery, label).isGoogle());
+    }
+
+    @Test
+    void theDefaultProviderIsGoogle() {
+        assertTrue(new SsoSettings("id", "s", "", "").isGoogle());
+    }
 }

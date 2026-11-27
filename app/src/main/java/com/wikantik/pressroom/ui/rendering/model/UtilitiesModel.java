@@ -42,6 +42,9 @@ import com.wikantik.pressroom.business.jsonld.BreadcrumbJsonLd;
 import com.wikantik.pressroom.business.jsonld.BusinessJsonLd;
 import com.wikantik.pressroom.business.jsonld.EntryJsonLd;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.ui.core.security.sso.SignInMark;
+import com.wikantik.pressroom.ui.core.security.sso.SsoPaths;
+import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
 import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -200,6 +203,42 @@ public class UtilitiesModel implements Model {
                 "delete", context + "/pressroom-ui/rendering/comments/");
     }
              
+    //---------------------------------------------------------- Reader sign-in
+
+    /**
+     * Whether reader sign-in (SSO) is configured. Every reader sign-in surface
+     * (the header's button, the comments, the places nudge) renders only when
+     * it is; with it off each renders as before 0.18.0. A static setting, the
+     * same for every visitor, so it may shape a cached anonymous page.
+     */
+    public boolean isSsoEnabled() {
+        return sso().enabled();
+    }
+
+    /**
+     * Where a reader's sign-in starts, on the site's absolute URL, as the
+     * header's password Sign in link is: the page adds {@code ?return=} in the
+     * browser, and only when the page is on that host (the showGoogleSignIn
+     * macro of weblog.vm).
+     */
+    public String getSsoStartUrl() {
+        return WebloggerRuntimeConfig.getAbsoluteContextURL() + SsoPaths.START;
+    }
+
+    /** The provider's name for the buttons' "Sign in with {0}", raw: templates escape it. */
+    public String getSsoProviderLabel() {
+        return sso().providerLabel();
+    }
+
+    /** The buttons' icon: Google's G for Google, a neutral mark otherwise ({@link SignInMark}). */
+    public String getSignInMark() {
+        return SignInMark.forProvider(sso());
+    }
+
+    private static SsoSettings sso() {
+        return SsoSettings.fromConfig();
+    }
+
     //-------------------------------------------------------------- Date utils
     /**
      * Return date for current time.

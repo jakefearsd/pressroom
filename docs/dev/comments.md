@@ -179,7 +179,8 @@ by every controller in `ReaderRefusalSweepTest`.
 
 - `GET /comments/session.rol?entry=<id>`: JSON, `Cache-Control: no-store`; 404
   for an unknown or unpublished entry. Anonymous: `{signedIn:false, signInUrl?}` (absent with SSO off; the return
-  path is the entry's own path). Signed in but refused:
+  path is the entry's own path plus `#comments`, where the script focuses the
+  composer after the sign-in, 0.18.0). Signed in but refused:
   `{signedIn:true, canPost:false, reason}` with `reason` one of `closed`,
   `comments-off`, `disabled`, `custom-domain`, `no-permission` (the `CommentRefusal` name,
   lower case with hyphens; the script reads them, so a rename is a contract
@@ -201,7 +202,10 @@ comments and ownership out of the page.
 The script is in the audience-assets part of `weblog.vm`. It checks each
 endpoint's suffix (`endpointOk`), inserts every server string with
 `textContent` (never `innerHTML`), and accepts a sign-in link only if it is
-same-origin. An expired session makes the CSRF filter answer 403 (HTML) before
+same-origin. Signed out with SSO on it shows a greyed, disabled composer
+(`textarea.comments-locked`) above the provider's button, built by
+`window.pressroomGoogleSignIn('comments', ...)` ("Sign in with {provider} to
+comment"; `docs/dev/sso.md`), or a plain link when a theme never loaded it. An expired session makes the CSRF filter answer 403 (HTML) before
 the controller: on 401, 403 or an unexpected sub-400 answer (a login page where
 JSON was expected) it re-reads the session and re-renders (signed out shows the
 sign-in link, a reason shows its message, otherwise it retries once with the

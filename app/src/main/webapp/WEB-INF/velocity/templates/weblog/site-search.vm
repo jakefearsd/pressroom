@@ -33,6 +33,7 @@ never cached.
     ## The site space has no posts, so no feed autodiscovery.
     #showSeoHead()
     #showAnalyticsTrackingCode($model.weblog)
+    #showGoogleSignInAssets()
     <style>
 #parse("templates/weblog/site-styles.vm")
 /* the results page: one readable column under the masthead, aligned with it;

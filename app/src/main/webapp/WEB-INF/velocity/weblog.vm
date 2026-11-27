@@ -1096,6 +1096,8 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 #macro(showContentAssets)
 ## The site bar's rules ride along: every bundled head calls this macro.
 #showSiteBarStyles()
+## The reader sign-in button's rules and helper, after the site bar's (they outrank its link rules).
+#showGoogleSignInAssets()
 #set($pressroomContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
 ## Author boxes (single-quoted: a Velocity string literal is never parsed, so
 ## the hex prefixes cannot be read as directives). See the comment above.
@@ -1686,12 +1688,27 @@ document.addEventListener('DOMContentLoaded', function () {
       return text.notAllowed;
     }
 
-    // A sign-in link, or null when the URL the session gave is not on this site.
+    // A sign-in link, or null when the URL the session gave is not on this site:
+    // the provider's button from the shared helper (counted via comments), or a
+    // plain link on a page that never loaded the helper. Its href is the
+    // session's, which returns to the comments.
     function signInLink(url) {
       if (!sameOrigin(url)) { return null; }
-      var link = element('a', 'comments-sign-in', text.signIn);
+      var link = typeof window.pressroomGoogleSignIn === 'function'
+        ? window.pressroomGoogleSignIn('comments', text.signIn)
+        : element('a', null, text.signIn);
+      link.classList.add('comments-sign-in');
       link.href = url;
       return link;
+    }
+
+    // Signed out: the composer shows, greyed and closed, above the sign-in.
+    function lockedComposer() {
+      var box = element('textarea', 'comments-locked');
+      box.disabled = true;
+      box.rows = 3;
+      box.setAttribute('aria-label', text.label);
+      return box;
     }
 
     function showWhoami() {
@@ -1873,6 +1890,11 @@ document.addEventListener('DOMContentLoaded', function () {
       slot.appendChild(pendingList);
       slot.appendChild(form);
       offerDelete(session.ownPublished);
+      // Back from signing in to comment (the sign-in returns to the comments).
+      var section = slot.closest('.comments');
+      if (section && section.id && window.location.hash.slice(1) === section.id) {
+        textarea.focus();
+      }
     }
 
     getSession().then(function (answer) {
@@ -1882,7 +1904,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // the reader sees a Comments heading with no word on joining in.
         var link = signInLink(answer.signInUrl);
         var note = element('p', 'comments-note', link ? null : text.noSignIn);
-        if (link) { note.appendChild(link); }
+        if (link) {
+          slot.appendChild(lockedComposer());
+          note.appendChild(link);
+        }
         slot.appendChild(note);
       } else if (!answer.canPost) {
         slot.appendChild(element('p', 'comments-note', reasonText(answer.reason)));
@@ -2955,6 +2980,9 @@ before a word, which Velocity can read as a directive or a macro call.
   background: transparent; border: 1px solid currentColor; border-radius: 4px; cursor: pointer; }
 .comments .comment-form .comment-submit:disabled { opacity: .6; cursor: default; }
 .comments .comment-message { margin: .75rem 0 0; }
+.comments .comments-locked { display: block; width: 100%; min-height: 4.5em; margin: 0 0 .5rem; padding: .4em; box-sizing: border-box;
+  font: inherit; color: inherit; background: rgba(127, 127, 127, .08); border: 1px solid rgba(127, 127, 127, .35);
+  border-radius: 4px; opacity: .6; cursor: not-allowed; resize: none; }
 .comments .comment-delete { margin-left: auto; padding: 0; border: 0; background: none; color: inherit;
   font: inherit; font-size: .85em; text-decoration: underline; cursor: pointer; }
 </style>
@@ -2982,7 +3010,7 @@ before a word, which Velocity can read as a directive or a macro call.
   <div class="comments-slot" data-entry="$entry.id" data-permalink="$utils.escapeHTML($entry.relativePermalink)"
        data-session="$utils.escapeHTML($utils.commentEndpoints.session)" data-post="$utils.escapeHTML($utils.commentEndpoints.post)"
        data-delete="$utils.escapeHTML($utils.commentEndpoints.delete)"
-       data-msg-sign-in="$utils.escapeHTML($text.get("comments.signIn"))" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"
+       data-msg-sign-in="$utils.escapeHTML($text.get("comments.signIn", [$utils.ssoProviderLabel]))" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"
        data-msg-pending="$utils.escapeHTML($text.get("comments.pending"))" data-msg-awaiting="$utils.escapeHTML($text.get("comments.awaiting"))"
        data-msg-published="$utils.escapeHTML($text.get("comments.published"))" data-msg-error="$utils.escapeHTML($text.get("comments.error"))"
        data-msg-rate="$utils.escapeHTML($text.get("comments.rateLimited"))" data-msg-signed-in-as="$utils.escapeHTML($text.get("comments.signedInAs"))"
@@ -3116,24 +3144,153 @@ Same words and rules as the frontpage theme's top bar and the colophon.
 The classes are the prefix plus -account, -sign-in and -who, stable
 markers the rendering tests pin. Pages are cached per signed-in user, so
 a name never leaks between visitors.
+
+With reader sign-in on (0.18.0) a visitor's way in is the provider's button
+(the showGoogleSignIn macro, via "header") in place of Sign in; authors sign
+in from the colophon's Sign in, one click from their form.
 *#
 #macro(showAccountLinks $acctPrefix)
 <span class="${acctPrefix}-account">
 #if(!$utils.isUserAuthenticated())
+    #if($utils.ssoEnabled)
+    #showGoogleSignIn("header" "reader.signIn.header")
+    #else
     <a class="${acctPrefix}-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
+    #end
 #else
     #if($utils.authenticatedUser)<span class="${acctPrefix}-who">$utils.escapeHTML($utils.authenticatedUser.screenName)</span>#end
     #if($utils.isUserAuthor())<a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a>#end
     <a href="$url.logout">$text.get("navigationBar.logout")</a>
 #end
 </span>
-#if(!$utils.isUserAuthenticated())#showSignInReturnScript("${acctPrefix}-sign-in")#end
+#if(!$utils.isUserAuthenticated() && !$utils.ssoEnabled)#showSignInReturnScript("${acctPrefix}-sign-in")#end
+#end
+
+#**
+The reader sign-in button, shared by every place a signed-out reader meets
+it (0.18.0): the blog header, the places nudge, and Part E's Save and Follow.
+Call it only when $utils.ssoEnabled. $gsVia names the place for Umami
+(data-umami-event-via: header, comments, save, follow, article-end, places);
+$gsLabelKey is a message key whose one argument is the provider's label
+("Sign in with {0}"). The mark is Google's G only when the provider is
+Google ($utils.signInMark), and the label is the provider's own.
+
+The link goes straight to the provider (sso/start on the site's absolute
+URL); one script in the head (the showGoogleSignInAssets macro) adds the
+page's path and query to every such link once the page has parsed, so a
+cached page carries no per-request value and no script repeats per button. A button built in
+the browser comes from window.pressroomGoogleSignIn (the
+showGoogleSignInAssets macro), which makes the same element. The classes
+g-signin and g-signin-mark and the data-sign-in-return attribute are stable
+markers the rendering tests and the browser suite pin.
+*#
+#macro(showGoogleSignIn $gsVia $gsLabelKey)
+<a class="g-signin" data-umami-event="sign-in" data-umami-event-via="$gsVia" data-sign-in-return href="$utils.escapeHTML($utils.ssoStartUrl)">$utils.signInMark<span>$utils.escapeHTML($text.get($gsLabelKey, [$utils.ssoProviderLabel]))</span></a>
+#end
+
+#**
+The reader sign-in button's rules and its client-side twin, emitted into the
+head by the showContentAssets macro (every bundled theme) and by the site's
+own pages (discovery.vm, site-search.vm); nothing at all with reader sign-in
+off. The button follows Google's sign-in branding (white, a grey rule, dark
+text, the G) for Google, and is the same quiet white button with a neutral
+mark for any other provider. Colours are rgb(): a hash before a word is a
+directive here. Under 480px a header button narrows to its mark (the label
+stays as its accessible name), or a 320px site bar overflows beside the
+brand and the blogs menu. The selectors outrank a theme's "body.x a" and the site
+bar's own link rules, which come earlier in the head.
+
+window.pressroomGoogleSignIn(via, label) returns a new element identical to
+the macro's, for buttons built in the browser (the comments' sign-in,
+Part E's Save and Follow): label is the finished text, set with textContent;
+return is the page's path, query and hash, added only when the page is on
+the sign-in's host (a custom domain's page would come back on the site's).
+The mark is the server's own constant markup, never a reader's string.
+
+The same script gives every server-rendered button (the showGoogleSignIn
+macro, wherever it sits in the body) the page's path and query as its
+return once the page has parsed, on the same host only, keeping a return a
+link already has. Without it (a forked head that skips the showContentAssets
+macro) a button still signs in and lands on the front page.
+*#
+#macro(showGoogleSignInAssets)
+#if($utils.ssoEnabled)
+<style>
+html body a.g-signin[data-umami-event] {
+  display: inline-flex; align-items: center; gap: .5em; box-sizing: border-box; padding: .35em .75em;
+  background: rgb(255, 255, 255); color: rgb(31, 31, 31); border: 1px solid rgb(116, 119, 117); border-radius: 4px;
+  font: 500 .875rem/1.2 Roboto, Arial, sans-serif; letter-spacing: normal; text-transform: none;
+  text-decoration: none; white-space: nowrap; vertical-align: middle; box-shadow: none;
+}
+html body a.g-signin[data-umami-event]:hover,
+html body a.g-signin[data-umami-event]:focus {
+  color: rgb(31, 31, 31); background: rgb(248, 250, 250); text-decoration: none;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, .3);
+}
+html body a.g-signin[data-umami-event]:focus-visible { outline: 2px solid rgb(11, 87, 208); outline-offset: 2px; }
+a.g-signin .g-signin-mark { flex: none; width: 1.125em; height: 1.125em; }
+html body .site-bar a.g-signin[data-umami-event],
+html body .fd-account a.g-signin[data-umami-event],
+html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-size: .8125rem; }
+.places-been-nudge { margin: .75em 0 0; }
+@media (max-width: 480px) {
+  html body .site-bar a.g-signin[data-umami-event],
+  html body .fd-account a.g-signin[data-umami-event],
+  html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .45em; }
+  html body .site-bar a.g-signin[data-umami-event] > span,
+  html body .fd-account a.g-signin[data-umami-event] > span,
+  html body .fd-topbar a.g-signin[data-umami-event] > span {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+}
+</style>
+<script>
+(function () {
+    var start = '$utils.escapeJavaScript($utils.ssoStartUrl)';
+    var mark = '$utils.signInMark';
+    window.pressroomGoogleSignIn = function (via, label) {
+        var a = document.createElement('a');
+        a.className = 'g-signin';
+        a.setAttribute('data-umami-event', 'sign-in');
+        a.setAttribute('data-umami-event-via', via);
+        a.setAttribute('data-sign-in-return', '');
+        a.href = start;
+        if (a.host === window.location.host) {
+            a.search = '?return=' + encodeURIComponent(window.location.pathname + window.location.search
+                + window.location.hash);
+        }
+        a.innerHTML = mark;
+        var words = document.createElement('span');
+        words.textContent = label;
+        a.appendChild(words);
+        return a;
+    };
+    function addReturn() {
+        var links = document.querySelectorAll('a.g-signin[data-sign-in-return]');
+        for (var i = 0; i < links.length; i++) {
+            var link = links[i];
+            if (link.host === window.location.host && link.search.indexOf('return=') < 0) {
+                link.search = (link.search ? link.search + '&' : '?') + 'return='
+                    + encodeURIComponent(window.location.pathname + window.location.search);
+            }
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addReturn);
+    } else {
+        addReturn();
+    }
+})();
+</script>
+#end
 #end
 
 #**
 Sends a visitor back to this page after signing in: every link with the
 given class, on this host, gets the page's path and query as "return" on its
-way to the sign-in page. Done in the browser so a cached page, shared by
+way to the sign-in page. (The provider's buttons get theirs from the
+showGoogleSignInAssets macro's script, once per page.) Done in the browser so a cached page, shared by
 every visitor of one URL, carries no per-request value; without script the
 link still signs in and lands where it always did. LoginController and the
 success handlers keep only a path under the context. No dollar sign but the
@@ -3246,10 +3403,21 @@ through them, never by renaming them.
 #end
     <nav class="places-been" hidden data-places aria-labelledby="more-from-site-places-label">
         <h3 class="places-been-title" id="more-from-site-places-label">$text.get("discovery.placesBeen")</h3>
+        #showPlacesNudge()
     </nav>
     <p class="more-from-site-home"><a href="$utils.escapeHTML($discovery.homeUrl)">$text.get("discovery.homeLink")</a></p>
 </aside>
 #end
+#end
+
+#**
+Under "Places you've been", a signed-out reader is offered the list on every
+device (0.18.0): the provider's button, via "places". Only with reader
+sign-in on, and inside the hidden places container, so it shows only when
+the list does; the places script puts the list above it.
+*#
+#macro(showPlacesNudge)
+#if($utils.ssoEnabled && !$utils.isUserAuthenticated())<p class="places-been-nudge">#showGoogleSignIn("places" "reader.signIn.places")</p>#end
 #end
 
 #**
@@ -3333,7 +3501,7 @@ and no hash in the script: Velocity would read either.
                 li.appendChild(a);
                 ul.appendChild(li);
             });
-            lists[i].appendChild(ul);
+            lists[i].insertBefore(ul, lists[i].querySelector('.places-been-nudge'));
             lists[i].hidden = false;
         }
     }
@@ -3380,9 +3548,14 @@ print it as "2,026". All words come from the footer.* message keys.
         ## the site's front page and the site directory is gone. Same words
         ## and rules as the frontpage theme's top bar. Pages are cached per
         ## signed-in user, so this never leaks between visitors.
-        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
+        ## With reader sign-in on the header's way in is the provider's, so
+        ## this is the authors' Sign in: the sign-in page itself, carrying the
+        ## page as its return path (added in the browser), as the header's
+        ## link did. (login-redirect.rol, the SSO-off href, drops a return.)
+        #if(!$utils.isUserAuthenticated())<span class="colophon-account">#if($utils.ssoEnabled)<a class="colophon-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">#else<a href="$url.login">#end$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/pressroom-ui/app/">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
         #if($utils.isNotEmpty($colophonFacts.version))<span class="colophon-version">$text.get("footer.version", [$utils.escapeHTML($colophonFacts.version)])</span>#end
         #if($utils.isNotEmpty($colophonFacts.releaseDate))<span class="colophon-released">$text.get("footer.released", [$utils.escapeHTML($colophonFacts.releaseDate)])</span>#end
     </p>
+#if($utils.ssoEnabled && !$utils.isUserAuthenticated())#showSignInReturnScript("colophon-sign-in")#end
 </div>
 #end

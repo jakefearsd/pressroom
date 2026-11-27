@@ -40,6 +40,7 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.business.jpa.QueryRecorder;
+import com.wikantik.pressroom.config.StaticConfigOverride;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
@@ -375,6 +376,38 @@ class DiscoveryFrontPageRenderingTest {
             assertTrue(inner.contains("/pressroom-ui/app/\">Main menu</a>"), theme + ":\n" + inner);
             assertTrue(inner.contains("/pressroom-ui/logout.rol\">Sign out</a>"), theme + ":\n" + inner);
             assertFalse(inner.contains("fd-sign-in"), theme + ": no Sign in, and no script:\n" + inner);
+        }
+    }
+
+    /**
+     * With reader sign-in on (0.18.0) the masthead's way in is the provider's
+     * button via the header, the site page's head carries the button's rules
+     * and helper (it does not call the showContentAssets macro), and the
+     * front page's own Places you've been carries the nudge.
+     */
+    @Test
+    void withReaderSignInTheMastheadCarriesTheProvidersButton() throws Exception {
+        fiveBlogsOfFour();
+        useSiteTheme("journal");
+        try (var _ = StaticConfigOverride.set("sso.oidc.client.id", "it-client");
+             var _ = StaticConfigOverride.set("sso.oidc.client.secret", "it-secret")) {
+            RenderingTestSupport.clearRenderCaches();
+            String page = renderRoot();
+            Matcher mast = Pattern.compile("<header class=\"fd-mast\">(.*?)</header>", Pattern.DOTALL).matcher(page);
+            assertTrue(mast.find(), page);
+            assertTrue(Pattern.compile("<div class=\"fd-account-row\"><span class=\"fd-account\">\\s*"
+                    + "<a class=\"g-signin\" data-umami-event=\"sign-in\" data-umami-event-via=\"header\""
+                    + " data-sign-in-return href=\"[^\"]*/pressroom-ui/sso/start\">").matcher(mast.group(1)).find(),
+                    "the button first in the masthead:\n" + mast.group(1));
+            assertFalse(mast.group(1).contains("fd-sign-in"), mast.group(1));
+            String head = page.substring(0, page.indexOf("</head>"));
+            assertTrue(head.contains("window.pressroomGoogleSignIn = function (via, label) {"), head);
+            assertTrue(head.contains("html body a.g-signin[data-umami-event] {"), head);
+            String places = page.substring(page.indexOf("<nav class=\"places-been\""));
+            places = places.substring(0, places.indexOf("</nav>"));
+            assertTrue(places.contains("data-umami-event-via=\"places\""), places);
+        } finally {
+            RenderingTestSupport.clearRenderCaches();
         }
     }
 

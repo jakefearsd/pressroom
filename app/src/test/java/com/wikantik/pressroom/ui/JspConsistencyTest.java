@@ -850,6 +850,8 @@ class JspConsistencyTest {
             "previewURL", "featuredImageThumbnailUrl", "ogImageThumbnailUrl", "siteURL",
             // LoginController HtmlUtils.htmlEscape's the provider label into it.
             "ssoLabelArgs",
+            // LoginController: SignInMark's constant inline SVG, chosen by provider; no input reaches it.
+            "ssoMark",
             // EntryEdit.jsp's <c:set> body: an <rc:date>.
             "newsletterSentAtText",
             // Set by EntryEdit/PageEdit, printed by their includes: the context

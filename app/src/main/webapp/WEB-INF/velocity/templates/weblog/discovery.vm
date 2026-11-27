@@ -102,6 +102,7 @@ comment names one with its hash, so nothing here is invoked by accident.
     ## The site space has no posts, so no feed autodiscovery.
     #showSeoHead($fdShare)
     #showAnalyticsTrackingCode($model.weblog)
+    #showGoogleSignInAssets()
     #showAudienceAssets()
     <style>
 #parse("templates/weblog/site-styles.vm")
@@ -525,6 +526,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
     <div class="fd-sec fd-places">
         <nav class="places-been" hidden data-places aria-labelledby="fd-places-label">
             <div class="fd-head"><h2 id="fd-places-label">$text.get("discovery.placesBeen")</h2></div>
+            #showPlacesNudge()
         </nav>
     </div>
 

@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.it;
 
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -208,7 +207,7 @@ class SsoSignInIT extends PressroomIT {
     @Test
     void theLoginPageOffersTheProvider() throws Exception {
         openPath(LOGIN);
-        $("#ssoSignIn").shouldHave(exactText("Sign in with Keycloak"));
+        $("#ssoSignIn").shouldHave(exactText("Continue with Keycloak"));
         assertEquals(contextPath() + START, URI.create($("#ssoSignIn").getAttribute("href")).getPath());
 
         clickAndAwaitNewPage($("#ssoSignIn"));
@@ -582,30 +581,6 @@ class SsoSignInIT extends PressroomIT {
     }
 
     // ---------------------------------------------------------------- urls
-
-    /** The context path, empty at the root: what every path a test builds starts with. */
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
-    }
-
-    private static String currentPath() {
-        return URI.create(WebDriverRunner.url()).getPath();
-    }
-
-    private static String queryParameter(String url, String name) {
-        String query = URI.create(url).getRawQuery();
-        if (query == null) {
-            return null;
-        }
-        for (String pair : query.split("&")) {
-            int eq = pair.indexOf('=');
-            if (eq > 0 && name.equals(pair.substring(0, eq))) {
-                return URLDecoder.decode(pair.substring(eq + 1), UTF_8);
-            }
-        }
-        return null;
-    }
 
     private static String encode(String value) {
         return URLEncoder.encode(value, UTF_8);

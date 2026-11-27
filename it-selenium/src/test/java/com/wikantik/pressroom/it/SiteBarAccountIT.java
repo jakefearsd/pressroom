@@ -33,11 +33,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The way in and out at the top of every blog page (2026-11-24), driven
- * through the real form: a visitor's Sign in carries the page as its return
- * path (added by the page's script, which nothing else exercises), the
- * password sign-in comes back to that page, and the bar then says who is
- * signed in and offers Sign out. Reads the site's Absolute URL (the Sign in
- * link is built from it), hence the shared lock on global config.
+ * through the real form. Since 0.18.0 (Part D) reader sign-in is on for the
+ * whole suite, so a visitor's way in at the top is the provider's button
+ * ({@code ReaderSignInSurfacesIT}); an author's is the colophon's Sign in,
+ * which carries the page as its return path (added by the page's script,
+ * which nothing else exercises). The password sign-in comes back to that
+ * page, and the bar then says who is signed in and offers Sign out. Reads the
+ * site's Absolute URL (the links are built from it), hence the shared lock on
+ * global config.
  */
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class SiteBarAccountIT extends PressroomIT {
@@ -46,12 +49,14 @@ class SiteBarAccountIT extends PressroomIT {
     void signingInFromABlogPageComesBackToIt() {
         String page = "/" + WEBLOG_HANDLE + "/?sitebar=1";
         openPath(page);
-        $("nav.site-bar .site-bar-sign-in").shouldBe(visible).shouldHave(text("Sign in"))
+        $("nav.site-bar a.g-signin").shouldBe(visible);
+        $(".colophon a.colophon-sign-in").shouldHave(text("Sign in"))
                 .shouldHave(attributeMatching("href", ".*/pressroom-ui/login\\.rol\\?return=.*sitebar.*"));
 
-        clickAndAwaitNewPage($("nav.site-bar .site-bar-sign-in"));
+        clickAndAwaitNewPage($(".colophon a.colophon-sign-in"));
         assertTrue(WebDriverRunner.url().contains("/pressroom-ui/login.rol?return="), WebDriverRunner.url());
         $("input[name='return']").should(exist);
+        openAuthorSignIn();
         $("#j_username").setValue(ADMIN_USERNAME);
         $("#j_password").setValue(ADMIN_PASSWORD);
         clickAndAwaitNewPage($("#login"));
@@ -60,15 +65,8 @@ class SiteBarAccountIT extends PressroomIT {
         $("nav.site-bar .site-bar-who").shouldBe(visible);
         $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/app/']").should(exist);
         $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/logout.rol']").shouldHave(text("Sign out"));
-        $("nav.site-bar .site-bar-sign-in").shouldNot(exist);
+        $("nav.site-bar a.g-signin").shouldNot(exist);
+        $(".colophon a.colophon-sign-in").shouldNot(exist);
         logout();
-    }
-
-    /** The front page's masthead carries the same way in, and its return path is the root. */
-    @Test
-    void theFrontPageSignInCarriesItsReturnToo() {
-        openPath("/");
-        $(".fd-mast .fd-sign-in").shouldBe(visible).shouldHave(text("Sign in"))
-                .shouldHave(attributeMatching("href", ".*/pressroom-ui/login\\.rol\\?return=.*"));
     }
 }

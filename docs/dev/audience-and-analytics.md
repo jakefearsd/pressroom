@@ -181,6 +181,12 @@ read-only Grafana contract over two databases. Spec:
   (not a `data-umami-*` wildcard, which would let authors invent properties).
   Read them in Umami under the site's **Events** tab, filtered by event name,
   with `dest` and `entry` as properties.
+- **Reader sign-in clicks are the `sign-in` event** (0.18.0): every
+  provider button carries `data-umami-event="sign-in"` and
+  `data-umami-event-via` (`login-page`, `header`, `comments`, `places`; Part E
+  adds `save`, `follow`, `article-end`). Template and script markup, not
+  content, so the sanitizer allowlist is not involved. Read `via` as a
+  property of the `sign-in` event.
 - **Same-origin, so the pinned CSPs never moved.** Served via Caddy's
   `/analytics/*` handle, the tracker runs under every theme's
   `script-src 'self'` / `connect-src 'self'`;

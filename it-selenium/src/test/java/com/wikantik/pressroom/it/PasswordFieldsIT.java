@@ -47,7 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  */
 class PasswordFieldsIT extends PressroomIT {
 
-    private static final String LOGIN_PATH = "/pressroom-ui/login.rol";
+    /** ?author: reader sign-in is on for the suite, and the password form otherwise starts collapsed. */
+    private static final String LOGIN_PATH = "/pressroom-ui/login.rol?author";
     private static final String SHOW = "Show password";
     private static final String HIDE = "Hide password";
     private static final String MATCH = "Passwords match";

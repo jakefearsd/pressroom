@@ -18,6 +18,10 @@
 
 package com.wikantik.pressroom.ui.rendering.model;
 
+import com.wikantik.pressroom.config.StaticConfigOverride;
+import com.wikantik.pressroom.ui.core.security.sso.SignInMark;
+import com.wikantik.pressroom.ui.core.security.sso.SsoSettings;
+
 import jakarta.servlet.http.HttpServletRequest;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
@@ -911,6 +915,45 @@ class UtilitiesModelTest {
                     model().getCommentEndpoints());
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);
+        }
+    }
+
+    // ------------------------------------------------------ reader sign-in
+
+    /** SSO is on when the client id and secret are both set; the pages read it here. */
+    @Test
+    void readerSignInFollowsTheSsoConfiguration() {
+        assertFalse(model().isSsoEnabled(), "the suite's config has no client");
+        try (var _ = StaticConfigOverride.set("sso.oidc.client.id", "id");
+             var _ = StaticConfigOverride.set("sso.oidc.client.secret", "secret")) {
+            assertTrue(model().isSsoEnabled());
+        }
+    }
+
+    /** The label and the mark are the provider's: the G only for Google. */
+    @Test
+    void theButtonsLabelAndMarkAreTheProviders() {
+        assertEquals("Google", model().getSsoProviderLabel(), "the default provider");
+        assertEquals(SignInMark.forProvider(new SsoSettings("", "", "", "")), model().getSignInMark());
+        try (var _ = StaticConfigOverride.set("sso.oidc.discovery.uri", "http://kc.example/realms/x");
+             var _ = StaticConfigOverride.set("sso.provider.label", "Keycloak")) {
+            UtilitiesModel keycloak = model();
+            assertEquals("Keycloak", keycloak.getSsoProviderLabel());
+            assertEquals(SignInMark.forProvider(new SsoSettings("", "", "http://kc.example/realms/x", "")),
+                    keycloak.getSignInMark());
+            assertFalse(keycloak.getSignInMark().contains("#4285F4"), "no G for another provider");
+        }
+    }
+
+    /**
+     * The start of a reader's sign-in, on the site's absolute URL as the
+     * header's old Sign in link was: the page script adds the return path only
+     * when the page is on that host.
+     */
+    @Test
+    void theSignInStartsOnTheSitesAbsoluteUrl() {
+        try (var _ = StaticConfigOverride.set("site.absoluteurl", "https://blog.example.com/pressroom/")) {
+            assertEquals("https://blog.example.com/pressroom/pressroom-ui/sso/start", model().getSsoStartUrl());
         }
     }
 
