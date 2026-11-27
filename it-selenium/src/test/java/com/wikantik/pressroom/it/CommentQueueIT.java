@@ -17,7 +17,6 @@
  */
 package com.wikantik.pressroom.it;
 
-import java.net.URI;
 
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
@@ -173,10 +172,5 @@ class CommentQueueIT extends PressroomIT {
         String permalink = $(AdminApp.PERMALINK).should(exist).getAttribute("href");
         assertNotNull(permalink, "publishing must expose the entry's permalink");
         return "/" + handle + "/entry/" + permalink.substring(permalink.lastIndexOf('/') + 1);
-    }
-
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
     }
 }
