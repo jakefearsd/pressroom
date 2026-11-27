@@ -53,6 +53,11 @@ public abstract class ThreadManagerImpl implements ThreadManager {
     // a simple thread executor
     private final ExecutorService serviceScheduler;
 
+    // background work handed over and not yet finished (running or waiting
+    // for a thread); guarded by idleLock, which idle waiters sleep on
+    private final Object idleLock = new Object();
+    private int inFlight;
+
     // the business tier handed to every task at init() and to the scheduler;
     // a @Lazy proxy in production (see WebloggerBeanConfig), resolved on first use
     private final Weblogger weblogger;
@@ -138,7 +143,48 @@ public abstract class ThreadManagerImpl implements ThreadManager {
         // WebloggerException section of their own work, not their whole
         // body); execute() instead lets it reach the pool thread's default
         // UncaughtExceptionHandler.
-        serviceScheduler.execute(runnable);
+        synchronized (idleLock) {
+            inFlight++;
+        }
+        boolean handedOver = false;
+        try {
+            serviceScheduler.execute(() -> {
+                try {
+                    runnable.run();
+                } finally {
+                    finished();
+                }
+            });
+            handedOver = true;
+        } finally {
+            if (!handedOver) {
+                // rejected (pool shut down): nothing will ever finish it
+                finished();
+            }
+        }
+    }
+
+    private void finished() {
+        synchronized (idleLock) {
+            if (--inFlight == 0) {
+                idleLock.notifyAll();
+            }
+        }
+    }
+
+    @Override
+    public boolean awaitBackgroundIdle(long timeout, TimeUnit unit) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        synchronized (idleLock) {
+            while (inFlight > 0) {
+                long left = deadline - System.nanoTime();
+                if (left <= 0) {
+                    return false;
+                }
+                TimeUnit.NANOSECONDS.timedWait(idleLock, left);
+            }
+            return true;
+        }
     }
     
     
