@@ -61,6 +61,13 @@
     head = /WEB-INF/jsps/tiles/head.jsp
     messages = /WEB-INF/jsps/tiles/messages.jsp
     styles = /WEB-INF/jsps/tiles/empty.jsp
+.Unsubscribe -> /WEB-INF/jsps/tiles/tiles-simplepage.jsp
+    banner = /WEB-INF/jsps/tiles/bannerStatus.jsp
+    content = /WEB-INF/jsps/core/Unsubscribe.jsp
+    footer = /WEB-INF/jsps/tiles/footer.jsp
+    head = /WEB-INF/jsps/tiles/head.jsp
+    messages = /WEB-INF/jsps/tiles/messages.jsp
+    styles = /WEB-INF/jsps/tiles/empty.jsp
 .UpgradeDatabase -> /WEB-INF/jsps/tiles/tiles-installpage.jsp
     banner = /WEB-INF/jsps/tiles/bannerInstallation.jsp
     content = /WEB-INF/jsps/core/UpgradeDatabase.jsp

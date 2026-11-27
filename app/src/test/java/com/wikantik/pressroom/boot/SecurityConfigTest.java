@@ -612,6 +612,38 @@ class SecurityConfigTest {
         assertFalse(isPublicAudiencePost(request("Post", "/newsletter/subscribe")));
     }
 
+    /**
+     * Part F: the one-click unsubscribe POST carries no CSRF token (a mail
+     * client sends it, RFC 8058); its signed token authorises it. Exactly that
+     * path, exactly POST, and not under a longer or shorter path.
+     */
+    @Test
+    void theOneClickUnsubscribeIsExemptOnlyOnItsExactPath() throws Exception {
+        assertTrue(isOneClickUnsubscribe(postRequest("/pressroom-ui/unsubscribe.rol")));
+
+        assertFalse(isOneClickUnsubscribe(getRequest("/pressroom-ui/unsubscribe.rol")), "a GET needs no exemption");
+        assertFalse(isOneClickUnsubscribe(request("post", "/pressroom-ui/unsubscribe.rol")));
+        assertFalse(isOneClickUnsubscribe(postRequest("/pressroom-ui/unsubscribe.rol/x")));
+        assertFalse(isOneClickUnsubscribe(postRequest("/pressroom-ui/unsubscribe!all.rol")));
+        assertFalse(isOneClickUnsubscribe(postRequest("/pressroom-ui/account!saveEmailSetting.rol")),
+                "the account page's own switch keeps its CSRF token");
+        assertFalse(isPublicAudiencePost(postRequest("/pressroom-ui/unsubscribe.rol")),
+                "a separate, separately documented exemption");
+    }
+
+    @Test
+    void theOneClickUnsubscribeExemptionHoldsUnderAContextPath() throws Exception {
+        HttpServletRequest request = request("POST", "/pressroom/pressroom-ui/unsubscribe.rol");
+        when(request.getContextPath()).thenReturn("/pressroom");
+        assertTrue(isOneClickUnsubscribe(request));
+    }
+
+    private static boolean isOneClickUnsubscribe(HttpServletRequest request) throws Exception {
+        Method method = SecurityConfig.class.getDeclaredMethod("isOneClickUnsubscribe", HttpServletRequest.class);
+        method.setAccessible(true);
+        return (boolean) method.invoke(null, request);
+    }
+
     private static boolean isPublicAudiencePost(HttpServletRequest request) throws Exception {
         Method method = SecurityConfig.class.getDeclaredMethod("isPublicAudiencePost", HttpServletRequest.class);
         method.setAccessible(true);

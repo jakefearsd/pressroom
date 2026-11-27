@@ -232,6 +232,12 @@ public final class Routes {
                             + "no literal URL to sweep. Without one the required "
                             + "@RequestParam makes the request 400 rather than render a "
                             + "page. Covered by PasswordResetControllerTest."),
+            new SkippedRoute("/pressroom-ui/unsubscribe.rol", Role.ANONYMOUS,
+                    "Needs a t= query parameter holding a token signed with the site's "
+                            + "generated mail.unsubscribe.secret, which only a reply email "
+                            + "carries; without one the page answers 400 by design, which "
+                            + "BrowserHealth counts as a failure. Covered through the real "
+                            + "security chain by UnsubscribeControllerTest."),
 
             new SkippedRoute("/pressroom-ui/app.rol", Role.EDITOR,
                     "The React admin's shell: every /pressroom-ui/app/** URL is forwarded to it, and those are "
