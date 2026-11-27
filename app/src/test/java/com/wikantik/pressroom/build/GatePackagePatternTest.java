@@ -112,7 +112,7 @@ class GatePackagePatternTest {
             }
         }
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
-        assertEquals(8, total, "PACKAGE includes in the parent pom (3 rendering + 5 security boundary)");
+        assertEquals(9, total, "PACKAGE includes in the parent pom (3 rendering + 6 security boundary)");
     }
 
     @Test

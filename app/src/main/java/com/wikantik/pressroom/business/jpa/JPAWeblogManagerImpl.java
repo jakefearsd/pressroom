@@ -533,7 +533,10 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         
         if (handle == null) {
             throw new WebloggerException("Handle cannot be null");
-        } else if (!Weblog.SITE_SPACE_HANDLE.equals(handle) && !isAlphanumeric(handle)) {
+        } else if (!handle.isEmpty() && !Weblog.SITE_SPACE_HANDLE.equals(handle)
+                && !Weblog.hasHandleCharacters(handle)) {
+            // An empty handle is looked up (and found missing), as it always was; only
+            // a handle with other characters is an error.
             throw new WebloggerException("Invalid handle: '"+handle+"'");
         }
         
@@ -825,21 +828,6 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         List<Long> results = strategy.getNamedQuery(
                 "Weblog.getCountAllDistinct", Long.class).getResultList();
         return results.get(0);
-    }
-
-    /**
-     * Returns true if alphanumeric or '_'.
-     */
-    private boolean isAlphanumeric(String str) {
-        if (str == null) {
-            return false;
-        }
-        for (int i = 0; i < str.length(); i++) {
-            if (!Character.isLetterOrDigit(str.charAt(i)) && str.charAt(i) != '_') {
-                return false;
-            }
-        }
-        return true;
     }
 
 }

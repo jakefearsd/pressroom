@@ -30,8 +30,8 @@ import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.FormSubmissionManager;
 import com.wikantik.pressroom.business.ListmonkClient;
+import com.wikantik.pressroom.business.NewsletterEvents;
 import com.wikantik.pressroom.config.WebloggerConfig;
-import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.util.GenericThrottle;
@@ -180,7 +180,7 @@ public class NewsletterController extends BaseController {
         }
 
         if (status == 200) {
-            recordEventBestEffort(weblog);
+            NewsletterEvents.recordSubscribed(weblogger, weblog);
         }
         return ResponseEntity.status(status).build();
     }
@@ -205,24 +205,6 @@ public class NewsletterController extends BaseController {
             // reveal state or throw. The ERROR line is how an operator learns the lookups are failing.
             log.error("Error looking up weblog by newsletter list uuid", ex);
             return null;
-        }
-    }
-
-    /**
-     * Records a {@code NEWSLETTER_SUBSCRIBED} event. Best-effort per
-     * {@code EventManager}'s own contract: an event insert must never fail
-     * the request that produced it, so any failure here is logged and
-     * swallowed.
-     */
-    private void recordEventBestEffort(Weblog weblog) {
-        try {
-            PressroomEvent event = new PressroomEvent();
-            event.setWeblog(weblog);
-            event.setEventType(PressroomEvent.EventType.NEWSLETTER_SUBSCRIBED);
-            weblogger.getEventManager().record(event);
-            weblogger.flush();
-        } catch (Exception ex) {
-            log.error("Could not record newsletter-subscribed event", ex);
         }
     }
 

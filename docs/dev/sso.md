@@ -131,7 +131,8 @@ pair).
 
 `role.action.reader=comment`: a reader holds the global `comment` action and
 nothing else, and `comment` implies no other action (`GlobalPermission.implies`
-fails closed; `docs/dev/comments.md`). It reaches the comment endpoints and the
+fails closed; `docs/dev/comments.md`). It reaches the comment endpoints, the
+reader-state endpoint (`/pressroom-ui/rendering/reader.rol`, below) and the
 account page (`/pressroom-ui/account.rol`) only. The interceptor's default
 (`login`) refuses a reader on every other secured UI controller
 (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
@@ -147,6 +148,68 @@ only under `$utils.isUserAuthor()`, and the admin UI's top bar
 only to an anonymous visitor or under `userIsAuthor`, which
 `BaseController.populateCommonModel` sets from the same global `login` check. Page caches already key a signed-in
 render by principal name, so a reader's render is never shared.
+
+## Reader state (saves, follows, reading history)
+
+0.18.0, spec `docs/superpowers/specs/2026-11-26-reader-and-admin-experience-design.md`
+Part E. Every signed-in account with the global `comment` action has it,
+authors included.
+
+- **Schema** `V056__reader_state.sql`: `pressroom_reader_save(user_id,
+  entry_id, created)`, `pressroom_reader_follow(user_id, weblog_id, created)`,
+  `pressroom_reader_read(user_id, entry_id, read_at)`, each keyed by the pair,
+  each FK `ON DELETE CASCADE` to `pressroom_user`, `weblogentry` or `weblog`.
+  Deleting an account, entry or weblog removes its rows. No JPA entity maps
+  them: `business.reader.ReaderStore` writes native SQL in the request's unit
+  of work, so the shared cache never holds a row a cascade removed.
+- **`ReaderStateService`** (`business.reader`, inside the security-boundary
+  coverage rule) holds every rule and is the only writer. `ReaderVisibility`
+  is the one visibility rule: published, `pubTime <= now`, not trashed, on an
+  active, visible weblog. Save, follow and read refuse anything else
+  (`ReaderStateRefusal.NOT_VISIBLE`, a 404 on the wire). Every list repeats
+  the rule in SQL, so its limit counts only visible rows, and checks each row
+  again. A row whose entry or blog is hidden later stays, and shows again
+  once visible; `isSaved`/`isFollowing` answer false for it meanwhile. Saves
+  and follows are idempotent; a read is an upsert, and the history keeps the
+  newest 500 (trimmed on each write). `mayUse` re-reads the account (enabled,
+  holds `comment`).
+- **Lists** (`ReaderList`): `SAVED`, `FOLLOWING`, `HISTORY` take the caller's
+  limit (at least 1); `PLACES` (last 5 distinct blogs read), `CONTINUE` (3
+  most recent reads), `FOLLOWED_POSTS` (6 newest across followed blogs) and
+  `READ_IDS` (the whole history) are fixed. `lists(user, wanted)` without a
+  limit serves only the fixed ones and refuses the others
+  (`IllegalArgumentException`), so a new include name cannot come back
+  silently empty.
+- **`reader.rol`** (`ReaderStateController`, beside `CommentsController`):
+  GET `?entry=<id>&weblog=<handle>&include=places,continue,followed,readIds`
+  answers `{signedIn:false}` or `{signedIn, name, initials, author, csrf}`
+  plus only what was asked for (`saved` with `entry`; `following` and
+  `newsletter:{available}` with `weblog`). POST JSON `{action, entry?,
+  weblog?}`: `save`/`unsave`/`read` take an entry id, `follow`/`unfollow`/
+  `subscribe` a weblog handle. 401 signed out, 403 without CSRF (the UI
+  chain's filter) or without `comment`, 400 malformed or unreadable, 415 not
+  JSON, 404 invisible, 429 over the write limit. **`unfollow` answers
+  `200 {following:false}` for any handle**, known, hidden, inactive or
+  unknown: a 404 for unknown only would reveal that a hidden blog's handle
+  exists, and a follow made before a blog went hidden must stay removable.
+  Both verbs are `no-store`, including the 400/415 Spring raises while
+  reading the body (the mapping has no `consumes`, so they arise inside the
+  handler's call and its `@ExceptionHandler` answers them). Titles go out as plain
+  text (`EntryListView.plainTitle`) for `textContent`.
+- **Write limit**: per account, `reader.throttle.window.limit` (default 120)
+  per `reader.throttle.window.seconds` (default 600), counted on every POST
+  before anything else is checked, under a per-account lock stripe (as
+  `CommentService`'s), so concurrent writes cannot overshoot it. Reads are unlimited, as the comment session
+  is. The browser suite lifts it (`pressroom-it.properties`).
+- **Subscribe** is `ReaderStateService.subscribe` (with `newsletterOffered`,
+  for the account page to reuse). It forwards the account's own email with
+  `ListmonkClient.subscribe` and records `NEWSLETTER_SUBSCRIBED` through
+  `business.NewsletterEvents.recordSubscribed` (the form's recorder too) on 200
+  only: 200 `confirm`, 409 `already`, any other status or an `IOException`
+  503 `{outcome:"unavailable"}` with nothing recorded.
+- **Handles**: `Weblog.hasHandleCharacters` is the one character rule
+  (letters, digits, underscore) for the store, `TokenPins` and `reader.rol`. No list, a blank email
+  or listmonk unconfigured is a 404. Pressroom keeps no subscription state.
 
 ## Passwords and administration
 

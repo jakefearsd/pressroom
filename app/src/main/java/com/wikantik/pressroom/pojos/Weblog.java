@@ -91,6 +91,17 @@ public class Weblog implements Serializable {
 
     private transient List<MediaFileDirectory> mediaFileDirectories = new ArrayList<>();
 
+    /**
+     * Whether {@code handle} is made of the characters a weblog handle may
+     * hold: letters, digits and underscore, at least one. The one copy of the
+     * rule the weblog store and every by-handle lookup apply; the site space's
+     * handle is let through by name where it is accepted.
+     */
+    public static boolean hasHandleCharacters(String handle) {
+        return handle != null && !handle.isEmpty()
+                && handle.chars().allMatch(c -> Character.isLetterOrDigit(c) || c == '_');
+    }
+
     public Weblog() {
     }
     
