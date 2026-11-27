@@ -131,8 +131,11 @@ final class MessageUsageScanner {
             "^\\(\\s*\\w+\\s*\\[\\s*\\]\\s*\\)");
 
     /** {@code String[] args = ...} and {@code String... args} both make {@code args} an array. */
+    // Possessive: giving back part of the type name or the space after it can
+    // never reach the '[' or '...' that must follow, so backtracking into them
+    // only cost time on every word of every source.
     private static final Pattern ARRAY_DECLARATION = Pattern.compile(
-            "\\b\\w+\\s*(?:\\[\\s*\\]|\\.\\.\\.)\\s*([A-Za-z_$][A-Za-z0-9_$]*)");
+            "\\b\\w++\\s*+(?:\\[\\s*\\]|\\.\\.\\.)\\s*([A-Za-z_$][A-Za-z0-9_$]*)");
 
     private static final Pattern SIMPLE_IDENTIFIER = Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*");
 

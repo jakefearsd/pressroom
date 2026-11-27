@@ -1,5 +1,7 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -10,8 +12,10 @@ import java.util.Map;
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.jsp.JspApplicationContext;
 import jakarta.servlet.jsp.JspEngineInfo;
@@ -27,6 +31,7 @@ import com.wikantik.pressroom.ui.rendering.util.cache.WeblogPageCache;
 import com.wikantik.pressroom.ui.rendering.velocity.PressroomVelocity;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.mockito.Mockito;
+import org.springframework.mock.web.DelegatingServletOutputStream;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -228,7 +233,7 @@ public final class RenderingTestSupport {
 
     public static MockHttpServletResponse execute(HttpServlet servlet,
             MockHttpServletRequest request) throws Exception {
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletResponse response = new BulkWriteResponse();
         try {
             servlet.service(request, response);
         } finally {
@@ -236,5 +241,57 @@ public final class RenderingTestSupport {
             TestUtils.endSession(false);
         }
         return response;
+    }
+
+    /**
+     * Spring's mock response, except that its output stream takes a buffer in
+     * one write. Spring's stream writes, and flushes, one byte at a time, so a
+     * rendered page cost the rendering tests one call pair per byte (about 6% of
+     * the unit suite's main-thread time, 2026-11-27). Content, the commit rule
+     * (committed once past the buffer size) and stream/writer exclusivity are
+     * Spring's own: the bytes go into Spring's content stream.
+     */
+    static final class BulkWriteResponse extends MockHttpServletResponse {
+
+        private ServletOutputStream bulk;
+
+        @Override
+        public ServletOutputStream getOutputStream() {
+            ServletOutputStream springs = super.getOutputStream();
+            if (bulk == null) {
+                ByteArrayOutputStream content =
+                        (ByteArrayOutputStream) ((DelegatingServletOutputStream) springs).getTargetStream();
+                bulk = new ServletOutputStream() {
+                    @Override
+                    public void write(int b) throws IOException {
+                        springs.write(b);
+                    }
+
+                    @Override
+                    public void write(byte[] bytes, int offset, int length) {
+                        content.write(bytes, offset, length);
+                        if (!isCommitted() && content.size() > getBufferSize()) {
+                            setCommitted(true);
+                        }
+                    }
+
+                    @Override
+                    public void flush() throws IOException {
+                        springs.flush();
+                    }
+
+                    @Override
+                    public boolean isReady() {
+                        return springs.isReady();
+                    }
+
+                    @Override
+                    public void setWriteListener(WriteListener listener) {
+                        springs.setWriteListener(listener);
+                    }
+                };
+            }
+            return bulk;
+        }
     }
 }
