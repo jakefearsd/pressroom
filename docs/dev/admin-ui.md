@@ -349,3 +349,12 @@ extra request, same `['me','weblogs']` cache entry) read them. Whatever changes 
 comment moderation (`Comments.tsx` `refresh`) and `useMarkSubmissionsRead`. The inbox marks the page's unread rows
 read on load (shared `read_at`) and invalidates only `['me','weblogs']`, never the open list, so the "New" pills stay
 until the next visit. A test that renders `Frame` must stub `/v1/me/weblogs` (the people harness does).
+
+### The comment queue (0.18.0)
+
+`/comments` (`CommentQueue.tsx`, scope `none`, `HomeSidebar`) lists PENDING comments across every blog the caller may
+moderate (`GET /v1/me/comments`, session-only; `useCommentQueue`, key `['commentQueue', status, offset]`). Each row
+names its blog and acts through the per-blog `PATCH`/`DELETE` with `weblog.handle`; afterwards it invalidates
+`['commentQueue']`, `['comments', handle]` and `['me','weblogs']`. `Routes` pins `#comment-queue-marker`. The home
+sidebar's Comments link and the home summary line's "Review all" lead here; the sidebar link shows only when some
+row has `canModerate`. Approve, Hide and Delete are per row (no bulk, no reply: those stay on the blog's own screen).

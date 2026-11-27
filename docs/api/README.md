@@ -2687,6 +2687,7 @@ Site administration and the caller's own account (a site admin, or any signed-in
 | `DELETE /v1/admin/tokens/{id}` | Revoke any token (204). |
 | `POST /v1/admin/users/{userName}/weblogs` | Give an account (a person or an agent) a role: `{handle, permission}`, 201 with `{handle, name, permission}`. |
 | `PATCH`, `DELETE /v1/admin/users/{userName}/weblogs/{weblogHandle}` | Change the account's level `{permission}` there, or remove it (204). |
+| `GET /v1/me/comments[?status=PENDING&offset=&limit=]` | The comment approval queue across every blog where the caller holds `post` or better (the main menu's `canModerate`; a site admin sees only blogs they are a member of): `{items, offset, limit, hasMore, total}`, newest first, limit at most 100. Each item is a comment (as `GET /v1/weblogs/{handle}/comments` returns it) plus `weblog` (`{handle, name}`) and `entryPermalink`. Act on it with that blog's comment routes. |
 | `PATCH /v1/me/profile` | The caller's own `{screenName, fullName, emailAddress, locale, timeZone}`; a field left out is left alone. Answers the profile. |
 | `PUT /v1/me/password` | Change the caller's own password: `{currentPassword, newPassword}`. 204; the account's other sessions end. |
 | `GET`, `PUT /v1/admin/site-theme` | The theme of the site's own pages (the hidden site space, which the weblog routes withhold): the site themes on offer with the one in use (the `GET /v1/weblogs/{handle}/themes` shape), and the switch `{theme}`; a theme that is no site theme is 400 `theme.notOffered`. Session only. |

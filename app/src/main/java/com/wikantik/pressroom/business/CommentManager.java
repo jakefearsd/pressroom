@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
@@ -61,6 +62,16 @@ public interface CommentManager {
     /** As {@link #countComments(Weblog, ReaderComment.Status, WeblogEntry)}, replies left out when {@code topLevelOnly}. */
     long countComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry, boolean topLevelOnly)
             throws WebloggerException;
+
+    /**
+     * Comments on any of these weblogs in this status (null = all), replies included, newest first, paged. Never
+     * "all weblogs": an empty collection returns an empty list without querying.
+     */
+    List<ReaderComment> getComments(Collection<Weblog> weblogs, ReaderComment.Status status, int offset, int length)
+            throws WebloggerException;
+
+    /** What {@link #getComments(Collection, ReaderComment.Status, int, int)} lists, counted; 0 for no weblogs, unqueried. */
+    long countComments(Collection<Weblog> weblogs, ReaderComment.Status status) throws WebloggerException;
 
     /** Comments on the weblog in this status (null = all), replies included. */
     long countComments(Weblog weblog, ReaderComment.Status status) throws WebloggerException;

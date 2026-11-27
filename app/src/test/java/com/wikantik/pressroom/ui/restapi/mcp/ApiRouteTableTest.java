@@ -36,7 +36,8 @@ class ApiRouteTableTest {
         // + Wave 4: GET /v1/admin/site-pages and one more (W4 cutover; the count is confirmed by this test).
         // + GET and PUT /v1/admin/site-theme (the site space's theme, W3 cutover).
         // + POST /v1/weblogs/{handle}/submissions/read, mark inquiries read (0.18.0 Part A).
-        assertEquals(136, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // + GET /v1/me/comments, the cross-blog approval queue (0.18.0 Part B).
+        assertEquals(137, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("POST /v1/admin/revisions/sweep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/keep").isPresent());
         assertTrue(table.find("POST /v1/weblogs/{handle}/pages/{id}/revisions/{revisionId}/unkeep").isPresent());

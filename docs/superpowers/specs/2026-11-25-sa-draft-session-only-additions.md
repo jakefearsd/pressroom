@@ -100,3 +100,13 @@ or token newly can read the rest of the view. Draft only; not posted to `SimpleA
 personal details that no token or agent may touch. Ids of other weblogs are ignored. It is an MCP exclusion
 (session-only). `GET /v1/me/weblogs` also gains `newInquiries`, `drafts`, `scheduled` and `lastPublished`
 (additive fields; `newInquiries` is 0 without weblog POST). Binds no other repository.
+
+## Further item (draft, 2026-11-27): the cross-blog comment queue joins the session-only list
+
+`GET /v1/me/comments?status=PENDING&offset&limit` (0.18.0, operationId `meCommentsList`) is `@SessionOnly`
+(and `@WeblogScopeExempt`: it names no weblog). It lists readers' comments, with their names, across every blog
+where the caller's own permission row implies POST (the `/v1/me/weblogs` `canModerate` rule: a site admin who is
+not a member of a blog sees nothing from it; an `EDIT_DRAFT` member's blog contributes nothing). A token, of any
+role or pin, gets 403 `auth.sessionOnly`: a cross-blog feed of readers' words and display names stays out of a
+token's reach (the per-blog `GET /v1/weblogs/{handle}/comments` remains token-reachable with a POST token). It is an MCP
+exclusion (session-only). The limit is capped at 100. Binds no other repository.

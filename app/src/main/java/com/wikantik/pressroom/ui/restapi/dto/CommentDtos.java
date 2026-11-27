@@ -40,6 +40,7 @@ public final class CommentDtos {
     private CommentDtos() {
     }
 
+    /** {@link QueueComment} repeats these fields by hand (QueueCommentShapeTest pins them together). */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record CommentView(String id, String entryId, String entryTitle, String status, String body,
             Instant created, Instant statusChanged, String authorUserName,
@@ -56,6 +57,38 @@ public final class CommentDtos {
             @Schema(description = "How many comments match the filters in all, whatever the page: the count a "
                     + "screen shows without paging to the end.", requiredMode = Schema.RequiredMode.REQUIRED)
             long total) {
+    }
+
+    /** The blog a queued comment is on: what the approval queue names it by and acts on it with. */
+    public record QueueWeblog(
+            @Schema(description = "The blog's handle: the {handle} of the per-blog comment routes that act on the row.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) String handle,
+            @Schema(description = "The blog's name, as the main menu shows it.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) String name) {
+    }
+
+    /**
+     * A comment in the cross-blog approval queue: every {@link CommentView} field, plus the blog it is on and the
+     * entry's address, so a row can be read and acted on without another call.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record QueueComment(String id, String entryId, String entryTitle, String status, String body,
+            Instant created, Instant statusChanged, String authorUserName,
+            String authorDisplayName, boolean authorIsOwner, String replyTo, String reply,
+            @Schema(description = "The blog the comment is on.", requiredMode = Schema.RequiredMode.REQUIRED)
+            QueueWeblog weblog, String entryPermalink) {
+    }
+
+    public record QueuePage(
+            @Schema(description = Paging.ITEMS_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            List<QueueComment> items,
+            @Schema(description = Paging.OFFSET_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED) int offset,
+            @Schema(description = "The page size asked for, after the cap of 100.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) int limit,
+            @Schema(description = Paging.HAS_MORE_DESCRIPTION, requiredMode = Schema.RequiredMode.REQUIRED)
+            boolean hasMore,
+            @Schema(description = "How many comments match across the caller's blogs, whatever the page.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) long total) {
     }
 
     /** {@code "PUBLISHED"} or {@code "HIDDEN"}; anything else is a 400. */
@@ -85,6 +118,13 @@ public final class CommentDtos {
                 c.isAuthorIsOwner(),
                 c.getReplyTo() == null ? null : c.getReplyTo().getId(),
                 c.getReply() == null ? null : c.getReply().getId());
+    }
+
+    public static QueueComment toQueue(ReaderComment c, String weblogName, String entryPermalink) {
+        CommentView v = toView(c);
+        return new QueueComment(v.id(), v.entryId(), v.entryTitle(), v.status(), v.body(), v.created(),
+                v.statusChanged(), v.authorUserName(), v.authorDisplayName(), v.authorIsOwner(), v.replyTo(),
+                v.reply(), new QueueWeblog(c.getEntry().getWebsite().getHandle(), weblogName), entryPermalink);
     }
 
     private static Instant instant(Date date) {

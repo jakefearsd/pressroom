@@ -496,6 +496,18 @@ in: the weblog's, or the site space's for the site read), and the blog read `uma
 weblog's admin) through `TrafficReads`. `GET /v1/admin/traffic/{handle}` is the same blog read for any weblog,
 the site space included (the weblog route never offers it): site admins only, MCP `Exclusion`.
 
+## The cross-blog comment queue (0.18.0 Part B)
+
+`GET /v1/me/comments?status=PENDING&offset&limit` (`MeCommentsApi`, `@WeblogScopeExempt @SessionOnly`, operationId
+`meCommentsList`). The blogs are the `/v1/me/weblogs` rule: the caller's own `getWeblogPermissions` rows whose action
+set implies POST, so a site admin who is not a member sees nothing from that blog and an `EDIT_DRAFT` member's blog
+contributes nothing. It is never "all weblogs": `CommentManager.getComments(Collection<Weblog>, status, offset,
+length)` and `countComments(Collection<Weblog>, status)` return empty/0 for an empty set without querying. Rows are
+newest first, `{items, offset, limit, hasMore, total}`, limit capped at 100; an item is the comment view plus
+`weblog {handle, name}` and `entryPermalink` (`entryTitle` is in the view). A token is refused (session-only) before
+the handler, so the handler does not look at a pin. Acting on a row uses the per-blog `PATCH`/`DELETE` of
+`CommentsApi` with `weblog.handle`. MCP: `Exclusion` (session-only).
+
 ## The main menu's rows (Wave 0 screens, 2026-11-25)
 
 `GET /v1/me/weblogs` (`MetaApi`, `@WeblogScopeExempt`, user required, no permission) is what the React home

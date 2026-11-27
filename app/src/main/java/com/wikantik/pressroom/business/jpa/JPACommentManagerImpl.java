@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.util.LinkedHashSet;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -139,6 +140,41 @@ public class JPACommentManagerImpl implements CommentManager {
         query.setFirstResult(offset);
         query.setMaxResults(length);
         return query.getResultList();
+    }
+
+    @Override
+    public List<ReaderComment> getComments(Collection<Weblog> weblogs, Status status, int offset, int length)
+            throws WebloggerException {
+        if (weblogs.isEmpty()) {
+            return List.of();
+        }
+        TypedQuery<ReaderComment> query = strategy.getDynamicQuery(
+                "SELECT c FROM ReaderComment c WHERE c.entry.website IN ?1"
+                        + (status == null ? "" : " AND c.status = ?2") + " ORDER BY c.created DESC, c.id",
+                ReaderComment.class);
+        bindAcross(query, weblogs, status);
+        query.setFirstResult(offset);
+        query.setMaxResults(length);
+        return query.getResultList();
+    }
+
+    @Override
+    public long countComments(Collection<Weblog> weblogs, Status status) throws WebloggerException {
+        if (weblogs.isEmpty()) {
+            return 0;
+        }
+        TypedQuery<Long> query = strategy.getDynamicQuery(
+                "SELECT COUNT(c) FROM ReaderComment c WHERE c.entry.website IN ?1"
+                        + (status == null ? "" : " AND c.status = ?2"), Long.class);
+        bindAcross(query, weblogs, status);
+        return query.getSingleResult();
+    }
+
+    private static void bindAcross(TypedQuery<?> query, Collection<Weblog> weblogs, Status status) {
+        query.setParameter(1, weblogs);
+        if (status != null) {
+            query.setParameter(2, status);
+        }
     }
 
     @Override
