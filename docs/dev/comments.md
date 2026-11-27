@@ -274,13 +274,75 @@ Comments page (from `site.absoluteurl`). `MailUtil` sends it on
 re-loads the weblog by handle and releases the persistence session in a
 `finally`. A mail failure loses nothing. Failures log only the exception
 class names along the cause and next-exception chain (`kinds`): mail
-exception messages quote recipient addresses. Published comments, replies and
-readers are never mailed. Needs mail configured (`MailUtil.isMailConfigured`).
+exception messages quote recipient addresses. Published comments and replies
+never reach the owners' notice. Needs mail configured (`MailUtil.isMailConfigured`).
+
+### Reply emails to readers (0.18.0, Part F)
+
+`CommentService.store` calls `CommentNotifier.notifyReplied(reply)` after every
+committed reply: moderation and the API (`reply`) and the public form (`post`
+with `replyTo`). A notifier that throws anyway is caught and logged there; the
+reply stands. `notifyReplied` is a `default` no-op on the interface, so a
+held-only lambda in a test still compiles; `MailCommentNotifier` overrides it.
+
+- **Who is mailed:** the answered comment's author, when they have a non-blank
+  email, are enabled and not an agent, have `pressroom_user.notify_replies`
+  true (V057, default true), and did not write the reply. Mail must be
+  configured **and** `site.adminemail` set (the From).
+- **No site address, no mail.** The links are absolute from
+  `WebloggerRuntimeConfig.getAbsoluteContextURL()` (so `/pressroom` is kept);
+  when that is blank nothing is sent and a warning names the reply id.
+- **The message** is `multipart/alternative` (`MailUtil.sendAlternativeMessage`):
+  subject `comments.replied.subject` ("{author} replied to your comment on
+  {title}", title unescaped, one line); the reader's comment cut to 300 code
+  points with "…" and the reply in full, as plain text, HTML-escaped in the
+  HTML part (never content markup); a link to `#comment-<replyId>` on the
+  entry's absolute permalink; an unsubscribe link; headers
+  `List-Unsubscribe: <https://…/pressroom-ui/unsubscribe.rol?t=…>` and
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058).
+- Resolved on the request thread, sent on `executeInBackground`; failures log
+  only exception class names (`kinds`), never an address or a body (the spec
+  said "with its stack trace"; the address leak wins, as for held notices).
+
+### One-click unsubscribe
+
+`UnsubscribeTokens` (business.comments): `issue(userId, purpose)` is base64url
+of `userId|purpose|sig`, `sig` the base64url HMAC-SHA256 of `userId|purpose`;
+`verify(token, purpose)` returns the user id, comparing with
+`MessageDigest.isEqual`, and never throws. No expiry, the same token in every
+mail to a user (spec: a leaked link can only turn reply mail off).
+
+- **The key** is `mail.unsubscribe.secret`, a `pressroom_properties` row
+  `GeneratedSecrets.seedMissing` fills at first start (from
+  `JPAPropertiesManagerImpl.initialize`): 256 random bits, or the startup
+  config's value (`pressroom-custom.properties` / `PRESSROOM_MAIL_UNSUBSCRIBE_SECRET`)
+  when set. It is **not** a `runtimeConfigDefs.xml` property, so no settings
+  screen or the settings API lists it, and its value is never logged (the defs'
+  seeding logs values; `WebloggerRuntimeConfig.getProperty` debug-logs them, so
+  `UnsubscribeTokens` reads the row through the properties manager). Changing
+  the row invalidates every link already sent. No key: nothing is issued
+  (`IllegalStateException`, caught by the notifier) and nothing verifies.
+- **`UnsubscribeController`** (`/pressroom-ui/unsubscribe.rol?t=`, `.Unsubscribe`,
+  `Unsubscribe.jsp`): anonymous. GET shows the one-button confirmation and
+  changes nothing (mail scanners follow links); POST, the button's or the mail
+  client's one-click (`List-Unsubscribe=One-Click` body), sets `notify_replies`
+  false and shows "You won't get reply emails any more" with a link to the
+  account page. A token that fails or names no account: the page's error, 400.
+  A lookup or save that cannot run: an error, 500, never "done". Responses are
+  `Cache-Control: private, no-store`.
+- **CSRF:** `SecurityConfig.isOneClickUnsubscribe` exempts exactly POST
+  `/pressroom-ui/unsubscribe.rol` (the second exemption beside
+  `isPublicAudiencePost`): a mail client's POST has no CSRF token, and the
+  signed token is the authority. The page's form still carries
+  `<sec:csrfInput/>` (`JspConsistencyTest`).
+- `Routes` skips the page in the sweep (it needs a token only a mail carries,
+  and its 400 trips `BrowserHealth`).
 
 ## The reader's account page
 
 `AccountController`: `/pressroom-ui/account.rol`, `account!saveName.rol`,
-`account!deleteComment.rol`, `account!deleteAccount.rol` (`Account.jsp`). It
+`account!deleteComment.rol`, `account!deleteAccount.rol`,
+`account!saveEmailSetting.rol` (`Account.jsp`). It
 requires the global `comment` action (`requiredGlobalPermissionActions`).
 Display name (the screen name), one rule in `business/comments/DisplayNames`
 shared with a reader's first sign-in (ruling R8): judged in exactly the form
@@ -301,6 +363,12 @@ user, expires each weblog that showed them, and ends the session; it is
 refused for an account with any weblog permission, `admin`, or any entry it
 created (`WeblogEntryManager.hasEntriesCreatedBy`: bylines are usernames with
 no foreign key).
+
+The **Email section** (`<section id="email">`, Part F) is self-contained: its own
+form (`#accountEmailForm`), URL and `account.email.*` messages, so it moves as
+one block when the page is rebuilt. A ticked `notifyReplies` box turns reply
+emails on; an unticked box sends nothing and turns them off. The save redirects
+to `account.rol#email`; a failed save is rolled back and flashed.
 
 ## Hazards found while building
 
