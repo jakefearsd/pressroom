@@ -453,11 +453,13 @@ limitations under the License.
                                          0.96 (sso 0.9725 binds, 400 lines: ~5 lines of
                                          headroom; auth now 1.0000, v1 0.9923), B 0.89 to
                                          0.90 (mcp 0.9073 binds, ~2 branches; v1 0.9664,
-                                         auth 0.9797). -->
+                                         auth 0.9797). business.reader (saves, follows,
+                                         reading history: 0.18.0) joined 2026-11-27. -->
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>com.wikantik.pressroom.ui.core.security.sso</include>
                                         <include>com.wikantik.pressroom.business.comments</include>
+                                        <include>com.wikantik.pressroom.business.reader</include>
                                         <include>com.wikantik.pressroom.ui.restapi.auth</include>
                                         <include>com.wikantik.pressroom.ui.restapi.v1</include>
                                         <include>com.wikantik.pressroom.ui.restapi.mcp</include>
