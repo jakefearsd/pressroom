@@ -60,7 +60,10 @@ class OldNameInventoryTest {
     private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller"); // rebrand:keep
     private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*"); // rebrand:keep
     private static final Pattern TOKEN_PREFIX = Pattern.compile("rlr_");
-    private static final Pattern MACHINE = Pattern.compile("(?<![A-Za-z])ROLLER|(?<![A-Za-z])roller|(?<=[A-Za-z_])Roller|Roller(?=[_\\-/0-9$]|\\.\\w)"); // rebrand:keep
+    // Each alternative leads with its literal and checks the character before it
+    // afterwards: (?<![A-Za-z])ROLLER and ROLLER(?<![A-Za-z]ROLLER) match the same
+    // text, but the first ran its lookbehind at every position of every file.
+    private static final Pattern MACHINE = Pattern.compile("ROLLER(?<![A-Za-z]ROLLER)|roller(?<![A-Za-z]roller)|Roller(?<=[A-Za-z_]Roller)|Roller(?=[_\\-/0-9$]|\\.\\w)"); // rebrand:keep
     private static final Pattern PROSE = Pattern.compile("Roller"); // rebrand:keep
     private static final String KEEP_MARKER = "rebrand:keep";
 

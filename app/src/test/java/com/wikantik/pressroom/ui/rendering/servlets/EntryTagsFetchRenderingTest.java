@@ -105,19 +105,12 @@ class EntryTagsFetchRenderingTest {
     /**
      * Each save above queues a search reindex on a background thread, and the
      * reindex reads the entry's tags. The counting tests count every tag read
-     * in the JVM, so they start only once those have drained: no tag read for
-     * two quiet intervals in a row.
+     * in the JVM, so they start only once that background work has finished.
+     * Waited on exactly: it used to watch for two quiet 250 ms intervals.
      */
     private static void awaitNoTagReads() throws Exception {
-        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(15).toNanos();
-        int quiet = 0;
-        while (quiet < 2 && System.nanoTime() < deadline) {
-            AtomicInteger reads = new AtomicInteger();
-            try (Counter _ = new Counter(reads)) {
-                Thread.sleep(250);
-            }
-            quiet = reads.get() == 0 ? quiet + 1 : 0;
-        }
+        assertTrue(TestUtils.weblogger().getThreadManager().awaitBackgroundIdle(60, TimeUnit.SECONDS),
+                "background reindexing did not finish");
     }
 
     @AfterEach

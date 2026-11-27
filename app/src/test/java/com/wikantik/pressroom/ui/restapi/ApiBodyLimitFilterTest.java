@@ -25,6 +25,8 @@ import java.io.Writer;
 
 import java.util.Map;
 
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
@@ -51,8 +53,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -185,9 +185,31 @@ class ApiBodyLimitFilterTest {
      */
     @Test
     void anAsynchronousReaderSeesTheRealStreamsState() throws Exception {
-        ServletInputStream real = mock(ServletInputStream.class);
-        when(real.isFinished()).thenReturn(true);
-        when(real.isReady()).thenReturn(false);
+        // A hand-written stream, not a Mockito mock: mocking any InputStream type
+        // instruments InputStream's own methods for the rest of the JVM, and every
+        // later stream read in the suite (process output, file reads) paid for it.
+        List<ReadListener> registered = new ArrayList<>();
+        ServletInputStream real = new ServletInputStream() {
+            @Override
+            public boolean isFinished() {
+                return true;
+            }
+
+            @Override
+            public boolean isReady() {
+                return false;
+            }
+
+            @Override
+            public void setReadListener(ReadListener readListener) {
+                registered.add(readListener);
+            }
+
+            @Override
+            public int read() {
+                return -1;
+            }
+        };
         MockHttpServletRequest request = undeclared(0);
         ServletInputStream body = bodySeenDownstream(new HttpServletRequestWrapper(request) {
             @Override
@@ -201,7 +223,7 @@ class ApiBodyLimitFilterTest {
 
         assertTrue(body.isFinished());
         assertFalse(body.isReady());
-        verify(real).setReadListener(listener);
+        assertEquals(List.of(listener), registered, "the listener reaches the real stream");
     }
 
     @Test

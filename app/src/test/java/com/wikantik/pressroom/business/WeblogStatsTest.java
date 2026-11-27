@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom.business;
 
-import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.*;
 import org.junit.jupiter.api.*;
@@ -62,7 +61,6 @@ public class WeblogStatsTest  {
                 "anchor21", website2, user1);
         TestUtils.endSession(true);
 
-        Thread.sleep(PressroomConstants.SEC_IN_MS);
     }
 
     @Test

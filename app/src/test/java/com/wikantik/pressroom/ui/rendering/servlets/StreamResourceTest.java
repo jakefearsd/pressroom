@@ -93,7 +93,25 @@ class StreamResourceTest {
     void aFailureAfterTheResponseIsCommittedDoesNotTryToSendAnError() throws Exception {
         HttpServletResponse response = mock(HttpServletResponse.class);
         when(response.isCommitted()).thenReturn(true);
-        when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+        // A plain stream, not a Mockito mock: mocking any OutputStream type
+        // instruments OutputStream.flush for the rest of the JVM, and Spring's mock
+        // response flushes once per byte, so every rendering test paid per byte.
+        when(response.getOutputStream()).thenReturn(new ServletOutputStream() {
+            @Override
+            public void write(int b) {
+                // a committed response's client is gone; the bytes go nowhere
+            }
+
+            @Override
+            public boolean isReady() {
+                return true;
+            }
+
+            @Override
+            public void setWriteListener(jakarta.servlet.WriteListener writeListener) {
+                throw new UnsupportedOperationException();
+            }
+        });
 
         assertDoesNotThrow(
                 () -> RenderingServletUtils.streamResource(failing(), response, "photo.jpg"),
