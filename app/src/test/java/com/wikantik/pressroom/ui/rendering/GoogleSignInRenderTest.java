@@ -270,6 +270,11 @@ class GoogleSignInRenderTest {
             assertTrue(head.contains("\\/pressroom-ui\\/sso\\/start';"), "escaped for the script: " + head);
             assertTrue(head.contains("var mark = '" + SignInMark.forProvider(google()) + "';"), head);
             assertTrue(head.contains("html body a.g-signin[data-umami-event] {"), "the button's rules:\n" + head);
+            // A 320px site bar holds the brand, the blogs menu and the button only when the
+            // header button narrows to its mark; the label stays as its accessible name.
+            String narrow = head.substring(head.lastIndexOf("@media (max-width: 480px)"));
+            assertTrue(narrow.contains("html body .site-bar a.g-signin[data-umami-event] > span"), narrow);
+            assertTrue(narrow.contains("clip: rect(0 0 0 0)"), "visually hidden, not display:none:\n" + narrow);
         }
         // (the comments script names the helper, and falls back to a plain link without it)
         String head = head(page(permalink));

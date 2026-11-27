@@ -3195,7 +3195,9 @@ own pages (discovery.vm, site-search.vm); nothing at all with reader sign-in
 off. The button follows Google's sign-in branding (white, a grey rule, dark
 text, the G) for Google, and is the same quiet white button with a neutral
 mark for any other provider. Colours are rgb(): a hash before a word is a
-directive here. The selectors outrank a theme's "body.x a" and the site
+directive here. Under 480px a header button narrows to its mark (the label
+stays as its accessible name), or a 320px site bar overflows beside the
+brand and the blogs menu. The selectors outrank a theme's "body.x a" and the site
 bar's own link rules, which come earlier in the head.
 
 window.pressroomGoogleSignIn(via, label) returns a new element identical to
@@ -3231,6 +3233,17 @@ html body .site-bar a.g-signin[data-umami-event],
 html body .fd-account a.g-signin[data-umami-event],
 html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .65em; font-size: .8125rem; }
 .places-been-nudge { margin: .75em 0 0; }
+@media (max-width: 480px) {
+  html body .site-bar a.g-signin[data-umami-event],
+  html body .fd-account a.g-signin[data-umami-event],
+  html body .fd-topbar a.g-signin[data-umami-event] { padding: .3em .45em; }
+  html body .site-bar a.g-signin[data-umami-event] > span,
+  html body .fd-account a.g-signin[data-umami-event] > span,
+  html body .fd-topbar a.g-signin[data-umami-event] > span {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+}
 </style>
 <script>
 (function () {
