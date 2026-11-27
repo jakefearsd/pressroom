@@ -150,6 +150,38 @@ class EntryChangePublicationTest {
         assertTrue(seen.get(0).removed());
         assertNull(seen.get(0).status());
         assertEquals(PubStatus.DRAFT, seen.get(0).previousStatus());
+        assertFalse(seen.get(0).weblogRemoved(), "a single delete is not part of a weblog's removal");
+    }
+
+    /**
+     * A weblog's deletion removes its entries through removeWeblogEntries. Each
+     * change says so, because the weblog's own index removal covers them all:
+     * one by one, each entry cost the deleting request a foreground index
+     * writer (about 60 ms, 300 entries took 18 s). Nor is the doomed weblog
+     * saved once per published entry, which only queued analytics and search
+     * work for a blog about to vanish: its last-modified date stays put.
+     */
+    @Test
+    void removingAWeblogsEntriesMarksEachChangeAsPartOfTheWeblogsRemoval() throws Exception {
+        JPAWeblogEntryManagerImpl mgr = manager(seen::add);
+        String published = stored("cascade-published", PubStatus.PUBLISHED).getId();
+        String draft = stored("cascade-draft", PubStatus.DRAFT).getId();
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        java.util.Date before = managed.getLastModified();
+
+        mgr.removeWeblogEntries(managed);
+        TestUtils.weblogger().flush();
+
+        assertEquals(2, seen.size(), "one change per entry: " + seen);
+        for (EntryChanged change : seen) {
+            assertTrue(change.removed(), "removed: " + change);
+            assertTrue(change.weblogRemoved(), "part of the weblog's removal: " + change);
+        }
+        TestUtils.endSession(true);
+        assertEquals(before, TestUtils.getManagedWebsite(weblog).getLastModified(),
+                "the doomed weblog is not saved once per published entry");
+        assertNull(TestUtils.weblogger().getWeblogEntryManager().getWeblogEntry(published), "removed");
+        assertNull(TestUtils.weblogger().getWeblogEntryManager().getWeblogEntry(draft), "removed");
     }
 
     @Test

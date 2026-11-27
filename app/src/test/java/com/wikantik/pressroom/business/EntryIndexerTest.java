@@ -44,6 +44,13 @@ class EntryIndexerTest {
         verify(index).removeEntryIndexOperation(entry);
     }
 
+    /** The weblog's own index removal takes the entry out with all the others, once its delete commits. */
+    @Test
+    void anEntryRemovedWithItsWeblogIsLeftToTheWeblogsIndexRemoval() throws Exception {
+        indexer.entryChanged(new EntryChanged(entry, PubStatus.PUBLISHED, null, true, true));
+        verifyNoInteractions(index);
+    }
+
     @Test
     void aWriteThatNeverTouchedAPublishedEntryLeavesTheIndexAlone() throws Exception {
         indexer.entryChanged(new EntryChanged(entry, PubStatus.DRAFT, PubStatus.PENDING, false));

@@ -53,7 +53,6 @@ import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
-import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
@@ -289,13 +288,9 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         removeRevisions.setParameter(1, weblog);
         removeRevisions.executeUpdate();
 
-        // remove entries
-        TypedQuery<WeblogEntry> refQuery = strategy.getNamedQuery("WeblogEntry.getByWebsite", WeblogEntry.class);
-        refQuery.setParameter(1, weblog);
-        List<WeblogEntry> entries = refQuery.getResultList();
-        for (WeblogEntry entry : entries) {
-            emgr.removeWeblogEntry(entry);
-        }
+        // remove entries: as part of the weblog's removal, whose own index
+        // removal after the commit covers them all (see removeWeblog)
+        emgr.removeWeblogEntries(weblog);
         writePending();
         
         // delete all weblog categories

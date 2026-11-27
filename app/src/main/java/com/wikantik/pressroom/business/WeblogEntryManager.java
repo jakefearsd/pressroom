@@ -109,6 +109,15 @@ public interface WeblogEntryManager {
     void removeWeblogEntry(WeblogEntry entry) throws WebloggerException;
 
     /**
+     * Removes every entry of a weblog that is being deleted, in the caller's
+     * transaction: the weblog-deletion cascade's half of {@link #removeWeblogEntry}.
+     * Each published change is marked {@link EntryChanged#weblogRemoved()}, so
+     * listeners leave to the weblog's own removal what it already covers (the
+     * search index), and the doomed weblog is not saved once per entry.
+     */
+    void removeWeblogEntries(Weblog weblog) throws WebloggerException;
+
+    /**
      * Moves an entry to the trash: status becomes {@link WeblogEntry.PubStatus#TRASHED}
      * and {@link WeblogEntry#getTrashedAt()} is stamped with now. The entry
      * still exists in the database -- this is a save, not a delete -- so

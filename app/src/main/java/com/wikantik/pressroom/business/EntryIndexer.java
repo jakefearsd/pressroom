@@ -20,6 +20,11 @@ public final class EntryIndexer implements EntryChangeListener {
 
     @Override
     public void entryChanged(EntryChanged change) throws WebloggerException {
+        if (change.weblogRemoved()) {
+            // the weblog's own index removal, once its delete commits, takes
+            // every one of its documents out in one write
+            return;
+        }
         IndexManager index = weblogger.getIndexManager();
         if (change.isPublished()) {
             index.addEntryReIndexOperation(change.entry());

@@ -577,6 +577,23 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
     @Override
     public void removeWeblogEntry(WeblogEntry entry) throws WebloggerException {
+        remove(entry, false);
+    }
+
+    @Override
+    public void removeWeblogEntries(Weblog weblog) throws WebloggerException {
+        TypedQuery<WeblogEntry> query = strategy.getNamedQuery("WeblogEntry.getByWebsite", WeblogEntry.class);
+        query.setParameter(1, weblog);
+        for (WeblogEntry entry : query.getResultList()) {
+            remove(entry, true);
+        }
+    }
+
+    /**
+     * The one hard delete. {@code withWeblog}: the weblog is being deleted
+     * too, so it is not saved for the entry's sake and the change says so.
+     */
+    private void remove(WeblogEntry entry, boolean withWeblog) throws WebloggerException {
         Weblog weblog = entry.getWebsite();
 
         // Revisions FK the entry, so they go first. The database would cascade
@@ -611,14 +628,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         this.strategy.remove(entry);
         
         // update weblog last modified date.  date updated by saveWebsite()
-        if (entry.isPublished()) {
+        if (entry.isPublished() && !withWeblog) {
             pressroom.getWeblogManager().saveWeblog(weblog);
         }
         
         // remove entry from cache mapping
         this.entryByAnchor.evict(anchorKey(entry.getWebsite(), entry.getAnchor()));
 
-        announce(new EntryChanged(entry, entry.getStatus(), null, true));
+        announce(new EntryChanged(entry, entry.getStatus(), null, true, withWeblog));
     }
 
     /**
