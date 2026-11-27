@@ -9321,7 +9321,7 @@
           "limit" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "The page size asked for, after the cap of 200."
+            "description" : "The page size asked for, after the cap of 100."
           },
           "hasMore" : {
             "type" : "boolean",
