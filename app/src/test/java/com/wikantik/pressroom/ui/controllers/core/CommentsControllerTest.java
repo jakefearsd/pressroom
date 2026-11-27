@@ -254,7 +254,9 @@ class CommentsControllerTest {
         when(SSO.enabled()).thenReturn(true);
         MvcResult on = perform(get("/pressroom" + SESSION).contextPath("/pressroom").param("entry", entry.getId()));
 
-        String entryPath = "/pressroom/ccblog/entry/ccentry";
+        // The sign-in comes back to the comments (0.18.0), where the page
+        // script focuses the composer.
+        String entryPath = "/pressroom/ccblog/entry/ccentry#comments";
         assertEquals(200, on.getResponse().getStatus());
         assertEquals("no-store", on.getResponse().getHeader("Cache-Control"));
         assertEquals(Map.of("signedIn", false,

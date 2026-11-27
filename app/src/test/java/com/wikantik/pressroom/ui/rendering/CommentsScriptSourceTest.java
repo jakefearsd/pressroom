@@ -64,7 +64,9 @@ class CommentsScriptSourceTest {
 
     /** {@code data-msg-x="$utils.escapeHTML($text.get("key"))"}: a bundle message, escaped for the attribute. */
     private static final Pattern ESCAPED_MESSAGE = Pattern.compile(
-            "(data-msg-[a-z-]+)=\"\\$utils\\.escapeHTML\\(\\$text\\.get\\(\"[A-Za-z.]+\"\\)\\)\"");
+            "(data-msg-[a-z-]+)=\"\\$utils\\.escapeHTML\\(\\$text\\.get\\(\"[A-Za-z.]+\""
+            // the sign-in names the provider: "Sign in with {0} to comment"
+            + "(?:, \\[\\$utils\\.ssoProviderLabel\\])?\\)\\)\"");
 
     @Test
     void theScriptSitsBetweenItsMarkersInTheAudienceAssetsMacro() throws IOException {
@@ -200,6 +202,38 @@ class CommentsScriptSourceTest {
                     "href = " + url + " without sameOrigin(" + url + ") before it in the same function");
         }
         assertTrue(seen >= 2, "the sign-in and account links set an href");
+    }
+
+    /**
+     * Signed out with reader sign-in on (0.18.0): the composer shows, greyed
+     * and closed, with the provider's button under it, built by the shared
+     * helper (the showGoogleSignInAssets macro) and counted via "comments".
+     * Without the helper (a theme that never loads it) it is a plain link.
+     */
+    @Test
+    void signedOutTheComposerIsGreyedWithTheProvidersButton() throws IOException {
+        String code = withoutLineComments(script());
+        String locked = functionBody(code, "lockedComposer");
+        assertTrue(locked.contains("element('textarea'"), locked);
+        assertTrue(locked.contains(".disabled = true"), "the composer cannot be typed in: " + locked);
+        assertTrue(locked.contains("text.label"), "and is still named: " + locked);
+
+        String link = functionBody(code, "signInLink");
+        assertTrue(link.contains("window.pressroomGoogleSignIn('comments', text.signIn)"), link);
+        assertTrue(link.contains("element('a', null, text.signIn)"), "the fallback: " + link);
+        assertTrue(link.contains("classList.add('comments-sign-in')"), "the marker the browser suite reads: " + link);
+
+        int signedOut = code.indexOf("if (!answer.signedIn)");
+        String branch = block(code, code.indexOf('{', signedOut));
+        assertTrue(branch.contains("lockedComposer()"), branch);
+    }
+
+    /** Back from signing in to comment (the return ends at the comments): the composer takes the focus. */
+    @Test
+    void theComposerIsFocusedOnReturnToTheComments() throws IOException {
+        String form = functionBody(withoutLineComments(script()), "showForm");
+        assertTrue(form.contains("window.location.hash.slice(1) === section.id"), form);
+        assertTrue(form.contains("textarea.focus()"), form);
     }
 
     @Test

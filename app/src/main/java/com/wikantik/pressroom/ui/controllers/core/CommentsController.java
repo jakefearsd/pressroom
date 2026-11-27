@@ -90,6 +90,9 @@ public class CommentsController extends BaseController {
 
     private static final AuthenticationTrustResolver TRUST = new AuthenticationTrustResolverImpl();
 
+    /** The comments section's id on an entry page (the showComments macro). */
+    private static final String COMMENTS_ANCHOR = "#comments";
+
     private final CommentService comments;
     private final SsoSettings sso;
 
@@ -208,8 +211,9 @@ public class CommentsController extends BaseController {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("signedIn", false);
         if (sso.enabled()) {
+            // Back to the comments, where the page script focuses the composer.
             body.put("signInUrl", request.getContextPath() + SsoPaths.START + "?return="
-                    + URLEncoder.encode(entryPath(request, entry), StandardCharsets.UTF_8));
+                    + URLEncoder.encode(entryPath(request, entry) + COMMENTS_ANCHOR, StandardCharsets.UTF_8));
         }
         return body;
     }
