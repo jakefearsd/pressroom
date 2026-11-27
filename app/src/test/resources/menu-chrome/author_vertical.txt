@@ -161,6 +161,20 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             <ul class="rMenu">
                 <li class="rMenuItem"><a href="/pressroom-ui/authoring/entryAdd.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.newEntry)</a></li>
                 <li class="rMenuItem"><a href="/pressroom-ui/authoring/entries.rol">T(tabbedmenu.weblog):T(tabbedmenu.weblog.archives)</a></li>

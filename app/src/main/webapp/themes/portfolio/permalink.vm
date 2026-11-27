@@ -34,6 +34,7 @@
 
 <header class="pf-header">
     <p class="pf-name"><a href="$url.home">$model.weblog.name</a></p>
+    #showFollowControl($model.weblog "masthead")
     <nav class="pf-nav">
         #showWeblogCategoryLinksList()
         <ul class="rCategory">

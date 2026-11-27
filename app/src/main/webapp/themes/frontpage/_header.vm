@@ -56,6 +56,9 @@
         #else
         <a class="fd-sign-in" href="$utils.escapeHTML($url.action("login", "/pressroom-ui"))">$text.get("navigationBar.login")</a>
         #end
+        #elseif($utils.ssoEnabled)
+        ## Signed in with reader sign-in on: the "You" menu (weblog.vm).
+        #showYouMenu("fd-topbar")
         #else
         ## Who is signed in: a reader and an author can be the same person
         ## under two accounts, and nothing else on the page tells them apart.

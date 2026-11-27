@@ -363,6 +363,23 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 #if($dFront.allBlogs.isEmpty())
     <p class="fd-wrap fd-empty">$text.get("siteDirectory.empty")</p>
 #else
+## Continue reading and From blogs you follow (0.18.0, Part E), directly
+## under the masthead, each its own section: a signed-in reader's page only,
+## hidden until the reader script (weblog.vm) fills them from reader.rol.
+#if($utils.ssoEnabled && $utils.isUserAuthenticated())
+<section class="fd-continue" aria-labelledby="fd-continue-label">
+    <div class="fd-wrap fd-sec fd-reader" data-reader-row="continue" hidden>
+        <div class="fd-head"><h2 id="fd-continue-label">$text.get("reader.state.continue")</h2></div>
+        <ul class="fd-reader-list"></ul>
+    </div>
+</section>
+<section class="fd-followed" aria-labelledby="fd-followed-label">
+    <div class="fd-wrap fd-sec fd-reader" data-reader-row="followed" hidden>
+        <div class="fd-head"><h2 id="fd-followed-label">$text.get("reader.state.followed")</h2></div>
+        <ul class="fd-reader-list"></ul>
+    </div>
+</section>
+#end
 <div class="fd-wrap">
     <div class="fd-top">
 #if($dFront.headline)
@@ -376,7 +393,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
                     <h2 class="fd-label" id="fd-headline-label">#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
                     #fdKicker($dLead)
                 </div>
-                <h3 class="fd-lead-title"><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></h3>
+                <h3 class="fd-lead-title"><a href="$utils.escapeHTML($dLead.permalink)"#showReaderEntryMark($dLead)>$dLead.title</a></h3>
                 #fdExcerpt($dLead "fd-dek")
                 #fdMeta($dLead)
             </article>
@@ -389,7 +406,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
                 <ol class="fd-rank">
                 #foreach($dPost in $dFront.popular)
                 #fdHue($dPost.website)
-                    <li class="fd-discovery-post" data-b="$fdB"><a class="fd-t" href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>#fdKicker($dPost)</li>
+                    <li class="fd-discovery-post" data-b="$fdB"><a class="fd-t" href="$utils.escapeHTML($dPost.permalink)"#showReaderEntryMark($dPost)>$dPost.title</a>#fdKicker($dPost)</li>
                 #end
                 </ol>
             </section>
@@ -419,7 +436,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
                     #fdMedia($dPost "(max-width: 640px) 96px, 220px")
                     <div class="fd-txt">
                         #fdKicker($dPost)
-                        <h3><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></h3>
+                        <h3><a href="$utils.escapeHTML($dPost.permalink)"#showReaderEntryMark($dPost)>$dPost.title</a></h3>
                         #fdExcerpt($dPost "fd-ex")
                         #fdMeta($dPost)
                     </div>
@@ -473,7 +490,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
                     #if(!$dCard.topEntries.isEmpty())#fdMedia($dCard.topEntries.get(0) "(max-width: 640px) 85vw, 33vw")#end
                     <ol>
                     #foreach($dPost in $dCard.topEntries)
-                        <li><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></li>
+                        <li><a href="$utils.escapeHTML($dPost.permalink)"#showReaderEntryMark($dPost)>$dPost.title</a></li>
                     #end
                     </ol>
                     <a class="fd-visit" href="$utils.escapeHTML($dCard.weblog.absoluteURL)" aria-hidden="true" tabindex="-1">$text.get("discovery.visit", [$dCard.weblog.name]) &#8594;</a>
@@ -508,7 +525,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
                 <li class="fd-discovery-post" data-b="$fdB">
                     #fdMedia($dPost "(max-width: 640px) 100vw, 33vw")
                     #fdKicker($dPost)
-                    <h3><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></h3>
+                    <h3><a href="$utils.escapeHTML($dPost.permalink)"#showReaderEntryMark($dPost)>$dPost.title</a></h3>
                     #fdExcerpt($dPost "fd-ex")
                 </li>
             #end
@@ -524,7 +541,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
     ## (called by the colophon) fills it; with no storage or no JavaScript
     ## nothing ever shows.
     <div class="fd-sec fd-places">
-        <nav class="places-been" hidden data-places aria-labelledby="fd-places-label">
+        <nav class="places-been" hidden data-places#showPlacesSource($model.weblog) aria-labelledby="fd-places-label">
             <div class="fd-head"><h2 id="fd-places-label">$text.get("discovery.placesBeen")</h2></div>
             #showPlacesNudge()
         </nav>

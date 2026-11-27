@@ -957,6 +957,46 @@ class UtilitiesModelTest {
         }
     }
 
+    // ------------------------------------------------------ reader state
+
+    /** The page script's endpoint, built here with the context path, never guessed in the browser. */
+    @Test
+    void theReaderEndpointHangsOffTheContextPath() {
+        String previous = WebloggerRuntimeConfig.getRelativeContextURL();
+        try {
+            WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+            assertEquals("/pressroom/pressroom-ui/rendering/reader.rol", model().getReaderEndpoint());
+            WebloggerRuntimeConfig.setRelativeContextURL("");
+            assertEquals("/pressroom-ui/rendering/reader.rol", model().getReaderEndpoint());
+        } finally {
+            WebloggerRuntimeConfig.setRelativeContextURL(previous);
+        }
+    }
+
+    /** Reader state shows with reader sign-in on, on a blog without a custom domain. */
+    @Test
+    void readerStateIsOnWithSsoAndNoCustomDomain() {
+        Weblog plain = new Weblog();
+        Weblog domained = new Weblog();
+        domained.setCustomDomain("blog.example.org");
+        assertFalse(model().readerStateOn(WeblogWrapper.wrap(plain, null, null)), "SSO off");
+        try (var _ = StaticConfigOverride.set("sso.oidc.client.id", "id");
+             var _ = StaticConfigOverride.set("sso.oidc.client.secret", "secret")) {
+            assertTrue(model().readerStateOn(WeblogWrapper.wrap(plain, null, null)));
+            assertFalse(model().readerStateOn(WeblogWrapper.wrap(domained, null, null)), "a custom domain");
+            assertFalse(model().readerStateOn(null));
+        }
+    }
+
+    /** The "You" menu's initials: the first letters of the first and last words, as reader.rol's. */
+    @Test
+    void initialsAreTheFirstAndLastWordsFirstLetters() {
+        assertEquals("AR", model().initials("Ann Marie Reader"));
+        assertEquals("J", model().initials("jake"));
+        assertEquals("?", model().initials("  "));
+        assertEquals("?", model().initials(null));
+    }
+
     // --- titleWithName: a <title> carries the blog's name only when it fits ---
 
     @Test
