@@ -203,7 +203,7 @@ After sign-in the reader returns to `#comments`, with the composer focused.
 - With SSO off, the sign-in page and header render as in 0.17.1 (characterisation test first).
 - The return paths survive.
 - The author form is reachable in one click and opens by itself on error.
-- Browser ITs cover the login page in both SSO states.
+- Browser ITs cover the login page in both SSO states. (Amended 2026-11-27 at review: the browser suite runs with SSO on throughout, so the SSO-off page is covered by the unit characterisation tests `LoginPageSsoOffCharacterisationTest` and `LoginControllerTest`; `LoginPageIT` covers the SSO-on page.)
 
 ### Part E: Reader state (Save, Follow, history, "You" menu, account hub)
 

@@ -142,3 +142,20 @@ sizes a fixed cache and stays startup-scoped; only the switch is hot.
 - `rememberme.enabled`, `themes.reload.mode`, `users.firstUserAdmin` —
   structurally boot-scoped.
 - `search.enabled` — gates whether a Lucene index is built.
+
+## Generated secrets and reader throttles (0.18.0)
+
+- **`GeneratedSecrets` pattern** (`mail.unsubscribe.secret`): a secret that
+  is a `pressroom_properties` row, not a `runtimeConfigDefs.xml` property.
+  `GeneratedSecrets.seedMissing` fills it at first start with 256 random
+  bits, or with the startup config's value (`pressroom-custom.properties` /
+  `PRESSROOM_MAIL_UNSUBSCRIBE_SECRET`) when one is set; it is overridable once,
+  and changing the row invalidates what it signed. No settings screen or API
+  lists it. **Read such secrets through `PropertiesManager`, never
+  `WebloggerRuntimeConfig.getProperty`**, whose debug line prints values.
+  Detail: `docs/dev/comments.md`, "One-click unsubscribe".
+- **`reader.throttle.window.limit` / `reader.throttle.window.seconds`**
+  (defaults 120 and 600; seconds at most 86400): the allowed count of reader
+  writes (save, follow, history) per account in a window, enforced by
+  `ReaderStateService`, answered with 429. Startup-scoped; an unusable value
+  falls back to the default, never to "no limit". Detail: `docs/dev/sso.md`.

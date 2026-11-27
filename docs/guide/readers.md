@@ -73,7 +73,8 @@ reader who clicks either is offered the sign-in, and the save or follow
 completes when they come back. A post counts as read after ten seconds on
 the page; blog home pages and the front page then show **Continue reading**
 and **From blogs you follow** to that reader, with a small **Read** label on
-posts they have read. None of this changes what a signed-out visitor sees. A
+posts they have read. Signed-out pages stay the same for every visitor (apart from the Save and
+Follow buttons themselves). A
 blog on its own custom domain does not offer these yet.
 
 ## Contact messages (Inquiries)
