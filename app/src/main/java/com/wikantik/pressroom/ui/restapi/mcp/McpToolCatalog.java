@@ -252,6 +252,7 @@ public final class McpToolCatalog {
             sessionOnly("PATCH " + W + "/members/{userName}"),
             sessionOnly("DELETE " + W + "/members/{userName}"),
             sessionOnly("GET " + W + "/submissions"),
+            sessionOnly("POST " + W + "/submissions/read"),
             sessionOnly("DELETE " + W + "/submissions/{id}"),
             sessionOnly("DELETE " + W),
             sessionOnly("GET /v1/admin/agents"),

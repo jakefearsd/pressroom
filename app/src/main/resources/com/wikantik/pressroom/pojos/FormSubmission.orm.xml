@@ -15,6 +15,12 @@
         <named-query name="FormSubmission.removeByWeblog">
             <query>DELETE FROM FormSubmission s WHERE s.weblog = ?1</query>
         </named-query>
+        <named-query name="FormSubmission.countUnreadByWeblog">
+            <query>SELECT COUNT(s) FROM FormSubmission s WHERE s.weblog = ?1 AND s.readAt IS NULL</query>
+        </named-query>
+        <named-query name="FormSubmission.markRead">
+            <query>UPDATE FormSubmission s SET s.readAt = ?3 WHERE s.weblog = ?1 AND s.id IN ?2 AND s.readAt IS NULL</query>
+        </named-query>
         <attributes>
             <id name="id">
                 <column name="id"/>
@@ -42,6 +48,9 @@
             </basic>
             <basic name="created">
                 <column name="created" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="readAt">
+                <column name="read_at" insertable="true" updatable="true" nullable="true"/>
             </basic>
             <many-to-one name="weblog" target-entity="com.wikantik.pressroom.pojos.Weblog">
                 <join-column name="weblogid" insertable="true" updatable="true" nullable="false"/>

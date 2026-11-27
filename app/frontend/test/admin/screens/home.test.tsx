@@ -8,7 +8,7 @@ const API = 'http://pressroom.test/pressroom/api/v1';
 
 let home: object;
 let features: object;
-const base = { about: 'Notes', theme: 'journal', absoluteUrl: 'https://blog.example.com/x', canModerate: false, entryCount: 0, pendingComments: 0 };
+const base = { about: 'Notes', theme: 'journal', absoluteUrl: 'https://blog.example.com/x', canModerate: false, entryCount: 0, pendingComments: 0, newInquiries: 0, drafts: 0, scheduled: 0 };
 const limited = { ...base, handle: 'lim', name: 'Limited Blog', permission: 'EDIT_DRAFT', actions: ['edit_draft'], entryCount: 2 };
 const author = { ...base, handle: 'auth', name: 'Author Blog', permission: 'POST', actions: ['post'], canModerate: true, entryCount: 12, pendingComments: 3 };
 const owner = { ...base, handle: 'own', name: 'Owner Blog', permission: 'ADMIN', actions: ['admin', 'post', 'edit_draft'], canModerate: true, entryCount: 5, about: undefined };
@@ -38,9 +38,10 @@ describe('Home (the main menu)', () => {
     expect(heading.querySelector('.data')).toHaveTextContent('auth');
     expect(heading.querySelector('.bi-folder2-open')).not.toBeNull();
     expect(within(row('Author Blog')).getByText('Notes')).toBeInTheDocument();
-    expect(within(row('Limited Blog')).getByText('You have Limited permission on this weblog.')).toBeInTheDocument();
-    expect(within(row('Author Blog')).getByText('You have Author permission on this weblog.')).toBeInTheDocument();
-    expect(within(row('Owner Blog')).getByText('You have Admin, Author, Limited permission on this weblog.')).toBeInTheDocument();
+    expect(within(row('Limited Blog')).getByText('Limited')).toHaveClass('role-label');
+    expect(within(row('Author Blog')).getByText('Author')).toHaveClass('role-label');
+    expect(screen.queryByText(/permission on this weblog/)).toBeNull();
+    expect(row('Owner Blog').querySelector('.role-label')).toBeNull();
     expect(within(row('Owner Blog')).getByRole('group', { name: 'Owner Blog' })).toHaveClass('weblog-actions');
   });
 
@@ -50,7 +51,8 @@ describe('Home (the main menu)', () => {
     const actions = row('Limited Blog');
     expect(within(actions).getByRole('link', { name: 'New entry' }))
       .toHaveAttribute('href', '/weblogs/lim/entries/new');
-    expect(within(actions).getAllByRole('link').map((a) => a.textContent)).toEqual(['Limited Blog', 'New entry']);
+    expect(within(actions).getAllByRole('link').map((a) => a.textContent))
+      .toEqual(['Limited Blog', 'New entry', 'View blog']);
   });
 
   it('gives an author the entries list with its count and, when comments wait, the moderation pill', async () => {
@@ -62,9 +64,68 @@ describe('Home (the main menu)', () => {
     expect(entries.querySelector('.data')).toHaveTextContent('12');
     const pill = within(actions).getByRole('link', { name: '3 awaiting approval' });
     expect(pill).toHaveClass('status-pill', 'status-pending');
-    expect(pill).toHaveAttribute('href', '/weblogs/auth/comments');
+    expect(pill).toHaveAttribute('href', '/weblogs/auth/comments?status=PENDING');
     expect(within(actions).queryByRole('link', { name: 'Settings' })).toBeNull();
     expect(within(actions).queryByRole('link', { name: 'Theme' })).toBeNull();
+  });
+
+  it('counts what waits as links: inquiries, drafts and scheduled posts, with when it last published', async () => {
+    const now = Date.now();
+    home = { weblogs: [{ ...author, pendingComments: 0, newInquiries: 2, drafts: 4, scheduled: 1,
+      lastPublished: new Date(now - 3 * 86_400_000).toISOString() }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByText('Author Blog');
+    const r = row('Author Blog');
+    expect(within(r).getByRole('link', { name: '2 new inquiries' })).toHaveAttribute('href', '/weblogs/auth/inbox');
+    expect(within(r).getByRole('link', { name: '4 drafts' })).toHaveAttribute('href', '/weblogs/auth/entries?status=DRAFT');
+    expect(within(r).getByRole('link', { name: '1 scheduled' })).toHaveAttribute('href', '/weblogs/auth/entries?status=SCHEDULED');
+    expect(within(r).getByText('Last published 3 days ago')).toBeInTheDocument();
+    expect(within(r).getByRole('link', { name: 'View blog' })).toHaveAttribute('href', 'https://blog.example.com/x');
+    expect(within(r).queryByRole('link', { name: /awaiting approval/ })).toBeNull();
+  });
+
+  it('says nothing is published for a blog that has not published, and one inquiry in the singular', async () => {
+    home = { weblogs: [{ ...author, pendingComments: 0, newInquiries: 1 }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByText('Author Blog');
+    expect(within(row('Author Blog')).getByText('Nothing published yet.')).toBeInTheDocument();
+    expect(within(row('Author Blog')).getByRole('link', { name: '1 new inquiry' })).toBeInTheDocument();
+    expect(within(row('Author Blog')).queryByRole('link', { name: /draft|scheduled/ })).toBeNull();
+  });
+
+  it('gives a limited member no count links, since the lists they open are not theirs', async () => {
+    home = { weblogs: [{ ...limited, drafts: 3, scheduled: 1 }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByText('Limited Blog');
+    expect(within(row('Limited Blog')).queryByRole('link', { name: /drafts|scheduled/ })).toBeNull();
+  });
+
+  it('lists blogs with waiting comments or inquiries first', async () => {
+    home = { weblogs: [{ ...owner, name: 'Aaa Quiet', handle: 'aaa' }, { ...author, name: 'Zzz Busy', handle: 'zzz', pendingComments: 2 }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByText('Zzz Busy');
+    const names = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(names[0]).toMatch(/Zzz Busy/);
+    expect(names[1]).toMatch(/Aaa Quiet/);
+  });
+
+  it('shows the cross-blog summary only when comments wait, linking to the queue', async () => {
+    home = { weblogs: [{ ...author, pendingComments: 3 }, { ...owner, pendingComments: 2 }, { ...owner, handle: 'x', name: 'X', pendingComments: 0 }] };
+    const first = renderRoutes(appRoutes, '/', { boot: editorBoot });
+    const summary = await screen.findByText(/5 comments awaiting approval across 2 blogs/);
+    expect(summary.closest('p')).toHaveClass('attention-summary');
+    expect(within(summary.closest('p') as HTMLElement).getByRole('link', { name: 'Review all' })).toHaveAttribute('href', '/comments');
+    first.unmount();
+    home = { weblogs: [{ ...author, pendingComments: 1 }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    expect(await screen.findByText(/1 comment awaiting approval across 1 blog/)).toBeInTheDocument();
+  });
+
+  it('shows no summary when nothing waits', async () => {
+    home = { weblogs: [{ ...author, pendingComments: 0, newInquiries: 4 }] };
+    renderRoutes(appRoutes, '/', { boot: editorBoot });
+    await screen.findByText('Author Blog');
+    expect(document.querySelector('.attention-summary')).toBeNull();
   });
 
   it('shows no pill for nothing waiting, nor for a member who may not moderate', async () => {

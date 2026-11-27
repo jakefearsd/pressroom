@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
@@ -63,6 +64,20 @@ public interface FormSubmissionManager {
      * How many submissions a weblog has.
      */
     int getCount(Weblog weblog) throws WebloggerException;
+
+    /**
+     * How many of a weblog's submissions no member has seen yet.
+     */
+    long getUnreadCount(Weblog weblog) throws WebloggerException;
+
+    /**
+     * Stamp {@code read_at} on the named submissions of {@code weblog} that are still unread. Ids that
+     * belong to another weblog, are unknown, or are already read change nothing (and say nothing: the
+     * caller must not learn whether an id exists elsewhere).
+     *
+     * @return the number of rows changed
+     */
+    int markRead(Weblog weblog, Collection<String> ids) throws WebloggerException;
 
     /**
      * Remove one submission.

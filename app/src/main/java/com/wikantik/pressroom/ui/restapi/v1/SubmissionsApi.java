@@ -22,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +61,23 @@ public class SubmissionsApi extends BaseApiController implements UISecurityEnfor
         List<SubmissionDtos.SubmissionView> items = rows.subList(0, Math.min(rows.size(), bounded)).stream()
                 .map(SubmissionDtos::toView).toList();
         return new SubmissionDtos.SubmissionPage(items, offset, bounded, rows.size() > bounded, total);
+    }
+
+    @Operation(operationId = "submissionsMarkRead",
+            summary = "Mark contact-form messages read, for every member of the weblog.")
+    @ApiResponse(responseCode = "204", description = "Done; no body. Ids that are not this weblog's are ignored.")
+    @PostMapping("/read")
+    public ResponseEntity<Void> markRead(HttpServletRequest request, @RequestBody SubmissionDtos.MarkRead body)
+            throws WebloggerException {
+        Weblog weblog = requireActionWeblog(request);
+        if (body == null || body.ids() == null) {
+            throw ApiException.problemOnField("ids", ProblemCode.FIELD_REQUIRED, "ids");
+        }
+        // The inbox marks one page (30) at a time; a longer list is cut rather than refused.
+        List<String> ids = body.ids().subList(0, Math.min(body.ids().size(), Paging.MAX_LIMIT));
+        weblogger.getFormSubmissionManager().markRead(weblog, ids);
+        weblogger.flush();
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(operationId = "submissionsDelete", summary = "Delete one contact-form message.")

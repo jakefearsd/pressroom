@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { useMyWeblogs } from '../../../src/admin/api/queries';
 import { Comments } from '../../../src/admin/screens/Comments';
 import { BLOG, meHandler, problem, renderScreen, server, useMockApi, whereIs } from './harness';
 
@@ -102,6 +103,23 @@ describe('Comments', () => {
     await user.click(within(await rowOf('Rita Reader')).getByRole('button', { name: 'Hide' }));
     expect(await screen.findByText('1 hidden.')).toBeInTheDocument();
     expect(bodies).toEqual([{ status: 'PUBLISHED' }, { status: 'HIDDEN' }]);
+  });
+
+  it('refreshes the menu counts after a moderation, so the rail badge drops without a reload', async () => {
+    const user = userEvent.setup();
+    let reads = 0;
+    function MenuCounts() {
+      useMyWeblogs();
+      return null;
+    }
+    server.use(
+      http.get('http://pressroom.test/pressroom/api/v1/me/weblogs', () => { reads += 1; return HttpResponse.json({ weblogs: [] }); }),
+      http.patch(`${BLOG}/comments/c1`, () => HttpResponse.json({ id: 'c1' }))
+    );
+    renderScreen('/weblogs/:handle/comments', <><Comments /><MenuCounts /></>, '/weblogs/blog/comments');
+    await user.click(within(await rowOf('Rita Reader')).getByRole('button', { name: 'Approve' }));
+    await screen.findByText('1 approved.');
+    await waitFor(() => { expect(reads).toBe(2); });
   });
 
   it('says why a moderation was refused, in place', async () => {

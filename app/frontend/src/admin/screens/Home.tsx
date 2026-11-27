@@ -6,6 +6,7 @@ import { PageTitle } from '../frame/PageTitle';
 import { useBoot } from '../context';
 import { useT } from '../i18n/messages';
 import { RAIL_ENTRIES, entryTarget, type LinkTarget } from '../routes/railTable';
+import { attentionOrder } from './homeOrder';
 
 type MyWeblog = components['schemas']['MyWeblog'];
 
@@ -37,11 +38,23 @@ function roleLabels(weblog: MyWeblog, t: ReturnType<typeof useT>): string {
   return labels.join(', ');
 }
 
+/** "3 days ago", "today", "2 months ago" in the signed-in user's language; the clock is the browser's. */
+function ago(iso: string, locale: string): string {
+  const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (days < 30) {
+    return format.format(-days, 'day');
+  }
+  return days < 365 ? format.format(-Math.floor(days / 30), 'month') : format.format(-Math.floor(days / 365), 'year');
+}
+
 function WeblogRow({ weblog, customThemes }: { weblog: MyWeblog; customThemes: boolean }) {
   const t = useT();
-  const { contextPath } = useBoot();
+  const { contextPath, uiLocale } = useBoot();
   const { handle, name } = weblog;
   const admin = weblog.actions.includes('admin');
+  const limited = weblog.actions.includes('edit_draft') && !weblog.actions.includes('post') && !admin;
+  const enc = encodeURIComponent(handle);
   const themeTarget = weblog.theme === 'custom'
     ? (customThemes ? authoring(contextPath, 'templates', handle) : undefined)
     : authoring(contextPath, 'themeEdit', handle);
@@ -53,7 +66,34 @@ function WeblogRow({ weblog, customThemes }: { weblog: MyWeblog; customThemes: b
         <span className="data">{handle}</span>
       </h2>
       <p>{weblog.about}</p>
-      <p>{t('yourWebsites.permission.summary', roleLabels(weblog, t))}</p>
+      {admin ? null : <p><span className="role-label">{roleLabels(weblog, t)}</span></p>}
+      <p className="weblog-counts">
+        {weblog.canModerate && weblog.pendingComments > 0 ? (
+          <AppLink className="status-pill status-pending" target={react(`/weblogs/${enc}/comments?status=PENDING`)}>
+            {t('mainMenu.pendingComments', weblog.pendingComments)}
+          </AppLink>
+        ) : null}
+        {weblog.canModerate && weblog.newInquiries > 0 ? (
+          <AppLink className="status-pill status-pending" target={authoring(contextPath, 'submissions', handle)}>
+            {t('mainMenu.newInquiries', weblog.newInquiries)}
+          </AppLink>
+        ) : null}
+        {limited || weblog.drafts === 0 ? null : (
+          <AppLink className="quiet-link" target={react(`/weblogs/${enc}/entries?status=DRAFT`)}>
+            {t('mainMenu.drafts', weblog.drafts)}
+          </AppLink>
+        )}
+        {limited || weblog.scheduled === 0 ? null : (
+          <AppLink className="quiet-link" target={react(`/weblogs/${enc}/entries?status=SCHEDULED`)}>
+            {t('mainMenu.scheduled', weblog.scheduled)}
+          </AppLink>
+        )}
+      </p>
+      <p className="weblog-published data">
+        {weblog.lastPublished === undefined
+          ? t('mainMenu.neverPublished')
+          : t('mainMenu.lastPublished', ago(weblog.lastPublished, uiLocale))}
+      </p>
       <div className="weblog-actions" role="group" aria-label={name}>
         <AppLink className="btn btn-primary btn-sm" target={authoring(contextPath, 'entryAdd', handle)}>
           {t('yourWebsites.newEntry')}
@@ -63,11 +103,9 @@ function WeblogRow({ weblog, customThemes }: { weblog: MyWeblog; customThemes: b
             {t('yourWebsites.editEntries')} <span className="data">{weblog.entryCount}</span>
           </AppLink>
         )}
-        {weblog.canModerate && weblog.pendingComments > 0 ? (
-          <AppLink className="status-pill status-pending" target={authoring(contextPath, 'comments', handle)}>
-            {t('mainMenu.pendingComments', weblog.pendingComments)}
-          </AppLink>
-        ) : null}
+        {weblog.absoluteUrl === undefined ? null : (
+          <a className="quiet-link" href={weblog.absoluteUrl}>{t('mainMenu.viewBlog')}</a>
+        )}
         {admin ? (
           <>
             {themeTarget === undefined ? null : (
@@ -103,6 +141,22 @@ function SiteRow({ handle }: { handle: string }) {
   );
 }
 
+/** "5 comments awaiting approval across 2 blogs · Review all": only when something waits. */
+function AttentionSummary({ weblogs }: { weblogs: readonly MyWeblog[] }) {
+  const t = useT();
+  const waiting = weblogs.filter((w) => w.canModerate && w.pendingComments > 0);
+  const total = waiting.reduce((sum, w) => sum + w.pendingComments, 0);
+  if (total === 0) {
+    return null;
+  }
+  return (
+    <p className="attention-summary">
+      {t('mainMenu.summary', total, waiting.length)} &middot;{' '}
+      <AppLink target={react('/comments')}>{t('mainMenu.summary.review')}</AppLink>
+    </p>
+  );
+}
+
 /** The app home, the main menu's replacement: the weblogs the signed-in user can act on. */
 export function Home() {
   const t = useT();
@@ -124,7 +178,8 @@ export function Home() {
       ) : (
         <>
           <p className="subtitle">{t('yourWebsites.prompt.hasBlog')}</p>
-          {weblogs.map((weblog) => (
+          <AttentionSummary weblogs={weblogs} />
+          {[...weblogs].sort(attentionOrder).map((weblog) => (
             <WeblogRow key={weblog.handle} weblog={weblog} customThemes={meta.data?.features.customThemes === true} />
           ))}
         </>

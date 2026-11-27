@@ -183,7 +183,10 @@ function EntryRows({ handle, entries, filtered, base, viewsColumn }: {
   const [confirmBulk, setConfirmBulk] = useState(false);
   const bulk = useBulk<EntryView>();
 
-  const refresh = () => queries.invalidateQueries({ queryKey: ['entries', handle] });
+  const refresh = () => Promise.all([
+    queries.invalidateQueries({ queryKey: ['entries', handle] }),
+    queries.invalidateQueries({ queryKey: ['me', 'weblogs'] })
+  ]);
   const path = (id: string) => ({ params: { path: { handle, id } } });
   const reset = () => { setMessages([]); setErrors([]); setError(null); };
 

@@ -554,6 +554,21 @@ label,
     color: var(--ink);
 }
 
+/* A waiting count beside a rail entry; quiet, not a red dot. */
+.rail-badge {
+    float: right;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 99px;
+    background: var(--accent-quiet);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
+    font-family: var(--font-data);
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
 .rail-active {
     border-left: 2px solid var(--accent);
     background: var(--accent-quiet);
@@ -1351,6 +1366,36 @@ table.mm_table_actions td {
     white-space: nowrap;
 }
 
+.weblog-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    align-items: center;
+    margin: 6px 0 0;
+}
+
+.weblog-counts:empty {
+    display: none;
+}
+
+.weblog-published {
+    margin: 4px 0 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+
+.role-label {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    letter-spacing: .04em;
+    color: var(--ink-soft);
+}
+
+.attention-summary {
+    font-family: var(--font-ui);
+    margin: 0 0 8px;
+}
+
 /* ---- Site directory: the public root while no weblog fronts the site ---- */
 .site-directory li {
     padding: 12px 0;
@@ -2087,3 +2132,6 @@ span.button {
 /* Pages.jsp: the quiet "Home page" marker beside the title of the page a
    blog shows at its root. */
 .page-home-marker { margin-left: 8px; }
+
+/* The inbox's "New" mark on an unread message: quiet, same family as the pending pill. */
+.new-pill { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 99px; font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: .04em; background: var(--accent-quiet); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface)); }

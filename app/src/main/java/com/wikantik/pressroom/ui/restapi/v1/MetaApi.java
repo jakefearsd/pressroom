@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
@@ -205,11 +206,16 @@ public class MetaApi {
         boolean canModerate = permission.implies(moderate);
         long pending = canModerate
                 ? weblogger.getCommentManager().countComments(weblog, ReaderComment.Status.PENDING) : 0;
+        long newInquiries = canModerate ? weblogger.getFormSubmissionManager().getUnreadCount(weblog) : 0;
+        var entries = weblogger.getWeblogEntryManager();
+        java.util.Date latest = entries.getBlogStanding(weblog, new java.util.Date()).latest();
         return new MetaDtos.MyWeblog(weblog.getHandle(), Objects.toString(weblog.getName(), ""),
                 StringUtils.trimToNull(weblog.getAbout()), weblog.getEditorTheme(),
                 weblogger.getUrlStrategy().getWeblogURL(weblog, null, true), Memberships.strongestLevel(permission),
-                permission.getActionsAsList(), canModerate, weblogger.getWeblogEntryManager().getEntryCount(weblog),
-                pending);
+                permission.getActionsAsList(), canModerate, entries.getEntryCount(weblog), pending,
+                newInquiries, entries.getEntryCount(weblog, WeblogEntry.PubStatus.DRAFT),
+                entries.getEntryCount(weblog, WeblogEntry.PubStatus.SCHEDULED),
+                latest == null ? null : latest.toInstant());
     }
 
     private static User requireUser(HttpServletRequest request) {

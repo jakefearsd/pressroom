@@ -117,7 +117,18 @@ public final class MetaDtos {
             long entryCount,
             @Schema(description = "Comments awaiting approval; 0 for an account that may not moderate.",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            long pendingComments) {
+            long pendingComments,
+            @Schema(description = "Contact-form messages no member has opened yet; 0 for an account that may "
+                    + "not post (the inbox is for posters).", requiredMode = Schema.RequiredMode.REQUIRED)
+            long newInquiries,
+            @Schema(description = "Entries saved as drafts.", requiredMode = Schema.RequiredMode.REQUIRED)
+            long drafts,
+            @Schema(description = "Entries scheduled for a later publication time.",
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            long scheduled,
+            @Schema(description = "When the newest published entry went live, as an ISO-8601 instant; absent "
+                    + "when nothing is published yet.")
+            java.time.Instant lastPublished) {
     }
 
     /** The site facts a client needs before it draws a screen; the same for every authenticated caller. */
