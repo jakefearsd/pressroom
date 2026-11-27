@@ -38,7 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ({@code ReaderSignInSurfacesIT}); an author's is the colophon's Sign in,
  * which carries the page as its return path (added by the page's script,
  * which nothing else exercises). The password sign-in comes back to that
- * page, and the bar then says who is signed in and offers Sign out. Reads the
+ * page, and the bar then says who is signed in and, in its "You" menu
+ * (0.18.0, Part E), offers the Main Menu and Sign out. Reads the
  * site's Absolute URL (the links are built from it), hence the shared lock on
  * global config.
  */
@@ -63,7 +64,9 @@ class SiteBarAccountIT extends PressroomIT {
 
         assertEquals(baseUrl() + page, WebDriverRunner.url(), "the sign-in must come back to the page");
         $("nav.site-bar .site-bar-who").shouldBe(visible);
-        $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/app/']").should(exist);
+        // Since 0.18.0 (Part E) the signed-in links sit in the "You" menu, a details disclosure.
+        $("nav.site-bar details.you-menu summary").click();
+        $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/app/']").shouldBe(visible);
         $("nav.site-bar .site-bar-account a[href$='/pressroom-ui/logout.rol']").shouldHave(text("Sign out"));
         $("nav.site-bar a.g-signin").shouldNot(exist);
         $(".colophon a.colophon-sign-in").shouldNot(exist);
