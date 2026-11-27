@@ -568,18 +568,6 @@ class VirtualHostIT extends PressroomIT {
         return "https://" + VHOST + contextPath() + path;
     }
 
-    /**
-     * The servlet context path segment of {@link #baseUrl()} -- {@code ""} at
-     * the root context, {@code "/pressroom"} under a prefix. Derived from the
-     * same {@value PressroomIT#BASE_URL_PROPERTY} system property the harness
-     * was actually started with, rather than a second, independently-read
-     * source (e.g. an {@code it.context.path} property) that could drift
-     * from it.
-     */
-    private static String contextPath() {
-        return URI.create(baseUrl()).getPath();
-    }
-
     // ---------------------------------------------------------------- HTTP
 
     /** Does NOT follow redirects: the 301 itself is the assertion. */

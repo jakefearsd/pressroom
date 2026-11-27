@@ -18,7 +18,6 @@
 package com.wikantik.pressroom.it;
 
 import java.net.URI;
-import java.net.URLDecoder;
 import java.util.List;
 
 import com.codeborne.selenide.SelenideElement;
@@ -33,7 +32,6 @@ import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -122,24 +120,5 @@ class ReaderSignInSurfacesIT extends PressroomIT {
         assertNotNull(href);
         assertEquals(contextPath() + SSO_START, URI.create(href).getPath(), "not the provider's start: " + href);
         assertEquals(expectedReturn, queryParameter(href, "return"), "the page's script adds the return: " + href);
-    }
-
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
-    }
-
-    private static String queryParameter(String url, String name) {
-        String query = URI.create(url).getRawQuery();
-        if (query == null) {
-            return null;
-        }
-        for (String pair : query.split("&")) {
-            int eq = pair.indexOf('=');
-            if (eq > 0 && name.equals(pair.substring(0, eq))) {
-                return URLDecoder.decode(pair.substring(eq + 1), UTF_8);
-            }
-        }
-        return null;
     }
 }

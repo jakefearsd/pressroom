@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.it;
 
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -62,7 +61,6 @@ import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -1129,30 +1127,6 @@ class CommentsIT extends PressroomIT {
     private void openVhostPath(String path) {
         Selenide.open("http://" + VHOST + ":" + URI.create(baseUrl()).getPort() + contextPath() + path);
         BrowserHealth.current().settle();
-    }
-
-    /** The context path, empty at the root: what every path a browser shows starts with. */
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
-    }
-
-    private static String currentPath() {
-        return URI.create(WebDriverRunner.url()).getPath();
-    }
-
-    private static String queryParameter(String url, String name) {
-        String query = URI.create(url).getRawQuery();
-        if (query == null) {
-            return null;
-        }
-        for (String pair : query.split("&")) {
-            int eq = pair.indexOf('=');
-            if (eq > 0 && name.equals(pair.substring(0, eq))) {
-                return URLDecoder.decode(pair.substring(eq + 1), UTF_8);
-            }
-        }
-        return null;
     }
 
     private static String nonce() {

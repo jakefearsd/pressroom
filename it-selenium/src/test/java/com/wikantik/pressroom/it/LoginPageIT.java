@@ -18,7 +18,6 @@
 package com.wikantik.pressroom.it;
 
 import java.net.URI;
-import java.net.URLDecoder;
 
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.WebDriverRunner;
@@ -129,24 +128,5 @@ class LoginPageIT extends PressroomIT {
         openPath(LOGIN);
         $("#j_username").shouldBe(visible);
         $("details#authorSignIn").shouldHave(attribute("open"));
-    }
-
-    private static String contextPath() {
-        String path = URI.create(baseUrl()).getPath();
-        return path == null ? "" : path;
-    }
-
-    private static String queryParameter(String url, String name) {
-        String query = URI.create(url).getRawQuery();
-        if (query == null) {
-            return null;
-        }
-        for (String pair : query.split("&")) {
-            int eq = pair.indexOf('=');
-            if (eq > 0 && name.equals(pair.substring(0, eq))) {
-                return URLDecoder.decode(pair.substring(eq + 1), UTF_8);
-            }
-        }
-        return null;
     }
 }
