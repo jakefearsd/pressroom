@@ -18,6 +18,8 @@
 package com.wikantik.pressroom.business.jpa;
 
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 import jakarta.persistence.Query;
@@ -97,6 +99,25 @@ public class JPAFormSubmissionManagerImpl implements FormSubmissionManager {
                 "FormSubmission.countByWeblog", Long.class);
         query.setParameter(1, weblog);
         return query.getSingleResult().intValue();
+    }
+
+    @Override
+    public long getUnreadCount(Weblog weblog) throws WebloggerException {
+        TypedQuery<Long> query = strategy.getNamedQuery("FormSubmission.countUnreadByWeblog", Long.class);
+        query.setParameter(1, weblog);
+        return query.getSingleResult();
+    }
+
+    @Override
+    public int markRead(Weblog weblog, Collection<String> ids) throws WebloggerException {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        Query update = strategy.getNamedUpdate("FormSubmission.markRead");
+        update.setParameter(1, weblog);
+        update.setParameter(2, ids);
+        update.setParameter(3, Instant.now());
+        return update.executeUpdate();
     }
 
     @Override
