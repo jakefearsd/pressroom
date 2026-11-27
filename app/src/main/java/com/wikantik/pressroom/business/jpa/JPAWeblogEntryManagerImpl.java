@@ -1582,9 +1582,17 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public long getEntryCount(Weblog website) throws WebloggerException {
+        return getEntryCount(website, PubStatus.PUBLISHED);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public long getEntryCount(Weblog website, PubStatus status) throws WebloggerException {
         TypedQuery<Long> q = strategy.getNamedQuery(
                 "WeblogEntry.getCountDistinctByStatus&Website", Long.class);
-        q.setParameter(1, PubStatus.PUBLISHED);
+        q.setParameter(1, status);
         q.setParameter(2, website);
         return q.getResultList().get(0);
     }

@@ -648,6 +648,46 @@
         }
       }
     },
+    "/v1/weblogs/{handle}/submissions/read" : {
+      "post" : {
+        "tags" : [ "Contact messages" ],
+        "summary" : "Mark contact-form messages read, for every member of the weblog.",
+        "operationId" : "submissionsMarkRead",
+        "parameters" : [ {
+          "name" : "handle",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MarkRead"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Done; no body. Ids that are not this weblog's are ignored."
+          },
+          "default" : {
+            "description" : "The request failed: a problem detail (RFC 9457) whose code says why.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/weblogs/{handle}/stylesheet/revert" : {
       "post" : {
         "tags" : [ "Stylesheet" ],
@@ -6580,6 +6620,19 @@
         },
         "required" : [ "action", "hidden", "id", "name", "navbar", "required" ]
       },
+      "MarkRead" : {
+        "type" : "object",
+        "properties" : {
+          "ids" : {
+            "type" : "array",
+            "description" : "Ids of messages of this weblog. Ids that are not this weblog's are ignored.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "ids" ]
+      },
       "RedirectWrite" : {
         "type" : "object",
         "properties" : {
@@ -8512,9 +8565,13 @@
             "type" : "string",
             "format" : "date-time",
             "description" : "When it was sent, as an ISO-8601 instant."
+          },
+          "unread" : {
+            "type" : "boolean",
+            "description" : "True until a member of the weblog has opened the inbox with this message on screen."
           }
         },
-        "required" : [ "id" ]
+        "required" : [ "id", "unread" ]
       },
       "RevisionView" : {
         "type" : "object",
@@ -9095,9 +9152,29 @@
             "type" : "integer",
             "format" : "int64",
             "description" : "Comments awaiting approval; 0 for an account that may not moderate."
+          },
+          "newInquiries" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Contact-form messages no member has opened yet; 0 for an account that may not post (the inbox is for posters)."
+          },
+          "drafts" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Entries saved as drafts."
+          },
+          "scheduled" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Entries scheduled for a later publication time."
+          },
+          "lastPublished" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the newest published entry went live, as an ISO-8601 instant; absent when nothing is published yet."
           }
         },
-        "required" : [ "actions", "canModerate", "entryCount", "handle", "name", "pendingComments", "permission" ]
+        "required" : [ "actions", "canModerate", "drafts", "entryCount", "handle", "name", "newInquiries", "pendingComments", "permission", "scheduled" ]
       },
       "MyWeblogsView" : {
         "type" : "object",

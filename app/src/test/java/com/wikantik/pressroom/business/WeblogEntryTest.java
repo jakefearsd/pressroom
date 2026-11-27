@@ -390,6 +390,9 @@ public class WeblogEntryTest  {
             assertEquals(Map.of(testWeblog.getId(), 2L, second.getId(), 1L), counts);
             assertEquals(mgr.getEntryCount(TestUtils.getManagedWebsite(testWeblog)),
                     counts.get(testWeblog.getId()), "the same count the per-blog query gives");
+            assertEquals(1L, mgr.getEntryCount(TestUtils.getManagedWebsite(testWeblog), PubStatus.DRAFT),
+                    "the by-status count counts only that status of that weblog");
+            assertEquals(0L, mgr.getEntryCount(TestUtils.getManagedWebsite(testWeblog), PubStatus.SCHEDULED));
         } finally {
             TestUtils.teardownWeblog(second.getId());
             TestUtils.teardownWeblog(empty.getId());

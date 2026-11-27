@@ -415,6 +415,12 @@ public interface WeblogEntryManager {
     long getEntryCount(Weblog websiteData) throws WebloggerException;
 
     /**
+     * How many of a weblog's entries have exactly this status (drafts and scheduled posts for the
+     * admin home's counts; trashed and pending rows are counted only when asked for).
+     */
+    long getEntryCount(Weblog weblog, WeblogEntry.PubStatus status) throws WebloggerException;
+
+    /**
      * What a weblog has published as of {@code asOf}: the number of posts with
      * status PUBLISHED and a publication time not after it, and the newest
      * such time, in one query. Unlike {@link #getEntryCount(Weblog)}, which

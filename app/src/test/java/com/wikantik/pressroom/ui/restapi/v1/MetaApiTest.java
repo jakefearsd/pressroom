@@ -77,7 +77,7 @@ class MetaApiTest {
     private com.wikantik.pressroom.business.URLStrategy urlStrategy;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         weblogger = mock(Weblogger.class);
         analyticsManager = mock(AnalyticsManager.class);
         when(weblogger.getAnalyticsManager()).thenReturn(analyticsManager);
@@ -90,6 +90,10 @@ class MetaApiTest {
         when(weblogger.getWeblogEntryManager()).thenReturn(entryManager);
         commentManager = mock(com.wikantik.pressroom.business.CommentManager.class);
         when(weblogger.getCommentManager()).thenReturn(commentManager);
+        when(weblogger.getFormSubmissionManager())
+                .thenReturn(mock(com.wikantik.pressroom.business.FormSubmissionManager.class));
+        when(entryManager.getBlogStanding(any(Weblog.class), any(java.util.Date.class)))
+                .thenReturn(com.wikantik.pressroom.business.BlogStanding.NONE);
         urlStrategy = mock(com.wikantik.pressroom.business.URLStrategy.class);
         when(weblogger.getUrlStrategy()).thenReturn(urlStrategy);
         when(urlStrategy.getWeblogURL(any(Weblog.class), any(), eq(true)))

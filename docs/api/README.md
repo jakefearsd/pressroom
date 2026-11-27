@@ -916,7 +916,7 @@ GET /api/v1/me/weblogs
 The main menu's rows: `weblogs`, one per weblog the caller can act on (a pinned token sees only its
 own), sorted by handle, each with `handle`, `name`, `about` (when set), `theme`, `absoluteUrl`, the strongest
 `permission`, `actions` (the stored permission actions: `admin`, `post`, `edit_draft`; a weblog's creator holds
-`admin` alone), `canModerate`, `entryCount` and `pendingComments` (0 unless the caller may moderate); and, for
+`admin` alone), `canModerate`, `entryCount`, `pendingComments` and `newInquiries` (both 0 unless the caller may moderate), `drafts`, `scheduled` and `lastPublished` (the newest published entry's time; absent when nothing is published); and, for
 a site admin with an unpinned token, `siteSpace`, the handle of the hidden weblog that holds the site's own
 pages (created on the first read). It needs only a valid caller. The MCP tools do not offer it (`whoami`
 lists the weblogs an agent can act on). A weblog read (`GET /api/v1/weblogs/{handle}`) and the list also
@@ -2669,7 +2669,8 @@ call them. A caller who may not see the weblog still gets the 404 every weblog r
 | `GET`, `PATCH`, `DELETE /v1/weblogs/{handle}/templates/{id}` | Read one (with its `contents`), change `{contents, contentType, and, for a custom one, name, description, link, navbar, hidden}` (an empty `contentType` lets the engine choose), delete it (204). | admin |
 | `GET`, `PUT`, `DELETE /v1/weblogs/{handle}/stylesheet` | The weblog's own stylesheet: its state (`exists`, `customTheme`, `sharedThemeStylesheet`, `contents`), save `{contents}`, delete the copy (shared theme only). | admin |
 | `POST /v1/weblogs/{handle}/stylesheet/copy-from-shared`, `/revert` | Copy the shared theme's stylesheet to edit it, or reset the copy to the theme's text (shared theme only). | admin |
-| `GET /v1/weblogs/{handle}/submissions[?offset=&limit=]` | The contact-form inbox, newest first (default page 30, at most 200): `{items, offset, limit, hasMore, total}`, each message `{id, name, email, subject, message, pageSlug, entryAnchor, created}`. | post |
+| `GET /v1/weblogs/{handle}/submissions[?offset=&limit=]` | The contact-form inbox, newest first (default page 30, at most 200): `{items, offset, limit, hasMore, total}`, each message `{id, name, email, subject, message, pageSlug, entryAnchor, created, unread}` (`unread` is true until the inbox has been opened with it on screen). | post |
+| `POST /v1/weblogs/{handle}/submissions/read` | Mark messages read for every member of the weblog: body `{"ids":[...]}`, 204. Ids that are not this weblog's are ignored, never an error. Session only. | post |
 | `DELETE /v1/weblogs/{handle}/submissions/{id}` | Delete one message (204); a bulk delete is a loop. | post |
 | `DELETE /v1/weblogs/{handle}` | Delete the weblog with everything on it, irreversibly (204). Confirming is the client's job. | admin |
 | `POST /v1/weblogs/{handle}/entries/{id}/send-newsletter` | Email the entry to the weblog's newsletter list (as before; **moved here from the token-reachable routes**, owner decision 2026-11-25: the mail goes to every subscriber and cannot be recalled). | post |
