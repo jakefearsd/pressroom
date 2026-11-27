@@ -238,7 +238,10 @@ bin/deploy-host.sh docker1 --url https://blog.wikantik.com/wikantik/
 - `bin/release.sh` refuses a dirty tree, a branch other than master, a tree behind
   origin, an existing tag, or a version not above the current one. It then runs
   `mvn clean install` and the browser suite at both context paths (`--skip-verify`
-  when they already passed on this commit). Then it moves the four version strings
+  when they already passed on this commit). The browser runs are
+  `mvn verify -Pit -pl it-selenium`: they test the WAR that `clean install` just
+  built (it-selenium reads `app/target/pressroom.war`), so the app is not rebuilt
+  (npm, the frontend tests, PMD, CPD, SpotBugs) twice more. Then it moves the four version strings
   (the first `<version>` in each pom, and `IMAGE_VERSION` in `deploy/.env.example`),
   commits `release: X.Y.Z` and tags. Without `--push` it stops and prints the push;
   no agent passes `--push`.

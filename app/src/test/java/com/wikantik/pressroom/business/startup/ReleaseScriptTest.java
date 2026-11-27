@@ -150,6 +150,12 @@ class ReleaseScriptTest {
         assertTrue(r.out().contains("git push origin master v" + NEXT), r.out());
     }
 
+    /**
+     * The browser runs test the WAR that clean install just built and installed
+     * (it-selenium reads app/target/pressroom.war), so they build only it-selenium:
+     * rebuilding the app twice more (npm ci, the frontend build and tests, PMD,
+     * CPD, SpotBugs) re-checked the same commit and cost minutes per run.
+     */
     @Test
     void verifiesWithTheUnitSuiteAndTheBrowserSuiteAtBothContextPaths() throws Exception {
         ScriptRun.Result r = release(NEXT);
@@ -157,8 +163,8 @@ class ReleaseScriptTest {
         assertEquals(0, r.exit(), r.out());
         assertEquals("""
                 mvn clean install
-                mvn verify -Pit -DskipUnitTests=true
-                mvn verify -Pit -DskipUnitTests=true -Dit.context.path=pressroom
+                mvn verify -Pit -pl it-selenium
+                mvn verify -Pit -pl it-selenium -Dit.context.path=pressroom
                 """, calls());
     }
 

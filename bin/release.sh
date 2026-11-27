@@ -85,10 +85,13 @@ if [[ "${VERIFY}" -eq 1 ]]; then
     fi
     echo "==> The unit suite and every gate..."
     mvn clean install
+    # The browser runs test the WAR that clean install just built and installed
+    # (it-selenium reads app/target/pressroom.war), so they build it-selenium
+    # alone: rebuilding the app twice more re-checked the same commit.
     echo "==> The browser suite at the root..."
-    mvn verify -Pit -DskipUnitTests=true
+    mvn verify -Pit -pl it-selenium
     echo "==> The browser suite at /pressroom..."
-    mvn verify -Pit -DskipUnitTests=true -Dit.context.path=pressroom
+    mvn verify -Pit -pl it-selenium -Dit.context.path=pressroom
 fi
 
 echo "==> Moving the version from ${current} to ${VERSION}..."
