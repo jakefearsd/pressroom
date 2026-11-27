@@ -17,8 +17,6 @@
  */
 package com.wikantik.pressroom.business.jpa;
 
-import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +25,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
+import net.coobird.thumbnailator.Thumbnails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
@@ -103,22 +102,23 @@ final class ImageDerivatives {
      */
     private static void writeAdminThumbnail(FileContentManager cmgr, MediaFile mediaFile,
             BufferedImage img) throws IOException, WebloggerException {
-        int newWidth = mediaFile.getThumbnailWidth();
-        int newHeight = mediaFile.getThumbnailHeight();
-
-        Image newImage = img.getScaledInstance(newWidth, newHeight,
-                Image.SCALE_SMOOTH);
-        BufferedImage tmp = new BufferedImage(newWidth, newHeight,
-                BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = tmp.createGraphics();
-        g2.drawImage(newImage, 0, 0, newWidth, newHeight, null);
-        g2.dispose();
+        BufferedImage tmp = adminThumbnail(img, mediaFile.getThumbnailWidth(), mediaFile.getThumbnailHeight());
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(tmp, "png", baos);
 
         cmgr.saveFileContent(mediaFile.getWeblog(), mediaFile.getId()
                 + "_sm", new ByteArrayInputStream(baos.toByteArray()));
+    }
+
+    /**
+     * The admin thumbnail's pixels: {@code img} scaled to exactly {@code width} x {@code height}, ARGB, by
+     * Thumbnailator, the scaler the responsive ladder uses. AWT's area-averaging getScaledInstance did this
+     * until 2026-11-27, at several times the cost on every upload; AdminThumbnailTest keeps the result within a
+     * small mean difference of what it made.
+     */
+    static BufferedImage adminThumbnail(BufferedImage img, int width, int height) throws IOException {
+        return Thumbnails.of(img).forceSize(width, height).imageType(BufferedImage.TYPE_INT_ARGB).asBufferedImage();
     }
 
     /**
