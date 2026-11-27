@@ -102,7 +102,7 @@ class CommentServiceTest {
         ea2 = TestUtils.setupWeblogEntry("csea2", TestUtils.getManagedWebsite(a), TestUtils.getManagedUser(owner));
         eb = TestUtils.setupWeblogEntry("cseb", TestUtils.getManagedWebsite(b), TestUtils.getManagedUser(owner));
         TestUtils.endSession(true);
-        notifier = Mockito.spy(new MailCommentNotifier(TestUtils.weblogger()));
+        notifier = Mockito.spy(new MailCommentNotifier(TestUtils.weblogger(), new UnsubscribeTokens(TestUtils.weblogger())));
         service = new CommentService(TestUtils.weblogger(), notifier, unlimited(), unlimited());
     }
 
@@ -370,7 +370,7 @@ class CommentServiceTest {
 
     @Test
     void theSixthIn10MinutesAndThe31stInADayAreRateLimited() throws Exception {
-        CommentService limited = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()));
+        CommentService limited = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger(), new UnsubscribeTokens(TestUtils.weblogger())));
 
         for (int i = 0; i < 6; i++) {
             assertSame(CommentRefusal.EMPTY_BODY, post(limited, reader, ea, " ").refusal());
@@ -392,7 +392,7 @@ class CommentServiceTest {
         assertEquals(10, countOn(a));
 
         // The day, with the ten-minute window out of the way.
-        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
+        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger(), new UnsubscribeTokens(TestUtils.weblogger())),
                 unlimited(), CommentService.dailyThrottle(CommentLimits.fromConfig()));
         for (int i = 1; i <= 30; i++) {
             assertTrue(post(daily, reader, eb, BODY + " " + i).ok(), "comment " + i);
@@ -411,14 +411,14 @@ class CommentServiceTest {
         assertEquals(CommentLimits.DEFAULTS, CommentLimits.fromConfig(), "pressroom.properties holds the defaults");
         assertEquals(new CommentLimits(5, 600, 30), CommentLimits.DEFAULTS);
 
-        CommentService two = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
+        CommentService two = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger(), new UnsubscribeTokens(TestUtils.weblogger())),
                 new CommentLimits(2, 600, 30));
         assertTrue(post(two, reader, ea, BODY + " 1").ok());
         assertTrue(post(two, reader, ea, BODY + " 2").ok());
         assertSame(CommentRefusal.RATE_LIMITED, post(two, reader, ea, BODY + " 3").refusal(), "the third");
         assertEquals(2, countOn(a));
 
-        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
+        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger(), new UnsubscribeTokens(TestUtils.weblogger())),
                 new CommentLimits(1000, 600, 1));
         assertTrue(post(daily, reader, eb, BODY).ok());
         assertSame(CommentRefusal.RATE_LIMITED, post(daily, reader, eb, BODY + " again").refusal(), "a day of one");

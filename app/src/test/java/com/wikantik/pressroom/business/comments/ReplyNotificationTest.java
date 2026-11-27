@@ -300,6 +300,25 @@ class ReplyNotificationTest {
         assertEquals("List-Unsubscribe=One-Click", sent.getHeader("List-Unsubscribe-Post", null));
     }
 
+    /**
+     * RFC 8058 one-click needs an https URL, so a site served over plain http gets
+     * no List-Unsubscribe headers; the link in the body still works.
+     */
+    @Test
+    void overPlainHttpTheListHeadersAreOmittedButTheBodyLinkStays() throws Exception {
+        property("site.absoluteurl", "http://blog.example.invalid/pressroom/");
+
+        notifier.notifyReplied(reply);
+
+        MimeMessage sent = mail.onlyMessage();
+        assertEquals(null, sent.getHeader("List-Unsubscribe"), "no List-Unsubscribe over http");
+        assertEquals(null, sent.getHeader("List-Unsubscribe-Post"), "no one-click header over http");
+        String unsubscribe = unsubscribeLink(part(sent, "text/plain"));
+        assertTrue(unsubscribe.startsWith("http://blog.example.invalid/pressroom/pressroom-ui/unsubscribe.rol?t="),
+                unsubscribe);
+        assertTrue(part(sent, "text/html").contains("href=\"" + unsubscribe + "\""), "the body link stays");
+    }
+
     /** A link a mail client cannot open is worse than no mail: nothing is sent without the site's address. */
     @Test
     void noMailWithoutAnAbsoluteSiteAddress() throws Exception {
@@ -328,7 +347,7 @@ class ReplyNotificationTest {
     }
 
     private static String unsubscribeLink(String text) {
-        Matcher m = Pattern.compile("(https://\\S+/pressroom-ui/unsubscribe\\.rol\\?t=[A-Za-z0-9_-]+)").matcher(text);
+        Matcher m = Pattern.compile("(https?://\\S+/pressroom-ui/unsubscribe\\.rol\\?t=[A-Za-z0-9_-]+)").matcher(text);
         assertTrue(m.find(), text);
         return m.group(1);
     }

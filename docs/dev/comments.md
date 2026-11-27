@@ -297,9 +297,10 @@ held-only lambda in a test still compiles; `MailCommentNotifier` overrides it.
   {title}", title unescaped, one line); the reader's comment cut to 300 code
   points with "…" and the reply in full, as plain text, HTML-escaped in the
   HTML part (never content markup); a link to `#comment-<replyId>` on the
-  entry's absolute permalink; an unsubscribe link; headers
-  `List-Unsubscribe: <https://…/pressroom-ui/unsubscribe.rol?t=…>` and
-  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058).
+  entry's absolute permalink; an unsubscribe link; and, only when that link is
+  https, headers `List-Unsubscribe: <https://…/pressroom-ui/unsubscribe.rol?t=…>`
+  and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058 one-click
+  needs https; over plain http both are left out and the body link remains).
 - Resolved on the request thread, sent on `executeInBackground`; failures log
   only exception class names (`kinds`), never an address or a body (the spec
   said "with its stack trace"; the address leak wins, as for held notices).
@@ -329,7 +330,13 @@ mail to a user (spec: a leaked link can only turn reply mail off).
   false and shows "You won't get reply emails any more" with a link to the
   account page. A token that fails or names no account: the page's error, 400.
   A lookup or save that cannot run: an error, 500, never "done". Responses are
-  `Cache-Control: private, no-store`.
+  `Cache-Control: private, no-store`. The controller and security chain create
+  no session for an anonymous POST (`UnsubscribeControllerTest`, MockMvc, which
+  does not render the JSP). In a real container the GET's confirmation form
+  renders `<sec:csrfInput/>`, and loading that deferred token may create a
+  session for the visitor despite the page's `session="false"`.
+- The controller is anonymous on purpose (`isUserRequired()` false, no weblog,
+  no permission actions), pinned by `thePageIsDeliberatelyAnonymous`.
 - **CSRF:** `SecurityConfig.isOneClickUnsubscribe` exempts exactly POST
   `/pressroom-ui/unsubscribe.rol` (the second exemption beside
   `isPublicAudiencePost`): a mail client's POST has no CSRF token, and the

@@ -65,7 +65,8 @@ import org.springframework.stereotype.Component;
  * plain text (escaped in the HTML part, never content markup), a link to the
  * reply on the entry page and a one-click unsubscribe link, both absolute
  * from the site's address, with the matching {@code List-Unsubscribe} and
- * {@code List-Unsubscribe-Post} headers. Without the site's absolute address
+ * {@code List-Unsubscribe-Post} headers when that address is https (RFC 8058
+ * one-click needs it; over http only the body link is sent). Without the site's absolute address
  * no link would open, so nothing is sent.
  */
 @Component
@@ -82,14 +83,15 @@ public class MailCommentNotifier implements CommentNotifier {
 
     private static final String ELLIPSIS = "\u2026";
 
+    private static final String HTTPS = "https://";
+
     private final Weblogger weblogger;
     private final UnsubscribeTokens tokens;
 
-    /** With unsubscribe links signed by the tier's generated secret. */
-    public MailCommentNotifier(Weblogger weblogger) {
-        this(weblogger, new UnsubscribeTokens(weblogger));
-    }
-
+    /**
+     * @param weblogger the lazily-resolved business tier
+     * @param tokens    signs the unsubscribe link in reply emails
+     */
     @Autowired
     public MailCommentNotifier(@Lazy Weblogger weblogger, UnsubscribeTokens tokens) {
         this.weblogger = weblogger;
@@ -198,8 +200,11 @@ public class MailCommentNotifier implements CommentNotifier {
                 + "</body></html>";
         String subject = MessageFormat.format(resources.getString("comments.replied.subject"), author, title);
         Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("List-Unsubscribe", "<" + unsubscribeLink + ">");
-        headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+        // RFC 8058 one-click needs https; over plain http the body link is the way out.
+        if (unsubscribeLink.regionMatches(true, 0, HTTPS, 0, HTTPS.length())) {
+            headers.put("List-Unsubscribe", "<" + unsubscribeLink + ">");
+            headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+        }
         return new ReplyMail(subject, text, html, headers);
     }
 

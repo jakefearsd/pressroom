@@ -201,11 +201,40 @@ class UnsubscribeControllerTest {
         assertEquals(".Unsubscribe", result.getModelAndView().getViewName());
         assertEquals("done", model(result, "unsubscribeState"));
         assertFalse(stored().isNotifyReplies());
-        assertNull(result.getRequest().getSession(false), "an anonymous unsubscribe starts no session");
 
         assertEquals("done", model(perform(post(PAGE).param("t", token)), "unsubscribeState"),
                 "a second click says the same");
         assertTrue(stored().isKeepHistory(), "only the reply switch moves");
+    }
+
+    /**
+     * What MockMvc can prove: the security chain and the controller create no
+     * session for an anonymous unsubscribe POST. MockMvc does not render the JSP,
+     * so this says nothing about the page itself; in a real container the GET's
+     * confirmation form renders a CSRF token, and loading that token may create a
+     * session for the visitor.
+     */
+    @Test
+    void theChainAndControllerCreateNoSessionForAnAnonymousPost() throws Exception {
+        MvcResult result = perform(post(PAGE).param("t", token));
+
+        assertEquals("done", model(result, "unsubscribeState"));
+        assertNull(result.getRequest().getSession(false));
+    }
+
+    /**
+     * The page is anonymous on purpose: the signed token is the authority, so the
+     * interceptor must neither demand a sign-in nor a weblog nor any permission.
+     */
+    @Test
+    void thePageIsDeliberatelyAnonymous() {
+        UnsubscribeController controller = new UnsubscribeController(context.getBean(UnsubscribeTokens.class));
+
+        assertFalse(controller.isUserRequired(), "no sign-in: a reader opens this from their mail");
+        assertFalse(controller.isWeblogRequired());
+        assertTrue(controller.requiredWeblogPermissionActions().isEmpty());
+        assertTrue(controller.requiredGlobalPermissionActions().isEmpty());
+        assertEquals("unsubscribe.title", controller.getPageTitle());
     }
 
     /** RFC 8058: the mail client POSTs the List-Unsubscribe URL with this form body and nothing else. */
