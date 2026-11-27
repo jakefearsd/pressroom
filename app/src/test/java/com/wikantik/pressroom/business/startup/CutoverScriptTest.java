@@ -35,6 +35,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -50,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>The fixture names the old layout on purpose; each such line carries the
  * inventory's keep marker.
  */
+@Execution(ExecutionMode.CONCURRENT)
 class CutoverScriptTest {
 
     private static final Path CUTOVER = Paths.get("../deploy/cutover-pressroom.sh").toAbsolutePath();

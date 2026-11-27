@@ -1084,6 +1084,22 @@ limitations under the License.
                         </property>
                     </systemProperties>
                     <trimStackTrace>false</trimStackTrace>
+                    <!-- One test at a time, as before: only a class marked
+                         @Execution(ExecutionMode.CONCURRENT) runs its own
+                         methods side by side, on at most four threads (the
+                         max-pool-size is what makes four a ceiling).
+                         UnitSuiteConcurrencyTest pins these values and the
+                         list of such classes. -->
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.execution.parallel.enabled = true
+                            junit.jupiter.execution.parallel.mode.default = same_thread
+                            junit.jupiter.execution.parallel.mode.classes.default = same_thread
+                            junit.jupiter.execution.parallel.config.strategy = fixed
+                            junit.jupiter.execution.parallel.config.fixed.parallelism = 4
+                            junit.jupiter.execution.parallel.config.fixed.max-pool-size = 4
+                        </configurationParameters>
+                    </properties>
                 </configuration>
             </plugin>
 
