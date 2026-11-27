@@ -9,6 +9,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -30,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -145,17 +147,50 @@ class MeCommentsApiTest {
         assertEquals(List.of("moderated"), asked.getValue().stream().map(Weblog::getHandle).toList());
     }
 
+    /** A site admin sees only blogs they are a member of: the global role is never consulted for the queue. */
     @Test
     @SuppressWarnings("unchecked")
-    void aGlobalAdminWhoIsNotAMemberAsksAboutNoBlog() throws Exception {
-        blog("elsewhere");
-        when(users.getWeblogPermissions(user)).thenReturn(List.of());
+    void aGlobalAdminSeesOnlyTheBlogsTheyAreAMemberOf() throws Exception {
+        Weblog mine = blog("mine");
+        Weblog elsewhere = blog("elsewhere");
+        when(users.checkPermission(any(), eq(user))).thenReturn(false);
+        when(users.checkPermission(argThat(p -> p instanceof GlobalPermission g
+                && g.getActionsAsList().equals(List.of(GlobalPermission.ADMIN))), eq(user))).thenReturn(true);
+        when(weblogs.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of(mine, elsewhere));
+        when(users.getWeblogPermissions(user)).thenReturn(List.of(row(mine, WeblogPermission.POST)));
+        // The manager answers as a real one would: only what it is asked about.
+        when(comments.getComments(anyCollection(), any(), anyInt(), anyInt())).thenAnswer(i -> {
+            java.util.Collection<Weblog> asked = i.getArgument(0);
+            List<ReaderComment> found = new java.util.ArrayList<>();
+            if (asked.contains(mine)) {
+                found.add(comment(mine, "c-mine", "mine"));
+            }
+            if (asked.contains(elsewhere)) {
+                found.add(comment(elsewhere, "c-else", "else"));
+            }
+            return found;
+        });
+        when(comments.countComments(anyCollection(), any())).thenAnswer(i ->
+                ((java.util.Collection<Weblog>) i.getArgument(0)).size() * 1L);
 
         JsonNode page = call("");
 
         ArgumentCaptor<java.util.Collection<Weblog>> asked = ArgumentCaptor.forClass(java.util.Collection.class);
         verify(comments).getComments(asked.capture(), any(), anyInt(), anyInt());
-        assertTrue(asked.getValue().isEmpty());
+        assertEquals(List.of("mine"), asked.getValue().stream().map(Weblog::getHandle).toList());
+        assertEquals(1, page.get("total").asLong());
+        assertEquals(1, page.get("items").size());
+        assertEquals("mine", page.get("items").get(0).get("weblog").get("handle").asString());
+    }
+
+    @Test
+    void aUserWithNoMembershipsAsksAboutNoBlog() throws Exception {
+        blog("elsewhere");
+        when(users.getWeblogPermissions(user)).thenReturn(List.of());
+
+        JsonNode page = call("");
+
+        verify(comments).getComments(eq(List.of()), any(), anyInt(), anyInt());
         assertEquals(0, page.get("items").size());
     }
 
