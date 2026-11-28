@@ -18,6 +18,7 @@ This repository is part of the **Simple Agility** small-business ecosystem:
 - **Session start:** call `get_briefing(clusters=["pressroom"], prompt="<your first task>")` on the Wikantik knowledge MCP; the briefing carries this project's pages and the contracts it cites ([SA-13](https://wiki.wikantik.com/SimpleAgilityDecisionLog)).
 - **Role Boundary:** Implement and optimize Pressroom's core Java/Spring Boot capabilities, themes, and automation API; never break cross-product contracts or telemetry conventions.
 - **Record decisions:** when a change binds another repository (an API or event shape, a published port, a login or grant another product uses, a schema or view another product reads, a log or label name), add a new `SA-<n>` entry to `SimpleAgilityDecisionLog` (Decision, Why, Consequences) in the same piece of work, and link it from the normative page. Supersede, never rewrite.
+- **Field report:** at the end of substantive work, file one field report with `file_agent_report` on the Wikantik knowledge MCP (skill `agent-field-report` in `.claude/skills/`, canonical text on `SimpleAgilityAgentFieldReportSkill`; `SA-22`). One per task; `workspace` is `pressroom`.
 <!-- SIMPLE-AGILITY-AGENT-HEADER-END -->
 
 ## Important Rules
