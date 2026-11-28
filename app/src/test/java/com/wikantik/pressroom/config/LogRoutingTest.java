@@ -44,6 +44,10 @@ class LogRoutingTest {
 
     private static final Path CONFIG = Path.of("src/main/resources/log4j2.xml");
 
+    /** The mcp_tool_called event's logger (McpToolCalledEvent.LOG_NAME) and the stdout appender that carries it alone. */
+    private static final String EVENT_LOGGER = "pressroom.mcp_tool_called";
+    private static final String EVENT_CONSOLE = "eventConsole";
+
     @Test
     void everyNamedLoggerReachesTheConsole() throws Exception {
         Document config = config();
@@ -52,7 +56,8 @@ class LogRoutingTest {
         assertTrue(loggers.getLength() > 0, "log4j2.xml names loggers");
         for (int i = 0; i < loggers.getLength(); i++) {
             Element logger = (Element) loggers.item(i);
-            assertTrue(reaches(refs(logger), wrapped, "console"),
+            String console = EVENT_LOGGER.equals(logger.getAttribute("name")) ? EVENT_CONSOLE : "console";
+            assertTrue(reaches(refs(logger), wrapped, console),
                     "logger " + logger.getAttribute("name") + " never reaches the console appender, "
                             + "so docker compose logs would not show it");
         }
@@ -66,14 +71,64 @@ class LogRoutingTest {
         assertTrue(reaches(refs(root), wrappedAppenders(config), "console"));
     }
 
-    /** The console is standard output: Docker keeps stdout and stderr alike, but one stream keeps the order. */
+    /**
+     * Both consoles are standard output: Docker keeps stdout and stderr alike,
+     * but one stream keeps the order. The second exists only for the
+     * mcp_tool_called event, below.
+     */
     @Test
-    void theConsoleIsStandardOutput() throws Exception {
+    void theConsolesAreStandardOutput() throws Exception {
         NodeList consoles = config().getElementsByTagName("Console");
-        assertEquals(1, consoles.getLength(), "one console appender");
-        Element console = (Element) consoles.item(0);
-        assertEquals("console", console.getAttribute("name"));
-        assertEquals("SYSTEM_OUT", console.getAttribute("target"));
+        Set<String> names = new TreeSet<>();
+        for (int i = 0; i < consoles.getLength(); i++) {
+            Element console = (Element) consoles.item(i);
+            names.add(console.getAttribute("name"));
+            assertEquals("SYSTEM_OUT", console.getAttribute("target"), console.getAttribute("name"));
+        }
+        assertEquals(Set.of("console", EVENT_CONSOLE), names);
+    }
+
+    /**
+     * The mcp_tool_called event (SA-21) is one ECS JSON object per line, and
+     * Loki's {@code | json} parses a line only if all of it is JSON. So the
+     * event logger writes to its own stdout appender whose layout is the
+     * message alone, and nothing else writes there: a free-text line on that
+     * appender would carry no level or time, and a raw message bypasses the
+     * shared pattern's CR/LF encoding (McpToolCalledEvent escapes its own
+     * line through Jackson). Nor does the event leak into the shared console,
+     * where the pattern's prefix would make it unparseable.
+     */
+    @Test
+    void theToolCallEventAloneGoesToARawStandardOutputAppender() throws Exception {
+        Document config = config();
+        Element logger = loggerNamed(config, EVENT_LOGGER);
+        assertNotNull(logger, "log4j2.xml routes " + EVENT_LOGGER);
+        assertEquals("false", logger.getAttribute("additivity"), "the event must not also reach Root's console");
+        assertEquals(Set.of(EVENT_CONSOLE), refs(logger));
+
+        Element eventConsole = null;
+        NodeList consoles = config.getElementsByTagName("Console");
+        for (int i = 0; i < consoles.getLength(); i++) {
+            if (EVENT_CONSOLE.equals(((Element) consoles.item(i)).getAttribute("name"))) {
+                eventConsole = (Element) consoles.item(i);
+            }
+        }
+        assertNotNull(eventConsole, "log4j2.xml has the " + EVENT_CONSOLE + " appender");
+        NodeList layouts = eventConsole.getElementsByTagName("PatternLayout");
+        assertEquals(1, layouts.getLength());
+        assertEquals("%m%n", ((Element) layouts.item(0)).getAttribute("pattern"), "the message alone, one per line");
+
+        Map<String, Set<String>> wrapped = wrappedAppenders(config);
+        NodeList others = config.getElementsByTagName("Logger");
+        for (int i = 0; i < others.getLength(); i++) {
+            Element other = (Element) others.item(i);
+            if (!EVENT_LOGGER.equals(other.getAttribute("name"))) {
+                assertFalse(reaches(refs(other), wrapped, EVENT_CONSOLE),
+                        other.getAttribute("name") + " writes free text to the event console");
+            }
+        }
+        Element root = (Element) config.getElementsByTagName("Root").item(0);
+        assertFalse(reaches(refs(root), wrapped, EVENT_CONSOLE), "Root writes free text to the event console");
     }
 
     /** The file stays: the IT harness and the SSO runbook read pressroom.log. */

@@ -58,6 +58,18 @@ limitations under the License.
         <Console name="console" target="SYSTEM_OUT">
             <PatternLayout pattern="${logging.pattern}"/>
         </Console>
+
+        <!-- The mcp_tool_called event (SA-21, the wiki's SimpleAgilityAgentActivity):
+             one ECS JSON object per line, which jakemon reads from Loki with
+             | json. Loki parses a line only if all of it is JSON, so this
+             console writes the message alone. Only the pressroom.mcp_tool_called
+             logger may reach it: its lines are written by Jackson, which escapes
+             CR, LF and quotes, so the shared pattern's CRLF encoding is not
+             needed here and must not be bypassed anywhere else
+             (LogRoutingTest, LogPatternTest). -->
+        <Console name="eventConsole" target="SYSTEM_OUT">
+            <PatternLayout pattern="%m%n"/>
+        </Console>
         
         <RollingFile name="pressroom"
                      fileName="${logging.dir}/pressroom.log" 
@@ -121,6 +133,8 @@ limitations under the License.
         <!-- account, membership and API-token changes, each naming by=; never a token secret -->
         <Logger name="pressroom.admin" level="info" additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
         <Logger name="org.webjars"             level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <!-- one ECS JSON line per MCP tool call, alone on its raw console (see eventConsole) -->
+        <Logger name="pressroom.mcp_tool_called" level="info" additivity="false"> <AppenderRef ref="eventConsole"/> </Logger>
 
         <!-- everything not named above -->
         <Root level="info">

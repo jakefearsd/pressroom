@@ -53,15 +53,27 @@ class LogPatternTest {
         assertTrue(written.lines().anyMatch(l -> l.trim().startsWith("at ")), written);
     }
 
-    /** An appender with its own pattern would bypass the encoding without any test noticing. */
+    /**
+     * An appender with its own pattern would bypass the encoding without any
+     * test noticing. The one exception is the mcp_tool_called event's
+     * console, which writes JSON that Jackson has already escaped;
+     * LogRoutingTest pins that only that event reaches it.
+     */
     @Test
     void everyLayoutUsesTheSharedPattern() throws Exception {
         NodeList layouts = config().getElementsByTagName("PatternLayout");
         assertTrue(layouts.getLength() > 0, "log4j2.xml has pattern layouts");
+        int checked = 0;
         for (int i = 0; i < layouts.getLength(); i++) {
-            assertEquals("${logging.pattern}", ((Element) layouts.item(i)).getAttribute("pattern"),
+            Element layout = (Element) layouts.item(i);
+            if ("eventConsole".equals(((Element) layout.getParentNode()).getAttribute("name"))) {
+                continue;
+            }
+            assertEquals("${logging.pattern}", layout.getAttribute("pattern"),
                     "every PatternLayout in log4j2.xml uses ${logging.pattern}");
+            checked++;
         }
+        assertTrue(checked > 0, "the shared pattern was checked somewhere");
     }
 
     private static String format(LogEvent event) throws Exception {

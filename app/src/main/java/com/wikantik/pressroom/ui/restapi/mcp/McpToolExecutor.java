@@ -56,10 +56,12 @@ public final class McpToolExecutor {
     /**
      * One tool call, logging exactly one line (who, which tool and action,
      * which weblog, the status, how long) on every exit -- never an argument
-     * value, which may be entry text.
+     * value, which may be entry text -- and the suite's mcp_tool_called
+     * event ({@link McpToolCalledEvent}).
      */
     public CallToolResult call(HttpServletRequest mcpRequest, ResolvedTool tool, Map<String, Object> arguments) {
         long started = System.currentTimeMillis();
+        long startedNanos = System.nanoTime();
         String instance = instanceOf(mcpRequest);
         Outcome outcome = new Outcome(error(problem(ApiException.internalError(), instance)), 500, "-", "-");
         try {
@@ -69,6 +71,8 @@ public final class McpToolExecutor {
             log.error("MCP `{}` failed unexpectedly", tool.name(), e);
         } finally {
             logCall(tool.name(), outcome, started);
+            McpToolCalledEvent.write(tool.name(), outcome.action(), outcome.status(), outcome.result(),
+                    mcpRequest, System.nanoTime() - startedNanos);
         }
         return outcome.result();
     }

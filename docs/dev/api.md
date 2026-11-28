@@ -671,6 +671,24 @@ document (every `@RestController` there, found by scanning, with the `springdoc.
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `pressroom.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
   the console appender, like `pressroom.redirects`, not to `pressroom.log`.
+- **The `mcp_tool_called` event** (SA-21, wiki `SimpleAgilityAgentActivity`): each call also writes
+  one ECS JSON line (`McpToolCalledEvent`), which jakemon's Agent activity dashboard and the weekly
+  agent digest read from Loki with `| json`.
+  - **Routing.** It has its own logger, `pressroom.mcp_tool_called`, deliberately not under
+    `pressroom.mcp`, where a child logger would also reach the audit logger's listeners. It also has
+    its own stdout appender, `eventConsole`, whose layout is `%m%n`. Loki parses a line only if all of
+    it is JSON, and the rest of the log is still plain text (SA-6 R1 not started).
+  - **Escaping.** Jackson writes the line, so a CR, LF or quote in the User-Agent cannot end it or add
+    a field. `LogRoutingTest` pins that nothing else reaches `eventConsole`.
+  - **Stateless fields (SA-29).** The server keeps no MCP session, so `mcp.client.name` is the
+    User-Agent (control characters dropped, 64 characters, `unknown` when absent) and
+    `mcp.session.hash` is always `none`.
+  - **Outcome.** A call is a `failure` with `error.type` `http_<status>` when it ended at 400 or above
+    or returned an error result.
+  - **Fields.** `pressroom.mcp.action` names the tool's action when it has one. Arguments, bodies and
+    the reply's text are never logged.
+  - **Not logged.** A tool name the SDK does not know is refused before the executor runs, so it
+    writes no event.
 
 ## New-weblog needs (step 2)
 
