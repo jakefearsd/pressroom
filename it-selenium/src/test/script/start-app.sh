@@ -150,7 +150,11 @@ while [ "$SECONDS" -lt "$DEADLINE" ]; do
     if curl -sf "http://127.0.0.1:${PORT}${URL_PREFIX}/pressroom-ui/login.rol" > /dev/null; then
         exit 0
     fi
-    sleep 2
+    # In the background and waited for: bash runs a trap only once the
+    # foreground command returns, so a plain sleep held Ctrl-C (and the
+    # cleanup that kills the app) for up to the whole interval.
+    sleep 1 &
+    wait $!
 done
 
 echo "start-app.sh: Pressroom did not answer on ${PORT} within ${READY_TIMEOUT}s; log tail:" >&2

@@ -130,21 +130,29 @@ class ItHarnessLeakTest {
     @Test
     void startAppKillsTheJvmItStartedWhenReadinessTimesOut() throws Exception {
         String runId = runId("timeout");
-        Result result = runStartApp(runId, "4");
+        Result result = runStartApp(runId, "1");
 
         assertEquals(1, result.exit(), "readiness timeout must still fail the build:\n" + result.output());
         assertNoProcessFor(runId, "start-app.sh timed out and left its JVM running");
     }
 
-    /** Ctrl-C reaches start-app.sh while it is still polling for readiness. */
+    /**
+     * Ctrl-C reaches start-app.sh while it is still polling for readiness, and
+     * the script acts on it at once. Bash runs a trap only when the foreground
+     * command returns, so a poll that sleeps in the foreground held the signal
+     * for up to the whole interval.
+     */
     @Test
     void startAppKillsTheJvmItStartedWhenItIsSignalled() throws Exception {
         String runId = runId("signal");
         Process script = startStartApp(runId, "600");
 
         awaitProcessFor(runId, "start-app.sh never launched its child");
+        long signalled = System.nanoTime();
         script.destroy();
         assertTrue(script.waitFor(30, TimeUnit.SECONDS), "start-app.sh ignored SIGTERM");
+        assertTrue(Duration.ofNanos(System.nanoTime() - signalled).toMillis() < 900,
+                "start-app.sh sat on SIGTERM until its poll's sleep ended");
 
         assertNoProcessFor(runId, "start-app.sh was signalled and left its JVM running");
     }
