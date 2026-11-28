@@ -178,7 +178,7 @@ final class ControllerTestFixture {
         Object previous = getStaticField(PressroomContext.class, "encoder");
         setStaticField(PressroomContext.class, "encoder",
                 new DelegatingPasswordEncoder("bcrypt",
-                        Map.of("bcrypt", new BCryptPasswordEncoder())));
+                        Map.of("bcrypt", new BCryptPasswordEncoder(4))));
         return previous;
     }
 

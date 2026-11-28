@@ -61,7 +61,7 @@ class AdminUsersAccountFieldsApiTest {
     void installPasswordEncoder() {
         previousPasswordEncoder = PressroomContext.getPasswordEncoder();
         PressroomContext.setPasswordEncoder(new DelegatingPasswordEncoder("bcrypt",
-                java.util.Map.of("bcrypt", new BCryptPasswordEncoder())));
+                java.util.Map.of("bcrypt", new BCryptPasswordEncoder(4))));
     }
 
     @AfterEach

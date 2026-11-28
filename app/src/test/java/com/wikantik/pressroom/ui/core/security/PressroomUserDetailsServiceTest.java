@@ -161,7 +161,7 @@ class PressroomUserDetailsServiceTest {
     private static DaoAuthenticationProvider passwordProvider(PressroomUserDetailsService service) {
         DaoAuthenticationProvider dao = new DaoAuthenticationProvider(service);
         dao.setPasswordEncoder(new DelegatingPasswordEncoder("bcrypt",
-                Map.of("bcrypt", new BCryptPasswordEncoder())));
+                Map.of("bcrypt", new BCryptPasswordEncoder(4))));
         return dao;
     }
 

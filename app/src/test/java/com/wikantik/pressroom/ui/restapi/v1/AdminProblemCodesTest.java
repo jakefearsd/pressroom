@@ -125,7 +125,7 @@ class AdminProblemCodesTest {
     void theMailRefusalsOfACreateHaveTheirCodes() throws Exception {
         String alice = "{\"userName\":\"alice\",\"emailAddress\":\"a@example.com\"}";
         PasswordEncoder before = PressroomContext.getPasswordEncoder();
-        PressroomContext.setPasswordEncoder(new BCryptPasswordEncoder());
+        PressroomContext.setPasswordEncoder(new BCryptPasswordEncoder(4));
         try (MockedStatic<PasswordLinkMailer> mailer = mockStatic(PasswordLinkMailer.class)) {
             mailer.when(PasswordLinkMailer::isReady).thenReturn(false);
             problem(createUser(status().isBadRequest(), alice), "user.mailNotConfigured",

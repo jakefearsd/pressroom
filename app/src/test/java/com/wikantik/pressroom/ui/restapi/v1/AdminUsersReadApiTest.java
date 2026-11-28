@@ -62,7 +62,7 @@ class AdminUsersReadApiTest {
     void setUp() {
         previousEncoder = PressroomContext.getPasswordEncoder();
         PressroomContext.setPasswordEncoder(new DelegatingPasswordEncoder("bcrypt",
-                Map.of("bcrypt", new BCryptPasswordEncoder())));
+                Map.of("bcrypt", new BCryptPasswordEncoder(4))));
         weblogger = mock(Weblogger.class);
         users = mock(UserManager.class);
         tokens = mock(ApiTokenManager.class);

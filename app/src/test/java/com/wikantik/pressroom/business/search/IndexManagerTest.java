@@ -230,8 +230,12 @@ public class IndexManagerTest {
 
         List<WeblogEntry> entries = Instancio.ofList(WeblogEntry.class).size(10).create();
 
+        // The first entry is published a second before the second one. This
+        // used to sleep half a second between two reads of the clock; stating
+        // the order outright gives the same two times without the wait.
+        long secondPublished = System.currentTimeMillis();
         entries.get(0).setTitle("The Tholian Web");
-        entries.get(0).setPubTime(new Timestamp(System.currentTimeMillis()));
+        entries.get(0).setPubTime(new Timestamp(secondPublished - 1000));
         // Instancio otherwise assigns a random PubStatus (DRAFT/PENDING/
         // SCHEDULED/TRASHED as well as PUBLISHED) -- the search path only
         // ever resolves published entries by design (see
@@ -244,10 +248,8 @@ public class IndexManagerTest {
                 +"U.S.S. Defiant which vanished 3 weeks ago, the warp engines  "
                 +"begin to lose power, and Spock reports strange sensor readings.");
 
-        Thread.sleep(500);
-
         entries.get(1).setTitle("A Piece of the Action");
-        entries.get(1).setPubTime(new Timestamp(System.currentTimeMillis()));
+        entries.get(1).setPubTime(new Timestamp(secondPublished));
         entries.get(1).setStatus(WeblogEntry.PubStatus.PUBLISHED);
         entries.get(1).setText(
             "The crew of the Enterprise attempts to make contact with "

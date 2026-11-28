@@ -53,7 +53,9 @@ class MeProfileApiTest {
     @BeforeEach
     void setUp() {
         previousEncoder = PressroomContext.getPasswordEncoder();
-        encoder = new DelegatingPasswordEncoder("bcrypt", Map.of("bcrypt", new BCryptPasswordEncoder()));
+        // Strength 4, the least bcrypt allows: this class tests the profile API,
+        // not the hash, and the default 10 cost a second of the suite in setUp.
+        encoder = new DelegatingPasswordEncoder("bcrypt", Map.of("bcrypt", new BCryptPasswordEncoder(4)));
         PressroomContext.setPasswordEncoder(encoder);
         weblogger = mock(Weblogger.class);
         users = mock(UserManager.class);
